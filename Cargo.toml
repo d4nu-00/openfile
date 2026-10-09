@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/chess-core"]
+members = ["crates/chess-core", "crates/cbh-reader"]
 resolver = "3"
 
 [workspace.package]
