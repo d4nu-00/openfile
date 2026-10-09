@@ -1,3 +1,5 @@
+pub mod companions;
+pub mod entities;
 pub mod error;
 pub mod header;
 pub mod limits;
