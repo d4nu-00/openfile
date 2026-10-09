@@ -41,7 +41,7 @@ impl Game {
     }
     pub fn from_fen(fen: &str) -> Result<Self, CoreError> {
         let pos = parse_position(fen)?;
-        let tags = [
+        let mut tags: BTreeMap<String, String> = [
             ("Event", "?"),
             ("Site", "?"),
             ("Date", "????.??.??"),
@@ -53,9 +53,14 @@ impl Game {
         .into_iter()
         .map(|(k, v)| (k.into(), v.into()))
         .collect();
+        let start_fen = Fen::from_position(&pos, EnPassantMode::Always).to_string();
+        if start_fen != "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" {
+            tags.insert("SetUp".into(), "1".into());
+            tags.insert("FEN".into(), start_fen.clone());
+        }
         Ok(Self {
             tags,
-            start_fen: Fen::from_position(&pos, EnPassantMode::Always).to_string(),
+            start_fen,
             nodes: vec![Node {
                 id: 0,
                 parent: None,

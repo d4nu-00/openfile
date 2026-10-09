@@ -9,3 +9,5 @@ distribution notices are audited before source publication.
 
 No commercial database, proprietary executable, image or extracted resource is
 part of this source repository.
+
+PGN parsing uses pgn-reader by Niklas Fiekas, GPL-3.0-or-later.

@@ -8,4 +8,4 @@ license.workspace = true
 shakmaty.workspace = true
 serde.workspace = true
 thiserror.workspace = true
-
+pgn-reader.workspace = true
