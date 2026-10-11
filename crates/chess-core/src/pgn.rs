@@ -202,6 +202,7 @@ impl Exporter<'_> {
         }
         let mut current = first;
         let mut siblings = include_siblings;
+        let mut force_number = true;
         loop {
             let node = self
                 .game
@@ -234,10 +235,15 @@ impl Exporter<'_> {
                     .map_err(|_| CoreError::IllegalMove(uci.into()))?;
                 shakmaty::san::SanPlus::from_move(pos.clone(), m).to_string()
             };
+            if !self.out.ends_with(['(', '\n']) {
+                self.out.push(' ');
+            }
             if pos.turn().is_white() {
-                self.out.push_str(&format!(" {}. {san}", pos.fullmoves()));
+                self.out.push_str(&format!("{}. {san}", pos.fullmoves()));
+            } else if force_number {
+                self.out.push_str(&format!("{}... {san}", pos.fullmoves()));
             } else {
-                self.out.push_str(&format!(" {}... {san}", pos.fullmoves()));
+                self.out.push_str(&san);
             }
             comments(&mut self.out, &node.comments)?;
             for nag in &node.nags {
@@ -254,6 +260,8 @@ impl Exporter<'_> {
             } else {
                 vec![]
             };
+            force_number =
+                !alternatives.is_empty() || !node.comments.is_empty() || !node.nags.is_empty();
             for alt in alternatives {
                 self.out.push_str(" (");
                 self.line(alt, before.clone(), depth + 1, false)?;

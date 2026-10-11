@@ -10,6 +10,8 @@ pub enum CbhError {
     Bounds,
     #[error("Unsupported database format: {0}")]
     Unsupported(String),
+    #[error("Unsupported setup position: {0}")]
+    UnsupportedSetup(String),
     #[error("Read limit exceeded")]
     LimitExceeded,
     #[error("Ambiguous companion filename")]
@@ -29,6 +31,7 @@ impl CbhError {
             Self::SourceChanged => "sourceChanged",
             Self::Bounds => "bounds",
             Self::Unsupported(_) => "unsupportedEncoding",
+            Self::UnsupportedSetup(_) => "unsupportedSetup",
             Self::LimitExceeded => "limitExceeded",
             Self::AmbiguousCompanion => "ambiguousCompanion",
             Self::Decode(_) => "corrupt",

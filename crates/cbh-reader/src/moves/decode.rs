@@ -36,28 +36,52 @@ pub fn decode_classic(record: &[u8], limits: &ReadLimits) -> Result<Game, CbhErr
     if (header & 0xffffff) as usize != record.len() {
         return Err(CbhError::Truncated);
     }
-    if header & 0xff000000 != 0 {
+    if header & 0xbf000000 != 0 {
         return Err(CbhError::Unsupported(format!(
             "CBG flags {:#010x}",
             header & 0xff000000
         )));
     }
-    let mut builder = GameBuilder::new(Game::initial(), limits.game.clone())?;
-    let mut pieces = PieceState::from_position(builder.position(0)?);
-    let mut cursor = TokenCursor::new(&record[4..]);
+    let (game, mut pieces, offset) = if header & 0x40000000 != 0 {
+        let bytes = record.get(4..32).ok_or(CbhError::Truncated)?;
+        let (fen, pieces) = super::setup::decode_setup(bytes)?;
+        (Game::from_fen(&fen)?, pieces, 32)
+    } else {
+        let game = Game::initial();
+        let pieces = PieceState::from_position(&game.chess_position(0)?);
+        (game, pieces, 4)
+    };
+    let mut builder = GameBuilder::new(game, limits.game.clone())?;
+    let mut cursor = TokenCursor::new(&record[offset..]);
     let mut current = 0;
+    let mut frames = Vec::new();
     while cursor.offset < cursor.bytes.len() {
         let token = cursor.next()?;
         if token == 0x0c {
+            if let Some((node, state)) = frames.pop() {
+                current = node;
+                pieces = state;
+                continue;
+            }
             if cursor.offset != cursor.bytes.len() {
                 return Err(CbhError::Decode("Early line terminator".into()));
             }
             return Ok(builder.finish());
         }
-        if [0xdc, 0x9f, 0xaa].contains(&token) {
-            return Err(CbhError::Unsupported(format!(
-                "Special move token {token:#04x}"
-            )));
+        if token == 0xdc {
+            if frames.len() >= limits.game.max_variation_depth {
+                return Err(CbhError::LimitExceeded);
+            }
+            frames.push((current, pieces.clone()));
+            continue;
+        }
+        if token == 0x9f {
+            continue;
+        }
+        if token == 0xaa {
+            current = builder.append_uci(current, "0000")?;
+            cursor.processed = cursor.processed.wrapping_add(1);
+            continue;
         }
         let before = builder.position(current)?.clone();
         let uci = if token == 0x29 {

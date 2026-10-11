@@ -43,6 +43,7 @@ pub fn finish(mut body: Vec<u8>, count: u8) -> Vec<u8> {
     record.extend(body);
     record
 }
+#[allow(dead_code)]
 pub fn line(moves: &[&str]) -> Vec<u8> {
     let mut body = vec![];
     let mut count = 0;
