@@ -1,0 +1,240 @@
+:root {
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: #e5e7e4;
+  background: #171d1b;
+  font-size: 14px;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  overflow: hidden;
+}
+.workbench {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.app-header,
+.database,
+.pane-splitter,
+.analysis-pane {
+  flex-shrink: 0;
+}
+.board-column,
+.notation-column {
+  min-height: 0;
+  overflow: auto;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+  border: 1px solid #43564c;
+  background: #29372f;
+  color: #eff6ef;
+  border-radius: 5px;
+  padding: 6px 11px;
+}
+button:hover {
+  background: #3e5647;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+button:focus-visible,
+input:focus-visible,
+[role="separator"]:focus-visible {
+  outline: 3px solid #e4c96b;
+  outline-offset: 2px;
+}
+input {
+  background: #101613;
+  border: 1px solid #43564c;
+  border-radius: 4px;
+  color: inherit;
+  padding: 6px;
+  width: 155px;
+}
+.app-header {
+  height: 62px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 20px;
+  background: #202a25;
+  border-bottom: 1px solid #405044;
+}
+.brand {
+  font-size: 20px;
+  white-space: nowrap;
+}
+.app-status {
+  color: #bec9c0;
+  font-size: 12px;
+}
+.database {
+  border-bottom: 1px solid #405044;
+}
+.database-controls {
+  padding: 10px 20px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.database-controls label {
+  margin-left: auto;
+  font-size: 12px;
+}
+.database-scroll {
+  height: 140px;
+  overflow: auto;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+th {
+  text-align: left;
+  color: #9fafa4;
+  background: #1d2822;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+th,
+td {
+  padding: 6px 14px;
+  border-bottom: 1px solid #2b3a30;
+}
+tr[aria-selected="true"] {
+  background: #314b39;
+}
+td button {
+  padding: 2px 7px;
+}
+.game-area {
+  display: grid;
+  grid-template-columns: minmax(320px, 510px) 1fr;
+  gap: 26px;
+  padding: 16px 24px;
+  min-height: 0;
+  flex: 1;
+}
+.board-column h2 {
+  font-size: 16px;
+  letter-spacing: 0.3px;
+  margin: 0 0 12px;
+}
+.toolbar {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.position-label {
+  margin: 0;
+  text-align: center;
+  color: #aabcaf;
+  font-size: 12px;
+}
+.notation-column {
+  background: #1d2721;
+  display: flex;
+  flex-direction: column;
+  border-radius: 7px;
+  padding: 14px;
+  min-width: 0;
+}
+.notation {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.notation-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+  color: #93a89a;
+  font-size: 12px;
+}
+.move-row {
+  margin: 5px 0;
+  line-height: 1.7;
+}
+.move-row button {
+  min-width: 60px;
+  margin-right: 10px;
+  text-align: left;
+}
+.move-row [aria-current="step"] {
+  color: #1b281f;
+  background: #d9c37a;
+  border-color: #d9c37a;
+  font-weight: bold;
+}
+.comment {
+  color: #abc9af;
+  font-size: 12px;
+  margin-right: 8px;
+}
+.nag {
+  color: #e4c96b;
+  margin-right: 8px;
+}
+.diagnostics p,
+.compatibility-note {
+  color: #e4c96b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.empty-state {
+  color: #91a497;
+  padding: 40px;
+}
+.pane-splitter {
+  height: 8px;
+  background: #35463a;
+  cursor: ns-resize;
+}
+.analysis-pane {
+  padding: 12px 24px;
+  overflow: auto;
+  background: #1c2620;
+}
+.analysis-pane h3 {
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+.analysis-pane p {
+  color: #9caf9f;
+  font-size: 12px;
+}
+@media (max-width: 1000px) {
+  .game-area {
+    grid-template-columns: 380px 1fr;
+    padding: 12px;
+  }
+  .database-controls {
+    gap: 6px;
+    padding: 8px;
+  }
+  .app-header {
+    gap: 15px;
+  }
+}

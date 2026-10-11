@@ -1,0 +1,84 @@
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  aspect-ratio: 1;
+  border: 6px solid #374a3c;
+  border-radius: 5px;
+  max-width: 490px;
+  width: clamp(160px, calc(100dvh - var(--analysis-height) - 390px), 490px);
+  max-width: 100%;
+  box-shadow: 0 10px 24px #0005;
+}
+.square {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  position: relative;
+  padding: 0;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111;
+}
+.board-rank {
+  display: contents;
+}
+.board-cell {
+  aspect-ratio: 1;
+  min-width: 0;
+}
+.square.dark {
+  background: #789581;
+}
+.square.light {
+  background: #e5e7ce;
+}
+.square span {
+  font-family: "Arial Unicode MS", "Apple Symbols", "Segoe UI Symbol", serif;
+  font-size: clamp(
+    20px,
+    calc((100dvh - var(--analysis-height) - 390px) / 11),
+    44px
+  );
+  line-height: 1;
+}
+.white-piece {
+  color: #fff8dc;
+  text-shadow:
+    1px 1px #26392b,
+    -1px -1px #26392b,
+    1px -1px #26392b,
+    -1px 1px #26392b;
+}
+.black-piece {
+  color: #18271e;
+  text-shadow: 0 1px #dae6d0;
+}
+.square small {
+  position: absolute;
+  left: 3px;
+  bottom: 2px;
+  font-size: 9px;
+  color: #203a27;
+  opacity: 0.8;
+}
+.square.selected {
+  box-shadow: inset 0 0 0 4px #f5c644;
+}
+.square[data-legal="true"]:after {
+  content: "";
+  position: absolute;
+  width: 20%;
+  height: 20%;
+  border-radius: 50%;
+  background: #263d2890;
+}
+.square:focus-visible {
+  outline-offset: -3px;
+  z-index: 1;
+}
+.square:hover {
+  filter: brightness(1.08);
+}

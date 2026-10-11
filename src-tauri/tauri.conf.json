@@ -21,17 +21,13 @@
       }
     ],
     "security": {
-      "capabilities": [
-        "main"
-      ],
+      "capabilities": ["main"],
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost; object-src 'none'; frame-src 'none'; base-uri 'none'"
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": [
-      "icons/icon.png"
-    ]
+    "icon": ["icons/icon.png"]
   }
 }
