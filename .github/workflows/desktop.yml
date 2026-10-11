@@ -1,0 +1,75 @@
+name: Desktop verification
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: .
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable revision
+        with:
+          toolchain: 1.99.0
+          components: rustfmt, clippy
+      - name: Linux native prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - name: Host and toolchain evidence
+        run: |
+          set -o pipefail
+          mkdir -p evidence
+          node --input-type=module -e 'import os from "node:os"; console.log(JSON.stringify({platform:os.platform(),release:os.release(),arch:os.arch(),node:process.version},null,2))' | tee evidence/host.json
+          rustc -Vv | tee evidence/rust.txt
+          cargo -V | tee evidence/cargo.txt
+          npm -v | tee evidence/npm.txt
+      - name: Install locked frontend dependencies
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee evidence/npm-ci.log
+      - name: Rust tests and static checks
+        run: |
+          set -o pipefail
+          cargo test --workspace --locked 2>&1 | tee evidence/rust-tests.log
+          cargo fmt --all --check 2>&1 | tee evidence/rust-format.log
+          cargo clippy --workspace --all-targets --locked -- -D warnings 2>&1 | tee evidence/rust-clippy.log
+      - name: Frontend and source checks
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee evidence/frontend-tests.log
+          npm run typecheck 2>&1 | tee evidence/types.log
+          npm run build 2>&1 | tee evidence/frontend-build.log
+          npm run check:distribution 2>&1 | tee evidence/distribution.log
+      - name: Native desktop build
+        run: |
+          set -o pipefail
+          npm run tauri -- build --no-bundle -- --locked 2>&1 | tee evidence/native-build.log
+      - name: Preserve native build evidence and executable
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: desktop-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            evidence/
+            target/release/chess-workbench
+            target/release/chess-workbench.exe
+            LICENSE
+            THIRD_PARTY_NOTICES.md
+            licenses/

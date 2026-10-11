@@ -33,7 +33,23 @@ unsupported. Selection combined the 39 retained overlap records (36 games,
 three texts) and 200 deterministic spread ordinals. No comparison failures
 occurred. Once cloud placeholders were available locally, the largest measured
 page and game load took 4.3 ms and 4.2 ms; total native bytes read across the
-comparison was 119,946. Peak child RSS was 7.1 MiB. These samples establish
+comparison was 119,946. Peak child RSS was 7.1 MiB. The final rerun matched the
+same 235 games with zero failures, with 5.62 ms page and 349.00 ms load maxima
+(including filesystem/cache variability). These samples establish
 bounded compatibility evidence, not full database or annotation coverage.
 Packed ECO codes remain unknown with a diagnostic until their formula is
 verified. Cloud-backed files may take substantially longer on first access.
+
+CBH is read-only. Saving writes independent PGN and requires an explicit
+acknowledgement when original annotations are omitted. PGN supports legal
+standard chess moves, setup FEN, ordered variations, comments and numeric NAGs;
+imports are bounded to 20 MiB/2,000 games/100,000 aggregate nodes by default.
+Missing companions, corrupt records and unsupported records are reported
+separately; an unsupported game is not silently flattened into a partial game.
+
+Local UCI engine analysis is available for standard chess only. Advertised
+Chess960/variant rules cannot be enabled. Engines and private databases are
+separate user-provided files. The first workbench does not yet implement
+ChessBase's full search/indexing, opening books, training, multimedia, cloud
+services or lossless CBH writing. macOS native operation is verified locally;
+Windows/Linux native validation remains outstanding. See [validation](validation.md).

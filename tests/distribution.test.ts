@@ -1,0 +1,57 @@
+import { describe, it, expect } from "vitest";
+import {
+  allowedSourcePath,
+  auditCandidatePaths,
+} from "../scripts/check-distribution.mjs";
+describe("source distribution boundary", () => {
+  it("rejects research and proprietary/database material", () => {
+    for (const path of [
+      "../analysis/classic-sample-games.pgn",
+      "tests/fixtures/Mega Database 2025.cbh",
+      "src/extracted.exe",
+      "src/foo.CBG",
+      "crates/engine/src/private.cba",
+      "tests/fixtures/private.2cbh",
+      "tests/fixtures/classic-sample-games.pgn",
+      "crates/chess-core/src/../../analysis.rs",
+      "src\\binary.dll",
+      ["", "Users", "example", "private.cbh"].join("/"),
+      "C:/private/database.cbh",
+      "tooling/reference/game.py",
+      "target/release/chess-workbench",
+    ])
+      expect(allowedSourcePath(path), path).toBe(false);
+  });
+  it("accepts only authored source, notices and documented synthetic PGN paths", () => {
+    for (const path of [
+      "crates/cbh-reader/src/header.rs",
+      "crates/engine/src/bin/mock-uci.rs",
+      "src/components/Board.tsx",
+      "src/tests/edit.test.tsx",
+      "src-tauri/capabilities/main.json",
+      "licenses/cbh2pgn-MIT.txt",
+      "tests/fixtures/synthetic-start.pgn",
+      "docs/compatibility.md",
+      ".github/workflows/desktop.yml",
+    ])
+      expect(allowedSourcePath(path), path).toBe(true);
+    for (const path of [
+      "random.txt",
+      "src/surprise.zip",
+      "tests/fixtures/unknown.pgn",
+      "docs/commercial.pgn",
+      "src-tauri/gen/schema.json",
+    ])
+      expect(allowedSourcePath(path), path).toBe(false);
+  });
+  it("reports every unsafe candidate instead of overlooking a later file", () => {
+    expect(
+      auditCandidatePaths([
+        "src/App.tsx",
+        "private/game.cbh",
+        "../analysis/games.pgn",
+        "src-tauri/src/lib.rs",
+      ]),
+    ).toEqual(["private/game.cbh", "../analysis/games.pgn"]);
+  });
+});

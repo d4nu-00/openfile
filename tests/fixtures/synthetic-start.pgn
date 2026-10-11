@@ -1,0 +1,9 @@
+[Event "Authored workbench example"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "?"]
+[White "Example White"]
+[Black "Example Black"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 (2. Bc4 {An authored alternative.}) Nc6 *
