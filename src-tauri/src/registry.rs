@@ -11,11 +11,12 @@ pub struct Registry {
 #[derive(Default)]
 pub(crate) struct State {
     next: u64,
+    pub collections: HashMap<String, Arc<Vec<chess_core::Game>>>,
     databases: HashMap<String, Arc<Mutex<cbh_reader::ClassicDatabase>>>,
     pub documents: HashMap<String, Arc<Mutex<Document>>>,
 }
 impl State {
-    fn id(&mut self, prefix: &str) -> Result<String, AppError> {
+    pub(crate) fn id(&mut self, prefix: &str) -> Result<String, AppError> {
         self.next = self
             .next
             .checked_add(1)
@@ -111,6 +112,11 @@ impl Registry {
             .lock()
             .map_err(|_| AppError::new("state", "Database unavailable"))?
             .load(ordinal)?;
+        let source_paths = db
+            .lock()
+            .map_err(|_| AppError::new("state", "Database unavailable"))?
+            .source_paths()
+            .to_vec();
         let (document_id, game) = if let Some(game) = loaded.game {
             let view = GameView::from_game(&game)?;
             let mut state = self.lock()?;
@@ -127,6 +133,7 @@ impl Registry {
                     game,
                     revision: 0,
                     dirty: false,
+                    source_paths,
                     incomplete_annotations: loaded.annotations_status
                         == cbh_reader::DataStatus::NotDecoded,
                 })),
@@ -136,6 +143,8 @@ impl Registry {
             (None, None)
         };
         Ok(GameResponse {
+            revision: "0".into(),
+            dirty: false,
             request_id,
             document_id,
             game,
@@ -165,6 +174,15 @@ impl Registry {
             turn: p.turn,
             legal_uci: p.legal_uci,
         })
+    }
+    pub fn has_dirty_documents(&self) -> bool {
+        let Ok(state) = self.lock() else {
+            return true;
+        };
+        state
+            .documents
+            .values()
+            .any(|doc| doc.lock().map(|d| d.dirty).unwrap_or(true))
     }
     pub fn close_database(&self, id: String) -> Result<(), AppError> {
         self.lock()?

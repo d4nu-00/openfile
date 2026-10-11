@@ -57,6 +57,7 @@ pub struct ClassicDatabase {
     entities: crate::entities::EntityTables,
     info: DatabaseInfo,
     limits: ReadLimits,
+    source_paths: Vec<std::path::PathBuf>,
 }
 impl ClassicDatabase {
     pub fn open(path: &Path, limits: ReadLimits) -> Result<Self, CbhError> {
@@ -102,6 +103,7 @@ impl ClassicDatabase {
         })
         .collect();
         Ok(Self {
+            source_paths: files.paths.values().cloned().collect(),
             header,
             moves,
             annotations,
@@ -113,6 +115,9 @@ impl ClassicDatabase {
             },
             limits,
         })
+    }
+    pub fn source_paths(&self) -> &[std::path::PathBuf] {
+        &self.source_paths
     }
     pub fn info(&self) -> &DatabaseInfo {
         &self.info

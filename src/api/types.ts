@@ -53,6 +53,8 @@ export interface GameResponse {
   requestId: string;
   documentId?: string;
   game?: GameView;
+  revision?: string;
+  dirty?: boolean;
   summary: EntrySummary;
   metadataStatus: Status;
   movesStatus: Status;
@@ -71,4 +73,26 @@ export interface WireError {
   code: string;
   message: string;
   diagnostics: Diagnostic[];
+}
+
+export type Edit =
+  | { kind: "appendMove"; parent: NodeId; uci: string }
+  | { kind: "setComments"; node: NodeId; comments: string[] }
+  | { kind: "setNags"; node: NodeId; nags: number[] };
+export interface DocumentResponse {
+  documentId: string;
+  requestId?: string;
+  game: GameView;
+  revision: string;
+  dirty: boolean;
+}
+export interface PgnCollectionResponse {
+  requestId: string;
+  collectionId: string;
+  gameCount: number;
+  games: Record<string, string>[];
+}
+export interface SaveResponse {
+  savedRevision: string;
+  destination: string;
 }

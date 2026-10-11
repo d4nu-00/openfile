@@ -191,6 +191,8 @@ impl GameView {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameResponse {
+    pub revision: String,
+    pub dirty: bool,
     pub request_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub document_id: Option<String>,
@@ -275,4 +277,66 @@ pub fn close_document(
     document_id: String,
 ) -> Result<(), AppError> {
     state.close_document(document_id)
+}
+
+#[tauri::command]
+pub async fn open_pgn(
+    state: tauri::State<'_, Arc<Registry>>,
+    path: PathBuf,
+    request_id: String,
+) -> Result<crate::documents::PgnCollectionResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.open_pgn(path, request_id)).await
+}
+#[tauri::command]
+pub async fn load_pgn_game(
+    state: tauri::State<'_, Arc<Registry>>,
+    collection_id: String,
+    index: usize,
+    request_id: String,
+) -> Result<crate::documents::DocumentResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.load_pgn_game(collection_id, index, request_id)).await
+}
+#[tauri::command]
+pub fn close_pgn(
+    state: tauri::State<'_, Arc<Registry>>,
+    collection_id: String,
+) -> Result<(), AppError> {
+    state.close_pgn(collection_id)
+}
+#[tauri::command]
+pub async fn edit_document(
+    state: tauri::State<'_, Arc<Registry>>,
+    document_id: String,
+    edit: crate::documents::Edit,
+    expected_revision: String,
+) -> Result<crate::documents::DocumentResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.edit_document(document_id, edit, expected_revision)).await
+}
+#[tauri::command]
+pub async fn save_document(
+    state: tauri::State<'_, Arc<Registry>>,
+    document_id: String,
+    destination: PathBuf,
+    expected_revision: String,
+    allow_incomplete: bool,
+) -> Result<crate::documents::SaveResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || {
+        s.save_document(
+            document_id,
+            destination,
+            expected_revision,
+            allow_incomplete,
+        )
+    })
+    .await
+}
+
+#[tauri::command]
+pub fn finish_close(app: tauri::AppHandle, state: tauri::State<'_, crate::ExitPolicy>) {
+    state.0.store(true, std::sync::atomic::Ordering::Release);
+    app.exit(0);
 }

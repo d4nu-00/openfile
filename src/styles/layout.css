@@ -238,3 +238,44 @@ td button {
     gap: 15px;
   }
 }
+.comment-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px;
+  font-size: 12px;
+}
+.comment-editor label {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.comment-editor textarea {
+  height: 36px;
+  width: 160px;
+}
+.comment-editor input {
+  width: 70px;
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: #0008;
+  display: grid;
+  place-items: center;
+  z-index: 100;
+}
+.modal {
+  background: #fff;
+  color: #17232f;
+  padding: 24px;
+  border-radius: 8px;
+  max-width: 470px;
+  box-shadow: 0 8px 40px #0007;
+}
+.modal button {
+  margin-right: 10px;
+}
+.app-header {
+  flex-wrap: wrap;
+}

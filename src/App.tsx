@@ -1,6 +1,9 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { backend, type WorkbenchApi } from "./api/client";
 import { useWorkbench, type WorkbenchState } from "./state/workbench";
+import { useEditing } from "./state/editing";
+import { CommentEditor } from "./components/CommentEditor";
+import { UnsavedDialog } from "./components/UnsavedDialog";
 import { Board } from "./components/Board";
 import { DatabaseTable } from "./components/DatabaseTable";
 import { NotationTree } from "./components/NotationTree";
@@ -18,6 +21,34 @@ export function App({
 }) {
   const w = useWorkbench(api, initialState);
   const { state } = w;
+  const e = useEditing(w, api);
+  const [square, setSquare] = useState<string>();
+  const [promotion, setPromotion] = useState<string[]>([]);
+  useEffect(() => {
+    setSquare(undefined);
+    setPromotion([]);
+  }, [state.position]);
+  function clickSquare(to: string) {
+    if (e.busy || !game) return;
+    const moves =
+      state.position?.legalUci.filter(
+        (m) => m.slice(0, 2) === square && m.slice(2, 4) === to,
+      ) ?? [];
+    if (moves.length > 1) {
+      setPromotion(moves);
+      return;
+    }
+    if (moves.length === 1) {
+      void e.edit({ kind: "appendMove", parent: selected, uci: moves[0] });
+      setSquare(undefined);
+      return;
+    }
+    setSquare(
+      state.position?.legalUci.some((m) => m.slice(0, 2) === to)
+        ? to
+        : undefined,
+    );
+  }
   const [flipped, setFlipped] = useState(false);
   const [ordinal, setOrdinal] = useState("1");
   const [analysisHeight, setAnalysisHeight] = useState(180);
@@ -40,8 +71,9 @@ export function App({
     void w.selectNode(id);
   }
   useEffect(() => {
-    function key(e: KeyboardEvent) {
-      const target = e.target as HTMLElement;
+    function key(event: KeyboardEvent) {
+      if (e.question || promotion.length) return;
+      const target = event.target as HTMLElement;
       if (
         target.closest?.(
           'input,textarea,select,[contenteditable="true"],[role="separator"]',
@@ -55,9 +87,9 @@ export function App({
           Home: "first",
           End: "last",
         } as const
-      )[e.key as "ArrowLeft"];
+      )[event.key as "ArrowLeft"];
       if (action && game) {
-        e.preventDefault();
+        event.preventDefault();
         navigate(action);
       }
     }
@@ -71,7 +103,7 @@ export function App({
       ]);
       return;
     }
-    await w.loadEntry(BigInt(ordinal).toString());
+    await e.run(() => w.loadEntry(BigInt(ordinal).toString()));
   }
   const resize = (height: number) =>
     setAnalysisHeight(Math.max(100, Math.min(450, height)));
@@ -84,11 +116,51 @@ export function App({
         <div className="brand">
           ♟ <strong>Chess Workbench</strong>
         </div>
-        <button onClick={() => void w.openDatabase()}>Open database</button>
+        <button onClick={() => void e.run(w.openDatabase)}>
+          Open database
+        </button>
+        <button onClick={() => void e.run(e.openPgn)}>Open PGN</button>
+        <button disabled={!game || e.busy} onClick={() => void e.save()}>
+          Save PGN
+        </button>
+        <button
+          disabled={!game || e.busy}
+          onClick={() => void e.run(e.closeDocument)}
+        >
+          Close game
+        </button>
+        {state.dirty && <span>Unsaved changes</span>}
         <span className="app-status">{w.status}</span>
       </header>
       <section className="database">
         <div className="database-controls">
+          {e.collection && (
+            <label>
+              PGN game
+              <select
+                aria-label="PGN game"
+                value={
+                  state.document?.metadataStatus === "available" &&
+                  state.document?.annotationsStatus === "available"
+                    ? Number(state.document.summary.ordinal) - 1
+                    : ""
+                }
+                onChange={(event) => {
+                  const index = Number(event.target.value);
+                  void e.run(() => e.loadPgn(index));
+                }}
+              >
+                <option value="" disabled>
+                  Select game
+                </option>
+                {e.collection.games.map((tags, i) => (
+                  <option key={i} value={i}>
+                    {i + 1}. {tags.White ?? "?"} — {tags.Black ?? "?"}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <strong>Database</strong>
           <span>{state.database?.entryCount ?? "0"} entries</span>
           <button
@@ -124,7 +196,7 @@ export function App({
         </div>
         <DatabaseTable
           entries={state.page?.entries ?? []}
-          onLoad={(n) => void w.loadEntry(n)}
+          onLoad={(n) => void e.run(() => w.loadEntry(n))}
           selected={state.document?.summary.ordinal}
           loading={w.loadingEntry}
         />
@@ -139,8 +211,37 @@ export function App({
           <Board
             fen={state.position?.fen ?? initialFen}
             flipped={flipped}
+            selectedSquare={square}
+            onSquare={clickSquare}
             legalUci={state.position?.legalUci ?? []}
           />
+          {promotion.length > 0 && (
+            <section role="dialog" aria-label="Choose promotion">
+              {[
+                ["q", "Queen"],
+                ["r", "Rook"],
+                ["b", "Bishop"],
+                ["n", "Knight"],
+              ].map(([code, label]) => (
+                <button
+                  key={code}
+                  onClick={() => {
+                    const uci = promotion.find((m) => m.endsWith(code));
+                    if (uci)
+                      void e.edit({
+                        kind: "appendMove",
+                        parent: selected,
+                        uci,
+                      });
+                    setPromotion([]);
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+              <button onClick={() => setPromotion([])}>Cancel</button>
+            </section>
+          )}
           <Toolbar
             navigate={navigate}
             flip={() => setFlipped((v) => !v)}
@@ -161,6 +262,13 @@ export function App({
             <div className="empty-state">
               Select a game to replay its moves and variations.
             </div>
+          )}
+          {game?.nodes[selected] && (
+            <CommentEditor
+              node={game.nodes[selected]}
+              disabled={e.busy}
+              edit={e.edit}
+            />
           )}
           <Diagnostics items={w.diagnostics} />
           {state.document?.annotationsStatus === "notDecoded" && (
@@ -202,6 +310,7 @@ export function App({
         <h3>Analysis</h3>
         <p>Engine analysis will appear here when a UCI engine is selected.</p>
       </section>
+      <UnsavedDialog question={e.question} answer={e.answer} />
     </main>
   );
 }

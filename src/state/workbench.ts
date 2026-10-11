@@ -79,7 +79,15 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       gates.position.begin();
       setLoadingEntry(undefined);
       closeDb(current.current.database?.databaseId);
-      setState((s) => ({ ...s, database, page }));
+      closeDoc(current.current.document?.documentId);
+      setState((s) => ({
+        ...s,
+        database,
+        page,
+        document: undefined,
+        position: undefined,
+        dirty: false,
+      }));
       setPageStart("1");
       setDiagnostics(database.diagnostics);
       setStatus(`${database.entryCount} entries`);
@@ -192,6 +200,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
   }
   return {
     state,
+    gates,
     setState,
     current,
     diagnostics,

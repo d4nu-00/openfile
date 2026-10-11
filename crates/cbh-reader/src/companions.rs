@@ -41,7 +41,16 @@ impl CompanionSet {
             else {
                 continue;
             };
-            if !EXTENSIONS.contains(&ext.as_str()) || !p.is_file() {
+            // Retain unparsed family members for source provenance and safe exports.
+            // Only EXTENSIONS are presented as supported parser companions.
+            if !(ext.starts_with("cb")
+                || ext.starts_with("2cb")
+                || matches!(
+                    ext.as_str(),
+                    "cib" | "cit" | "cib2" | "cit2" | "cko" | "2lgd" | "2lhd" | "2lbd" | "flags"
+                ))
+                || !p.is_file()
+            {
                 continue;
             }
             if paths.insert(ext, p).is_some() {

@@ -1,17 +1,57 @@
 pub mod commands;
 pub mod documents;
 pub mod registry;
+pub mod save;
+use std::sync::atomic::{AtomicBool, Ordering};
+use tauri::{Emitter, Manager};
+#[derive(Default)]
+pub struct ExitPolicy(AtomicBool);
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .menu(|app| {
+            let menu = tauri::menu::Menu::default(app)?;
+            #[cfg(target_os = "macos")]
+            {
+                // The predefined Cocoa Quit item calls terminate: directly,
+                // bypassing ExitRequested. Route Command-Q through our guard.
+                if let Some(tauri::menu::MenuItemKind::Submenu(sub)) = menu.items()?.first() {
+                    let last = sub.items()?.len().saturating_sub(1);
+                    sub.remove_at(last)?;
+                    sub.insert(
+                        &tauri::menu::MenuItem::with_id(
+                            app,
+                            "guarded-quit",
+                            "Quit Chess Workbench",
+                            true,
+                            Some("CmdOrCtrl+Q"),
+                        )?,
+                        last,
+                    )?;
+                }
+            }
+            Ok(menu)
+        })
+        .on_menu_event(|app, event| {
+            if event.id().as_ref() == "guarded-quit" {
+                app.exit(0);
+            }
+        })
         .manage(std::sync::Arc::new(registry::Registry::default()))
+        .manage(ExitPolicy::default())
         .invoke_handler(tauri::generate_handler![
             commands::open_database,
             commands::read_page,
             commands::load_entry,
             commands::position_at,
             commands::close_database,
-            commands::close_document
+            commands::close_document,
+            commands::open_pgn,
+            commands::load_pgn_game,
+            commands::close_pgn,
+            commands::edit_document,
+            commands::save_document,
+            commands::finish_close
         ])
         .plugin(
             tauri::plugin::Builder::<tauri::Wry, ()>::new("local-navigation")
@@ -27,5 +67,15 @@ pub fn run() {
         )
         .build(tauri::generate_context!())
         .expect("Cannot build workbench")
-        .run(|_, _| {});
+        .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { api, .. } = event
+                && !app.state::<ExitPolicy>().0.load(Ordering::Acquire)
+                && app
+                    .state::<std::sync::Arc<registry::Registry>>()
+                    .has_dirty_documents()
+            {
+                api.prevent_exit();
+                let _ = app.emit("workbench-exit-request", ());
+            }
+        });
 }

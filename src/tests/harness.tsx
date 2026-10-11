@@ -23,6 +23,8 @@ export const summary: EntrySummary = {
 export const selected: GameResponse = {
   requestId: "initial",
   documentId: "doc-1",
+  revision: "0",
+  dirty: false,
   summary,
   metadataStatus: "available",
   movesStatus: "available",
@@ -80,15 +82,81 @@ export const page = {
   next: "201",
 };
 export function mockApi() {
+  let game = structuredClone(selected.game!);
+  let revision = 0;
   return {
     ...backend,
-    chooseDatabase: vi.fn().mockResolvedValue("/synthetic/test.cbh"),
-    openDatabase: vi
+    watchClose: vi.fn().mockResolvedValue(() => {}),
+    finishClose: vi.fn().mockResolvedValue(undefined),
+    choosePgn: vi.fn().mockResolvedValue("/synthetic/two.pgn"),
+    chooseSave: vi.fn().mockResolvedValue("/synthetic/save.pgn"),
+    openPgn: vi.fn().mockImplementation(async (_path, requestId) => ({
+      requestId,
+      collectionId: "pgn-1",
+      gameCount: 2,
+      games: [
+        { White: "First", Black: "Beta" },
+        { White: "Second", Black: "Beta" },
+      ],
+    })),
+    loadPgnGame: vi.fn().mockImplementation(async (_id, index, requestId) => ({
+      documentId: `pgn-doc-${index}`,
+      requestId,
+      game: {
+        ...game,
+        tags: { White: index ? "Second" : "First", Black: "Beta" },
+      },
+      revision: "0",
+      dirty: false,
+    })),
+    closePgn: vi.fn().mockResolvedValue(undefined),
+    editDocument: vi
       .fn()
-      .mockImplementation(async (_path, requestId) => ({
-        ...database,
-        requestId,
+      .mockImplementation(async (documentId, edit, expectedRevision) => {
+        if (expectedRevision !== String(revision))
+          throw { message: "Stale revision" };
+        if (edit.kind === "appendMove") {
+          const existing = game.nodes[edit.parent].children.find(
+            (id) => game.nodes[id].uci === edit.uci,
+          );
+          if (existing === undefined) {
+            const id = game.nodes.length;
+            game.nodes.push({
+              id,
+              parent: edit.parent,
+              uci: edit.uci,
+              san: edit.uci.slice(2, 4),
+              children: [],
+              comments: [],
+              nags: [],
+            });
+            game.nodes[edit.parent].children.push(id);
+            revision++;
+          }
+        } else {
+          game.nodes[edit.node][
+            edit.kind === "setComments" ? "comments" : "nags"
+          ] = edit.comments ?? edit.nags;
+          revision++;
+        }
+        return {
+          documentId,
+          game: structuredClone(game),
+          revision: String(revision),
+          dirty: revision > 0,
+        };
+      }),
+    saveDocument: vi
+      .fn()
+      .mockImplementation(async (_id, destination, expectedRevision) => ({
+        savedRevision: expectedRevision,
+        destination,
       })),
+    chooseDatabase: vi.fn().mockResolvedValue("/synthetic/test.cbh"),
+    openDatabase: vi.fn().mockImplementation(async (_path, requestId) => ({
+      ...database,
+      requestId,
+    })),
     readPage: vi
       .fn()
       .mockImplementation(async (_db, start, _limit, requestId) => ({
@@ -98,13 +166,11 @@ export function mockApi() {
         entries:
           start === "1" ? page.entries : [{ ...summary, ordinal: start }],
       })),
-    loadEntry: vi
-      .fn()
-      .mockImplementation(async (_db, ordinal, requestId) => ({
-        ...selected,
-        summary: { ...summary, ordinal },
-        requestId,
-      })),
+    loadEntry: vi.fn().mockImplementation(async (_db, ordinal, requestId) => ({
+      ...selected,
+      summary: { ...summary, ordinal },
+      requestId,
+    })),
     positionAt: vi
       .fn()
       .mockImplementation(
@@ -127,7 +193,8 @@ export function mockApi() {
 export function renderWorkbench({
   dirty = false,
   clean = false,
-}: { dirty?: boolean; clean?: boolean } = {}) {
+  position,
+}: { dirty?: boolean; clean?: boolean; position?: PositionResponse } = {}) {
   const api = mockApi();
   const user = userEvent.setup();
   const view = render(
@@ -140,7 +207,7 @@ export function renderWorkbench({
               database,
               page,
               document: selected,
-              position: {
+              position: position ?? {
                 requestId: "initial",
                 documentId: "doc-1",
                 nodeId: 0,
