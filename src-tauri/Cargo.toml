@@ -1,0 +1,21 @@
+[package]
+name = "chess-workbench"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+[lib]
+name = "chess_workbench"
+crate-type = ["lib", "cdylib", "staticlib"]
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+shakmaty.workspace = true
+chess-core = { path = "../crates/chess-core" }
+cbh-reader = { path = "../crates/cbh-reader" }
+[dev-dependencies]
+tempfile.workspace = true

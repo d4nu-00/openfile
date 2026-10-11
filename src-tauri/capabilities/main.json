@@ -1,0 +1,1 @@
+{"identifier":"main","description":"Local workbench window with native file dialogs","windows":["main"],"permissions":["core:default","dialog:allow-open","dialog:allow-save","dialog:allow-message","dialog:allow-confirm","dialog:allow-ask"]}
