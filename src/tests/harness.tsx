@@ -86,6 +86,32 @@ export function mockApi() {
   let revision = 0;
   return {
     ...backend,
+    pickEngine: vi.fn().mockResolvedValue("/synthetic/mock-engine"),
+    chooseEngine: vi.fn().mockResolvedValue({
+      engineId: "engine-1",
+      identity: { name: "Mock engine" },
+      options: [
+        {
+          name: "Threads",
+          kind: "spin",
+          default: "1",
+          min: 1,
+          max: 64,
+          vars: [],
+        },
+        {
+          name: "Playing Style",
+          kind: "combo",
+          default: "Normal Play",
+          vars: ["Normal Play", "Very Solid"],
+        },
+      ],
+      status: "ready",
+    }),
+    setEngineOption: vi.fn().mockResolvedValue(undefined),
+    startAnalysis: vi.fn().mockResolvedValue(undefined),
+    stopAnalysis: vi.fn().mockResolvedValue(undefined),
+    closeEngine: vi.fn().mockResolvedValue(undefined),
     watchClose: vi.fn().mockResolvedValue(() => {}),
     finishClose: vi.fn().mockResolvedValue(undefined),
     choosePgn: vi.fn().mockResolvedValue("/synthetic/two.pgn"),

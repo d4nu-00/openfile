@@ -279,3 +279,48 @@ td button {
 .app-header {
   flex-wrap: wrap;
 }
+.engine-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.engine-controls h3 {
+  margin: 0;
+}
+.engine-options {
+  margin: 6px 0;
+}
+.engine-option {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 4px 0;
+}
+.engine-option label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.engine-option input[type="number"] {
+  width: 90px;
+}
+.engine-options[open] {
+  max-height: 200px;
+  overflow: auto;
+}
+.score-perspective {
+  margin: 6px 0;
+  font-size: 12px;
+  color: #a3b6a6;
+}
+.analysis-pane table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.analysis-pane th,
+.analysis-pane td {
+  text-align: left;
+  padding: 5px;
+}

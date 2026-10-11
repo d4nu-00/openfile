@@ -4,6 +4,7 @@ import { useWorkbench, type WorkbenchState } from "./state/workbench";
 import { useEditing } from "./state/editing";
 import { CommentEditor } from "./components/CommentEditor";
 import { UnsavedDialog } from "./components/UnsavedDialog";
+import { EnginePanel } from "./components/EnginePanel";
 import { Board } from "./components/Board";
 import { DatabaseTable } from "./components/DatabaseTable";
 import { NotationTree } from "./components/NotationTree";
@@ -307,8 +308,7 @@ export function App({
         }}
       />
       <section className="analysis-pane" style={{ height: analysisHeight }}>
-        <h3>Analysis</h3>
-        <p>Engine analysis will appear here when a UCI engine is selected.</p>
+        <EnginePanel api={api} state={state} />
       </section>
       <UnsavedDialog question={e.question} answer={e.answer} />
     </main>

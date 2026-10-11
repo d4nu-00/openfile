@@ -360,6 +360,7 @@ version = "0.1.0"
 dependencies = [
  "cbh-reader",
  "chess-core",
+ "engine",
  "same-file",
  "serde",
  "serde_json",

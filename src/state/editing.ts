@@ -11,7 +11,8 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
   const [question, setQuestion] = useState<Question>();
   const pending = useRef<Question | undefined>(undefined);
   const [busy, setBusy] = useState(false);
-  const count = useRef(0);
+  const sequence = useRef(0);
+  const transition = useRef(false);
   const [collection, setCollection] = useState<PgnCollectionResponse>();
   const collectionRef = useRef<PgnCollectionResponse | undefined>(undefined);
   const gate = w.gates.game;
@@ -77,19 +78,27 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
     return value === "discard";
   }
   async function run(action: () => Promise<void>) {
-    count.current++;
+    if (!(await guard())) return;
+    const ticket = ++sequence.current;
+    transition.current = true;
     setBusy(true);
+    // A newly approved replacement supersedes earlier pending replacements.
+    w.gates.database.begin();
+    w.gates.game.begin();
+    w.gates.position.begin();
     try {
-      if (await guard()) await action();
+      await action();
     } catch (e) {
       report(e);
     } finally {
-      count.current--;
-      setBusy(count.current > 0);
+      if (ticket === sequence.current) {
+        transition.current = false;
+        setBusy(editBusy.current);
+      }
     }
   }
   async function edit(value: Edit): Promise<number | undefined> {
-    if (count.current || editBusy.current || pending.current) return;
+    if (transition.current || editBusy.current || pending.current) return;
     const d = w.current.current.document;
     if (!d?.documentId) return;
     editBusy.current = true;
@@ -119,7 +128,7 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
       report(e);
     } finally {
       editBusy.current = false;
-      setBusy(count.current > 0);
+      setBusy(transition.current);
     }
   }
   const closeCollection = (id?: string) => {

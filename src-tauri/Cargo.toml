@@ -16,6 +16,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 shakmaty.workspace = true
 chess-core = { path = "../crates/chess-core" }
+engine = {path = "../crates/engine"}
 cbh-reader = { path = "../crates/cbh-reader" }
 tempfile.workspace = true
 same-file = "1"

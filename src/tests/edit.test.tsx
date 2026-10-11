@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderWorkbench } from "./harness";
+import { renderWorkbench, database } from "./harness";
 
 describe("working copies", () => {
   it("keeps an edited game when replacement is cancelled", async () => {
@@ -127,4 +127,22 @@ it("discards the working copy only after a replacement database opens", async ()
   expect(ui.api.openDatabase).toHaveBeenCalled();
   expect(ui.queryByText("Unsaved changes")).toBeNull();
   expect(ui.api.closeDocument).toHaveBeenCalledWith("doc-1");
+});
+it("allows editing a new PGN while an older database open is still pending", async () => {
+  const ui = renderWorkbench();
+  let release: (value: any) => void = () => {};
+  ui.api.openDatabase.mockImplementationOnce(
+    (_path, requestId) =>
+      new Promise((resolve) => {
+        release = () =>
+          resolve({ ...database, requestId, databaseId: "old-opening" });
+      }),
+  );
+  await ui.user.click(ui.getByRole("button", { name: "Open database" }));
+  await ui.user.click(ui.getByRole("button", { name: "Open PGN" }));
+  await ui.findByRole("heading", { name: "First — Beta" });
+  await ui.user.click(ui.getByRole("button", { name: "d2 White pawn" }));
+  await ui.user.click(ui.getByRole("button", { name: "d4 empty" }));
+  expect(ui.api.editDocument).toHaveBeenCalled();
+  release(undefined);
 });

@@ -272,11 +272,18 @@ pub fn close_database(
     state.close_database(database_id)
 }
 #[tauri::command]
-pub fn close_document(
+pub async fn close_document(
     state: tauri::State<'_, Arc<Registry>>,
+    engines: tauri::State<'_, Arc<crate::engine_commands::EngineManager>>,
     document_id: String,
 ) -> Result<(), AppError> {
-    state.close_document(document_id)
+    let s = state.inner().clone();
+    let engines = engines.inner().clone();
+    blocking(move || {
+        let _ = engines.stop_document(&document_id);
+        s.close_document(document_id)
+    })
+    .await
 }
 
 #[tauri::command]

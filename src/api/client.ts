@@ -1,8 +1,10 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { invoke, isTauri, Channel } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import type {
+  EngineResponse,
+  EngineEventDto,
   DocumentResponse,
   PgnCollectionResponse,
   SaveResponse,
@@ -13,6 +15,40 @@ import type {
   PositionResponse,
 } from "./types";
 export const backend = {
+  pickEngine: () =>
+    open({ multiple: false, title: "Choose a local UCI engine executable" }),
+  chooseEngine: (path: string) =>
+    invoke<EngineResponse>("choose_engine", { path }),
+  setEngineOption: (engineId: string, name: string, value: string) =>
+    invoke<void>("set_engine_option", { engineId, name, value }),
+  startAnalysis: async (
+    engineId: string,
+    documentId: string,
+    nodeId: number,
+    requestId: string,
+    onEvent: (event: EngineEventDto) => void,
+  ) => {
+    const events = new Channel<EngineEventDto>();
+    events.onmessage = onEvent;
+    try {
+      await invoke<void>("start_analysis", {
+        engineId,
+        documentId,
+        nodeId,
+        requestId,
+        events,
+      });
+    } catch (e) {
+      events.onmessage = () => {};
+      throw e;
+    }
+    return () => {
+      events.onmessage = () => {};
+    };
+  },
+  stopAnalysis: (engineId: string) =>
+    invoke<void>("stop_analysis", { engineId }),
+  closeEngine: (engineId: string) => invoke<void>("close_engine", { engineId }),
   watchClose: async (handler: () => void) => {
     if (!isTauri()) return () => {};
     const off = await getCurrentWindow().onCloseRequested((event) => {

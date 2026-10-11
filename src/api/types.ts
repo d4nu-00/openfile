@@ -96,3 +96,40 @@ export interface SaveResponse {
   savedRevision: string;
   destination: string;
 }
+export type Color = "white" | "black";
+export type ScoreDto =
+  | { kind: "cp"; value: number; bound?: string | null }
+  | { kind: "mate"; moves: number; bound?: string | null };
+export interface EngineOption {
+  name: string;
+  kind: "check" | "spin" | "combo" | "string" | "button";
+  default?: string | null;
+  min?: number | null;
+  max?: number | null;
+  vars: string[];
+}
+export interface EngineResponse {
+  engineId: string;
+  identity: Record<string, string>;
+  options: EngineOption[];
+  status: string;
+}
+export interface AnalysisInfoDto {
+  kind: "info";
+  depth?: number;
+  nodes?: string;
+  multipv: number;
+  score?: ScoreDto;
+  rootTurn: Color;
+  pv: string[];
+  rawPv: string[];
+  diagnostics: string[];
+}
+export interface EngineEventDto {
+  engineId: string;
+  requestId: string;
+  payload:
+    | AnalysisInfoDto
+    | { kind: "bestMove"; best: string; ponder?: string }
+    | { kind: "error" | "status"; message: string };
+}

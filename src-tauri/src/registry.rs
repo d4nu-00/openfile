@@ -175,6 +175,29 @@ impl Registry {
             legal_uci: p.legal_uci,
         })
     }
+    pub fn analysis_position(
+        &self,
+        id: &str,
+        node: u32,
+    ) -> Result<(String, Vec<String>, String, String), AppError> {
+        let doc = self.document(id)?;
+        let d = doc
+            .lock()
+            .map_err(|_| AppError::new("state", "Document unavailable"))?;
+        let history = d
+            .game
+            .path_to(node)?
+            .iter()
+            .filter_map(|&id| d.game.nodes[id as usize].uci.clone())
+            .collect();
+        let position = d.game.position_at(node)?;
+        Ok((
+            d.game.start_fen.clone(),
+            history,
+            position.fen,
+            position.turn,
+        ))
+    }
     pub fn has_dirty_documents(&self) -> bool {
         let Ok(state) = self.lock() else {
             return true;

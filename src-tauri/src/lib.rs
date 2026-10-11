@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod documents;
+pub mod engine_commands;
 pub mod registry;
 pub mod save;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -39,6 +40,9 @@ pub fn run() {
         })
         .manage(std::sync::Arc::new(registry::Registry::default()))
         .manage(ExitPolicy::default())
+        .manage(std::sync::Arc::new(
+            engine_commands::EngineManager::default(),
+        ))
         .invoke_handler(tauri::generate_handler![
             commands::open_database,
             commands::read_page,
@@ -51,7 +55,12 @@ pub fn run() {
             commands::close_pgn,
             commands::edit_document,
             commands::save_document,
-            commands::finish_close
+            commands::finish_close,
+            engine_commands::choose_engine,
+            engine_commands::set_engine_option,
+            engine_commands::start_analysis,
+            engine_commands::stop_analysis,
+            engine_commands::close_engine
         ])
         .plugin(
             tauri::plugin::Builder::<tauri::Wry, ()>::new("local-navigation")
@@ -68,6 +77,12 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("Cannot build workbench")
         .run(|app, event| {
+            if matches!(event, tauri::RunEvent::Exit) {
+                let _ = app
+                    .state::<std::sync::Arc<engine_commands::EngineManager>>()
+                    .shutdown();
+            }
+
             if let tauri::RunEvent::ExitRequested { api, .. } = event
                 && !app.state::<ExitPolicy>().0.load(Ordering::Acquire)
                 && app
