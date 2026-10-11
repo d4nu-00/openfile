@@ -118,6 +118,42 @@ pub struct EntityTables {
     order: VecDeque<(u8, u32)>,
 }
 impl EntityTables {
+    pub fn open_partial(companions: &CompanionSet, budget: usize) -> (Self, Vec<Diagnostic>) {
+        let mut diagnostics = vec![];
+        let mut open = |ext, stride| {
+            companions
+                .get(ext)
+                .and_then(|path| match Table::open(path, stride) {
+                    Ok(table) => Some(table),
+                    Err(error) => {
+                        diagnostics.push(Diagnostic::new(
+                            "unavailableNameTable",
+                            format!("{ext}: {error}"),
+                        ));
+                        None
+                    }
+                })
+        };
+        let players = open("cbp", 67);
+        let tournaments = open("cbt", 99);
+        (
+            Self {
+                players,
+                tournaments,
+                budget,
+                used: 0,
+                cache: HashMap::new(),
+                order: VecDeque::new(),
+            },
+            diagnostics,
+        )
+    }
+    pub fn verify_unchanged(&self) -> Result<(), CbhError> {
+        for table in [&self.players, &self.tournaments].into_iter().flatten() {
+            table.file.verify_unchanged()?;
+        }
+        Ok(())
+    }
     pub fn open(companions: &CompanionSet, budget: usize) -> Result<Self, CbhError> {
         let players = companions
             .get("cbp")

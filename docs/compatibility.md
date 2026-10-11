@@ -25,3 +25,15 @@ Original CBA annotations are not decoded. Comments and NAGs created in the
 workbench or imported from PGN use the independent editable game tree.
 The newer 2CBH/2CBG format, multimedia and proprietary cloud services are not
 supported by this initial reader.
+
+Local validation on 2026-10-11 compared 238 unique selected entries against the
+pinned MIT cbh2pgn reference: 235 supported games matched ordered UCI trees,
+initial positions, dates and results; three text entries were explicitly
+unsupported. Selection combined the 39 retained overlap records (36 games,
+three texts) and 200 deterministic spread ordinals. No comparison failures
+occurred. Once cloud placeholders were available locally, the largest measured
+page and game load took 4.3 ms and 4.2 ms; total native bytes read across the
+comparison was 119,946. Peak child RSS was 7.1 MiB. These samples establish
+bounded compatibility evidence, not full database or annotation coverage.
+Packed ECO codes remain unknown with a diagnostic until their formula is
+verified. Cloud-backed files may take substantially longer on first access.
