@@ -3,6 +3,7 @@ pub mod entities;
 pub mod error;
 pub mod header;
 pub mod limits;
+pub mod moves;
 pub mod source;
 pub use error::CbhError;
 pub use limits::ReadLimits;

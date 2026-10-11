@@ -1,5 +1,5 @@
 use crate::{
-    CoreError, Game, GameLimits, NodeId,
+    CoreError, Game, GameBuilder, GameLimits, NodeId,
     model::{apply_uci, parse_position},
 };
 use pgn_reader::{Nag, Outcome, RawComment, RawTag, Reader, SanPlus, Skip, Visitor};
@@ -11,7 +11,7 @@ struct Importer<'a> {
     limits: &'a GameLimits,
 }
 struct Movetext {
-    game: Game,
+    game: GameBuilder,
     current: NodeId,
     stack: Vec<NodeId>,
     partial_comment: String,
@@ -45,6 +45,10 @@ impl Visitor for Importer<'_> {
             game.tags.insert("FEN".into(), game.start_fen.clone());
             game.tags.insert("SetUp".into(), "1".into());
         }
+        let game = match GameBuilder::new(game, self.limits.clone()) {
+            Ok(game) => game,
+            Err(e) => return ControlFlow::Break(Err(e)),
+        };
         ControlFlow::Continue(Movetext {
             game,
             current: 0,
@@ -55,7 +59,7 @@ impl Visitor for Importer<'_> {
     }
     fn san(&mut self, s: &mut Movetext, san: SanPlus) -> Flow {
         let result = (|| {
-            let pos = s.game.chess_position(s.current)?;
+            let pos = s.game.position(s.current)?.clone();
             let uci = if san.san == shakmaty::san::San::Null {
                 "0000".into()
             } else {
@@ -65,7 +69,7 @@ impl Visitor for Importer<'_> {
                     .map_err(|_| CoreError::IllegalMove(san.to_string()))?;
                 UciMove::from_standard(m).to_string()
             };
-            s.current = s.game.append_uci(s.current, &uci, self.limits)?;
+            s.current = s.game.append_uci(s.current, &uci)?;
             Ok(())
         })();
         match result {
@@ -74,7 +78,9 @@ impl Visitor for Importer<'_> {
         }
     }
     fn nag(&mut self, s: &mut Movetext, nag: Nag) -> Flow {
-        s.game.nodes[s.current as usize].nags.push(nag.0.into());
+        s.game.game_mut().nodes[s.current as usize]
+            .nags
+            .push(nag.0.into());
         ControlFlow::Continue(())
     }
     fn partial_comment(&mut self, s: &mut Movetext, comment: RawComment<'_>) -> Flow {
@@ -91,7 +97,7 @@ impl Visitor for Importer<'_> {
             ControlFlow::Break(e) => ControlFlow::Break(e),
             ControlFlow::Continue(()) => {
                 let text = std::mem::take(&mut s.partial_comment);
-                s.game.nodes[s.current as usize]
+                s.game.game_mut().nodes[s.current as usize]
                     .comments
                     .push(text.trim().into());
                 ControlFlow::Continue(())
@@ -102,7 +108,7 @@ impl Visitor for Importer<'_> {
         if s.stack.len() >= self.limits.max_variation_depth {
             return ControlFlow::Break(Err(CoreError::LimitExceeded));
         }
-        let Some(parent) = s.game.nodes[s.current as usize].parent else {
+        let Some(parent) = s.game.game().nodes[s.current as usize].parent else {
             return ControlFlow::Break(Err(CoreError::InvalidPgn(
                 "Variation without a preceding move".into(),
             )));
@@ -130,7 +136,7 @@ impl Visitor for Importer<'_> {
                     "Result tag and movetext disagree".into(),
                 )));
             }
-            s.game.tags.insert("Result".into(), result);
+            s.game.game_mut().tags.insert("Result".into(), result);
         }
         ControlFlow::Continue(())
     }
@@ -138,7 +144,7 @@ impl Visitor for Importer<'_> {
         if !s.stack.is_empty() {
             return Err(CoreError::InvalidPgn("Unclosed variation".into()));
         }
-        Ok(s.game)
+        Ok(s.game.finish())
     }
 }
 

@@ -6,3 +6,5 @@ pub use error::CoreError;
 pub use model::{Game, GameLimits, Node, NodeId};
 pub use pgn::{parse_pgn, write_pgn};
 pub use position::PositionView;
+pub mod builder;
+pub use builder::GameBuilder;

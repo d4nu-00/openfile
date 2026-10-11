@@ -114,6 +114,15 @@ impl Game {
         limits: &GameLimits,
     ) -> Result<NodeId, CoreError> {
         let pos = self.chess_position(parent)?;
+        self.append_at(parent, uci, limits, pos)
+    }
+    pub(crate) fn append_at(
+        &mut self,
+        parent: NodeId,
+        uci: &str,
+        limits: &GameLimits,
+        pos: Chess,
+    ) -> Result<NodeId, CoreError> {
         let canonical = if uci == "0000" {
             apply_uci(pos.clone(), uci)?;
             uci.to_string()

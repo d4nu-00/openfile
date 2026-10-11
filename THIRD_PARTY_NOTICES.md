@@ -11,3 +11,8 @@ No commercial database, proprietary executable, image or extracted resource is
 part of this source repository.
 
 PGN parsing uses pgn-reader by Niklas Fiekas, GPL-3.0-or-later.
+
+Classic CBG token tables and algorithm details are adapted from cbh2pgn,
+Copyright (c) 2022 Dominik Klein, MIT license. Reference revision
+42b3592738062db1f768239e85df1b98cb1cead9. Full notice: licenses/cbh2pgn-MIT.txt.
+Chess Workbench adds legal validation, bounded reads and corrected capture state.

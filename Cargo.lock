@@ -37,6 +37,7 @@ dependencies = [
  "same-file",
  "serde",
  "serde_json",
+ "shakmaty",
  "tempfile",
  "thiserror",
 ]
