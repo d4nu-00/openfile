@@ -5,7 +5,7 @@ import { renderWorkbench, database } from "./harness";
 describe("working copies", () => {
   it("keeps an edited game when replacement is cancelled", async () => {
     const ui = renderWorkbench({ dirty: true });
-    await ui.user.click(ui.getByRole("button", { name: "Open database" }));
+    await ui.user.click(ui.getByRole("button", { name: "Open Database" }));
     await ui.user.click(ui.getByRole("button", { name: "Cancel" }));
     expect(ui.api.openDatabase).not.toHaveBeenCalled();
     expect(ui.getByText("Unsaved changes")).toBeVisible();
@@ -123,7 +123,7 @@ it("rejects a stale edit without changing the working game", async () => {
 });
 it("discards the working copy only after a replacement database opens", async () => {
   const ui = renderWorkbench({ dirty: true });
-  await ui.user.click(ui.getByRole("button", { name: "Open database" }));
+  await ui.user.click(ui.getByRole("button", { name: "Open Database" }));
   await ui.user.click(ui.getByRole("button", { name: "Discard" }));
   expect(ui.api.openDatabase).toHaveBeenCalled();
   expect(ui.queryByText("Unsaved changes")).toBeNull();
@@ -139,7 +139,7 @@ it("allows editing a new PGN while an older database open is still pending", asy
           resolve({ ...database, requestId, databaseId: "old-opening" });
       }),
   );
-  await ui.user.click(ui.getByRole("button", { name: "Open database" }));
+  await ui.user.click(ui.getByRole("button", { name: "Open Database" }));
   await ui.user.click(ui.getByRole("button", { name: "Open PGN" }));
   await ui.findByRole("heading", { name: "First — Beta" });
   await ui.user.click(ui.getByRole("button", { name: "d2 White pawn" }));

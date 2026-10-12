@@ -37,26 +37,42 @@ Signing, notarization and packaged Windows/Linux installers remain outstanding.
 
 ## Use
 
-Choose **Open database** and select the `.cbh` file. Keep the matching `.cbg` beside
-it for moves, and `.cbp`/`.cbt` for player/tournament names, using the same stem.
-Missing optional companions produce diagnostics. Sources stay read-only.
-Cloud placeholders may take time to download during the first open.
+The window follows ChessBase 18: a ribbon with its tab and group names, its
+default shortcuts (Ctrl means ⌘ on macOS) and its White, Blue, Gray and Black
+themes (View tab). Unlike ChessBase, everything stays in one window: the
+**Database** tab shows the game list with a live preview, and an opened game
+gets its own tab with board, notation and engine panes. Drag the pane borders
+to resize them; View › Standard Layout resets them. Press `/` or
+Ctrl+Shift+Space to search all commands; ChessBase commands that are not
+implemented yet are listed as unavailable.
 
-Select a game, click notation or a variation, and use Previous/Next or the
-Left/Right arrow keys to replay. Flip Board changes the viewing side. Keyboard
-navigation operates when focus is outside editing fields.
+Choose **Open Database** (Ctrl+O) and select the `.cbh` file. Keep the matching
+`.cbg` beside it for moves, and `.cbp`/`.cbt` for player/tournament names, using
+the same stem. Missing optional companions produce diagnostics. Sources stay
+read-only. Cloud placeholders may take time to download during the first open.
+
+Click a game to preview it, use the Up/Down keys to move through the list, and
+press Enter or double-click to open it in its tab. Left/Right, Home and End
+replay moves; click notation to jump to a move or variation. Flip board is
+Ctrl+F in the game tab (in the list, Ctrl+F filters the loaded page). Load
+Next/Previous Game is F11/Ctrl+F11.
 
 Click a piece and a destination to append a legal move, choose promotion when
-required, and use Apply to store edited comments/NAGs. Save PGN writes a separate
-PGN file; it does not write CBH. Open PGN imports a bounded collection (up to
-2,000 games). Replacement, game close and normal application exit offer
-Save/Discard/Cancel for unsaved edits. On macOS Command-Q uses that same guard.
+required, and use Apply to store edited comments/NAGs (Ctrl+A focuses the
+comment). Save PGN (Ctrl+S) writes a separate PGN file; it does not write CBH.
+Open PGN imports a bounded collection (up to 2,000 games). Replacement, game
+close and normal application exit offer Save/Discard/Cancel for unsaved edits.
+On macOS Command-Q uses that same guard.
 
-Choose Engine selects an installed UCI executable. Configure its advertised
-options while stopped, then Start Analysis. Analysis follows the selected
-position and shows legal SAN principal variations, depth, nodes and scores
-from White's perspective. Stop/Close Engine stop its process; no engine is
-downloaded or bundled. Standard chess is required.
+Add Kibitzer (Ctrl+K) selects an installed UCI executable. Configure its
+advertised options while stopped, then use Infinite Analysis (Alt+F2).
+Analysis follows the selected position and shows legal SAN principal
+variations, depth, nodes and scores from White's perspective. Remove Kibitzer
+(Ctrl+Shift+K) closes it; no engine is downloaded or bundled. Standard chess is
+required.
+
+`npm run dev` outside Tauri uses a browser-only demo backend for UI work;
+`/?demo&view=game&entry=11&node=24&theme=black` opens a ready-made preview.
 
 ## Verify
 

@@ -4,10 +4,12 @@ export function CommentEditor({
   node,
   disabled,
   edit,
+  autoFocus,
 }: {
   node: GameNode;
   disabled: boolean;
   edit: (e: Edit) => Promise<unknown>;
+  autoFocus?: boolean;
 }) {
   const [comments, setComments] = useState(""),
     [nags, setNags] = useState("");
@@ -24,6 +26,7 @@ export function CommentEditor({
         <textarea
           value={comments}
           disabled={disabled}
+          autoFocus={autoFocus}
           onChange={(e) => setComments(e.target.value)}
         />
       </label>

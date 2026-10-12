@@ -220,12 +220,19 @@ export function renderWorkbench({
   dirty = false,
   clean = false,
   position,
-}: { dirty?: boolean; clean?: boolean; position?: PositionResponse } = {}) {
+  initialView = clean ? "database" : "game",
+}: {
+  dirty?: boolean;
+  clean?: boolean;
+  position?: PositionResponse;
+  initialView?: "database" | "game";
+} = {}) {
   const api = mockApi();
   const user = userEvent.setup();
   const view = render(
     <App
       api={api}
+      initialView={initialView}
       initialState={
         clean
           ? undefined

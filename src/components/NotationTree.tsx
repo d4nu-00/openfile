@@ -1,88 +1,220 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { GameNode } from "../api/types";
+
+const nagSymbols: Record<number, string> = {
+  1: "!",
+  2: "?",
+  3: "!!",
+  4: "??",
+  5: "!?",
+  6: "?!",
+  7: "□",
+  10: "=",
+  13: "∞",
+  14: "⩲",
+  15: "⩱",
+  16: "±",
+  17: "∓",
+  18: "+−",
+  19: "−+",
+  22: "⨀",
+  32: "⟳",
+  36: "→",
+  40: "↑",
+  132: "⇆",
+  140: "∆",
+  146: "N",
+};
+const nagText = (n: number) => nagSymbols[n] ?? `$${n}`;
+
+type Token =
+  | { kind: "move"; node: GameNode; depth: number; number?: string }
+  | { kind: "open"; depth: number }
+  | { kind: "close"; depth: number };
+
+/** Linearise a move tree in PGN order: main reply, sibling variations, continuation. */
+export function notationTokens(nodes: GameNode[], startFen?: string): Token[] {
+  const fields = (startFen ?? "").split(" ");
+  const basePly =
+    (Math.max(1, Number(fields[5]) || 1) - 1) * 2 + (fields[1] === "b" ? 1 : 0);
+  const ply = new Map<number, number>([[0, basePly]]);
+  type Frame =
+    | { k: "emit"; id: number; depth: number; force: boolean }
+    | { k: "after"; id: number; depth: number }
+    | { k: "open"; depth: number }
+    | { k: "close"; depth: number };
+  const out: Token[] = [];
+  const seen = new Set<number>();
+  const stack: Frame[] = [{ k: "after", id: 0, depth: 0 }];
+  let forceNext = true;
+  while (stack.length) {
+    const f = stack.pop()!;
+    if (f.k === "open" || f.k === "close") {
+      out.push(
+        f.k === "open"
+          ? { kind: "open", depth: f.depth }
+          : { kind: "close", depth: f.depth },
+      );
+      forceNext = true;
+      continue;
+    }
+    const node = nodes[f.id];
+    if (!node) continue;
+    if (f.k === "emit") {
+      if (seen.has(f.id)) break;
+      seen.add(f.id);
+      const p = ply.get(node.parent ?? 0) ?? basePly;
+      ply.set(f.id, p + 1);
+      const white = p % 2 === 0;
+      const n = Math.floor(p / 2) + 1;
+      const number = white
+        ? `${n}.`
+        : forceNext || f.force
+          ? `${n}...`
+          : undefined;
+      out.push({ kind: "move", node, depth: f.depth, number });
+      forceNext = node.comments.length > 0;
+      continue;
+    }
+    const kids = node.children;
+    if (!kids.length) continue;
+    stack.push({ k: "after", id: kids[0], depth: f.depth });
+    for (let i = kids.length - 1; i >= 1; i--) {
+      stack.push({ k: "close", depth: f.depth + 1 });
+      stack.push({ k: "after", id: kids[i], depth: f.depth + 1 });
+      stack.push({ k: "emit", id: kids[i], depth: f.depth + 1, force: true });
+      stack.push({ k: "open", depth: f.depth + 1 });
+    }
+    stack.push({ k: "emit", id: kids[0], depth: f.depth, force: false });
+  }
+  return out;
+}
+
+const WINDOW = 200;
+
 export function NotationTree({
   nodes,
   selection,
   onSelect,
+  startFen,
 }: {
   nodes: GameNode[];
   selection: number;
   onSelect: (id: number) => void;
+  startFen?: string;
 }) {
-  const rows = useMemo(() => {
-    const out: { node: GameNode; depth: number }[] = [];
-    const stack = (nodes[0] ? [...nodes[0].children].reverse() : []).map(
-      (id) => ({ id, depth: 0 }),
-    );
-    const seen = new Set<number>();
-    while (stack.length) {
-      const { id, depth } = stack.pop()!;
-      if (seen.has(id)) break;
-      seen.add(id);
-      const node = nodes[id];
-      if (!node) continue;
-      out.push({ node, depth });
-      [...node.children]
-        .reverse()
-        .forEach((child, i) =>
-          stack.push({
-            id: child,
-            depth: depth + (i < node.children.length - 1 ? 1 : 0),
-          }),
-        );
-    }
-    return out;
-  }, [nodes]);
+  const tokens = useMemo(
+    () => notationTokens(nodes, startFen),
+    [nodes, startFen],
+  );
+  const moveIndex = useMemo(
+    () => tokens.flatMap((t, i) => (t.kind === "move" ? [i] : [])),
+    [tokens],
+  );
   const [start, setStart] = useState(0);
-  const selected = useRef<HTMLButtonElement>(null);
+  const current = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    const i = rows.findIndex((r) => r.node.id === selection);
-    if (i >= 0) setStart(Math.max(0, i - 50));
-  }, [selection, rows]);
+    const m = moveIndex.findIndex((i) => {
+      const t = tokens[i];
+      return t.kind === "move" && t.node.id === selection;
+    });
+    if (m >= 0 && (m < start || m >= start + WINDOW))
+      setStart(Math.max(0, m - 50));
+  }, [selection, tokens, moveIndex]);
   useEffect(() => {
-    selected.current?.scrollIntoView?.({ block: "nearest" });
+    current.current?.scrollIntoView?.({ block: "nearest" });
   }, [selection, start]);
+
+  const from = moveIndex[start] ?? 0;
+  const to = moveIndex[start + WINDOW] ?? tokens.length;
+  const visible = tokens.slice(from, to);
+  // Top-level variations become their own indented paragraphs, as in ChessBase.
+  const blocks: { depth: number; items: Token[] }[] = [];
+  let block = { depth: 0, items: [] as Token[] };
+  for (const t of visible) {
+    if (t.kind === "open" && t.depth === 1) {
+      if (block.items.length) blocks.push(block);
+      block = { depth: 1, items: [] };
+      continue;
+    }
+    if (t.kind === "close" && t.depth === 1) {
+      if (block.items.length) blocks.push(block);
+      block = { depth: 0, items: [] };
+      continue;
+    }
+    block.items.push(t);
+  }
+  if (block.items.length) blocks.push(block);
+
   return (
     <section aria-label="Game notation" className="notation">
       <div className="notation-tools">
-        <button onClick={() => onSelect(0)}>Starting position</button>
+        <button
+          aria-current={selection === 0 ? "step" : undefined}
+          onClick={() => onSelect(0)}
+        >
+          Starting position
+        </button>
         <span>{nodes.length - 1} moves</span>
       </div>
-      {rows.slice(start, start + 200).map(({ node, depth }) => (
-        <div
-          key={node.id}
-          className="move-row"
-          style={{ paddingLeft: Math.min(depth, 8) * 14 }}
-        >
-          <button
-            ref={node.id === selection ? selected : undefined}
-            aria-current={node.id === selection ? "step" : undefined}
-            onClick={() => onSelect(node.id)}
+      <div className="notation-text">
+        {blocks.map((b, bi) => (
+          <p
+            key={bi}
+            className={b.depth ? "variation-block" : "mainline-block"}
           >
-            {node.san ?? node.uci}
-          </button>
-          <span className="nag">{node.nags.map((n) => `$${n}`).join(" ")}</span>
-          {node.comments.map((c, i) => (
-            <span key={i} className="comment">
-              {c}
-            </span>
-          ))}
-        </div>
-      ))}
-      <div className="notation-tools">
-        <button
-          disabled={start === 0}
-          onClick={() => setStart(Math.max(0, start - 200))}
-        >
-          Earlier notation
-        </button>
-        <button
-          disabled={start + 200 >= rows.length}
-          onClick={() => setStart(start + 200)}
-        >
-          Later notation
-        </button>
+            {b.items.map((t, i) =>
+              t.kind === "open" ? (
+                <span key={i} className="paren">
+                  (
+                </span>
+              ) : t.kind === "close" ? (
+                <span key={i} className="paren">
+                  )
+                </span>
+              ) : (
+                <Fragment key={t.node.id}>
+                  {t.number && <span className="move-number">{t.number}</span>}
+                  <button
+                    ref={t.node.id === selection ? current : undefined}
+                    className={t.depth ? "move var" : "move main"}
+                    aria-current={t.node.id === selection ? "step" : undefined}
+                    onClick={() => onSelect(t.node.id)}
+                  >
+                    {t.node.san ?? t.node.uci}
+                  </button>
+                  {t.node.nags.length > 0 && (
+                    <span className="nag">
+                      {t.node.nags.map(nagText).join("")}
+                    </span>
+                  )}
+                  {t.node.comments.map((c, ci) => (
+                    <span key={ci} className="comment">
+                      {c}
+                    </span>
+                  ))}
+                </Fragment>
+              ),
+            )}
+          </p>
+        ))}
       </div>
+      {moveIndex.length > WINDOW && (
+        <div className="notation-tools">
+          <button
+            disabled={start === 0}
+            onClick={() => setStart(Math.max(0, start - WINDOW))}
+          >
+            Earlier notation
+          </button>
+          <button
+            disabled={start + WINDOW >= moveIndex.length}
+            onClick={() => setStart(start + WINDOW)}
+          >
+            Later notation
+          </button>
+        </div>
+      )}
     </section>
   );
 }

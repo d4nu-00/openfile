@@ -1,15 +1,13 @@
-import { formatScore, useAnalysis } from "../state/analysis";
-import type { WorkbenchApi } from "../api/client";
+import { formatScore, type useAnalysis } from "../state/analysis";
 import type { WorkbenchState } from "../state/workbench";
 import { EngineOptions } from "./EngineOptions";
 export function EnginePanel({
-  api,
+  a,
   state,
 }: {
-  api: WorkbenchApi;
+  a: ReturnType<typeof useAnalysis>;
   state: WorkbenchState;
 }) {
-  const a = useAnalysis(api, state);
   return (
     <>
       <div className="engine-controls">

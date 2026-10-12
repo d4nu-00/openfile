@@ -15,13 +15,23 @@ part of this source repository.
 
 PGN parsing uses pgn-reader by Niklas Fiekas, GPL-3.0-or-later.
 
+Chess piece images are the "cburnett" set by Colin M.L. Burnett, licensed
+GPL-2.0-or-later, as distributed in lichess-org/lila (public/piece/cburnett).
+They are embedded unmodified in src/board/pieces.ts.
+
+The interface follows ChessBase 18's command vocabulary, ribbon grouping,
+default shortcuts and theme colours, recorded through local interoperability
+research. No ChessBase icon, bitmap, font, text resource or code is included;
+icons come from Lucide and are tinted with recreated theme colours.
+
 Classic CBG token tables and algorithm details are adapted from cbh2pgn,
 Copyright (c) 2022 Dominik Klein, MIT license. Reference revision
 42b3592738062db1f768239e85df1b98cb1cead9. Full notice: licenses/cbh2pgn-MIT.txt.
 Chess Workbench adds legal validation, bounded reads and corrected capture state.
 
 The inventory covers all 429 locked external Rust packages, including platform
-and build dependencies, and five production npm packages. These are dependency
+and build dependencies, and nine production npm packages (including @types/react and csstype, which
+lucide-react declares as a peer dependency; they contain types only). These are dependency
 notices, not copied implementation sources. Some crate archives omit their
 license files; those notices were retrieved from the exact recorded upstream
 Git revisions. Shared winapi-rs and libappindicator project notices are marked

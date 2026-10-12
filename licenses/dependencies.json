@@ -3,7 +3,7 @@
   "scope": "All locked external Rust crates (including target/build dependencies) and production npm packages; no dependency source or engine binaries bundled.",
   "locks": {
     "Cargo.lock": "c9f4c382ec6bf99d6156910b7a3ae2ddd6221f5dbd17552966419ad7a1e716d8",
-    "package-lock.json": "1afc6e79e1718951cd3312c9c67df0c784273b03b7134b1847298540238c53bf"
+    "package-lock.json": "48efc3e93802d6d58f851e197efb9fd2fa5ecde04f8971f2f587a375a948c7bc"
   },
   "rust": [
     {
@@ -7230,6 +7230,42 @@
       ]
     },
     {
+      "name": "node_modules/@types/react",
+      "version": "19.3.0",
+      "license": "MIT",
+      "notices": [
+        {
+          "path": "licenses/notices/c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383.txt",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+          "origin": "npm:@types/react@19.3.0/LICENSE"
+        }
+      ]
+    },
+    {
+      "name": "node_modules/csstype",
+      "version": "3.2.3",
+      "license": "MIT",
+      "notices": [
+        {
+          "path": "licenses/notices/11d55bd4541c75ee7879547ac49089c489163dae49551389713c3d026cab383e.txt",
+          "sha256": "11d55bd4541c75ee7879547ac49089c489163dae49551389713c3d026cab383e",
+          "origin": "npm:csstype@3.2.3/LICENSE"
+        }
+      ]
+    },
+    {
+      "name": "node_modules/lucide-react",
+      "version": "1.55.0",
+      "license": "ISC",
+      "notices": [
+        {
+          "path": "licenses/notices/b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57.txt",
+          "sha256": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57",
+          "origin": "npm:lucide-react@1.55.0/LICENSE"
+        }
+      ]
+    },
+    {
       "name": "node_modules/react",
       "version": "19.3.0",
       "license": "MIT",
@@ -7250,6 +7286,18 @@
           "path": "licenses/notices/da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93.txt",
           "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
           "origin": "npm:react-dom@19.3.0/LICENSE"
+        }
+      ]
+    },
+    {
+      "name": "node_modules/react-resizable-panels",
+      "version": "4.14.4",
+      "license": "MIT",
+      "notices": [
+        {
+          "path": "licenses/notices/a8f1e0280bf14adcf5d017547db85eb5c3bac0feb1690ca98650874002eaa8ea.txt",
+          "sha256": "a8f1e0280bf14adcf5d017547db85eb5c3bac0feb1690ca98650874002eaa8ea",
+          "origin": "npm:react-resizable-panels@4.14.4/LICENSE.md"
         }
       ]
     },

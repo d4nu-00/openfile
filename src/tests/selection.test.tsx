@@ -26,9 +26,9 @@ it("closes a stale database after its delayed page finishes", async () => {
       resolve = r;
     });
   });
-  await ui.user.click(screen.getByRole("button", { name: "Open database" }));
+  await ui.user.click(screen.getByRole("button", { name: "Open Database" }));
   await waitFor(() => expect(ui.api.readPage).toHaveBeenCalledTimes(1));
-  await ui.user.click(screen.getByRole("button", { name: "Open database" }));
+  await ui.user.click(screen.getByRole("button", { name: "Open Database" }));
   await waitFor(() => expect(screen.getAllByText("2 entries")).toHaveLength(2));
   resolve({ requestId: old, entries: [] });
   await waitFor(() =>
@@ -44,7 +44,7 @@ it("rejects an older selection result", () => {
   expect(g.accept(current)).toBe(true);
 });
 it("closes stale successful game handles without replacing the current game", async () => {
-  const ui = renderWorkbench();
+  const ui = renderWorkbench({ initialView: "database" });
   let resolve: (value: typeof selected) => void = () => {};
   let oldId = "";
   ui.api.loadEntry.mockImplementationOnce((_db, _ordinal, requestId) => {
@@ -61,12 +61,14 @@ it("closes stale successful game handles without replacing the current game", as
   }));
   await ui.user.click(screen.getByRole("button", { name: "Load entry 1" }));
   await ui.user.click(screen.getByRole("button", { name: "Load entry 2" }));
-  expect(await screen.findByText("New — Game")).toBeVisible();
+  expect(
+    await screen.findByRole("heading", { name: "New — Game" }),
+  ).toBeVisible();
   resolve({ ...selected, requestId: oldId, documentId: "doc-stale" });
   await waitFor(() =>
     expect(ui.api.closeDocument).toHaveBeenCalledWith("doc-stale"),
   );
-  expect(screen.getByText("New — Game")).toBeVisible();
+  expect(screen.getByRole("heading", { name: "New — Game" })).toBeVisible();
 });
 it("does not display a stale position response", async () => {
   const ui = renderWorkbench();

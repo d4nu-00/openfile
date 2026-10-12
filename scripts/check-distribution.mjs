@@ -25,6 +25,7 @@ const documents = new Set([
   "implementation-plan.md",
   "compatibility.md",
   "validation.md",
+  "ui-shell.md",
 ]);
 export function allowedSourcePath(candidate) {
   if (

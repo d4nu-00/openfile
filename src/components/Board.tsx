@@ -1,17 +1,4 @@
-const symbols: Record<string, string> = {
-  K: "♔",
-  Q: "♕",
-  R: "♖",
-  B: "♗",
-  N: "♘",
-  P: "♙",
-  k: "♚",
-  q: "♛",
-  r: "♜",
-  b: "♝",
-  n: "♞",
-  p: "♟",
-};
+import { pieceImages } from "../board/pieces";
 const roles: Record<string, string> = {
   k: "king",
   q: "queen",
@@ -26,12 +13,14 @@ export function Board({
   legalUci,
   onSquare,
   selectedSquare,
+  compact,
 }: {
   fen: string;
   flipped: boolean;
   legalUci: string[];
   onSquare?: (square: string) => void;
   selectedSquare?: string;
+  compact?: boolean;
 }) {
   const squares: Record<string, string> = {};
   fen
@@ -51,7 +40,7 @@ export function Board({
       role="grid"
       aria-label="Chess board"
       data-flipped={flipped}
-      className="board"
+      className={compact ? "board compact" : "board"}
     >
       {[...ranks].map((r) => (
         <div role="row" className="board-rank" key={r}>
@@ -79,14 +68,16 @@ export function Board({
                       m.slice(2, 4) === square,
                   )}
                 >
-                  <span
-                    className={
-                      p === p?.toUpperCase() ? "white-piece" : "black-piece"
-                    }
-                  >
-                    {p ? symbols[p] : ""}
-                  </span>
-                  <small>{square}</small>
+                  {p && (
+                    <img
+                      className="piece"
+                      src={pieceImages[p]}
+                      alt=""
+                      draggable={false}
+                    />
+                  )}
+                  {f === files[0] && <small className="rank-coord">{r}</small>}
+                  {r === ranks[7] && <small className="file-coord">{f}</small>}
                 </button>
               </div>
             );
