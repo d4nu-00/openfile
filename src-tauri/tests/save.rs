@@ -240,3 +240,67 @@ fn source_alias_protection_includes_unparsed_database_companions() {
     );
     assert_eq!(fs::read(alias).unwrap(), b"private index");
 }
+#[test]
+fn overlapping_saves_cannot_persist_an_older_snapshot_after_a_newer_save() {
+    use std::{
+        sync::{Arc, mpsc},
+        time::Duration,
+    };
+    let r = Arc::new(Registry::default());
+    let d = tempfile::tempdir().unwrap();
+    let (_, id) = pgn(&r, &d);
+    let path = d.path().join("ordered.pgn");
+    let (started, ready) = mpsc::channel();
+    let (release, delayed) = mpsc::channel();
+    let old_registry = r.clone();
+    let old_id = id.clone();
+    let old_path = path.clone();
+    let old = std::thread::spawn(move || {
+        old_registry.save_document_with_writer(old_id, old_path, "0".into(), false, |p, text| {
+            started.send(()).unwrap();
+            delayed.recv_timeout(Duration::from_secs(3)).unwrap();
+            atomic_pgn(p, text)
+        })
+    });
+    ready.recv_timeout(Duration::from_secs(3)).unwrap();
+    r.edit_document(
+        id.clone(),
+        Edit::SetComments {
+            node: 1,
+            comments: vec!["New revision".into()],
+        },
+        "0".into(),
+    )
+    .unwrap();
+    let (persisted, completion) = mpsc::channel();
+    let new_registry = r.clone();
+    let new_id = id.clone();
+    let new_path = path.clone();
+    let new = std::thread::spawn(move || {
+        new_registry.save_document_with_writer(new_id, new_path, "1".into(), false, |p, text| {
+            atomic_pgn(p, text)?;
+            persisted.send(()).unwrap();
+            Ok(())
+        })
+    });
+    let completed_out_of_order = completion.recv_timeout(Duration::from_millis(100)).is_ok();
+    release.send(()).unwrap();
+    old.join().unwrap().unwrap();
+    new.join().unwrap().unwrap();
+    assert!(
+        !completed_out_of_order,
+        "Newer save persisted while an older snapshot was still pending"
+    );
+    assert!(fs::read_to_string(path).unwrap().contains("New revision"));
+    let document = r
+        .edit_document(
+            id,
+            Edit::AppendMove {
+                parent: 0,
+                uci: "e2e4".into(),
+            },
+            "1".into(),
+        )
+        .unwrap();
+    assert!(!document.dirty);
+}

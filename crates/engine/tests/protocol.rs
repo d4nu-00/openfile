@@ -21,7 +21,7 @@ fn score_bound_and_multipv_are_preserved() {
             bound: Some("lowerbound".into())
         })
     );
-    assert_eq!(i.pv, vec!["e2e4", "e7e5"]);
+    assert_eq!(i.pv, Some(vec!["e2e4".into(), "e7e5".into()]));
 }
 #[test]
 fn reordered_fields_unknown_extensions_and_mate_bounds() {
@@ -38,7 +38,7 @@ fn reordered_fields_unknown_extensions_and_mate_bounds() {
             bound: Some("upperbound".into())
         })
     );
-    assert_eq!(i.pv, vec!["a7a8n", "h8g7"]);
+    assert_eq!(i.pv, Some(vec!["a7a8n".into(), "h8g7".into()]));
     assert!(
         info("info string depth banana score cp infinity pv invalid")
             .score

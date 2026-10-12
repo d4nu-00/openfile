@@ -63,7 +63,7 @@ export function EnginePanel({
                   : "—"}
               </td>
               <td>
-                {line.pv.join(" ")}
+                {line.pv?.join(" ")}
                 {line.diagnostics.map((d, i) => (
                   <div role="alert" key={i}>
                     {d}

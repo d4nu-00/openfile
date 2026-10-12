@@ -127,3 +127,35 @@ fn a_created_setup_game_gets_pgn_setup_tags() {
     assert_eq!(g.tags.get("SetUp").map(String::as_str), Some("1"));
     assert_eq!(g.tags.get("FEN"), Some(&g.start_fen));
 }
+#[test]
+fn repeated_move_occurrences_preserve_annotations_and_mainline() {
+    let input = b"1. e4 $1 {main} (1. e4 $2 {variation} c5) e5 *";
+    let game = chess_core::parse_pgn(input, &chess_core::GameLimits::default())
+        .unwrap()
+        .remove(0);
+    assert_eq!(game.nodes[0].children.len(), 2);
+    let main = game.nodes[0].children[0] as usize;
+    let variation = game.nodes[0].children[1] as usize;
+    assert_eq!(game.nodes[main].uci, game.nodes[variation].uci);
+    assert_eq!(game.nodes[main].comments, ["main"]);
+    assert_eq!(game.nodes[main].nags, [1]);
+    assert_eq!(game.nodes[variation].comments, ["variation"]);
+    assert_eq!(game.nodes[variation].nags, [2]);
+    assert_eq!(
+        game.nodes[game.nodes[main].children[0] as usize]
+            .uci
+            .as_deref(),
+        Some("e7e5")
+    );
+    assert_eq!(
+        game.nodes[game.nodes[variation].children[0] as usize]
+            .uci
+            .as_deref(),
+        Some("c7c5")
+    );
+    let text = chess_core::write_pgn(&game).unwrap();
+    let reopened = chess_core::parse_pgn(text.as_bytes(), &chess_core::GameLimits::default())
+        .unwrap()
+        .remove(0);
+    assert_eq!(reopened, game);
+}

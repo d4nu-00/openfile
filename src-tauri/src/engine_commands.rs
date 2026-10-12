@@ -25,8 +25,10 @@ pub struct InfoDto {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub score: Option<engine::Score>,
     pub root_turn: String,
-    pub pv: Vec<String>,
-    pub raw_pv: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pv: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw_pv: Option<Vec<String>>,
     pub diagnostics: Vec<String>,
 }
 pub fn render_info(info: AnalysisInfo, fen: &str, turn: &str) -> InfoDto {
@@ -36,7 +38,7 @@ pub fn render_info(info: AnalysisInfo, fen: &str, turn: &str) -> InfoDto {
         multipv: info.multipv,
         score: info.score,
         root_turn: turn.into(),
-        pv: vec![],
+        pv: info.pv.as_ref().map(|_| vec![]),
         raw_pv: info.pv,
         diagnostics: vec![],
     };
@@ -47,7 +49,7 @@ pub fn render_info(info: AnalysisInfo, fen: &str, turn: &str) -> InfoDto {
             return dto;
         }
     };
-    for uci in &dto.raw_pv {
+    for uci in dto.raw_pv.iter().flatten() {
         let result = (|| -> Result<String, AppError> {
             if uci == "0000" {
                 position = chess_core::model::apply_uci(position.clone(), uci)?;
@@ -63,7 +65,7 @@ pub fn render_info(info: AnalysisInfo, fen: &str, turn: &str) -> InfoDto {
             Ok(san)
         })();
         match result {
-            Ok(san) => dto.pv.push(san),
+            Ok(san) => dto.pv.as_mut().unwrap().push(san),
             Err(e) => {
                 dto.diagnostics
                     .push(format!("Illegal PV move {uci}: {}", e.message));

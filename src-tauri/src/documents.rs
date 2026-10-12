@@ -230,6 +230,10 @@ impl Registry {
         allow_incomplete: bool,
         writer: impl FnOnce(&Path, &str) -> Result<(), AppError>,
     ) -> Result<SaveResponse, AppError> {
+        let _save = self
+            .save_lock
+            .lock()
+            .map_err(|_| AppError::new("state", "Save service unavailable"))?;
         let expected = decimal(&expected_revision)?;
         let document = self.document(&id)?;
         let (game, revision, sources) = {

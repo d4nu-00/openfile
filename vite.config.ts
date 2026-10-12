@@ -10,5 +10,10 @@ export default defineConfig({
     watch: { ignored: ["**/src-tauri/**", "**/target/**"] },
   },
   build: { target: "safari15" },
-  test: { environment: "jsdom", setupFiles: ["./src/test-setup.ts"] },
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./src/test-setup.ts"],
+    // Bound concurrent DOM environments on local machines and native CI runners.
+    maxWorkers: 2,
+  },
 });

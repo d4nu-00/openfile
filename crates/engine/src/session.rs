@@ -8,6 +8,7 @@ use std::{
     io::{BufRead, BufReader, Read, Write},
     path::PathBuf,
     process::{Child, Command, Stdio},
+    sync::atomic::{AtomicBool, Ordering},
     sync::{Arc, Condvar, Mutex, mpsc},
     thread::{self, JoinHandle},
     time::{Duration, Instant},
@@ -69,12 +70,37 @@ struct OutputQueue {
     ready: Condvar,
 }
 impl OutputQueue {
-    fn push(&self, item: Raw) -> bool {
+    fn push(&self, mut item: Raw) -> bool {
         let Ok(mut q) = self.state.lock() else {
             return false;
         };
         if q.closed {
             return false;
+        }
+        if let Raw::Response(UciResponse::Info(info)) = &mut item {
+            // A control response can separate positions before attribution.
+            let index = q
+                .items
+                .iter()
+                .enumerate()
+                .rev()
+                .take_while(|(_, raw)| {
+                    matches!(
+                        raw,
+                        Raw::Response(UciResponse::Info(_)) | Raw::Diagnostic(_)
+                    )
+                })
+                .find_map(|(index, raw)| match raw {
+                    Raw::Response(UciResponse::Info(old)) if old.multipv == info.multipv => {
+                        Some(index)
+                    }
+                    _ => None,
+                });
+            if let Some(index) = index
+                && let Some(Raw::Response(UciResponse::Info(previous))) = q.items.remove(index)
+            {
+                info.inherit_missing(&previous);
+            }
         }
         if q.items.len() >= QUEUE_LIMIT {
             if let Some(index) = q.items.iter().position(Raw::is_info) {
@@ -120,11 +146,14 @@ impl OutputQueue {
         }
     }
 }
-fn stdout_reader(stdout: impl Read, queue: Arc<OutputQueue>) {
+fn stdout_reader(stdout: impl Read, queue: Arc<OutputQueue>, cancel: Arc<AtomicBool>) {
     let mut input = BufReader::new(stdout);
     let mut line = Vec::new();
     let mut overlong = false;
     loop {
+        if cancel.load(Ordering::Acquire) {
+            return;
+        }
         let chunk = match input.fill_buf() {
             Ok(chunk) if !chunk.is_empty() => chunk,
             Ok(_) => {
@@ -133,6 +162,15 @@ fn stdout_reader(stdout: impl Read, queue: Arc<OutputQueue>) {
                 }
                 queue.push(Raw::Eof);
                 return;
+            }
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted
+                ) =>
+            {
+                thread::sleep(Duration::from_millis(5));
+                continue;
             }
             Err(e) => {
                 queue.push(Raw::Diagnostic(format!("stdout: {e}")));
@@ -182,9 +220,22 @@ fn emit_line(queue: &OutputQueue, bytes: &[u8]) -> bool {
     };
     queue.push(response)
 }
-fn stderr_reader(mut stderr: impl Read, tail: Arc<Mutex<VecDeque<u8>>>) {
+fn stderr_reader(mut stderr: impl Read, tail: Arc<Mutex<VecDeque<u8>>>, cancel: Arc<AtomicBool>) {
     let mut bytes = [0u8; 4096];
-    while let Ok(n) = stderr.read(&mut bytes) {
+    while !cancel.load(Ordering::Acquire) {
+        let n = match stderr.read(&mut bytes) {
+            Ok(n) => n,
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted
+                ) =>
+            {
+                thread::sleep(Duration::from_millis(5));
+                continue;
+            }
+            Err(_) => return,
+        };
         if n == 0 {
             break;
         }
@@ -195,6 +246,36 @@ fn stderr_reader(mut stderr: impl Read, tail: Arc<Mutex<VecDeque<u8>>>) {
             }
         }
     }
+}
+fn write_command(
+    stdin: &mut impl Write,
+    command: &str,
+    cancel: &AtomicBool,
+) -> std::io::Result<()> {
+    let bytes = format!("{command}\n").into_bytes();
+    let mut offset = 0;
+    while offset < bytes.len() {
+        if cancel.load(Ordering::Acquire) {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Interrupted,
+                "Engine input cancelled",
+            ));
+        }
+        match stdin.write(&bytes[offset..]) {
+            Ok(0) => return Err(std::io::ErrorKind::WriteZero.into()),
+            Ok(n) => offset += n,
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted
+                ) =>
+            {
+                thread::sleep(Duration::from_millis(5))
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    stdin.flush()
 }
 struct PendingWrite {
     command: String,
@@ -208,6 +289,8 @@ pub struct EngineSession {
     spec: EngineSpec,
     handshake_timeout: Duration,
     child: Option<Child>,
+    tree: Option<crate::process::ProcessTree>,
+    cancel: Arc<AtomicBool>,
     stdin: Option<InputPipe>,
     readers: Vec<JoinHandle<()>>,
     queue: Arc<OutputQueue>,
@@ -225,6 +308,8 @@ impl EngineSession {
             spec,
             handshake_timeout: timeout,
             child: None,
+            tree: None,
+            cancel: Arc::new(AtomicBool::new(false)),
             stdin: None,
             readers: vec![],
             queue: Arc::new(OutputQueue::default()),
@@ -240,6 +325,7 @@ impl EngineSession {
         Ok(s)
     }
     fn launch(&mut self) -> Result<(), EngineError> {
+        self.cancel = Arc::new(AtomicBool::new(false));
         self.queue = Arc::new(OutputQueue::default());
         self.stderr = Arc::new(Mutex::new(VecDeque::new()));
         self.identity.clear();
@@ -250,44 +336,47 @@ impl EngineSession {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            command.creation_flags(0x08000000); // CREATE_NO_WINDOW for console UCI engines.
-        }
-        let mut child = command.spawn()?;
-        let mut stdin = child
-            .stdin
-            .take()
-            .ok_or_else(|| EngineError::Protocol("Missing stdin pipe".into()))?;
-        let (sender, receiver) = mpsc::sync_channel::<PendingWrite>(1);
-        let worker = thread::spawn(move || {
-            while let Ok(write) = receiver.recv() {
-                let result = writeln!(stdin, "{}", write.command).and_then(|_| stdin.flush());
-                let failed = result.is_err();
-                let _ = write.reply.send(result);
-                if failed {
-                    break;
-                }
-            }
-        });
-        self.stdin = Some(InputPipe { sender, worker });
-        let stdout = child
-            .stdout
-            .take()
-            .ok_or_else(|| EngineError::Protocol("Missing stdout pipe".into()))?;
-        let stderr = child
-            .stderr
-            .take()
-            .ok_or_else(|| EngineError::Protocol("Missing stderr pipe".into()))?;
+        let (child, tree) = crate::process::ProcessTree::spawn(&mut command)?;
         self.child = Some(child);
-        let queue = self.queue.clone();
-        self.readers
-            .push(thread::spawn(move || stdout_reader(stdout, queue)));
-        let tail = self.stderr.clone();
-        self.readers
-            .push(thread::spawn(move || stderr_reader(stderr, tail)));
+        self.tree = Some(tree);
         let result = (|| {
+            let child = self.child.as_mut().ok_or(EngineError::Exited)?;
+            let mut stdin = child
+                .stdin
+                .take()
+                .ok_or_else(|| EngineError::Protocol("Missing stdin pipe".into()))?;
+            let stdout = child
+                .stdout
+                .take()
+                .ok_or_else(|| EngineError::Protocol("Missing stdout pipe".into()))?;
+            let stderr = child
+                .stderr
+                .take()
+                .ok_or_else(|| EngineError::Protocol("Missing stderr pipe".into()))?;
+            crate::process::nonblocking(&stdin)?;
+            crate::process::nonblocking(&stdout)?;
+            crate::process::nonblocking(&stderr)?;
+            let (sender, receiver) = mpsc::sync_channel::<PendingWrite>(1);
+            let cancel = self.cancel.clone();
+            let worker = thread::spawn(move || {
+                while let Ok(write) = receiver.recv() {
+                    let result = write_command(&mut stdin, &write.command, &cancel);
+                    let failed = result.is_err();
+                    let _ = write.reply.send(result);
+                    if failed {
+                        break;
+                    }
+                }
+            });
+            self.stdin = Some(InputPipe { sender, worker });
+            let queue = self.queue.clone();
+            let cancel = self.cancel.clone();
+            self.readers
+                .push(thread::spawn(move || stdout_reader(stdout, queue, cancel)));
+            let tail = self.stderr.clone();
+            let cancel = self.cancel.clone();
+            self.readers
+                .push(thread::spawn(move || stderr_reader(stderr, tail, cancel)));
             self.send("uci")?;
             self.wait_for(
                 self.handshake_timeout,
@@ -328,14 +417,22 @@ impl EngineSession {
         }
         status
     }
-    fn enqueue(&mut self, payload: EnginePayload, request_id: String) -> Result<(), EngineError> {
-        if let EnginePayload::Info(info) = &payload
+    fn enqueue(
+        &mut self,
+        mut payload: EnginePayload,
+        request_id: String,
+    ) -> Result<(), EngineError> {
+        if let EnginePayload::Info(info) = &mut payload
             && let Some(index) = self.events.iter().position(|e| {
                 e.request_id == request_id
                     && matches!(&e.payload,EnginePayload::Info(old) if old.multipv==info.multipv)
             })
+            && let Some(EngineEvent {
+                payload: EnginePayload::Info(previous),
+                ..
+            }) = self.events.remove(index)
         {
-            self.events.remove(index);
+            info.inherit_missing(&previous);
         }
         if self.events.len() >= EVENT_LIMIT {
             if let Some(index) = self
@@ -540,36 +637,69 @@ impl EngineSession {
         Ok(self.events.pop_front())
     }
     fn terminate(&mut self) -> Result<(), EngineError> {
+        self.cancel.store(true, Ordering::Release);
+        let deadline = Instant::now() + Duration::from_millis(250);
         let worker = self.stdin.take().map(|pipe| {
             drop(pipe.sender);
             pipe.worker
         });
         self.active = None;
         let mut error = None;
+        if let Some(tree) = self.tree.take()
+            && let Err(e) = tree.terminate()
+        {
+            error = Some(EngineError::Io(e));
+        }
+        if let Some(worker) = &worker {
+            crate::process::cancel_blocked(worker);
+        }
+        for reader in &self.readers {
+            crate::process::cancel_blocked(reader);
+        }
         if let Some(mut child) = self.child.take() {
             let running = match child.try_wait() {
                 Ok(status) => status.is_none(),
                 Err(e) => {
-                    error = Some(e);
+                    error = Some(EngineError::Io(e));
                     true
                 }
             };
             if running && let Err(e) = child.kill() {
-                error = Some(e);
+                error = Some(EngineError::Io(e));
             }
-            if let Err(e) = child.wait() {
-                error = Some(e);
+            loop {
+                match child.try_wait() {
+                    Ok(Some(_)) => break,
+                    Ok(None) if Instant::now() < deadline => {
+                        thread::sleep(Duration::from_millis(5))
+                    }
+                    Ok(None) => {
+                        error = Some(EngineError::Timeout("process reap".into()));
+                        break;
+                    }
+                    Err(e) => {
+                        error = Some(EngineError::Io(e));
+                        break;
+                    }
+                }
             }
         }
         self.queue.close();
-        if let Some(worker) = worker {
-            let _ = worker.join();
-        }
-        for reader in self.readers.drain(..) {
-            let _ = reader.join();
+        for worker in worker.into_iter().chain(self.readers.drain(..)) {
+            while !worker.is_finished() && Instant::now() < deadline {
+                crate::process::cancel_blocked(&worker);
+                thread::sleep(Duration::from_millis(5));
+            }
+            if worker.is_finished() {
+                if worker.join().is_err() {
+                    error = Some(EngineError::Protocol("Pipe worker failed".into()));
+                }
+            } else {
+                error = Some(EngineError::Timeout("pipe worker cleanup".into()));
+            }
         }
         if let Some(error) = error {
-            return Err(error.into());
+            return Err(error);
         }
         Ok(())
     }
@@ -617,5 +747,91 @@ impl EngineSession {
 impl Drop for EngineSession {
     fn drop(&mut self) {
         let _ = self.shutdown();
+    }
+}
+#[cfg(test)]
+mod coalescing_tests {
+    use super::*;
+    fn info(line: &str) -> AnalysisInfo {
+        let Some(UciResponse::Info(info)) = parse_line(line).unwrap() else {
+            panic!()
+        };
+        info
+    }
+    #[test]
+    fn raw_queue_retains_fields_across_partial_updates_and_respects_completion() {
+        let full = info("info depth 12 nodes 111 score cp 25 pv e2e4");
+        let queue = OutputQueue::default();
+        queue.push(Raw::Response(UciResponse::Info(full.clone())));
+        queue.push(Raw::Response(UciResponse::Info(info("info nodes 222"))));
+        let mut last = None;
+        while let Some(raw) = queue.pop(Duration::ZERO).unwrap() {
+            if let Raw::Response(UciResponse::Info(info)) = raw {
+                last = Some(info);
+            }
+        }
+        let merged = last.as_ref().unwrap();
+        assert_eq!(merged.nodes, Some(222));
+        assert_eq!(merged.depth, full.depth);
+        assert_eq!(merged.score, full.score);
+        assert_eq!(merged.pv, full.pv);
+        queue.push(Raw::Response(UciResponse::Info(full)));
+        queue.push(Raw::Response(UciResponse::BestMove {
+            best: "e2e4".into(),
+            ponder: None,
+        }));
+        queue.push(Raw::Response(UciResponse::Info(info("info nodes 333"))));
+        while let Some(raw) = queue.pop(Duration::ZERO).unwrap() {
+            if let Raw::Response(UciResponse::Info(info)) = raw {
+                last = Some(info);
+            }
+        }
+        assert!(last.unwrap().score.is_none());
+    }
+    #[test]
+    fn attributed_event_coalescing_keeps_partial_fields_within_the_same_request() {
+        let mut session = EngineSession {
+            spec: EngineSpec {
+                executable: PathBuf::new(),
+                arguments: vec![],
+            },
+            handshake_timeout: Duration::from_secs(1),
+            child: None,
+            tree: None,
+            cancel: Arc::new(AtomicBool::new(false)),
+            stdin: None,
+            readers: vec![],
+            queue: Arc::new(OutputQueue::default()),
+            stderr: Arc::new(Mutex::new(VecDeque::new())),
+            identity: BTreeMap::new(),
+            options: vec![],
+            cached: BTreeMap::new(),
+            active: None,
+            events: VecDeque::new(),
+            closed: true,
+        };
+        let full = info("info depth 12 nodes 111 score cp 25 pv e2e4");
+        session
+            .enqueue(EnginePayload::Info(full.clone()), "old".into())
+            .unwrap();
+        session
+            .enqueue(EnginePayload::Info(info("info nodes 222")), "old".into())
+            .unwrap();
+        session
+            .enqueue(EnginePayload::Info(info("info nodes 333")), "new".into())
+            .unwrap();
+        let EnginePayload::Info(merged) =
+            session.recv_event(Duration::ZERO).unwrap().unwrap().payload
+        else {
+            panic!()
+        };
+        assert_eq!(merged.nodes, Some(222));
+        assert_eq!(merged.score, full.score);
+        assert_eq!(merged.pv, full.pv);
+        let EnginePayload::Info(new) = session.recv_event(Duration::ZERO).unwrap().unwrap().payload
+        else {
+            panic!()
+        };
+        assert!(new.score.is_none());
     }
 }

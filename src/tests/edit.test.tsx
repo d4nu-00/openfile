@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { act } from "@testing-library/react";
 import { renderWorkbench, database } from "./harness";
 
 describe("working copies", () => {
@@ -145,4 +146,27 @@ it("allows editing a new PGN while an older database open is still pending", asy
   await ui.user.click(ui.getByRole("button", { name: "d4 empty" }));
   expect(ui.api.editDocument).toHaveBeenCalled();
   release(undefined);
+});
+it("prevents overlapping save pickers and replacement while a save is pending", async () => {
+  const ui = renderWorkbench({ dirty: true });
+  let finish!: (result: { savedRevision: string; destination: string }) => void;
+  ui.api.saveDocument.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await ui.user.click(ui.getByRole("button", { name: "Save PGN" }));
+  await ui.user.click(
+    await ui.findByRole("button", { name: "Export decoded content" }),
+  );
+  expect(ui.getByRole("button", { name: "Save PGN" })).toBeDisabled();
+  await ui.user.click(ui.getByRole("button", { name: "Save PGN" }));
+  await ui.user.click(ui.getByRole("button", { name: "Open PGN" }));
+  expect(ui.api.chooseSave).toHaveBeenCalledTimes(1);
+  expect(ui.api.openPgn).not.toHaveBeenCalled();
+  await act(async () =>
+    finish({ savedRevision: "0", destination: "/synthetic/save.pgn" }),
+  );
+  expect(ui.getByRole("button", { name: "Save PGN" })).toBeEnabled();
 });

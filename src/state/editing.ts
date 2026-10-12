@@ -17,6 +17,7 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
   const collectionRef = useRef<PgnCollectionResponse | undefined>(undefined);
   const gate = w.gates.game;
   const editBusy = useRef(false);
+  const saveBusy = useRef(false);
   const report = (e: unknown) =>
     w.setDiagnostics([
       {
@@ -40,7 +41,9 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
   }
   async function save(): Promise<boolean> {
     const d = w.current.current.document;
-    if (!d?.documentId || !d.game) return false;
+    if (!d?.documentId || !d.game || saveBusy.current) return false;
+    saveBusy.current = true;
+    setBusy(true);
     try {
       const incomplete = d.annotationsStatus === "notDecoded";
       if (incomplete && (await ask("compatibility")) !== "export") return false;
@@ -68,10 +71,13 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
     } catch (e) {
       report(e);
       return false;
+    } finally {
+      saveBusy.current = false;
+      setBusy(transition.current || editBusy.current);
     }
   }
   async function guard(): Promise<boolean> {
-    if (editBusy.current) return false;
+    if (editBusy.current || saveBusy.current) return false;
     if (!w.current.current.dirty) return true;
     const value = await ask("unsaved");
     if (value === "save") return (await save()) && !w.current.current.dirty;

@@ -169,3 +169,50 @@ fn unresponsive_stdin_and_ready_timeout_leave_no_child() {
     assert!(s.process_id().is_none());
     s.shutdown().unwrap();
 }
+#[test]
+fn shutdown_is_bounded_when_a_descendant_inherits_pipes_after_parent_exit() {
+    let d = tempfile::tempdir().unwrap();
+    let pid = d.path().join("helper.pid");
+    let mut spec = support::spec("descendant-pipes");
+    spec.arguments
+        .push(d.path().join("commands.log").into_os_string());
+    spec.arguments.push(pid.clone().into_os_string());
+    let mut session = EngineSession::spawn(spec, Duration::from_secs(1)).unwrap();
+    assert!(fs::read_to_string(&pid).unwrap().parse::<u32>().unwrap() > 0);
+    let start = Instant::now();
+    session.shutdown().unwrap();
+    assert!(
+        start.elapsed() < Duration::from_secs(2),
+        "Inherited pipe joins exceeded shutdown deadline"
+    );
+    assert!(session.process_id().is_none());
+    {
+        let helper = fs::read_to_string(pid).unwrap().parse().unwrap();
+        let deadline = Instant::now() + Duration::from_millis(500);
+        while helper_alive(helper) {
+            assert!(
+                Instant::now() < deadline,
+                "Helper process remained alive after shutdown"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+}
+#[cfg(unix)]
+fn helper_alive(pid: u32) -> bool {
+    unsafe { libc::kill(pid as libc::pid_t, 0) == 0 }
+}
+#[cfg(windows)]
+fn helper_alive(pid: u32) -> bool {
+    use windows_sys::Win32::{Foundation::CloseHandle, System::Threading::*};
+    let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+    if process.is_null() {
+        return false;
+    }
+    let mut code = 0;
+    let alive = unsafe { GetExitCodeProcess(process, &mut code) } != 0 && code == 259;
+    unsafe {
+        CloseHandle(process);
+    }
+    alive
+}

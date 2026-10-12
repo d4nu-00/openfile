@@ -10,7 +10,19 @@ pub struct AnalysisInfo {
     pub nodes: Option<u64>,
     pub multipv: u32,
     pub score: Option<Score>,
-    pub pv: Vec<String>,
+    pub pv: Option<Vec<String>>,
+}
+impl AnalysisInfo {
+    pub(crate) fn inherit_missing(&mut self, previous: &Self) {
+        self.depth = self.depth.or(previous.depth);
+        self.nodes = self.nodes.or(previous.nodes);
+        if self.score.is_none() {
+            self.score = previous.score.clone();
+        }
+        if self.pv.is_none() {
+            self.pv = previous.pv.clone();
+        }
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum UciResponse {
@@ -101,7 +113,7 @@ pub fn parse_line(line: &str) -> Result<Option<UciResponse>, EngineError> {
                 nodes: None,
                 multipv: 1,
                 score: None,
-                pv: vec![],
+                pv: None,
             };
             let mut i = 1;
             while i < t.len() {
@@ -141,13 +153,15 @@ pub fn parse_line(line: &str) -> Result<Option<UciResponse>, EngineError> {
                     }
                     "pv" => {
                         let begin = i;
+                        let mut pv = Vec::new();
                         while i < t.len() && is_move(t[i]) {
-                            info.pv.push(t[i].into());
+                            pv.push(t[i].into());
                             i += 1;
                         }
                         if i == begin {
                             return Err(malformed("pv"));
                         }
+                        info.pv = Some(pv);
                     }
                     "string" => break,
                     _ => {} // Unknown tokens cannot swallow following known fields.

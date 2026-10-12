@@ -25,7 +25,7 @@ impl GameBuilder {
         let pos = self.position(parent)?.clone();
         let id = self
             .game
-            .append_at(parent, uci, &self.limits, pos.clone())?;
+            .append_at(parent, uci, &self.limits, pos.clone(), false)?;
         if id as usize == self.positions.len() {
             let after = apply_uci(
                 pos,

@@ -114,7 +114,7 @@ impl Game {
         limits: &GameLimits,
     ) -> Result<NodeId, CoreError> {
         let pos = self.chess_position(parent)?;
-        self.append_at(parent, uci, limits, pos)
+        self.append_at(parent, uci, limits, pos, true)
     }
     pub(crate) fn append_at(
         &mut self,
@@ -122,6 +122,7 @@ impl Game {
         uci: &str,
         limits: &GameLimits,
         pos: Chess,
+        reuse_existing: bool,
     ) -> Result<NodeId, CoreError> {
         let canonical = if uci == "0000" {
             apply_uci(pos.clone(), uci)?;
@@ -135,13 +136,15 @@ impl Game {
                 .map_err(|_| CoreError::IllegalMove(uci.into()))?;
             UciMove::from_standard(m).to_string()
         };
-        for &child in &self.nodes[parent as usize].children {
-            let node = self
-                .nodes
-                .get(child as usize)
-                .ok_or(CoreError::InvalidNode)?;
-            if node.uci.as_deref() == Some(&canonical) {
-                return Ok(child);
+        if reuse_existing {
+            for &child in &self.nodes[parent as usize].children {
+                let node = self
+                    .nodes
+                    .get(child as usize)
+                    .ok_or(CoreError::InvalidNode)?;
+                if node.uci.as_deref() == Some(&canonical) {
+                    return Ok(child);
+                }
             }
         }
         if self.nodes.len() >= limits.max_nodes {

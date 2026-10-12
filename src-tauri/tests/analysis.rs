@@ -9,15 +9,15 @@ fn pv_conversion_uses_exact_root_and_stops_at_first_illegal_move() {
             value: -31,
             bound: None,
         }),
-        pv: vec!["e7e5".into(), "a1a8".into(), "g1f3".into()],
+        pv: Some(vec!["e7e5".into(), "a1a8".into(), "g1f3".into()]),
     };
     let dto = render_info(
         info,
         "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
         "black",
     );
-    assert_eq!(dto.pv, vec!["e5"]);
-    assert_eq!(dto.raw_pv.len(), 3);
+    assert_eq!(dto.pv.as_deref(), Some(["e5".to_string()].as_slice()));
+    assert_eq!(dto.raw_pv.as_ref().unwrap().len(), 3);
     assert_eq!(dto.root_turn, "black");
     assert_eq!(dto.diagnostics.len(), 1);
     let json = serde_json::to_value(dto).unwrap();
@@ -49,4 +49,29 @@ fn engine_settings_cannot_change_the_rules_of_standard_chess() {
     assert!(chess_workbench::engine_commands::standard_option("UCI_Chess960", "false").is_ok());
     assert!(chess_workbench::engine_commands::standard_option("UCI_Variant", "chess").is_ok());
     assert!(chess_workbench::engine_commands::standard_option("Threads", "2").is_ok());
+}
+#[test]
+fn absent_principal_variation_is_distinct_from_supplied_invalid_variation() {
+    let root = chess_core::Game::initial().start_fen;
+    let engine::UciResponse::Info(absent) = engine::parse_line("info nodes 22").unwrap().unwrap()
+    else {
+        panic!()
+    };
+    let absent = serde_json::to_value(chess_workbench::engine_commands::render_info(
+        absent, &root, "white",
+    ))
+    .unwrap();
+    assert!(absent.get("pv").is_none());
+    assert!(absent.get("rawPv").is_none());
+    let engine::UciResponse::Info(invalid) = engine::parse_line("info pv a1a8").unwrap().unwrap()
+    else {
+        panic!()
+    };
+    let invalid = serde_json::to_value(chess_workbench::engine_commands::render_info(
+        invalid, &root, "white",
+    ))
+    .unwrap();
+    assert_eq!(invalid["pv"], serde_json::json!([]));
+    assert_eq!(invalid["rawPv"], serde_json::json!(["a1a8"]));
+    assert_eq!(invalid["diagnostics"].as_array().unwrap().len(), 1);
 }

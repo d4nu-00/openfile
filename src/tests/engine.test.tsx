@@ -1,5 +1,5 @@
 import { it, expect } from "vitest";
-import { act, waitFor } from "@testing-library/react";
+import { act, waitFor, within } from "@testing-library/react";
 import { renderWorkbench } from "./harness";
 import { formatScore } from "../state/analysis";
 import type { EngineEventDto } from "../api/types";
@@ -202,4 +202,79 @@ it("closes the engine and clears its subscription while retaining the game", asy
   emit(ui, 0, "closed-event");
   await new Promise((r) => setTimeout(r, 150));
   expect(ui.queryByText("closed-event")).toBeNull();
+});
+it.each(["stop", "failure"])(
+  "clears retained analysis when the board changes after %s",
+  async (mode) => {
+    const ui = renderWorkbench();
+    await start(ui);
+    emit(ui, 0, "111");
+    expect(await ui.findByText("-0.31")).toBeVisible();
+    if (mode === "stop")
+      await ui.user.click(ui.getByRole("button", { name: "Stop analysis" }));
+    else {
+      const args = ui.api.startAnalysis.mock.calls[0];
+      act(() =>
+        args[4]({
+          engineId: args[0],
+          requestId: args[3],
+          payload: { kind: "error", message: "Engine process exited" },
+        }),
+      );
+      expect(await ui.findByText("Engine process exited")).toBeVisible();
+    }
+    expect(ui.getByText("-0.31")).toBeVisible();
+    await ui.user.click(ui.getByRole("button", { name: "e4" }));
+    await waitFor(() =>
+      expect(ui.api.positionAt).toHaveBeenLastCalledWith(
+        "doc-1",
+        1,
+        expect.any(String),
+      ),
+    );
+    await waitFor(() => expect(ui.queryByText("-0.31")).toBeNull());
+    expect(ui.queryByText("111")).toBeNull();
+  },
+);
+it("merges partial engine fields and clears an explicitly supplied invalid PV", async () => {
+  const ui = renderWorkbench();
+  await start(ui);
+  emit(ui, 0, "111");
+  expect(await ui.findByText("-0.31")).toBeVisible();
+  const args = ui.api.startAnalysis.mock.calls[0];
+  act(() =>
+    args[4]({
+      engineId: args[0],
+      requestId: args[3],
+      payload: {
+        kind: "info",
+        multipv: 1,
+        rootTurn: "white",
+        nodes: "222",
+        diagnostics: [],
+      },
+    }),
+  );
+  expect(await ui.findByText("222")).toBeVisible();
+  expect(ui.getByText("-0.31")).toBeVisible();
+  const table = within(ui.getByRole("table", { name: "Engine analysis" }));
+  expect(table.getByText("18")).toBeVisible();
+  expect(table.getByText("e5")).toBeVisible();
+  act(() =>
+    args[4]({
+      engineId: args[0],
+      requestId: args[3],
+      payload: {
+        kind: "info",
+        multipv: 1,
+        rootTurn: "white",
+        pv: [],
+        rawPv: ["a1a8"],
+        diagnostics: ["Invalid supplied PV"],
+      },
+    }),
+  );
+  expect(await ui.findByText("Invalid supplied PV")).toBeVisible();
+  expect(table.queryByText("e5")).toBeNull();
+  expect(ui.getByText("-0.31")).toBeVisible();
 });

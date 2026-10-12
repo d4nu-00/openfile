@@ -11,6 +11,22 @@ fn emit(line: &str) {
 fn main() {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
     let mode = args.first().and_then(|s| s.to_str()).unwrap_or("normal");
+    if mode == "hold-pipes" {
+        std::thread::sleep(Duration::from_secs(5));
+        return;
+    }
+    if mode == "descendant-pipes" {
+        let helper = std::process::Command::new(std::env::current_exe().unwrap())
+            .arg("hold-pipes")
+            .stdin(std::process::Stdio::inherit())
+            .stdout(std::process::Stdio::inherit())
+            .stderr(std::process::Stdio::inherit())
+            .spawn()
+            .unwrap();
+        std::fs::write(&args[2], helper.id().to_string()).unwrap();
+        // Model a wrapper that exits before its helper closes inherited pipes.
+        drop(helper);
+    }
     let mut log = args.get(1).map(|path| {
         std::fs::OpenOptions::new()
             .create(true)

@@ -1,5 +1,6 @@
 mod error;
 mod options;
+mod process;
 mod protocol;
 pub use error::EngineError;
 pub use options::{EngineOption, OptionKind, validate_option};

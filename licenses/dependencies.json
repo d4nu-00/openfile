@@ -2,7 +2,7 @@
   "schema": 1,
   "scope": "All locked external Rust crates (including target/build dependencies) and production npm packages; no dependency source or engine binaries bundled.",
   "locks": {
-    "Cargo.lock": "393f66743253946f8710b6d1dcbcf2705d40013efedaf026cbbaf0ec6e6887cf",
+    "Cargo.lock": "c9f4c382ec6bf99d6156910b7a3ae2ddd6221f5dbd17552966419ad7a1e716d8",
     "package-lock.json": "1afc6e79e1718951cd3312c9c67df0c784273b03b7134b1847298540238c53bf"
   },
   "rust": [

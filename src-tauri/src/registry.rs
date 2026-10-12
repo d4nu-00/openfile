@@ -7,6 +7,8 @@ use std::{
 #[derive(Default)]
 pub struct Registry {
     pub(crate) state: Mutex<State>,
+    // Persistence is serialized without holding registry/document state locks.
+    pub(crate) save_lock: Mutex<()>,
 }
 #[derive(Default)]
 pub(crate) struct State {

@@ -155,6 +155,12 @@ export function useAnalysis(api: WorkbenchApi, state: WorkbenchState) {
   const documentId = state.document?.documentId,
     nodeId = state.position?.nodeId;
   useEffect(() => {
+    // Retained results belong to this root even when analysis is stopped.
+    pending.current.clear();
+    changed.current = false;
+    setLines([]);
+  }, [documentId, nodeId, state.position?.fen]);
+  useEffect(() => {
     if (!enabled || !engine) return;
     if (!documentId || nodeId === undefined) {
       void stop();
@@ -173,7 +179,20 @@ export function useAnalysis(api: WorkbenchApi, state: WorkbenchState) {
       if (p.kind === "info") {
         // Retain every latest MultiPV line across flushes, bounded to 128 rows.
         if (p.multipv >= 1 && p.multipv <= 128) {
-          pending.current.set(p.multipv, p);
+          const previous = pending.current.get(p.multipv);
+          pending.current.set(p.multipv, {
+            ...previous,
+            ...p,
+            depth: p.depth ?? previous?.depth,
+            nodes: p.nodes ?? previous?.nodes,
+            score: p.score ?? previous?.score,
+            pv: p.pv ?? previous?.pv,
+            rawPv: p.rawPv ?? previous?.rawPv,
+            diagnostics:
+              p.pv != null
+                ? p.diagnostics
+                : (previous?.diagnostics ?? p.diagnostics),
+          });
           changed.current = true;
         }
       } else if (p.kind === "error") {

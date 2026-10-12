@@ -121,8 +121,8 @@ export interface AnalysisInfoDto {
   multipv: number;
   score?: ScoreDto;
   rootTurn: Color;
-  pv: string[];
-  rawPv: string[];
+  pv?: string[];
+  rawPv?: string[];
   diagnostics: string[];
 }
 export interface EngineEventDto {
