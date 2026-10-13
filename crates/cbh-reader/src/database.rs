@@ -314,7 +314,7 @@ impl Database {
         }
         Ok(())
     }
-    fn raw(&self, ordinal: u64) -> Result<crate::header::RawEntry, CbhError> {
+    pub(crate) fn raw(&self, ordinal: u64) -> Result<crate::header::RawEntry, CbhError> {
         if ordinal == 0 || ordinal > self.info.entry_count {
             return Err(CbhError::Bounds);
         }
@@ -388,6 +388,39 @@ impl Database {
             Names::Classic(t) => t.each_annotator(f),
             Names::New(t) => t.each_annotator(f),
         }
+    }
+    pub(crate) fn names_each_source(
+        &self,
+        f: &mut dyn FnMut(u32, &str) -> bool,
+    ) -> Result<(), CbhError> {
+        match &self.entities {
+            Names::Classic(t) => t.each_source(f),
+            Names::New(t) => t.each_source(f),
+        }
+    }
+    /// A player's name as the list shows it ("Last, First").
+    pub fn player_name(&mut self, id: u32) -> Result<Option<String>, CbhError> {
+        Ok(self.entities.player(id)?.text)
+    }
+    /// A tournament's name and site.
+    pub fn tournament_name(
+        &mut self,
+        id: u32,
+    ) -> Result<(Option<String>, Option<String>), CbhError> {
+        let t = self.entities.tournament(id)?;
+        Ok((t.event.text, t.site.text))
+    }
+    pub(crate) fn format(&self) -> DatabaseFormat {
+        self.format
+    }
+    /// Raw entry-index bytes of records `start .. start + n`.
+    pub(crate) fn record_bytes(&self, start: u64, n: u64) -> Result<Vec<u8>, CbhError> {
+        if start == 0 || n == 0 || start + n - 1 > self.info.entry_count {
+            return Err(CbhError::Bounds);
+        }
+        let size = self.format.record_size() as u64;
+        self.header
+            .read_exact_range(start * size, (n * size) as usize)
     }
     fn summary(&mut self, r: crate::header::RawEntry) -> Result<EntrySummary, CbhError> {
         let mut diagnostics = r.diagnostics;

@@ -25,11 +25,13 @@ describe("search mask", () => {
       expect.any(String),
     );
     expect(await ui.findByText("2 of 401 entries found")).toBeVisible();
-    expect(ui.getByRole("button", { name: "Load entry 42" })).toBeVisible();
+    expect(
+      await ui.findByRole("button", { name: "Load entry 42" }),
+    ).toBeVisible();
     expect(ui.api.readSearchPage).toHaveBeenCalledWith(
       "db-1",
       "1",
-      200,
+      100,
       expect.any(String),
     );
     // The mask reopens with the current filter.

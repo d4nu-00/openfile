@@ -81,10 +81,19 @@ export const page = {
   ],
   next: "201",
 };
+/** Rows of the mock list: the page's three entries, then plain games. */
+export function mockRows(start: number, limit: number, count = 401) {
+  const rows = [];
+  for (let i = start; i < Math.min(count + 1, start + limit); i++)
+    rows.push(page.entries[i - 1] ?? { ...summary, ordinal: String(i) });
+  return rows;
+}
 export function mockApi() {
   let game = structuredClone(selected.game!);
   let revision = 0;
-  return {
+  // The list shows these entries while a search is active.
+  let searching = false;
+  const api = {
     ...backend,
     pickEngine: vi.fn().mockResolvedValue("/synthetic/mock-engine"),
     chooseEngine: vi.fn().mockResolvedValue({
@@ -255,24 +264,28 @@ export function mockApi() {
       savedRevision: expectedRevision,
     })),
     setDeleted: vi.fn().mockResolvedValue(undefined),
-    searchGames: vi
-      .fn()
-      .mockImplementation(async (_db, _filter, requestId) => ({
+    searchGames: vi.fn().mockImplementation(async (_db, _filter, requestId) => {
+      searching = true;
+      return {
         requestId,
         hits: "2",
         scanned: "401",
         truncated: false,
         cancelled: false,
-      })),
+      };
+    }),
     cancelSearch: vi.fn().mockResolvedValue(undefined),
-    findPosition: vi.fn().mockImplementation(async (_db, _fen, requestId) => ({
-      requestId,
-      hits: "2",
-      scanned: "401",
-      truncated: false,
-      cancelled: false,
-      indexed: true,
-    })),
+    findPosition: vi.fn().mockImplementation(async (_db, _fen, requestId) => {
+      searching = true;
+      return {
+        requestId,
+        hits: "2",
+        scanned: "401",
+        truncated: false,
+        cancelled: false,
+        indexed: true,
+      };
+    }),
     createSearchBooster: vi.fn().mockImplementation(async (_db, onProgress) => {
       onProgress({ done: "401", total: "401" });
       return true;
@@ -340,7 +353,9 @@ export function mockApi() {
           { ...summary, ordinal: "12", foundNode: 3 },
         ],
       })),
-    clearSearch: vi.fn().mockResolvedValue(undefined),
+    clearSearch: vi.fn().mockImplementation(async () => {
+      searching = false;
+    }),
     readSearchPage: vi
       .fn()
       .mockImplementation(async (_db, _start, _limit, requestId) => ({
@@ -359,13 +374,177 @@ export function mockApi() {
       })),
     readPage: vi
       .fn()
-      .mockImplementation(async (_db, start, _limit, requestId) => ({
-        ...page,
+      .mockImplementation(async (_db, start, limit, requestId) => ({
         requestId,
-        next: start === "1" ? "201" : undefined,
-        entries:
-          start === "1" ? page.entries : [{ ...summary, ordinal: start }],
+        entries: mockRows(Number(start), limit),
       })),
+    readRows: vi.fn(),
+    findRow: vi
+      .fn()
+      .mockImplementation(async (_db: string, ordinal: string) =>
+        searching
+          ? ordinal === "42"
+            ? "2"
+            : ordinal === "7"
+              ? "1"
+              : null
+          : ordinal,
+      ),
+    sortList: vi
+      .fn()
+      .mockImplementation(
+        async (_db: string, column: string | null, descending: boolean) => ({
+          rows: searching ? "2" : "401",
+          cancelled: false,
+          column: column ?? undefined,
+          descending,
+        }),
+      ),
+    cancelSort: vi.fn().mockResolvedValue(undefined),
+    nameList: vi
+      .fn()
+      .mockImplementation(async (_db: string, kind: string, onProgress) => {
+        onProgress({ done: "401", total: "401" });
+        return { rows: kind === "players" ? "250" : "3" };
+      }),
+    cancelNameList: vi.fn().mockResolvedValue(undefined),
+    readNames: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          kind: string,
+          start: string,
+          limit: number,
+          requestId: string,
+        ) => ({
+          requestId,
+          rows: Array.from(
+            {
+              length: Math.max(
+                0,
+                Math.min(
+                  limit,
+                  (kind === "players" ? 250 : 3) - Number(start) + 1,
+                ),
+              ),
+            },
+            (_, i) => {
+              const n = Number(start) + i;
+              return kind === "players"
+                ? {
+                    id: n,
+                    name: `Player ${n}, A`,
+                    games: n,
+                    firstYear: 2000,
+                    lastYear: 2000 + (n % 5),
+                  }
+                : {
+                    id: n,
+                    name: `Open ${n}`,
+                    site: "Oslo",
+                    games: 10 * n,
+                    firstYear: 2020,
+                    lastYear: 2020,
+                  };
+            },
+          ),
+        }),
+      ),
+    findName: vi.fn().mockResolvedValue("120"),
+    crosstable: vi
+      .fn()
+      .mockImplementation(
+        async (_db: string, tournamentId: number, layout) => ({
+          event: `Open ${tournamentId}`,
+          site: "Oslo",
+          layout: layout ?? "roundRobin",
+          rounds: 1,
+          games: 1,
+          unscored: 0,
+          truncated: false,
+          averageElo: 2400,
+          category: 6,
+          players: [
+            {
+              id: 1,
+              name: "Alpha, A",
+              elo: 2450,
+              points: 1,
+              games: 1,
+              wins: 1,
+              blackGames: 0,
+              blackWins: 0,
+              sonnebornBerger: 0,
+              buchholz: 0,
+              performance: 2750,
+              cells:
+                layout === "swiss"
+                  ? [
+                      [
+                        {
+                          ordinal: 7,
+                          mark: "1",
+                          white: true,
+                          round: 1,
+                          opponent: 1,
+                        },
+                      ],
+                    ]
+                  : [
+                      [],
+                      [
+                        {
+                          ordinal: 7,
+                          mark: "1",
+                          white: true,
+                          round: 1,
+                          opponent: 1,
+                        },
+                      ],
+                    ],
+            },
+            {
+              id: 2,
+              name: "Beta, B",
+              elo: 2350,
+              points: 0,
+              games: 1,
+              wins: 0,
+              blackGames: 1,
+              blackWins: 0,
+              sonnebornBerger: 0,
+              buchholz: 1,
+              performance: 2050,
+              cells:
+                layout === "swiss"
+                  ? [
+                      [
+                        {
+                          ordinal: 7,
+                          mark: "0",
+                          white: false,
+                          round: 1,
+                          opponent: 0,
+                        },
+                      ],
+                    ]
+                  : [
+                      [
+                        {
+                          ordinal: 7,
+                          mark: "0",
+                          white: false,
+                          round: 1,
+                          opponent: 0,
+                        },
+                      ],
+                      [],
+                    ],
+            },
+          ],
+        }),
+      ),
     loadEntry: vi.fn().mockImplementation(async (_db, ordinal, requestId) => ({
       ...selected,
       summary: { ...summary, ordinal },
@@ -389,6 +568,14 @@ export function mockApi() {
     closeDatabase: vi.fn().mockResolvedValue(undefined),
     closeDocument: vi.fn().mockResolvedValue(undefined),
   };
+  // The list reads search pages while searching, as the backend does.
+  api.readRows.mockImplementation(
+    (db: string, start: string, limit: number, requestId: string) =>
+      searching
+        ? api.readSearchPage(db, start, limit, requestId)
+        : api.readPage(db, start, limit, requestId),
+  );
+  return api;
 }
 export function renderWorkbench({
   dirty = false,
@@ -412,7 +599,6 @@ export function renderWorkbench({
           ? undefined
           : {
               database,
-              page,
               document: selected,
               position: position ?? {
                 requestId: "initial",

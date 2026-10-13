@@ -145,7 +145,7 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
         }));
       }
       if (w.current.current.database?.databaseId === result.databaseId)
-        await w.readPage(w.pageStart);
+        await w.refreshList();
       w.setStatus(
         `${mode === "save" ? "Saved as" : "Replaced"} game ${result.ordinal}`,
       );
@@ -161,13 +161,12 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
   /** Marks the selected entry deleted, or undeletes it (ChessBase "Delete"). */
   async function toggleDeleted(ordinal: string) {
     const db = w.current.current.database;
-    const entry = w.current.current.page?.entries.find(
-      (e) => e.ordinal === ordinal,
-    );
+    const at = w.rows.find((r) => r.ordinal === ordinal);
+    const entry = at === undefined ? undefined : w.rows.row(at);
     if (!db?.writable || !entry || entry.kind !== "game") return;
     try {
       await api.setDeleted(db.databaseId, ordinal, !entry.deleted);
-      await w.readPage(w.pageStart);
+      await w.refreshList();
       w.setStatus(
         `Game ${ordinal} ${entry.deleted ? "undeleted" : "marked deleted"}`,
       );

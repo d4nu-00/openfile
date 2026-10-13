@@ -52,6 +52,9 @@ import {
   Wrench,
   X,
   ArrowDownUp,
+  Trophy,
+  Grid3x3,
+  List,
   type LucideIcon,
 } from "lucide-react";
 
@@ -251,6 +254,45 @@ const list: CommandMeta[] = [
     label: "Sort Database",
     tip: "Sort the database physically",
     icon: ArrowDownUp,
+    views: db,
+  },
+  {
+    id: "toggle-game-list",
+    label: "Games",
+    tip: "Toggle Game List",
+    icon: List,
+    keys: "Ctrl+Alt+G",
+    views: db,
+  },
+  {
+    id: "toggle-players",
+    label: "Players",
+    tip: "Toggle Player List",
+    icon: Users,
+    keys: "Ctrl+Alt+P",
+    views: db,
+  },
+  {
+    id: "toggle-tournaments",
+    label: "Tournaments",
+    tip: "Toggle Tournament List",
+    icon: Trophy,
+    keys: "Ctrl+Alt+T",
+    views: db,
+  },
+  {
+    id: "games-of-player",
+    label: "Games of Player",
+    tip: "View the games of the selected player or tournament",
+    icon: List,
+    views: db,
+  },
+  {
+    id: "cross-table",
+    label: "Cross Table",
+    tip: "Create a tournament cross table",
+    icon: Grid3x3,
+    keys: "T",
     views: db,
   },
   {
@@ -473,6 +515,13 @@ const list: CommandMeta[] = [
     tip: "Set player names, tournament, result, etc. for this game",
     icon: TableProperties,
     keys: "F2",
+    views: game,
+  },
+  {
+    id: "show-crosstable",
+    label: "Show Crosstable",
+    tip: "Show the crosstable of the tournament the loaded game was played in",
+    icon: Grid3x3,
     views: game,
   },
   {
@@ -799,6 +848,16 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
         },
         { label: "Board", items: [L("open-board")] },
         {
+          label: "Lists",
+          items: [
+            S("toggle-game-list"),
+            S("toggle-players"),
+            S("toggle-tournaments"),
+            S("games-of-player"),
+            L("cross-table"),
+          ],
+        },
+        {
           label: "Search games",
           items: [
             L("filter-games"),
@@ -918,6 +977,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             S("edit-game-data"),
             S("load-previous-game"),
             S("load-next-game"),
+            S("show-crosstable"),
           ],
         },
       ],

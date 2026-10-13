@@ -330,6 +330,10 @@ impl NameIndex {
             f(id, &name)
         })
     }
+    /// Every source as (id, title).
+    pub fn each_source(&self, mut f: impl FnMut(u32, &str) -> bool) -> Result<(), CbhError> {
+        self.each(SOURCES, 1, |id, v| f(id, &v[0]))
+    }
     pub fn verify_unchanged(&self) -> Result<(), CbhError> {
         self.lists
             .as_ref()

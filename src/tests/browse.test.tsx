@@ -42,18 +42,20 @@ it("opens, pages, loads, visits variations, steps back and flips", async () => {
     "true",
   );
   await ui.user.click(screen.getByRole("tab", { name: /Database/ }));
-  await ui.user.click(screen.getByRole("button", { name: "Next page" }));
+  // Page Down scrolls the list by a screen (30 rows before measuring).
+  await ui.user.keyboard("{PageDown}");
   expect(
-    await screen.findByRole("button", { name: "Load entry 201" }),
+    await screen.findByRole("button", { name: "Load entry 31" }),
   ).toBeVisible();
-  await ui.user.click(screen.getByRole("button", { name: "Previous page" }));
+  expect(screen.queryByRole("button", { name: "Load entry 1" })).toBeNull();
+  await ui.user.keyboard("{PageUp}");
   expect(
     await screen.findByRole("button", { name: "Load entry 1" }),
   ).toBeVisible();
 });
 it("labels text and deleted entries and preserves the game on a failed load", async () => {
   const ui = renderWorkbench({ initialView: "database" });
-  expect(screen.getByText("Deleted")).toBeVisible();
+  expect(await screen.findByText("Deleted")).toBeVisible();
   expect(screen.getByText("Text entry")).toBeVisible();
   ui.api.loadEntry.mockRejectedValueOnce({ message: "Broken source" });
   await ui.user.click(screen.getByRole("button", { name: "Load entry 2" }));
@@ -73,7 +75,9 @@ it("explains unavailable replay and keeps the prior game", async () => {
     summary: { ...summary, ordinal: "2" },
     requestId,
   }));
-  await ui.user.click(screen.getByRole("button", { name: "Load entry 2" }));
+  await ui.user.click(
+    await screen.findByRole("button", { name: "Load entry 2" }),
+  );
   expect(await screen.findByText("CBG companion is unavailable")).toBeVisible();
   expect(screen.getByRole("heading", { name: "Alpha — Beta" })).toBeVisible();
 });

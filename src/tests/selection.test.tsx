@@ -59,7 +59,9 @@ it("closes stale successful game handles without replacing the current game", as
     documentId: "doc-new",
     game: { ...selected.game!, tags: { White: "New", Black: "Game" } },
   }));
-  await ui.user.click(screen.getByRole("button", { name: "Load entry 1" }));
+  await ui.user.click(
+    await screen.findByRole("button", { name: "Load entry 1" }),
+  );
   await ui.user.click(screen.getByRole("button", { name: "Load entry 2" }));
   expect(
     await screen.findByRole("heading", { name: "New — Game" }),

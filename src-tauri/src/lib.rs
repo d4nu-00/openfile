@@ -2,6 +2,8 @@ pub mod commands;
 pub mod database_writes;
 pub mod documents;
 pub mod engine_commands;
+pub mod lists;
+pub mod names;
 pub mod registry;
 pub mod save;
 pub mod searches;
@@ -22,6 +24,9 @@ pub struct Startup {
     pub node: Option<u32>,
     /// Debug builds: a command id to run once the entry is shown.
     pub command: Option<String>,
+    /// Debug builds: a list column to sort by first, e.g. `white` or
+    /// `date:desc`.
+    pub sort: Option<String>,
     /// Debug builds on macOS: write a PNG of the window once this is shown.
     #[serde(skip)]
     pub snapshot: Option<std::path::PathBuf>,
@@ -44,6 +49,7 @@ impl Startup {
                     startup.snapshot = args.next().map(Into::into)
                 }
                 "--command" if cfg!(debug_assertions) => startup.command = args.next(),
+                "--sort" if cfg!(debug_assertions) => startup.sort = args.next(),
                 // Platform launchers may add their own flags (e.g. -psn_ on macOS).
                 flag if flag.starts_with('-') => {}
                 path if startup.path.is_none() => startup.path = Some(path.into()),
@@ -131,6 +137,15 @@ pub fn run() {
             commands::cancel_reference,
             commands::read_reference_page,
             commands::read_page,
+            commands::read_rows,
+            commands::find_row,
+            commands::sort_list,
+            commands::cancel_sort,
+            commands::name_list,
+            commands::cancel_name_list,
+            commands::read_names,
+            commands::find_name,
+            commands::crosstable,
             commands::load_entry,
             commands::position_at,
             commands::close_database,

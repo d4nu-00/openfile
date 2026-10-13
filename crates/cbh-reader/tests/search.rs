@@ -193,3 +193,23 @@ fn names_ranges_results_and_deletion() {
     let r = db.search(&all, 10, &AtomicBool::new(true), |_| {}).unwrap();
     assert!(r.cancelled && r.ordinals.is_empty());
 }
+
+#[test]
+fn quick_filter_words_must_each_match_a_field() {
+    let (_d, mut db) = db();
+    let text = |t: &str| GameFilter {
+        text: t.into(),
+        ..Default::default()
+    };
+    // Player names, in any case.
+    assert_eq!(hits(&mut db, text("MÜLLER")), [1, 2, 3]);
+    // A name and a year.
+    assert_eq!(hits(&mut db, text("müller 2024")), [1]);
+    // Tournament or site, an ECO prefix and a result.
+    assert_eq!(hits(&mut db, text("oslo b9")), [2]);
+    assert_eq!(hits(&mut db, text("rapid 1/2")), [3]);
+    assert_eq!(hits(&mut db, text("c 1-0")), [1]);
+    // The annotator.
+    assert_eq!(hits(&mut db, text("lasker")), [2]);
+    assert!(hits(&mut db, text("müller nowhere")).is_empty());
+}

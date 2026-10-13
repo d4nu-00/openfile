@@ -52,7 +52,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [ ] P2 🟢 Remove deleted games, i.e. compact the database (`DBTOOLSPHYSICALDELETIONS`, `REMOVEDELETEDGAMES`)
 - [ ] P2 🟢 Check integrity (`CHECKINTEGRITY`)
 - [ ] P2 🟢 Find and mark double games, with keep-better and annotation options (`REMOVEDOUBLESCMD`, `DeleteDubs`)
-- [ ] P2 🟢 Sort the database, fix sort order (`SORTDBEXPL`, `FIXSORTORDER`)
+- [ ] P2 🟢 Sort the database, fix sort order (`SORTDBEXPL`, `FIXSORTORDER`) *(the list's sort is a view, as in ChessBase; these rewrite the files)*
 - [ ] P2 🟢 Set ECO codes, final material, Elo values; reset ratings, teams and rounds (`DBTOOLSSETECOCODE`, `DBTOOLSSETMATERIAL`, `SETELOVALUES`, `RESETRATINGVALUES`)
 - [ ] P2 🟢 Improve player and tournament names (`IMPROVEPLAYERNAMES`, `IMPROVETOURNAMENT`, `ImproveDB`)
 - [ ] P3 🟢 Unannotate a database, cannibalise a database (`UNANNOTATEDB`, `CANNIBALIZEDB`)
@@ -67,18 +67,18 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Live preview of the selected game *(workbench improvement on the list's Quick Board, `TOGGLEGAMELISTBOARD`)*
 - [x] P1 🟢 Load next/previous game (`DBLOADNEXTGAME`, `LOADNEXTGAME`)
 - [x] P1 🟢 Go to entry number
-- [ ] P1 🟢 Virtual scrolling across the whole database instead of 200-entry pages
-- [ ] P1 🟢 Sort the list by any column
+- [x] P1 🟢 Virtual scrolling across the whole database instead of 200-entry pages *(blocks of 100 rows read as needed, the list's own scrollbar; Go to entry and Load Next/Previous Game follow the list; the 11.15 M-entry classic Mega scrolls end to end)*
+- [x] P1 🟢 Sort the list by any column *(header click: ascending, descending, entry order; a sort order per column in the app data folder, built in parallel, cancellable; 0.3–0.8 s on the classic Mega warm; search results shown in that order; see docs/game-list.md)*
 - [ ] P2 🟢 Configurable columns, list formats and fonts (`SETSELFDEFINEDLISTFORMAT`, `CHOOSEGAMELISTFONT`, `ABBREVIATEFIRSTNAME`)
 - [ ] P1 🟢 Multi-select, copy, paste and delete games between databases (`DBEDITCOPY`, `DBEDITPASTE`, `DBEDITDELETE`, `DBEDITSELECTALL`)
 - [ ] P2 🟢 Edit game data for a selection: tournament, source, annotator, title (`DBTOOLSEDIT`, `EDITTOURNAMENT`, `EDITSOURCE`, `EDITANNOTATOR`, `EDITGAMETITLE`)
 - [ ] P2 🟢 Mark games (medals and flags) (`MARKGAME`)
-- [ ] P1 🟢 Players pane with each player's games (`TOGGLETOURNPLAYERS`, `VIEW_GAMES_OF_PLAYER`)
-- [ ] P1 🟢 Tournaments pane with crosstable (`TOGGLEPANETOURNAMENTS`, `DBTOOLSCROSSTABLE`, `SHOWCROSSTABLE`)
+- [x] P1 🟢 Players pane with each player's games (`TOGGLETOURNPLAYERS`, `VIEW_GAMES_OF_PLAYER`) *(Players tab: every player alphabetically with games and years, find by name, double-click lists the games by player id; 463,258 players of the classic Mega listed in 0.6 s)*
+- [x] P1 🟢 Tournaments pane with crosstable (`TOGGLEPANETOURNAMENTS`, `DBTOOLSCROSSTABLE`, `SHOWCROSSTABLE`) *(Tournaments tab with site, games and year; Cross Table (T) and Show Crosstable: round robin or Swiss layout, points, Sonneborn-Berger, Buchholz, wins, performance, category; results open their games; see docs/game-list.md)*
 - [ ] P2 🟢 Annotators, sources and teams panes
 - [ ] P2 🟢 Opening, theme and endgame keys: classify, insert/transfer keys, key memos (`DBTOOLSCLASSIFYALLKEYS`, `INSERTNEWKEY`, `ASSIGNGAME`, `INSERTMEMOKEY`)
 - [ ] P2 🟢 Clipboard database: clip, unclip, remove doubles (`CLIPLOADEDGAME`, `CLIPUNCLIP`, `OPENCLIPBOARD`, `REMOVEDOUBLESFROMCLIP`)
-- [ ] P2 🟢 Crosstable tools: tiebreaks, sort, format, ASCII/print (`SELECT_FEINWERTUNG`, `CLIPTABLE`, `PRINTTABLE`, `FORCEROUNDROBBIN`)
+- [ ] P2 🟢 Crosstable tools: tiebreaks, sort, format, ASCII/print (`SELECT_FEINWERTUNG`, `CLIPTABLE`, `PRINTTABLE`, `FORCEROUNDROBBIN`) *(partial: round robin/Swiss switch; tiebreaks fixed to Sonneborn-Berger and Buchholz)*
 - [ ] P3 🟢 Replay games automatically (`AUTOMATIC_REPLAY`)
 - [ ] P3 🟢 Header and moves list modes (`SETFULLGAMEHEADER`, `SETHEADERANDMOVES`, `SETMOVESONLY`)
 
@@ -92,7 +92,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [ ] P2 🟢 Manoeuvre search (piece routes) and attack/defence patterns
 - [ ] P3 🟢 Game phase and structural theme filters
 - [ ] P2 🟢 Save and load search masks (`SAVE_SEARCHMASK`)
-- [x] P1 🟢 Filter the list from the search mask (`DBTOOLSSEARCH`) *(Ctrl+F searches the whole database; the page text filter is kept as Quick Filter)*
+- [x] P1 🟢 Filter the list from the search mask (`DBTOOLSSEARCH`) *(Ctrl+F searches the whole database; Quick Filter matches words against names, tournament, ECO, year and result across the whole database)*
 - [ ] P2 🟢 Search white/black games of a player, games with the same players (`INSTALLWHITESUBSET`, `FIND_PREDECESSORS`)
 - [ ] P2 🟢 Similar endgames, structures, moves, tactics and patterns (`SIMILAR_ENDGAMES`, `SIMILAR_STRUCTURES`, `SIMILAR_MOVES`, `AR_TACTICS`, `SimilarPattern`)
 - [ ] P2 🟡 Online database search; Lichess's opening explorer API could stand in (`FINDONLINEDBBOARD`, `FindOnlineDB`)
@@ -178,7 +178,7 @@ Names in backticks are ChessBase command ids, for traceability.
 
 - [ ] P1 🟢 Player statistics: score by colour, opening and year (`STATISTICS`, `PLAYERSTATISTIC`)
 - [ ] P2 🟢 Player dossier (`PLAYERDOSSIER`)
-- [ ] P2 🟢 Tournament crosstable and report (`DBTOOLSCROSSTABLE`, `TournamentReport`)
+- [ ] P2 🟢 Tournament crosstable and report (`DBTOOLSCROSSTABLE`, `TournamentReport`) *(crosstable done, §3; no report)*
 - [ ] P2 🟢 Error report: blunder statistics and estimated rating (`BLUNDER_REPORT`)
 - [ ] P3 🟢 Style report (`STYLE_REPORT`)
 - [ ] P3 🟢 Game overview and theme classification (`OVERVIEWBOARD`, `THEMECLASSIFYBOARD`)

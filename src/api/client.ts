@@ -22,6 +22,13 @@ import type {
   TreeResponse,
   TreeProgress,
   ReferenceResponse,
+  SortColumn,
+  SortProgress,
+  SortResponse,
+  NameKind,
+  NamePage,
+  Crosstable,
+  CrossLayout,
 } from "./types";
 export const backend = {
   pickEngine: () =>
@@ -235,6 +242,66 @@ export const backend = {
     requestId: string,
   ) =>
     invoke<PageResponse>("read_page", { databaseId, start, limit, requestId }),
+  /** Rows of the game list: the database or its search, sorted or not. */
+  readRows: (
+    databaseId: string,
+    start: string,
+    limit: number,
+    requestId: string,
+  ) =>
+    invoke<PageResponse>("read_rows", { databaseId, start, limit, requestId }),
+  findRow: (databaseId: string, ordinal: string) =>
+    invoke<string | null>("find_row", { databaseId, ordinal }),
+  sortList: async (
+    databaseId: string,
+    column: SortColumn | null,
+    descending: boolean,
+    onProgress: (p: SortProgress) => void,
+  ) => {
+    const events = new Channel<SortProgress>();
+    events.onmessage = onProgress;
+    return invoke<SortResponse>("sort_list", {
+      databaseId,
+      column,
+      descending,
+      events,
+    });
+  },
+  cancelSort: (databaseId: string) =>
+    invoke<void>("cancel_sort", { databaseId }),
+  /** Prepares the player or tournament list; rows is absent if cancelled. */
+  nameList: async (
+    databaseId: string,
+    kind: NameKind,
+    onProgress: (p: { done: string; total: string }) => void,
+  ) => {
+    const events = new Channel<{ done: string; total: string }>();
+    events.onmessage = onProgress;
+    return invoke<{ rows?: string }>("name_list", { databaseId, kind, events });
+  },
+  cancelNameList: (databaseId: string) =>
+    invoke<void>("cancel_name_list", { databaseId }),
+  readNames: (
+    databaseId: string,
+    kind: NameKind,
+    start: string,
+    limit: number,
+    requestId: string,
+  ) =>
+    invoke<NamePage>("read_names", {
+      databaseId,
+      kind,
+      start,
+      limit,
+      requestId,
+    }),
+  findName: (databaseId: string, kind: NameKind, prefix: string) =>
+    invoke<string>("find_name", { databaseId, kind, prefix }),
+  crosstable: (
+    databaseId: string,
+    tournamentId: number,
+    layout: CrossLayout | null,
+  ) => invoke<Crosstable>("crosstable", { databaseId, tournamentId, layout }),
   loadEntry: (databaseId: string, ordinal: string, requestId: string) =>
     invoke<GameResponse>("load_entry", { databaseId, ordinal, requestId }),
   positionAt: (documentId: string, nodeId: number, requestId: string) =>

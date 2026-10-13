@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GameList } from "../views/GameList";
 import type { ReferenceState } from "../state/positionPanes";
 
@@ -24,9 +24,14 @@ export function ReferencePane({
   hasLine: boolean;
   onOpen: (ordinal: string, node: number) => void;
 }) {
-  const [selected, setSelected] = useState<string>();
+  const [cursor, setCursor] = useState<number>();
+  const [top, setTop] = useState(0);
   const { response, page } = reference;
   const entries = page?.entries ?? [];
+  useEffect(() => {
+    setTop(0);
+    setCursor(undefined);
+  }, [page]);
   const node = (ordinal: string) =>
     entries.find((e) => e.ordinal === ordinal)?.foundNode ?? 0;
   let message: string | undefined;
@@ -55,10 +60,19 @@ export function ReferencePane({
         <div className="empty-state">{message}</div>
       ) : (
         <GameList
-          entries={entries}
-          selected={selected}
-          onPreview={setSelected}
-          onOpen={(ordinal) => onOpen(ordinal, node(ordinal))}
+          label="Reference games"
+          rowCount={entries.length}
+          version={page}
+          row={(i) => entries[i]}
+          want={() => {}}
+          top={top}
+          onTop={setTop}
+          cursor={cursor}
+          onPreview={setCursor}
+          onOpen={(row) => {
+            const ordinal = entries[row]?.ordinal;
+            if (ordinal) onOpen(ordinal, node(ordinal));
+          }}
         />
       )}
     </div>

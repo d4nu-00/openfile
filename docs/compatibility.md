@@ -105,5 +105,10 @@ annotation type. The workbench's opening tree and reference search are built
 from the user's own databases into the app's data folder (see
 [opening tree](opening-tree.md)). They count main lines only, store positions
 reached by at least five games within 60 half-moves, and may miss a game that
-transposes into a rarer position. macOS native operation is verified locally;
+transposes into a rarer position. The game list scrolls the whole database
+and sorts by any column, from sort orders kept in the same folder (see
+[game list](game-list.md)). It sorts names by its own collation: case is
+folded and common accents removed. ChessBase's own collation was not traced.
+Its Fix Sort Order and Sort Database, which rewrite the files, are not
+implemented. macOS native operation is verified locally;
 Windows/Linux native validation remains outstanding. See [validation](validation.md).

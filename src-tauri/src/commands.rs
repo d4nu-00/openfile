@@ -96,6 +96,9 @@ pub struct EntryDto {
     /// In a position search: the node where the game reaches the position.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub found_node: Option<u32>,
+    /// For the crosstable of the game's tournament.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tournament_id: Option<u32>,
     pub diagnostics: Vec<DiagnosticDto>,
 }
 impl From<cbh_reader::EntrySummary> for EntryDto {
@@ -124,6 +127,7 @@ impl From<cbh_reader::EntrySummary> for EntryDto {
             white_team: e.white_team,
             black_team: e.black_team,
             found_node: None,
+            tournament_id: e.tournament_id,
             diagnostics: e.diagnostics.into_iter().map(Into::into).collect(),
         }
     }
@@ -622,4 +626,116 @@ pub async fn document_pgn(
 ) -> Result<String, AppError> {
     let s = state.inner().clone();
     blocking(move || s.document_pgn(document_id)).await
+}
+#[tauri::command]
+pub async fn read_rows(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    start: String,
+    limit: usize,
+    request_id: String,
+) -> Result<PageResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.read_rows(database_id, start, limit, request_id)).await
+}
+#[tauri::command]
+pub async fn find_row(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    ordinal: String,
+) -> Result<Option<String>, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.find_row(database_id, ordinal)).await
+}
+#[tauri::command]
+pub async fn sort_list(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    column: Option<cbh_reader::sort::SortColumn>,
+    descending: bool,
+    events: tauri::ipc::Channel<crate::lists::SortProgress>,
+) -> Result<crate::lists::SortResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || {
+        let mut last = std::time::Instant::now();
+        s.sort_list(database_id, column, descending, |stage, done, total| {
+            if last.elapsed().as_millis() >= 250 || done == total {
+                last = std::time::Instant::now();
+                let _ = events.send(crate::lists::SortProgress {
+                    stage,
+                    done: done.to_string(),
+                    total: total.to_string(),
+                });
+            }
+        })
+    })
+    .await
+}
+#[tauri::command]
+pub fn cancel_sort(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_sort(database_id)
+}
+#[tauri::command]
+pub async fn name_list(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    kind: cbh_reader::name_list::NameKind,
+    events: tauri::ipc::Channel<crate::names::NameProgress>,
+) -> Result<crate::names::NameListResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || {
+        let mut last = std::time::Instant::now();
+        s.name_list(database_id, kind, |done, total| {
+            if last.elapsed().as_millis() >= 250 || done == total {
+                last = std::time::Instant::now();
+                let _ = events.send(crate::names::NameProgress {
+                    done: done.to_string(),
+                    total: total.to_string(),
+                });
+            }
+        })
+    })
+    .await
+}
+#[tauri::command]
+pub fn cancel_name_list(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_name_list(database_id)
+}
+#[tauri::command]
+pub async fn read_names(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    kind: cbh_reader::name_list::NameKind,
+    start: String,
+    limit: usize,
+    request_id: String,
+) -> Result<crate::names::NamePage, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.read_names(database_id, kind, start, limit, request_id)).await
+}
+#[tauri::command]
+pub async fn find_name(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    kind: cbh_reader::name_list::NameKind,
+    prefix: String,
+) -> Result<String, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.find_name(database_id, kind, prefix)).await
+}
+#[tauri::command]
+pub async fn crosstable(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    tournament_id: u32,
+    layout: Option<cbh_reader::crosstable::Layout>,
+) -> Result<cbh_reader::crosstable::Crosstable, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.crosstable(database_id, tournament_id, layout)).await
 }

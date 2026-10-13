@@ -31,6 +31,7 @@ const documents = new Set([
   "writing.md",
   "search.md",
   "opening-tree.md",
+  "game-list.md",
 ]);
 export function allowedSourcePath(candidate) {
   if (

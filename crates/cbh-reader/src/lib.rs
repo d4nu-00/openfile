@@ -1,13 +1,16 @@
 pub mod annotations;
 pub mod companions;
+pub mod crosstable;
 mod database;
 pub mod entities;
 pub mod error;
 pub mod header;
 pub mod limits;
 pub mod moves;
+pub mod name_list;
 pub mod position;
 pub mod search;
+pub mod sort;
 pub mod source;
 pub mod tree;
 pub mod v2;

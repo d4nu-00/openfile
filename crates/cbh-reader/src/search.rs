@@ -58,6 +58,13 @@ pub struct GameFilter {
     /// Allowed PGN results ("1-0", "0-1", "1/2-1/2", "0-0"); empty means any.
     pub results: Vec<String>,
     pub exclude_deleted: bool,
+    /// Quick filter: every word must match a player, the tournament or its
+    /// site, the annotator, the source, the ECO code, the year or the result.
+    pub text: String,
+    /// Games of this player id, with either colour (the players pane).
+    pub player_id: Option<u32>,
+    /// Games of this tournament id (the tournaments pane).
+    pub tournament_id: Option<u32>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -101,6 +108,62 @@ struct Compiled {
     tournaments: Option<HashSet<u32>>,
     annotators: Option<HashSet<u32>>,
     eco: Option<(u16, u16)>,
+    words: Vec<Word>,
+}
+
+/// What one quick-filter word matches.
+#[derive(Default)]
+struct Word {
+    players: HashSet<u32>,
+    tournaments: HashSet<u32>,
+    annotators: HashSet<u32>,
+    sources: HashSet<u32>,
+    eco: Option<(u16, u16)>,
+    year: Option<u16>,
+    /// Stored result codes.
+    results: Vec<u8>,
+}
+
+impl Word {
+    fn matches(&self, r: &RawEntry) -> bool {
+        let has = |set: &HashSet<u32>, id: Option<u32>| id.is_some_and(|id| set.contains(&id));
+        has(&self.players, r.white_id)
+            || has(&self.players, r.black_id)
+            || has(&self.tournaments, r.tournament_id)
+            || has(&self.annotators, r.annotator_id)
+            || has(&self.sources, r.source_id)
+            || self.eco.is_some_and(|(from, to)| {
+                let code = r.eco_raw.map_or(0, |e| e >> 7);
+                code >= from && code <= to
+            })
+            || self.year.is_some_and(|y| r.year == Some(y))
+            || r.result_code.is_some_and(|c| self.results.contains(&c))
+    }
+}
+
+/// The ECO codes a word names: "B" (B00–B99), "B9" (B90–B99) or "B90".
+fn eco_prefix(word: &str) -> Option<(u16, u16)> {
+    let b = word.as_bytes();
+    if b.is_empty() || b.len() > 3 || !(b'a'..=b'e').contains(&b[0]) {
+        return None;
+    }
+    let digits = std::str::from_utf8(&b[1..]).ok()?;
+    if !digits.bytes().all(|d| d.is_ascii_digit()) {
+        return None;
+    }
+    let letter = (b[0] - b'a') as u16 * 100;
+    let (lo, hi) = match digits.len() {
+        0 => (0, 99),
+        1 => {
+            let d: u16 = digits.parse().ok()?;
+            (d * 10, d * 10 + 9)
+        }
+        _ => {
+            let d: u16 = digits.parse().ok()?;
+            (d, d)
+        }
+    };
+    Some((letter + lo + 1, letter + hi + 1))
 }
 
 impl GameFilter {
@@ -130,6 +193,15 @@ impl GameFilter {
             }
         }
         if !has(&c.tournaments, r.tournament_id) || !has(&c.annotators, r.annotator_id) {
+            return false;
+        }
+        if self
+            .player_id
+            .is_some_and(|p| r.white_id != Some(p) && r.black_id != Some(p))
+            || self
+                .tournament_id
+                .is_some_and(|t| r.tournament_id != Some(t))
+        {
             return false;
         }
         if self.elo_mode != EloMode::None && (self.elo_min.is_some() || self.elo_max.is_some()) {
@@ -179,7 +251,7 @@ impl GameFilter {
                 return false;
             }
         }
-        true
+        c.words.iter().all(|w| w.matches(r))
     }
 }
 
@@ -197,6 +269,69 @@ impl Database {
             true
         })?;
         Ok(Some(set))
+    }
+
+    /// Compiles the quick filter's words; at most 8 are used.
+    fn words(&self, text: &str) -> Result<Vec<Word>, CbhError> {
+        let needles: Vec<String> = text
+            .split_whitespace()
+            .map(|w| w.to_lowercase())
+            .take(8)
+            .collect();
+        let mut words: Vec<Word> = needles
+            .iter()
+            .map(|n| Word {
+                eco: eco_prefix(n),
+                year: (n.len() == 4)
+                    .then(|| n.parse().ok())
+                    .flatten()
+                    .filter(|y| *y > 0),
+                results: match n.as_str() {
+                    "1-0" => vec![2, 6],
+                    "0-1" => vec![0, 4],
+                    "1/2-1/2" | "½-½" | "1/2" | "½" | "=" => vec![1, 5],
+                    _ => vec![],
+                },
+                ..Word::default()
+            })
+            .collect();
+        if needles.is_empty() {
+            return Ok(words);
+        }
+        let contains = |hay: &str, needle: &str| hay.to_lowercase().contains(needle);
+        self.names_each_player(&mut |id, last, first| {
+            for (w, n) in words.iter_mut().zip(&needles) {
+                if contains(last, n) || contains(first, n) {
+                    w.players.insert(id);
+                }
+            }
+            true
+        })?;
+        self.names_each_tournament(&mut |id, event, site| {
+            for (w, n) in words.iter_mut().zip(&needles) {
+                if contains(event, n) || contains(site, n) {
+                    w.tournaments.insert(id);
+                }
+            }
+            true
+        })?;
+        self.names_each_annotator(&mut |id, name| {
+            for (w, n) in words.iter_mut().zip(&needles) {
+                if contains(name, n) {
+                    w.annotators.insert(id);
+                }
+            }
+            true
+        })?;
+        self.names_each_source(&mut |id, title| {
+            for (w, n) in words.iter_mut().zip(&needles) {
+                if contains(title, n) {
+                    w.sources.insert(id);
+                }
+            }
+            true
+        })?;
+        Ok(words)
     }
 
     /// Searches every entry for games matching `filter`. `progress` receives
@@ -247,6 +382,7 @@ impl Database {
             tournaments,
             annotators,
             eco,
+            words: self.words(&filter.text)?,
         };
         let count = self.info().entry_count;
         let mut result = SearchResult {
