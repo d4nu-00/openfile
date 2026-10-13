@@ -442,6 +442,36 @@ Frontend tests cover the Tablebase tab's result and moves, playing a move
 from it, and the folder chosen in Options. The real app was not shown a
 tablebase position: its debug startup cannot set up a position.
 
+## Tactical Analysis (2026-10-13)
+
+`src-tauri/tests/blunder_check.rs` runs Blunder Check with the engine
+crate's mock engine, which gives every position +0.17 and the line e7e5: on
+1.e4 e5 it finds 1.e4 (a loss of 34) at a threshold of 30, and nothing at 35
+or for Black only; a cancelled check reports nothing; bad parameters are
+refused. The findings applied as one edit give
+`1. e4 $2 {+0.17} (1. d4 d5 {+0.17/12}) 1... e5`, and an item that does not
+apply changes nothing.
+
+With a real engine (`UCI_ENGINE`; run with Stockfish 17 at 300 ms per
+position, threshold 1.00, Black's moves), the Scholar's mate game
+`1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7#` gives exactly one finding:
+3...Nf6, after which White mates in one (`+M1`), with another move in the
+engine's line. Frontend tests cover the dialog's parameters (Time × 500 ms,
+Fine = 35), the "??" rule, the one edit, and a stopped check adding nothing.
+
+## Names with figurines (2026-10-13)
+
+Of the classic Mega's 463,262 players, 362 name fields are not ASCII and
+some were not valid UTF-8; their bytes were 0xA4 (323), 0xA5 (289), 0xA3
+(111), 0xA6 (43), 0xA2 (10), 0xA0 (3) and 0xAA (1). The 0xA2–0xA6 names are
+opening lines ("1.b3 e5 2.?b2 ?c6 3.e3", "10...?b8"), where the bytes are
+the pieces K, Q, N, B, R of ChessBase's figurine fonts: "?b2" after b3 e5 is
+Bb2, "?c6" Nc6, "ed5 ?d5" Qd5, "?fd8" Rfd8, "?b1" Kb1. 0xA0 occurs in real
+names ("Rodrigo Pereira") as Windows-1252's no-break space. Classic names are
+now read as UTF-8 when valid, otherwise as Windows-1252 with 0xA2–0xA6 shown
+as ♔ ♕ ♘ ♗ ♖; they no longer show "�". The meaning of 0xAA (once, in an
+opening line) is not known; it shows as "ª".
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

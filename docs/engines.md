@@ -98,3 +98,52 @@ its own access goes through `TBAccess.dll`, which was not studied.
   Clicking a move plays it, or selects it when the game has it.
 * Positions with castling rights, or with more pieces than the largest
   table, are reported as such.
+
+## Tactical Analysis (Blunder Check)
+
+### What ChessBase does
+
+Tactical Analysis (`TACTICAL_ANALYSIS`, Ctrl+Alt+Shift+U, "Detect Blunders
+and small tactics in the game") keeps its settings in
+`TacticalAnalysisParams` (constructor `0x14042b3f0`, settings section "TA"):
+
+| Setting | Key | Label (message) | Default |
+|---|---|---|---|
+| Time | `V_TIME` | Time [s] (93), "Recommended" (4191) | from an engine benchmark: 6,000,000 / speed, at most 20; 3 without one |
+| Threshold | `V_THRESH` | Fine / Medium / Coarse (4166–4168) | first entry |
+| Store evaluations | `V_EVALUATIONS` | 366 | off |
+| Erase old annotations | `V_ERASE_VARIATIONS` | 327 | on |
+| Training | `V_TRAINING` | 216 | off |
+| Blunder categories | `V_MOVE_CATEGORIES` | 4768 | on |
+| Replace (database only) | `V_REPLACE` | 69 | on |
+
+When the dialog closes (`0x14042bf80`), the time becomes `Time × 500` ms,
+and the threshold **Fine 35, Medium 55, Coarse 150** centipawns, raised by
+half when the time is under a third of the recommended one. How the search
+then uses them, and which symbols and texts ChessBase writes, were not
+traced; "No blunders or combinations detected." (3860) is its message for a
+clean game.
+
+### Workbench
+
+* The dialog has ChessBase's **Time [s]** (default 3, 1 to 120; the engine
+  gets Time × 500 ms for each position), **Threshold** Fine/Medium/Coarse
+  (0.35, 0.55, 1.50 pawns) and **Store evaluations** (off). It adds a choice
+  of sides (both by default) and of engine: an installed one, or a file.
+* The check runs in the backend with its own engine process, separate from
+  the kibitzers. Every position of the main line before or after a checked
+  move is evaluated once, with progress, and **Stop** cancels it; a stopped
+  check adds nothing.
+* A move is a mistake when the engine's best line from the position before
+  it scores at least the threshold more, for the mover, than the position
+  after it, and the engine's first move is another one. Mates count as
+  30,000 centipawns less the distance.
+* Each mistake gets **?**, or **??** from three times the threshold, unless
+  it already has a move symbol; the engine's line (up to 16 moves) as a
+  variation ending with its score and depth (`+0.30/20`); and with Store
+  evaluations, the score after the move as text. All of it is one edit, so
+  Undo removes it. If the game changed while the check ran, nothing is
+  added.
+* The symbol rule is the workbench's own. Erase old annotations, Training,
+  Blunder categories, the engine benchmark and the database mode are not
+  ported.
