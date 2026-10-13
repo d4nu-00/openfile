@@ -14,7 +14,7 @@ pub struct Registry {
 pub(crate) struct State {
     next: u64,
     pub collections: HashMap<String, Arc<Vec<chess_core::Game>>>,
-    databases: HashMap<String, Arc<Mutex<cbh_reader::ClassicDatabase>>>,
+    databases: HashMap<String, Arc<Mutex<cbh_reader::Database>>>,
     pub documents: HashMap<String, Arc<Mutex<Document>>>,
 }
 impl State {
@@ -32,7 +32,7 @@ impl Registry {
             .lock()
             .map_err(|_| AppError::new("state", "Registry unavailable"))
     }
-    fn database(&self, id: &str) -> Result<Arc<Mutex<cbh_reader::ClassicDatabase>>, AppError> {
+    fn database(&self, id: &str) -> Result<Arc<Mutex<cbh_reader::Database>>, AppError> {
         self.lock()?
             .databases
             .get(id)
@@ -57,7 +57,7 @@ impl Registry {
                 "Close a database before opening another",
             ));
         }
-        let db = cbh_reader::ClassicDatabase::open(&path, cbh_reader::ReadLimits::default())?;
+        let db = cbh_reader::Database::open(&path, cbh_reader::ReadLimits::default())?;
         let mut state = self.lock()?;
         if state.databases.len() >= 4 {
             return Err(AppError::new("limitExceeded", "Database budget exhausted"));

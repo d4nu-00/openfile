@@ -83,7 +83,7 @@ const list: CommandMeta[] = [
   {
     id: "open-database",
     label: "Open Database",
-    tip: "Open a ChessBase database (.cbh)",
+    tip: "Open a ChessBase database (.cbh or .2cbh)",
     icon: FolderOpen,
     keys: "Ctrl+O",
     views: both,

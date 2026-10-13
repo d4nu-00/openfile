@@ -100,7 +100,7 @@ export const backend = {
   chooseDatabase: () =>
     open({
       multiple: false,
-      filters: [{ name: "Chess databases", extensions: ["cbh"] }],
+      filters: [{ name: "Chess databases", extensions: ["cbh", "2cbh"] }],
     }),
   openDatabase: (path: string, requestId: string) =>
     invoke<OpenDatabaseResponse>("open_database", { path, requestId }),
