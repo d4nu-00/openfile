@@ -1,3 +1,4 @@
+pub mod annotations;
 pub mod companions;
 mod database;
 pub mod entities;
@@ -25,6 +26,8 @@ pub enum DataStatus {
     Unsupported,
     Corrupt,
     NotDecoded,
+    /// Decoded, but some content is not represented (see diagnostics).
+    Partial,
 }
 #[derive(Clone, Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]

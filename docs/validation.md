@@ -104,6 +104,34 @@ This establishes agreement between two ChessBase encodings of the same games.
 It does not cover 2CBH files written by other ChessBase versions, extended
 move tokens or 2CBA annotations.
 
+## Annotation cross-check (2026-10-13)
+
+The same `compare_formats` run decodes classic CBA and 2CBA annotations for
+every shared game and compares the results node by node: comments, text
+before moves, NAGs, squares and arrows.
+
+* 24,723 of 24,759 games agree exactly. Together they hold 21,529 comments,
+  4,705 texts before moves, 15,769 symbols, 238 coloured squares and 243
+  arrows.
+* The other 36 games contain 2CBA game-quotation or training entries, whose
+  nested size is not recovered. The 2CBA reader stops there and reports it;
+  the classic CBA path decodes those games fully.
+* Classic entry 7289 has a text record that runs into the next record after a
+  NUL byte. ChessBase's own 2CBA copy ends the text at that NUL, and so does
+  the reader.
+
+Status counts: 8,017 games are fully represented. 564 are `partial`, because
+they hold types that are not shown or translations in other languages
+(diagnostics give the counts). The rest have no annotations.
+
+With annotations included, a warm run reads about 13 MB from the newer
+family; its maximum game load is 0.9 ms. A cold first run measured 3.1 s for
+one load while the cloud-backed file hydrated.
+
+The position-to-move mapping was chosen statistically (see
+[formats](formats.md)) and then confirmed by the agreement between the two
+encodings. It is not a native trace of the numbering code.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private
@@ -120,5 +148,5 @@ The action revisions are pinned. The workflow has not been run here on hosted
 Windows/Linux runners. Local Linux/Windows execution, signing/notarization,
 packaged installers and native workflows on those OSs remain outstanding.
 
-See [compatibility](compatibility.md) for unsupported CBA annotations, packed
+See [compatibility](compatibility.md) for annotation types not shown, packed
 ECO, newer-format limits, special encodings and standard-chess-only restrictions.

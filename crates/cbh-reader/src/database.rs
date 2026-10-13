@@ -163,7 +163,7 @@ impl Database {
         let moves = open(moves_ext);
         let annotations = open(notes_ext);
         let (listed, decoded): (&[&str], &[&str]) = match format {
-            DatabaseFormat::Classic => (CLASSIC_COMPANIONS, &["cbh", "cbg", "cbp", "cbt"]),
+            DatabaseFormat::Classic => (CLASSIC_COMPANIONS, &["cbh", "cbg", "cbp", "cbt", "cba"]),
             DatabaseFormat::New => (NEW_COMPANIONS, crate::v2::names::DECODED_COMPANIONS),
         };
         let companions = listed
@@ -332,11 +332,7 @@ impl Database {
         } else {
             DataStatus::Unsupported
         };
-        let annotations_status = if annotation_offset.is_some() || self.annotations.is_some() {
-            DataStatus::NotDecoded
-        } else {
-            DataStatus::Missing
-        };
+        let annotations_status = DataStatus::Missing;
         let mut loaded = LoadedEntry {
             summary,
             game: None,
@@ -413,6 +409,11 @@ impl Database {
                     }
                 }
                 loaded.moves_status = DataStatus::Available;
+                if let Some(at) = annotation_offset {
+                    let (status, notes) = self.annotate(&mut game, at, ordinal)?;
+                    loaded.annotations_status = status;
+                    loaded.diagnostics.extend(notes);
+                }
                 loaded.game = Some(game);
             }
             Err(CbhError::SourceChanged) => return Err(CbhError::SourceChanged),
@@ -441,9 +442,75 @@ impl Database {
         }
         Ok(loaded)
     }
+    /// Decodes this game's CBA/2CBA annotations into `game`. Only a changed
+    /// source is an error; anything else becomes a status and diagnostics.
+    fn annotate(
+        &self,
+        game: &mut chess_core::Game,
+        offset: u64,
+        ordinal: u64,
+    ) -> Result<(DataStatus, Vec<Diagnostic>), CbhError> {
+        let Some(file) = &self.annotations else {
+            return Ok((
+                DataStatus::Missing,
+                vec![Diagnostic::new(
+                    "missingAnnotations",
+                    "Annotation companion (CBA/2CBA) is unavailable",
+                )],
+            ));
+        };
+        let limit = self.limits.max_game_bytes;
+        let parsed = match self.format {
+            DatabaseFormat::Classic => (|| {
+                let head = file.read_exact_range(offset, 14)?;
+                let total = u32::from_be_bytes(head[10..14].try_into().unwrap()) as usize;
+                if total > limit {
+                    return Err(CbhError::LimitExceeded);
+                }
+                crate::annotations::parse_classic(&file.read_exact_range(offset, total)?, ordinal)
+            })(),
+            DatabaseFormat::New => {
+                crate::v2::block::read_block(file, offset, limit).and_then(|b| {
+                    if b.kind != crate::v2::block::TYPE_ANNOTATIONS {
+                        return Err(CbhError::Decode(format!("2CBA block type {:#06x}", b.kind)));
+                    }
+                    crate::annotations::parse_new(&b.payload)
+                })
+            }
+        };
+        match parsed {
+            Ok(parsed) => Ok(crate::annotations::apply(
+                game,
+                parsed,
+                match self.format {
+                    DatabaseFormat::Classic => crate::annotations::Order::Stream,
+                    DatabaseFormat::New => crate::annotations::Order::Line,
+                },
+            )),
+            Err(CbhError::SourceChanged) => Err(CbhError::SourceChanged),
+            Err(error) => {
+                let mut diagnostic = Diagnostic::new(error.code(), error.to_string());
+                diagnostic.file = Some(
+                    match self.format {
+                        DatabaseFormat::Classic => "cba",
+                        DatabaseFormat::New => "2cba",
+                    }
+                    .into(),
+                );
+                diagnostic.offset = Some(offset);
+                let status = if matches!(error, CbhError::LimitExceeded) {
+                    DataStatus::Unsupported
+                } else {
+                    DataStatus::Corrupt
+                };
+                Ok((status, vec![diagnostic]))
+            }
+        }
+    }
     pub fn bytes_read(&self) -> u64 {
         self.header.bytes_read()
             + self.entities.bytes_read()
             + self.moves.as_ref().map_or(0, |f| f.bytes_read())
+            + self.annotations.as_ref().map_or(0, |f| f.bytes_read())
     }
 }

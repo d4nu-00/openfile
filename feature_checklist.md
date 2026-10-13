@@ -31,7 +31,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Decode classic CBG move streams with variations and setup positions
 - [ ] P1 🟢 Decode CBG Chess960, special and unencoded game records
 - [x] P1 🟢 Read the newer 2CBH/2CBG format *(records, blocks, standard and set-up move trees, 2LID players and tournaments; all 24,759 Mega games cross-checked against the classic file)*
-- [ ] P1 🟢 Decode CBA annotations: text, symbols, arrows, coloured squares and training
+- [x] P1 🟢 Decode CBA annotations: text, symbols, arrows, coloured squares and training *(classic CBA and 2CBA; training, quotations and other kinds are reported, not shown)*
 - [ ] P1 🟢 Decode annotators (CBC), sources (CBS), teams (CBE) and other companions
 - [ ] P1 🟢 Write databases: save new games, replace games, mark deleted (`SAVEGAME`, `REPLACEGAME`, `DBLISTSAVEGAMECMD`)
 - [ ] P1 🟢 Create a new database (`NEWDATABASE`)
@@ -104,7 +104,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Flip board (`VIEWFLIPBOARD`, Ctrl+F)
 - [x] P1 🟢 Replay with first/previous/next/last and arrow keys (`GOTOBEGIN`, `GOTOEND`, `RETRACTMOVE`, `EXECMOVE`)
 - [ ] P2 🟢 Board design: square colours and textures, piece sets, table (`DESIGNBOARD`, `BOARD2D_BACKGROUND`, `BOARD2D_PIECES`, `DESIGNWOOD`)
-- [ ] P1 🟢 Draw arrows and coloured squares on the board, stored as annotations
+- [ ] P1 🟢 Draw arrows and coloured squares on the board, stored as annotations *(partial: decoded marks are drawn and round-trip through PGN; no drawing tool yet)*
 - [ ] P2 🟢 Drag-and-drop moves
 - [ ] P2 🟢 Board sounds (`BOARDSOUNDS`)
 - [ ] P2 🟢 Show material balance and move tooltips (`NOTASHOWMATERIAL`, `NOTASHOWTOOLTIPS`)
@@ -119,7 +119,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Notation with variations, move numbers, comments and NAG symbols
 - [x] P1 🟢 Enter legal moves and new variations by clicking
 - [x] P1 🟢 Text after move, and NAGs by number (`ANNOPOSTTEXT`) *(partial: no symbol palette yet)*
-- [ ] P1 🟢 Text before move (`ANNOPRETEXT`)
+- [ ] P1 🟢 Text before move (`ANNOPRETEXT`) *(partial: decoded, shown and kept in PGN; no editor yet)*
 - [ ] P1 🟢 Annotation symbol palette and keyboard symbols (`SHOWSYMBOLPALETTE`)
 - [ ] P1 🟢 Delete and promote variations; delete remaining or previous moves (`DELETEVARIATION`, `PROMOTEVARIATION`, `DELETEREMAININGMOVES`, `DELETEPREVIOUSMOVES`)
 - [ ] P1 🟢 Undo/redo for game edits (`EDIT_UNDO`, `EDIT_REDO`)

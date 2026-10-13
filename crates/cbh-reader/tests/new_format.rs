@@ -190,6 +190,15 @@ fn family() -> tempfile::TempDir {
     let length = cbg.len() as u64;
     cbg[..8].copy_from_slice(&length.to_le_bytes());
     fs::write(d.path().join("Synthetic.2cbg"), cbg).unwrap();
+    // 2CBA: text after the second move (position 1), English, then the end.
+    let mut notes = 1i32.to_le_bytes().to_vec();
+    notes.extend(1u32.to_le_bytes());
+    notes.extend([2, 0, 0, 0, 0, 0, 5, 0, 0, 0]);
+    notes.extend(b"Solid");
+    notes.extend(i32::MAX.to_le_bytes());
+    let mut cba = vec![0; 12];
+    cba.extend(block(0x2000, &notes));
+    fs::write(d.path().join("Synthetic.2cba"), cba).unwrap();
 
     let mut h = vec![0u8; 192 * 4];
     h[10..12].copy_from_slice(&192u16.to_le_bytes());
@@ -198,6 +207,7 @@ fn family() -> tempfile::TempDir {
         r[..2].copy_from_slice(&flags.to_le_bytes());
         r[2..4].copy_from_slice(&0x0101u16.to_le_bytes());
         r[8..16].copy_from_slice(&game_at.to_le_bytes());
+        r[16..24].copy_from_slice(&12u64.to_le_bytes());
         for (at, id) in [(24, white), (32, 0), (40, 1), (48, u64::MAX), (56, 0)] {
             r[at..at + 8].copy_from_slice(&id.to_le_bytes());
         }
@@ -254,10 +264,12 @@ fn new_family_pages_and_loads() {
 
     let loaded = db.load(1).unwrap();
     assert_eq!(loaded.moves_status, DataStatus::Available);
+    assert_eq!(loaded.annotations_status, DataStatus::Available);
     let game = loaded.game.unwrap();
     assert_eq!(game.nodes.len(), SAMPLE.len() + 1);
     assert_eq!(game.tags["White"], "Müller, Jörg");
     assert_eq!(game.tags["ECO"], "B01");
+    assert_eq!(game.nodes[2].comments, ["Solid"]);
     assert_eq!(db.load(3).unwrap().moves_status, DataStatus::Unsupported);
     let lid = db
         .info()

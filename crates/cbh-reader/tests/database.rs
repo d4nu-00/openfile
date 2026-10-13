@@ -108,11 +108,40 @@ fn source_mutation_is_an_error_and_bad_name_table_is_partial() {
     assert_eq!(db.page(1, 1).unwrap_err().code(), "sourceChanged");
 }
 #[test]
-fn existing_annotation_companion_is_never_available() {
+fn classic_annotations_load_and_bad_records_are_corrupt() {
     let d = family(true);
-    fs::write(d.path().join("Synthetic.cba"), [0]).unwrap();
+    let cbh = d.path().join("Synthetic.cbh");
+    // Without an annotation offset the game has no annotations.
+    fs::write(d.path().join("Synthetic.cba"), [0; 26]).unwrap();
     assert_eq!(
         open(&d).load(1).unwrap().annotations_status,
-        DataStatus::NotDecoded
+        DataStatus::Missing
     );
+    // Game 1 points at a CBA record at offset 26: text after the first move
+    // (position 0, English) and a green square on e4 after the second move.
+    let mut record = vec![0, 0, 1, 0, 0, 0, 0, 0, 0, 0];
+    let mut body = vec![0, 0, 0, 2, 0, 13, 0, b'*'];
+    body.extend(b"Hello");
+    body.extend([0, 0, 1, 4, 0, 8, 2, 4 * 8 + 3 + 1]);
+    record.extend(((14 + body.len()) as u32).to_be_bytes());
+    record.extend(&body);
+    let mut cba = vec![0u8; 26];
+    cba.extend(&record);
+    fs::write(d.path().join("Synthetic.cba"), &cba).unwrap();
+    let mut h = fs::read(&cbh).unwrap();
+    h[46 + 5..46 + 9].copy_from_slice(&26u32.to_be_bytes());
+    fs::write(&cbh, &h).unwrap();
+    let g = open(&d).load(1).unwrap();
+    assert_eq!(g.annotations_status, DataStatus::Available);
+    let game = g.game.unwrap();
+    assert_eq!(game.nodes[1].comments, vec!["Hello"]);
+    assert_eq!(game.nodes[2].squares[0].square, "e4");
+    assert_eq!(game.nodes[2].squares[0].color, 'G');
+    // A record length that runs past the game's annotation block is corrupt;
+    // the moves still load.
+    cba[26 + 14 + 5] = 200;
+    fs::write(d.path().join("Synthetic.cba"), &cba).unwrap();
+    let g = open(&d).load(1).unwrap();
+    assert_eq!(g.annotations_status, DataStatus::Corrupt);
+    assert!(g.game.is_some());
 }

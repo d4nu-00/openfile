@@ -27,9 +27,23 @@ Ordered variations, null moves outside check, filler bytes and modulo-256 move
 counters are supported. A terminal root marker is required, with all branch
 frames closed. Byte, node and variation-depth limits apply to every import.
 
-Original CBA and 2CBA annotations are not decoded yet. Comments and NAGs
-created in the workbench or imported from PGN use the independent editable game
-tree. Multimedia and proprietary cloud services are not supported.
+Original CBA and 2CBA annotations are decoded into the editable game tree:
+* text after and before moves;
+* move, position and prefix symbols as NAGs;
+* coloured squares and arrows.
+
+Other annotation types are not shown. These include training, game
+quotations, medals, critical positions, pawn structures, piece paths,
+evaluation profiles, variation colours and multimedia. Games that contain them
+load with status `partial` and a diagnostic, and exporting them needs the same
+acknowledgement as before.
+
+Only one language of translated text is shown per game, plus text with no
+language (see [formats](formats.md)). A malformed annotation record leaves the
+moves loaded and reports the annotations as `corrupt`.
+
+PGN import and export carry text before moves and `[%csl]`/`[%cal]` marks.
+Multimedia and proprietary cloud services are not supported.
 
 In the newer family, the following are refused or not read:
 * 2CBG text blocks and extended (for example Chess960) move tokens;

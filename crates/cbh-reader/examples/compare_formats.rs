@@ -44,6 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut bump = |k: &str| *counts.entry(k.to_string()).or_default() += 1;
     let mut failures = vec![];
     let mut diagnostics: BTreeMap<String, u64> = BTreeMap::new();
+    let mut marks: BTreeMap<&str, usize> = BTreeMap::new();
     let (mut nodes, mut slowest) = (0usize, 0f64);
     let started = Instant::now();
     for ordinal in 1..=limit.min(count) {
@@ -91,6 +92,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 nodes += h.nodes.len() - 1;
                 if tree(g) == tree(h) {
                     bump("treesMatch");
+                    bump(&format!(
+                        "annotations:{:?}/{:?}",
+                        x.annotations_status, y.annotations_status
+                    ));
+                    let same = g.nodes.len() == h.nodes.len()
+                        && g.nodes.iter().zip(&h.nodes).all(|(a, b)| {
+                            a.uci == b.uci
+                                && a.comments == b.comments
+                                && a.pre_comments == b.pre_comments
+                                && a.nags == b.nags
+                                && a.squares == b.squares
+                                && a.arrows == b.arrows
+                        });
+                    for n in &h.nodes {
+                        *marks.entry("comments").or_default() += n.comments.len();
+                        *marks.entry("preComments").or_default() += n.pre_comments.len();
+                        *marks.entry("nags").or_default() += n.nags.len();
+                        *marks.entry("squares").or_default() += n.squares.len();
+                        *marks.entry("arrows").or_default() += n.arrows.len();
+                    }
+                    if same {
+                        bump("annotationsMatch");
+                    } else {
+                        bump("annotationsDiffer");
+                        if failures.len() < 50 {
+                            failures.push(format!(
+                                "{ordinal}: annotations differ {:?} / {:?}",
+                                x.diagnostics.iter().map(|d| &d.code).collect::<Vec<_>>(),
+                                y.diagnostics.iter().map(|d| &d.code).collect::<Vec<_>>()
+                            ));
+                        }
+                    }
                 } else {
                     bump("treeMismatch");
                     failures.push(format!("{ordinal}: move tree differs"));
@@ -122,6 +155,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "counts": counts,
             "newMoveNodes": nodes,
             "newDiagnostics": diagnostics,
+            "newAnnotationTotals": marks,
             "firstFailures": failures,
             "maxNewLoadMs": slowest,
             "elapsedS": started.elapsed().as_secs_f64(),

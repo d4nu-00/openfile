@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// Companions whose content this reader interprets.
-pub const DECODED_COMPANIONS: &[&str] = &["2cbh", "2cbg", "2lid"];
+pub const DECODED_COMPANIONS: &[&str] = &["2cbh", "2cbg", "2cba", "2lid"];
 
 pub const PLAYERS: usize = 0;
 pub const TOURNAMENTS: usize = 1;

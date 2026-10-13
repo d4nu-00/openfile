@@ -18,7 +18,7 @@ that executable. No ChessBase code or resources were copied.
 |---|---|---|
 | `.2cbh` | Entry index: one 192-byte record per game or text | Read |
 | `.2cbg` | Framed blocks: move trees (type `0x0001`) and texts (`0x1000`) | Moves read; texts unsupported |
-| `.2cba` | Framed blocks of type `0x2000`, one per game | Not decoded yet |
+| `.2cba` | Framed blocks of type `0x2000`, one per game | Text, symbols, squares and arrows read |
 | `.2lid` | Name lists: players, tournaments, sources, annotators, teams, titles | Players and tournaments read |
 | `.2lcd`, `.2lgd` | Catalogue and search structures for the name lists | Not needed for reading |
 
@@ -131,3 +131,62 @@ lists, are not read yet.
 * A stored move number of 0 is read as 1.
 * An en-passant file that is impossible on the board is dropped, as ChessBase's
   own 2CBG copy does for entry 13409.
+
+## Annotations (CBA and 2CBA)
+
+Both files hold the same entries. Each entry has a position, a type and data.
+The type ids come from the annotation factory `0x1401a2ae0`:
+
+| Type | Content | Shown |
+|---|---|---|
+| `0x02`, `0x82` | Text after / before the move (`0x20` is a further text kind) | Yes |
+| `0x03` | Up to three symbols as PGN NAG numbers: move, position, prefix | Yes |
+| `0x04`, `0x05` | Coloured squares (colour, square) and arrows (colour, from, to) | Yes |
+| `0x84`, `0x85` | Squares and arrows shown before the move | No |
+| `0x07` time, `0x09` training, `0x13` game quotation, `0x14` pawn structure, `0x15` piece path, `0x18` critical position, `0x22` medal, `0x23` variation colour, `0x26` evaluation profile, others | Various | No, counted in a diagnostic |
+
+**Positions.** Position −1 is the start of the game. Position *k* is the
+(k+1)-th move, but the two files count moves in different orders:
+
+* **Classic CBA:** stream order, which is the classic CBG order: a move's
+  continuation before its alternatives.
+* **2CBA:** line order: walk a line, and right after each move number its
+  alternative variations completely before continuing.
+
+Two checks support this:
+* With the classic order, 94% of "text before" entries land on a variation's
+  first move (the base rate is 7%), and 88.5% of arrows start on an occupied
+  square. Shifting the alignment by one move either way drops these to
+  about 30% and 55%.
+* All 16,202 texts that occur once in their game land on the same move from
+  CBA and from 2CBA.
+
+**Classic CBA.** A 14-byte header holds the game number (BE24) and the total
+length (BE32 at byte 10). Each record has a BE24 signed position, a type byte,
+a BE16 length that includes this 6-byte record header, and data
+(`0x140190020`, `0x14018fdc0`, `0x14018fd10`, `0x14018f310`). Text data starts
+with a flag byte and a language byte.
+
+**2CBA.** The payload repeats a LE32 position and a LE32 count. Each entry is
+a LE16 type followed by that class's stream data (vtable slot 4):
+* text: flags, language index and a LE32-length string;
+* symbols: three bytes;
+* squares and arrows: a LE32-length byte string with the classic data.
+
+The payload ends with position `0x7fffffff`. Training (`0x09`), game quotation
+(`0x13`) and correspondence (`0x19`) entries nest further structures. The
+reader stops at them and reports the game's remaining annotations as not
+shown.
+
+**Colours.** Stored colour codes are the PGN importer's colour index plus one
+(`0x140e98150`): 2 G, 3 Y, 4 R, 7 B, 8 C, 9 O. Squares are stored 1-based,
+file-major. The workbench keeps the `[%csl]`/`[%cal]` letters, and PGN export
+writes those commands.
+
+**Text.** Language bytes map to indices through the table read by
+`0x140e94770`. Byte 0 means no language; `*`, `5` and `1` (English, German,
+French) are confirmed by the texts. Text is UTF-8 when valid UTF-8, otherwise
+Windows-1252 (`SString::MayBeUTF8`), and ends at the first NUL. The reader
+shows one language per game (English if present, otherwise the most common
+language), plus text with no language, and reports the other translations as
+omitted.
