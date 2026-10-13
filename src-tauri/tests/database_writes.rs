@@ -108,3 +108,53 @@ fn read_only_and_already_open_databases_are_refused() {
     // An existing family is never overwritten by New Database.
     assert!(r.create_database(path, "dup".into()).is_err());
 }
+
+#[test]
+fn drawn_marks_undo_and_survive_a_database_save() {
+    let d = tempfile::tempdir().unwrap();
+    let r = Registry::default();
+    let db = r
+        .create_database(d.path().join("Marks"), "create".into())
+        .unwrap();
+    let doc = pgn_document(&r, &d, "1. e4 e5 *\n");
+    let edit = |json: &str, revision: &str| {
+        r.edit_document(
+            doc.clone(),
+            serde_json::from_str(json).unwrap(),
+            revision.into(),
+        )
+        .unwrap()
+    };
+    let drawn = edit(
+        r#"{"kind":"setMarks","node":1,"squares":[{"color":"G","square":"d5"}],"arrows":[{"color":"R","from":"g1","to":"f3"}]}"#,
+        "0",
+    );
+    assert!(drawn.dirty);
+    assert_eq!(drawn.game.nodes[1].squares.len(), 1);
+    let undone = edit(r#"{"kind":"undo"}"#, "1");
+    assert!(undone.game.nodes[1].squares.is_empty());
+    let redone = edit(r#"{"kind":"redo"}"#, "2");
+    assert_eq!(redone.game.nodes[1].arrows.len(), 1);
+    let pgn = r.document_pgn(doc.clone()).unwrap();
+    assert!(pgn.contains("[%csl Gd5]") && pgn.contains("[%cal Rg1f3]"));
+
+    let saved = r
+        .save_game(doc.clone(), db.database_id.clone(), "3".into(), false)
+        .unwrap();
+    let loaded = r
+        .load_entry(db.database_id.clone(), saved.ordinal, "l".into())
+        .unwrap();
+    let node = &loaded.game.unwrap().nodes[1];
+    assert_eq!(
+        (node.squares[0].square.as_str(), node.arrows[0].to.as_str()),
+        ("d5", "f3")
+    );
+    let cleared = edit(r#"{"kind":"clearMarks"}"#, "3");
+    assert!(
+        cleared
+            .game
+            .nodes
+            .iter()
+            .all(|n| n.squares.is_empty() && n.arrows.is_empty())
+    );
+}

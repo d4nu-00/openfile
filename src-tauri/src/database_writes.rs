@@ -94,6 +94,9 @@ impl Registry {
         let db = self.database(id)?;
         *db.lock()
             .map_err(|_| AppError::new("state", "Database unavailable"))? = fresh;
+        if let Ok(mut state) = self.lock() {
+            state.game_readers.remove(id);
+        }
         // The sort order no longer covers every entry; the list asks again.
         self.drop_sort(id);
         self.drop_name_lists(id);

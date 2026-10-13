@@ -269,7 +269,12 @@ pub async fn open_database(
     writable: Option<bool>,
 ) -> Result<OpenDatabaseResponse, AppError> {
     let s = state.inner().clone();
-    blocking(move || s.open_database_with(path, request_id, writable.unwrap_or(false))).await
+    let opened =
+        blocking(move || s.open_database_with(path, request_id, writable.unwrap_or(false))).await?;
+    let s = state.inner().clone();
+    let id = opened.database_id.clone();
+    tauri::async_runtime::spawn_blocking(move || s.warm_up(&id));
+    Ok(opened)
 }
 #[tauri::command]
 pub async fn create_database(
@@ -581,9 +586,18 @@ pub async fn reference_search(
     database_id: String,
     line: crate::trees::Line,
     request_id: String,
+    search_anyway: Option<bool>,
 ) -> Result<crate::trees::ReferenceResponse, AppError> {
     let s = state.inner().clone();
-    blocking(move || s.reference_search(database_id, line, request_id)).await
+    blocking(move || {
+        s.reference_search_with(
+            database_id,
+            line,
+            request_id,
+            search_anyway.unwrap_or(false),
+        )
+    })
+    .await
 }
 #[tauri::command]
 pub fn cancel_reference(

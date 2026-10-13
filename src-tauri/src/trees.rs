@@ -19,6 +19,10 @@ use std::sync::{
 const MAX_REFERENCE_HITS: usize = 100_000;
 /// Games replayed to follow a line past the stored positions.
 const MAX_FOLLOW: usize = 5_000;
+/// Without a search booster, Find Position reads every game; the reference
+/// search does that by itself only for databases up to this size. (The
+/// classic Mega Database, 11.15 million games, takes 23 minutes.)
+const AUTO_SEARCH_ENTRIES: u64 = 200_000;
 /// Moves accepted in a line.
 const MAX_LINE: usize = 1_000;
 
@@ -96,6 +100,9 @@ pub enum ReferenceSource {
     Line,
     /// Find Position, with the search booster when `indexed`.
     Search,
+    /// The tree cannot answer, and Find Position would read every game of a
+    /// large database without a search booster; it runs only when asked.
+    NotSearched,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -302,6 +309,18 @@ impl Registry {
         line: Line,
         request_id: String,
     ) -> Result<ReferenceResponse, AppError> {
+        self.reference_search_with(database_id, line, request_id, false)
+    }
+
+    /// The reference search; `search_anyway` allows a Find Position without
+    /// a search booster on a large database.
+    pub fn reference_search_with(
+        &self,
+        database_id: String,
+        line: Line,
+        request_id: String,
+        search_anyway: bool,
+    ) -> Result<ReferenceResponse, AppError> {
         let cancel = Arc::new(AtomicBool::new(false));
         if let Some(old) = self
             .lock()?
@@ -310,7 +329,7 @@ impl Registry {
         {
             old.store(true, Ordering::Relaxed);
         }
-        let result = self.reference_hits(&database_id, &line, &cancel);
+        let result = self.reference_hits(&database_id, &line, &cancel, search_anyway);
         let mut state = self.lock()?;
         let current = state
             .reference_cancels
@@ -340,6 +359,7 @@ impl Registry {
         database_id: &str,
         line: &Line,
         cancel: &AtomicBool,
+        search_anyway: bool,
     ) -> Result<(Hits, bool, ReferenceSource, bool), AppError> {
         let (pos, hashes, moves) = replay(line)?;
         if let Some(open) = self.open_tree(database_id)? {
@@ -365,6 +385,25 @@ impl Registry {
                 Err(e) => return Err(e.into()),
             }
         }
+        let limit = match self.reference_auto_limit.load(Ordering::Relaxed) {
+            0 => AUTO_SEARCH_ENTRIES,
+            n => n,
+        };
+        let large = self
+            .database(database_id)?
+            .lock()
+            .map_err(|_| AppError::new("state", "Database unavailable"))?
+            .info()
+            .entry_count
+            > limit;
+        if large && !search_anyway && !self.has_booster(database_id)? {
+            let hits = Hits {
+                ordinals: vec![],
+                nodes: None,
+                fen: None,
+            };
+            return Ok((hits, false, ReferenceSource::NotSearched, false));
+        }
         let target = cbh_reader::position::Target::new(&pos);
         let result = self.position_search(database_id, &target, cancel)?;
         let (ordinals, nodes) = result.hits.into_iter().unzip();
@@ -379,6 +418,11 @@ impl Registry {
             ReferenceSource::Search,
             result.indexed,
         ))
+    }
+
+    #[doc(hidden)]
+    pub fn set_reference_auto_limit(&self, entries: u64) {
+        self.reference_auto_limit.store(entries, Ordering::Relaxed);
     }
 
     pub fn cancel_reference(&self, database_id: String) -> Result<(), AppError> {
