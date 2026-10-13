@@ -137,8 +137,10 @@ When the workbench saves, replaces or deletes a game in a 2CBH database it
 writes, it records the change in a journal beside the tree (`.cwtj`). A replaced game's
 old main line is kept. Answers then drop the changed games' old lines and add
 their new ones, so the tree stays current without a rebuild. The journal
-records the database's stamps after each change. Any change made by another
-program makes the tree stale as before.
+records the database's stamps after each change. A paste records every
+game it appended, as long as the journal stays within its 10,000 entries;
+a larger paste makes the tree stale. Any change made by another program
+makes the tree stale as before.
 
 ## Measurements
 

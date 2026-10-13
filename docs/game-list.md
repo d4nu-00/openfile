@@ -280,8 +280,9 @@ database. It works only with a .2cbh database opened for editing.
   storable by ChessBase, are left out. The result counts the games affected.
 * Entries without readable moves are skipped and counted.
 * Pasting into the database the games came from is refused.
-* A pasted database's opening tree is not journalled game by game. It
-  becomes stale, and the status says it needs rebuilding.
+* The target's opening tree records every pasted game in its journal and
+  stays current. Only a paste that would take the journal past 10,000
+  entries makes it stale; the status then says it needs rebuilding.
 
 **Results PGN cannot express.** PGN has no forfeits or "0-0". When a game is
 loaded, a stored result of +:-, =:=, -:+ or 0-0 is kept in a `CBResult` tag.

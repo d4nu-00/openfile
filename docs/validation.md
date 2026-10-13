@@ -482,6 +482,13 @@ tables were equal. Building the order took 0.69 s; it was written to a
 scratch folder and deleted. A reader test compares both ways for every
 tournament of its database.
 
+## Opening tree after a paste (2026-10-14)
+
+An app test builds a tree for six games of 1.d4 d5, pastes four 1.e4 games
+from another database and asks the book for the start position: 10 games
+from the tree, 4 of them with e4, and the paste does not report the tree as
+stale.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private
