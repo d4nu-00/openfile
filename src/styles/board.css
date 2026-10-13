@@ -87,3 +87,81 @@
 .square.dark small {
   color: var(--board-light);
 }
+/* Annotation marks: coloured squares and arrows ([%csl]/[%cal] colours). */
+.board {
+  position: relative;
+  --mark-green: 46, 156, 69;
+  --mark-yellow: 230, 180, 34;
+  --mark-red: 210, 60, 60;
+  --mark-blue: 47, 111, 209;
+  --mark-cyan: 26, 166, 183;
+  --mark-orange: 232, 131, 46;
+}
+.square[data-mark="green"] {
+  box-shadow: inset 0 0 0 100px rgba(var(--mark-green), 0.55);
+}
+.square[data-mark="yellow"] {
+  box-shadow: inset 0 0 0 100px rgba(var(--mark-yellow), 0.55);
+}
+.square[data-mark="red"] {
+  box-shadow: inset 0 0 0 100px rgba(var(--mark-red), 0.55);
+}
+.square[data-mark="blue"] {
+  box-shadow: inset 0 0 0 100px rgba(var(--mark-blue), 0.55);
+}
+.square[data-mark="cyan"] {
+  box-shadow: inset 0 0 0 100px rgba(var(--mark-cyan), 0.55);
+}
+.square[data-mark="orange"] {
+  box-shadow: inset 0 0 0 100px rgba(var(--mark-orange), 0.55);
+}
+.board-arrows {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+.board-arrows .arrow {
+  opacity: 0.8;
+}
+.board-arrows .arrow line {
+  stroke-linecap: round;
+}
+.board-arrows .green line {
+  stroke: rgb(var(--mark-green));
+}
+.board-arrows .green polygon {
+  fill: rgb(var(--mark-green));
+}
+.board-arrows .yellow line {
+  stroke: rgb(var(--mark-yellow));
+}
+.board-arrows .yellow polygon {
+  fill: rgb(var(--mark-yellow));
+}
+.board-arrows .red line {
+  stroke: rgb(var(--mark-red));
+}
+.board-arrows .red polygon {
+  fill: rgb(var(--mark-red));
+}
+.board-arrows .blue line {
+  stroke: rgb(var(--mark-blue));
+}
+.board-arrows .blue polygon {
+  fill: rgb(var(--mark-blue));
+}
+.board-arrows .cyan line {
+  stroke: rgb(var(--mark-cyan));
+}
+.board-arrows .cyan polygon {
+  fill: rgb(var(--mark-cyan));
+}
+.board-arrows .orange line {
+  stroke: rgb(var(--mark-orange));
+}
+.board-arrows .orange polygon {
+  fill: rgb(var(--mark-orange));
+}

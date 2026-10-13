@@ -1,6 +1,11 @@
 export type NodeId = number;
 export type Status =
-  "available" | "missing" | "unsupported" | "corrupt" | "notDecoded";
+  | "available"
+  | "missing"
+  | "unsupported"
+  | "corrupt"
+  | "notDecoded"
+  | "partial";
 export interface Diagnostic {
   code: string;
   message: string;
@@ -31,6 +36,20 @@ export interface GameNode {
   children: NodeId[];
   comments: string[];
   nags: number[];
+  /** Text shown before the move. */
+  preComments?: string[];
+  squares?: SquareMark[];
+  arrows?: ArrowMark[];
+}
+/** Colours use the PGN [%csl]/[%cal] letters: G, Y, R, B, C, O. */
+export interface SquareMark {
+  color: string;
+  square: string;
+}
+export interface ArrowMark {
+  color: string;
+  from: string;
+  to: string;
 }
 export interface GameView {
   tags: Record<string, string>;
@@ -132,4 +151,14 @@ export interface EngineEventDto {
     | AnalysisInfoDto
     | { kind: "bestMove"; best: string; ponder?: string }
     | { kind: "error" | "status"; message: string };
+}
+
+/** True when a loaded game omits some of its original database annotations. */
+export function annotationsIncomplete(status: Status | undefined): boolean {
+  return (
+    status === "notDecoded" ||
+    status === "partial" ||
+    status === "corrupt" ||
+    status === "unsupported"
+  );
 }

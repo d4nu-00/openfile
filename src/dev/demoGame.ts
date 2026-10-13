@@ -97,8 +97,13 @@ export const demoNodes = [
     uci: "f1c4",
     san: "Bc4",
     children: [12],
-    comments: [],
+    comments: ["Development with a threat on f7."],
     nags: [],
+    squares: [{ color: "R", square: "f7" }],
+    arrows: [
+      { color: "G", from: "c4", to: "f7" },
+      { color: "G", from: "f3", to: "f7" },
+    ],
   },
   {
     id: 12,
@@ -304,8 +309,9 @@ export const demoNodes = [
     uci: "e5d4",
     san: "exd4",
     children: [35],
-    comments: ["Simpler is 3...exd4."],
+    comments: [],
     nags: [],
+    preComments: ["Simpler is"],
   },
   {
     id: 35,

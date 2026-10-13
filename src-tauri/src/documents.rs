@@ -249,7 +249,7 @@ impl Registry {
             if d.incomplete_annotations && !allow_incomplete {
                 return Err(AppError::new(
                     "incompleteAnnotations",
-                    "Original CBH annotations are not decoded; acknowledge their omission before exporting",
+                    "Some original database annotations are not decoded; acknowledge their omission before exporting",
                 ));
             }
             (d.game.clone(), d.revision, d.source_paths.clone())

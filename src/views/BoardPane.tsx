@@ -5,7 +5,7 @@ import {
   ChevronsRight,
 } from "lucide-react";
 import { Board } from "../components/Board";
-import type { PositionResponse } from "../api/types";
+import type { GameNode, PositionResponse } from "../api/types";
 
 export type Step = "first" | "previous" | "next" | "last";
 export const initialFen =
@@ -23,6 +23,7 @@ export function BoardPane({
   promotion,
   onPromote,
   compact,
+  node,
 }: {
   title: string;
   position?: PositionResponse;
@@ -34,6 +35,8 @@ export function BoardPane({
   promotion?: string[];
   onPromote?: (uci?: string) => void;
   compact?: boolean;
+  /** Current move; its coloured squares and arrows are drawn. */
+  node?: GameNode;
 }) {
   const steps: [Step, string, typeof ChevronLeft][] = [
     ["first", "First move", ChevronsLeft],
@@ -57,6 +60,7 @@ export function BoardPane({
           onSquare={onSquare}
           legalUci={position?.legalUci ?? []}
           compact={compact}
+          marks={node}
         />
       </div>
       {promotion && promotion.length > 0 && onPromote && (

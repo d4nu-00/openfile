@@ -126,6 +126,12 @@ pub struct GameNode {
     pub children: Vec<u32>,
     pub comments: Vec<String>,
     pub nags: Vec<u16>,
+    #[serde(rename = "preComments", skip_serializing_if = "Vec::is_empty")]
+    pub pre_comments: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub squares: Vec<chess_core::SquareMark>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub arrows: Vec<chess_core::ArrowMark>,
 }
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -147,6 +153,9 @@ impl GameView {
                 children: n.children.clone(),
                 comments: n.comments.clone(),
                 nags: n.nags.clone(),
+                pre_comments: n.pre_comments.clone(),
+                squares: n.squares.clone(),
+                arrows: n.arrows.clone(),
             })
             .collect();
         let mut seen = vec![false; nodes.len()];

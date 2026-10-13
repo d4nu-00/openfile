@@ -626,6 +626,10 @@ kbd {
 .comment {
   color: var(--notation-comment);
   margin: 0 4px;
+  white-space: pre-line;
+}
+.game-comment {
+  margin: 0 0 6px;
 }
 .empty-state {
   color: var(--text-muted);

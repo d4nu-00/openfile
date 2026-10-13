@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { WorkbenchApi } from "../api/client";
-import type { Edit, PgnCollectionResponse, GameResponse } from "../api/types";
+import {
+  annotationsIncomplete,
+  type Edit,
+  type PgnCollectionResponse,
+  type GameResponse,
+} from "../api/types";
 import type { useWorkbench } from "./workbench";
 type Workbench = ReturnType<typeof useWorkbench>;
 export interface Question {
@@ -45,7 +50,7 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
     saveBusy.current = true;
     setBusy(true);
     try {
-      const incomplete = d.annotationsStatus === "notDecoded";
+      const incomplete = annotationsIncomplete(d.annotationsStatus);
       if (incomplete && (await ask("compatibility")) !== "export") return false;
       const path = await api.chooseSave();
       if (typeof path !== "string") return false;

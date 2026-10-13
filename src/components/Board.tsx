@@ -1,4 +1,15 @@
 import { pieceImages } from "../board/pieces";
+import type { ArrowMark, SquareMark } from "../api/types";
+
+/** Mark colour letters as used by PGN [%csl]/[%cal]. */
+const markColors: Record<string, string> = {
+  G: "green",
+  Y: "yellow",
+  R: "red",
+  B: "blue",
+  C: "cyan",
+  O: "orange",
+};
 const roles: Record<string, string> = {
   k: "king",
   q: "queen",
@@ -14,6 +25,7 @@ export function Board({
   onSquare,
   selectedSquare,
   compact,
+  marks,
 }: {
   fen: string;
   flipped: boolean;
@@ -21,7 +33,10 @@ export function Board({
   onSquare?: (square: string) => void;
   selectedSquare?: string;
   compact?: boolean;
+  marks?: { squares?: SquareMark[]; arrows?: ArrowMark[] };
 }) {
+  const marked: Record<string, string> = {};
+  for (const m of marks?.squares ?? []) marked[m.square] = markColors[m.color];
   const squares: Record<string, string> = {};
   fen
     .split(" ")[0]
@@ -61,6 +76,7 @@ export function Board({
                   aria-label={`${square} ${label}`}
                   aria-pressed={square === selectedSquare}
                   className={`square ${(files.indexOf(f) + ranks.indexOf(r)) % 2 ? "dark" : "light"} ${selectedSquare === square ? "selected" : ""}`}
+                  data-mark={marked[square]}
                   onClick={() => onSquare?.(square)}
                   data-legal={legalUci.some(
                     (m) =>
@@ -84,6 +100,42 @@ export function Board({
           })}
         </div>
       ))}
+      {!!marks?.arrows?.length && (
+        <svg
+          className="board-arrows"
+          viewBox="0 0 8 8"
+          aria-label="Board arrows"
+          role="img"
+        >
+          {marks.arrows.map((a, i) => {
+            const at = (s: string) => [
+              files.indexOf(s[0]) + 0.5,
+              ranks.indexOf(s[1]) + 0.5,
+            ];
+            const [x1, y1] = at(a.from),
+              [x2, y2] = at(a.to);
+            const length = Math.hypot(x2 - x1, y2 - y1) || 1;
+            // Stop the shaft short of the head.
+            const [ux, uy] = [(x2 - x1) / length, (y2 - y1) / length];
+            const color = markColors[a.color] ?? "green";
+            return (
+              <g key={i} className={`arrow ${color}`}>
+                <title>{`${a.from}–${a.to}`}</title>
+                <line
+                  x1={x1}
+                  y1={y1}
+                  x2={x2 - ux * 0.32}
+                  y2={y2 - uy * 0.32}
+                  strokeWidth={0.16}
+                />
+                <polygon
+                  points={`${x2},${y2} ${x2 - ux * 0.4 - uy * 0.22},${y2 - uy * 0.4 + ux * 0.22} ${x2 - ux * 0.4 + uy * 0.22},${y2 - uy * 0.4 - ux * 0.22}`}
+                />
+              </g>
+            );
+          })}
+        </svg>
+      )}
     </div>
   );
 }

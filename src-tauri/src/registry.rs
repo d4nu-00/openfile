@@ -136,8 +136,13 @@ impl Registry {
                     revision: 0,
                     dirty: false,
                     source_paths,
-                    incomplete_annotations: loaded.annotations_status
-                        == cbh_reader::DataStatus::NotDecoded,
+                    incomplete_annotations: matches!(
+                        loaded.annotations_status,
+                        cbh_reader::DataStatus::NotDecoded
+                            | cbh_reader::DataStatus::Partial
+                            | cbh_reader::DataStatus::Corrupt
+                            | cbh_reader::DataStatus::Unsupported
+                    ),
                 })),
             );
             (Some(id), Some(view))

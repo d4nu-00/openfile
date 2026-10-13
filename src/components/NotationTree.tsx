@@ -9,7 +9,9 @@ const nagSymbols: Record<number, string> = {
   5: "!?",
   6: "?!",
   7: "□",
+  8: "□",
   10: "=",
+  11: "=",
   13: "∞",
   14: "⩲",
   15: "⩱",
@@ -21,8 +23,12 @@ const nagSymbols: Record<number, string> = {
   32: "⟳",
   36: "→",
   40: "↑",
+  44: "=∞",
   132: "⇆",
   140: "∆",
+  142: "⌓",
+  143: "≤",
+  145: "RR",
   146: "N",
 };
 const nagText = (n: number) => nagSymbols[n] ?? `$${n}`;
@@ -67,9 +73,10 @@ export function notationTokens(nodes: GameNode[], startFen?: string): Token[] {
       ply.set(f.id, p + 1);
       const white = p % 2 === 0;
       const n = Math.floor(p / 2) + 1;
+      const before = (node.preComments?.length ?? 0) > 0;
       const number = white
         ? `${n}.`
-        : forceNext || f.force
+        : forceNext || f.force || before
           ? `${n}...`
           : undefined;
       out.push({ kind: "move", node, depth: f.depth, number });
@@ -158,6 +165,15 @@ export function NotationTree({
         <span>{nodes.length - 1} moves</span>
       </div>
       <div className="notation-text">
+        {start === 0 && (nodes[0]?.comments.length ?? 0) > 0 && (
+          <p className="game-comment">
+            {nodes[0].comments.map((c, ci) => (
+              <span key={ci} className="comment">
+                {c}
+              </span>
+            ))}
+          </p>
+        )}
         {blocks.map((b, bi) => (
           <p
             key={bi}
@@ -174,6 +190,11 @@ export function NotationTree({
                 </span>
               ) : (
                 <Fragment key={t.node.id}>
+                  {t.node.preComments?.map((c, ci) => (
+                    <span key={`pre${ci}`} className="comment before">
+                      {c}
+                    </span>
+                  ))}
                   {t.number && <span className="move-number">{t.number}</span>}
                   <button
                     ref={t.node.id === selection ? current : undefined}

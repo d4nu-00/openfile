@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { Database, LayoutGrid, Search, X } from "lucide-react";
 import { backend, type WorkbenchApi } from "./api/client";
+import { annotationsIncomplete } from "./api/types";
 import { useWorkbench, type WorkbenchState } from "./state/workbench";
 import { useEditing } from "./state/editing";
 import { useAnalysis } from "./state/analysis";
@@ -474,6 +475,7 @@ export function App({
                   hasGame={!!game}
                   navigate={navigate}
                   compact
+                  node={game?.nodes[selected]}
                 />
                 <div className="preview-notation">{notation}</div>
                 <Diagnostics items={w.diagnostics} />
@@ -509,6 +511,7 @@ export function App({
                       flipped={flipped}
                       hasGame={!!game}
                       navigate={navigate}
+                      node={game?.nodes[selected]}
                       selectedSquare={square}
                       onSquare={clickSquare}
                       promotion={promotion}
@@ -545,9 +548,11 @@ export function App({
                       />
                     )}
                     <Diagnostics items={w.diagnostics} />
-                    {state.document?.annotationsStatus === "notDecoded" && (
+                    {annotationsIncomplete(
+                      state.document?.annotationsStatus,
+                    ) && (
                       <p className="compatibility-note">
-                        Original database annotations are not decoded.
+                        Some original database annotations are not shown.
                       </p>
                     )}
                   </section>

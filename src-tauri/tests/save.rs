@@ -157,9 +157,14 @@ fn cbh(r: &Registry, d: &tempfile::TempDir) -> String {
     h[9] = 2;
     h[46] = 1;
     h[73] = 2;
+    // Annotations at CBA offset 1: one critical-position mark, which the
+    // reader does not represent, so the export needs an acknowledgement.
+    h[51..55].copy_from_slice(&1u32.to_be_bytes());
     fs::write(d.path().join("read-only.cbh"), h).unwrap();
     fs::write(d.path().join("read-only.cbg"), [0, 0, 0, 7, 0xff, 0, 0x0e]).unwrap();
-    fs::write(d.path().join("read-only.cba"), [0]).unwrap();
+    let mut cba = vec![0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21];
+    cba.extend([0, 0, 0, 0x18, 0, 7, 2]);
+    fs::write(d.path().join("read-only.cba"), cba).unwrap();
     let db = r
         .open_database(d.path().join("read-only.cbh"), "open".into())
         .unwrap();
