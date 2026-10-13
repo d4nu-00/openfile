@@ -146,7 +146,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Increase and decrease the number of lines (`INCREASENLINES`, `DECREASENLINES`) *(+ and −: MultiPV, restarting the analysis; see [engines](docs/engines.md))*
 - [x] P1 🟢 Paste engine move or variation into the notation (`PASTEENGINEMOVE`, `PASTEENGINEVARIATIONS`, Ctrl+Space) *(Shift+Space for the move; one undoable edit; the score and depth as a text comment because ChessBase's evaluation annotation is not decoded)*
 - [x] P1 🟢 Engine management: installed engine list, defaults, several kibitzers (`ENGINEMANAGEMENT`, `CLOSEALLKIBITZERS`, `TOGGLEDEFAULTKIBITZER`) *(up to 4 kibitzers; installed engines, default and kept options in the app's settings; Default Kibitzer Alt+F2)*
-- [ ] P1 🟢 Endgame tablebases (Syzygy) for analysis and the notation
+- [ ] P1 🟢 Endgame tablebases (Syzygy) for analysis and the notation *(partial: a Tablebase tab shows the position's result and DTZ and every move's, from a Syzygy folder chosen in Options, via the GPL `shakmaty-syzygy`; the notation is not annotated from the tables yet; see [engines](docs/engines.md))*
 - [ ] P1 🟢 Tactical analysis or blunder check that annotates a game (`TACTICAL_ANALYSIS`, `BlunderCheck`)
 - [ ] P2 🟢 Deep analysis: tree-building position analysis (`DEEP_ANALYSIS`)
 - [ ] P2 🟢 Centipawn and achievement analysis (`CENTIPAWN`, `ACHIEVEMENT_ANALYSIS`)

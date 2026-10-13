@@ -78,3 +78,23 @@ names it from its UCI handshake (`id name`); the first engine becomes the
 default. Options changed in a kibitzer of an installed engine are kept and
 applied the next time it starts. At most 32 engines are kept; paths must be
 absolute.
+
+## Syzygy tablebases
+
+ChessBase has "Use Tablebases" (message 737) and a "Tablebases" page (2554);
+its own access goes through `TBAccess.dll`, which was not studied.
+
+* The user chooses a folder of Syzygy files (`.rtbw`, `.rtbz`) in Options.
+  The folder is kept in the settings file and opened in the background at
+  start; a missing folder shows as no tables. At most 4,096 table files are
+  read from it. No tablebase file is part of the workbench.
+* Probing uses `shakmaty-syzygy` 0.28 (GPL-3.0-or-later, by the author of
+  `shakmaty`, which the workbench already uses).
+* The **Tablebase** tab beside Book and Reference shows, for the board:
+  the result for the side to move (with the 50-move rule: "cursed" wins and
+  "blessed" losses are drawn by it), the distance to the next capture or
+  pawn move (DTZ, in plies), and every legal move with its result and DTZ,
+  best first: wins fastest first, mates first, losses slowest first.
+  Clicking a move plays it, or selects it when the game has it.
+* Positions with castling rights, or with more pieces than the largest
+  table, are reported as such.

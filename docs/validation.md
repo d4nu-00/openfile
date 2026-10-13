@@ -425,6 +425,23 @@ installed in a temporary settings file with `MultiPV` 3: the snapshot shows
 the pane analysing node 30 with its lines. The settings file was deleted
 afterwards.
 
+## Tablebases (2026-10-13)
+
+`src-tauri/tests/tablebases.rs` probes real Syzygy files when `SYZYGY_DIR`
+names a folder of them; none are in the repository. Run against a local
+folder of 3- to 5-piece tables (96 files) outside the repository:
+* K+Q v K with White to move is a win with a positive DTZ; winning moves
+  come first, ordered by DTZ, and Qe4+, which loses the queen, is a draw
+  and comes last;
+* K+P v K with the black king in front of the pawn is a draw;
+* the start position has too many pieces.
+
+Without `SYZYGY_DIR` the test of real tables reports that it was skipped;
+the no-tables, missing-folder and invalid-position cases always run.
+Frontend tests cover the Tablebase tab's result and moves, playing a move
+from it, and the folder chosen in Options. The real app was not shown a
+tablebase position: its debug startup cannot set up a position.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private
