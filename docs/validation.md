@@ -472,6 +472,16 @@ now read as UTF-8 when valid, otherwise as Windows-1252 with 0xA2–0xA6 shown
 as ♔ ♕ ♘ ♗ ♖; they no longer show "�". The meaning of 0xAA (once, in an
 opening line) is not known; it shows as "ª".
 
+## Crosstables through a sort order (2026-10-14)
+
+`cbh-reader/examples/crosstable.rs` timed crosstables of the classic Mega
+both ways (release, warm): the tournament of entry 27878 (18 players) took
+3.45–3.55 s by scanning the entry index and 4–9 ms through a sort order by
+Tournament; that of entry 5,000,000 (174 players) 3.46 s and 46 ms. The
+tables were equal. Building the order took 0.69 s; it was written to a
+scratch folder and deleted. A reader test compares both ways for every
+tournament of its database.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private
