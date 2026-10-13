@@ -10,13 +10,15 @@ pub fn decode_setup(bytes: &[u8]) -> Result<(String, PieceState), CbhError> {
     if bytes.len() != 28 {
         return Err(CbhError::Truncated);
     }
-    if bytes[0] != 0 || bytes[1] & 0xe0 != 0 || bytes[2] & 0xf0 != 0 {
+    // Byte 0 is 1 in every Mega Database 2025 setup and is skipped by both
+    // cbh2pgn and libcbh; only the two observed values are accepted.
+    if bytes[0] > 1 || bytes[1] & 0xe0 != 0 || bytes[2] & 0xf0 != 0 {
         return Err(CbhError::UnsupportedSetup(
             "Unknown setup control bits".into(),
         ));
     }
     let ep_file = bytes[1] & 15;
-    if ep_file > 8 || bytes[3] == 0 {
+    if ep_file > 8 {
         return Err(CbhError::Decode("Invalid setup controls".into()));
     }
     let black = bytes[1] & 0x10 != 0;
@@ -52,6 +54,30 @@ pub fn decode_setup(bytes: &[u8]) -> Result<(String, PieceState), CbhError> {
             }
         }
     }
+    // An en-passant file that is impossible on this board (no pawn that could
+    // just have double-pushed) carries no information; ChessBase's own 2CBG
+    // conversion drops it (Mega Database 2025 entry 13409), and so does this
+    // reader.
+    let game = match Game::from_fen(&fen(&board, black, bytes[2], ep_file, bytes[3].into())) {
+        Err(_) if ep_file != 0 => {
+            Game::from_fen(&fen(&board, black, bytes[2], 0, bytes[3].into()))?
+        }
+        other => other?,
+    };
+    let pieces = PieceState::from_position(&game.chess_position(0)?);
+    Ok((game.start_fen, pieces))
+}
+
+/// FEN for a decoded setup. `board` is indexed `rank * 8 + file`; castling uses
+/// bits 1/Q, 2/K, 4/q, 8/k; `ep_file` is 0 or 1..=8. Move number 0, which
+/// ChessBase stores for some setups, is written as 1.
+pub(crate) fn fen(
+    board: &[char; 64],
+    black: bool,
+    castling: u8,
+    ep_file: u8,
+    number: u16,
+) -> String {
     let mut fen = String::new();
     for rank in (0..8).rev() {
         if rank != 7 {
@@ -76,7 +102,7 @@ pub fn decode_setup(bytes: &[u8]) -> Result<(String, PieceState), CbhError> {
     }
     let mut rights = String::new();
     for (mask, ch) in [(2, 'K'), (1, 'Q'), (8, 'k'), (4, 'q')] {
-        if bytes[2] & mask != 0 {
+        if castling & mask != 0 {
             rights.push(ch);
         }
     }
@@ -92,12 +118,9 @@ pub fn decode_setup(bytes: &[u8]) -> Result<(String, PieceState), CbhError> {
             if black { 3 } else { 6 }
         )
     };
-    fen.push_str(&format!(
-        " {} {rights} {ep} 0 {}",
+    format!(
+        "{fen} {} {rights} {ep} 0 {}",
         if black { "b" } else { "w" },
-        bytes[3]
-    ));
-    let game = Game::from_fen(&fen)?;
-    let pieces = PieceState::from_position(&game.chess_position(0)?);
-    Ok((game.start_fen, pieces))
+        number.max(1)
+    )
 }

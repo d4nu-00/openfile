@@ -26,6 +26,7 @@ pub struct EntrySummary {
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DatabaseInfo {
+    pub format: DatabaseFormat,
     pub entry_count: u64,
     pub companions: Vec<CompanionInfo>,
     pub diagnostics: Vec<Diagnostic>,
@@ -50,27 +51,101 @@ pub struct LoadedEntry {
     pub annotations_status: DataStatus,
     pub diagnostics: Vec<Diagnostic>,
 }
-pub struct ClassicDatabase {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DatabaseFormat {
+    /// Classic CBH family: 46-byte records, byte-coded CBG moves.
+    Classic,
+    /// Newer 2CBH family: 192-byte records, framed 2CBG/2CBA blocks.
+    New,
+}
+enum Names {
+    Classic(crate::entities::EntityTables),
+    New(crate::v2::names::NameIndex),
+}
+impl Names {
+    fn player(&mut self, id: u32) -> Result<crate::entities::EntityText, CbhError> {
+        match self {
+            Self::Classic(t) => t.player(id),
+            Self::New(t) => t.player(id),
+        }
+    }
+    fn tournament(&mut self, id: u32) -> Result<crate::entities::TournamentText, CbhError> {
+        match self {
+            Self::Classic(t) => t.tournament(id),
+            Self::New(t) => t.tournament(id),
+        }
+    }
+    fn verify_unchanged(&self) -> Result<(), CbhError> {
+        match self {
+            Self::Classic(t) => t.verify_unchanged(),
+            Self::New(t) => t.verify_unchanged(),
+        }
+    }
+    fn bytes_read(&self) -> u64 {
+        match self {
+            Self::Classic(t) => t.bytes_read(),
+            Self::New(t) => t.bytes_read(),
+        }
+    }
+}
+/// A read-only CBH-family database in either supported format.
+pub struct Database {
+    format: DatabaseFormat,
     header: crate::source::SourceFile,
     moves: Option<crate::source::SourceFile>,
     annotations: Option<crate::source::SourceFile>,
-    entities: crate::entities::EntityTables,
+    entities: Names,
     info: DatabaseInfo,
     limits: ReadLimits,
     source_paths: Vec<std::path::PathBuf>,
 }
-impl ClassicDatabase {
+/// Former name, kept for callers that only open classic files.
+pub type ClassicDatabase = Database;
+const CLASSIC_COMPANIONS: &[&str] = &[
+    "cbh", "cbg", "cbp", "cbt", "cba", "cbc", "cbe", "cbs", "cbl",
+];
+const NEW_COMPANIONS: &[&str] = &["2cbh", "2cbg", "2cba", "2lid", "2lcd", "2lgd"];
+impl Database {
     pub fn open(path: &Path, limits: ReadLimits) -> Result<Self, CbhError> {
-        use crate::{
-            companions::CompanionSet, entities::EntityTables, header::ClassicHeader,
-            source::SourceFile,
-        };
+        use crate::{companions::CompanionSet, source::SourceFile};
         let files = CompanionSet::discover(path)?;
-        let header = SourceFile::open(files.get("cbh").ok_or(CbhError::InvalidHeader)?)?;
-        let parsed = ClassicHeader::parse(&header.read_exact_range(0, 46)?, header.len())?;
-        let mut diagnostics = parsed.diagnostics;
-        let (entities, notes) = EntityTables::open_partial(&files, limits.entity_cache_bytes);
-        diagnostics.extend(notes);
+        let format = files.format;
+        let (head, moves_ext, notes_ext, record) = match format {
+            DatabaseFormat::Classic => ("cbh", "cbg", "cba", 46),
+            DatabaseFormat::New => ("2cbh", "2cbg", "2cba", crate::v2::record::RECORD),
+        };
+        let header = SourceFile::open(files.get(head).ok_or(CbhError::InvalidHeader)?)?;
+        let (entry_count, mut diagnostics) = match format {
+            DatabaseFormat::Classic => {
+                let parsed = crate::header::ClassicHeader::parse(
+                    &header.read_exact_range(0, record)?,
+                    header.len(),
+                )?;
+                (parsed.entry_count, parsed.diagnostics)
+            }
+            DatabaseFormat::New => {
+                let parsed = crate::v2::record::NewHeader::parse(
+                    &header.read_exact_range(0, record)?,
+                    header.len(),
+                )?;
+                (parsed.entry_count, parsed.diagnostics)
+            }
+        };
+        let entities = match format {
+            DatabaseFormat::Classic => {
+                let (tables, notes) =
+                    crate::entities::EntityTables::open_partial(&files, limits.entity_cache_bytes);
+                diagnostics.extend(notes);
+                Names::Classic(tables)
+            }
+            DatabaseFormat::New => {
+                let (index, notes) =
+                    crate::v2::names::NameIndex::open_partial(&files, limits.entity_cache_bytes);
+                diagnostics.extend(notes);
+                Names::New(index)
+            }
+        };
         let mut open = |extension| {
             files
                 .get(extension)
@@ -85,31 +160,35 @@ impl ClassicDatabase {
                     }
                 })
         };
-        let moves = open("cbg");
-        let annotations = open("cba");
-        let companions = [
-            "cbh", "cbg", "cbp", "cbt", "cba", "cbc", "cbe", "cbs", "cbl",
-        ]
-        .into_iter()
-        .map(|extension| CompanionInfo {
-            extension: extension.into(),
-            status: if files.get(extension).is_none() {
-                DataStatus::Missing
-            } else if ["cba", "cbc", "cbe", "cbs", "cbl"].contains(&extension) {
-                DataStatus::NotDecoded
-            } else {
-                DataStatus::Available
-            },
-        })
-        .collect();
+        let moves = open(moves_ext);
+        let annotations = open(notes_ext);
+        let (listed, decoded): (&[&str], &[&str]) = match format {
+            DatabaseFormat::Classic => (CLASSIC_COMPANIONS, &["cbh", "cbg", "cbp", "cbt"]),
+            DatabaseFormat::New => (NEW_COMPANIONS, crate::v2::names::DECODED_COMPANIONS),
+        };
+        let companions = listed
+            .iter()
+            .map(|&extension| CompanionInfo {
+                extension: extension.into(),
+                status: if files.get(extension).is_none() {
+                    DataStatus::Missing
+                } else if decoded.contains(&extension) {
+                    DataStatus::Available
+                } else {
+                    DataStatus::NotDecoded
+                },
+            })
+            .collect();
         Ok(Self {
+            format,
             source_paths: files.paths.values().cloned().collect(),
             header,
             moves,
             annotations,
             entities,
             info: DatabaseInfo {
-                entry_count: parsed.entry_count,
+                format,
+                entry_count,
                 companions,
                 diagnostics,
             },
@@ -137,12 +216,18 @@ impl ClassicDatabase {
         if ordinal == 0 || ordinal > self.info.entry_count {
             return Err(CbhError::Bounds);
         }
-        crate::header::parse_record(
-            &self
-                .header
-                .read_exact_range(ordinal.checked_mul(46).ok_or(CbhError::Bounds)?, 46)?,
-            ordinal,
-        )
+        let size = match self.format {
+            DatabaseFormat::Classic => 46,
+            DatabaseFormat::New => crate::v2::record::RECORD,
+        };
+        let bytes = self.header.read_exact_range(
+            ordinal.checked_mul(size as u64).ok_or(CbhError::Bounds)?,
+            size,
+        )?;
+        match self.format {
+            DatabaseFormat::Classic => crate::header::parse_record(&bytes, ordinal),
+            DatabaseFormat::New => crate::v2::record::parse_record(&bytes, ordinal),
+        }
     }
     fn summary(&mut self, r: crate::header::RawEntry) -> Result<EntrySummary, CbhError> {
         let mut diagnostics = r.diagnostics;
@@ -180,12 +265,16 @@ impl ClassicDatabase {
         } else {
             (None, None)
         };
-        if r.eco_raw.is_some_and(|v| v != 0) {
-            diagnostics.push(Diagnostic::new(
-                "unverifiedEco",
-                "Packed ECO code is not yet interpreted",
-            ));
-        }
+        let eco = r.eco_raw.and_then(|raw| {
+            let eco = crate::header::eco(raw);
+            if raw >> 7 != 0 && eco.is_none() {
+                diagnostics.push(Diagnostic::new(
+                    "invalidEco",
+                    format!("Packed ECO value {raw:#06x} is out of range"),
+                ));
+            }
+            eco
+        });
         Ok(EntrySummary {
             ordinal: r.ordinal,
             kind: r.kind,
@@ -199,7 +288,7 @@ impl ClassicDatabase {
             round: r.round,
             white_elo: r.white_elo,
             black_elo: r.black_elo,
-            eco: None,
+            eco,
             white_id: r.white_id,
             black_id: r.black_id,
             tournament_id: r.tournament_id,
@@ -267,21 +356,40 @@ impl ClassicDatabase {
         let Some(file) = &self.moves else {
             loaded.diagnostics.push(Diagnostic::new(
                 "missingMoves",
-                "CBG companion is unavailable",
+                "Move companion (CBG/2CBG) is unavailable",
             ));
             return Ok(loaded);
         };
         let offset = offset.ok_or(CbhError::Bounds)?;
-        let decode = || -> Result<chess_core::Game, CbhError> {
-            let head = file.read_exact_range(offset, 4)?;
-            let length = crate::header::be24(&head[1..]) as usize;
-            if length > self.limits.max_game_bytes {
-                return Err(CbhError::LimitExceeded);
+        let format = self.format;
+        let decode = || -> Result<(chess_core::Game, Vec<Diagnostic>), CbhError> {
+            match format {
+                DatabaseFormat::Classic => {
+                    let head = file.read_exact_range(offset, 4)?;
+                    let length = crate::header::be24(&head[1..]) as usize;
+                    if length > self.limits.max_game_bytes {
+                        return Err(CbhError::LimitExceeded);
+                    }
+                    let record = file.read_exact_range(offset, length)?;
+                    Ok((crate::moves::decode_classic(&record, &self.limits)?, vec![]))
+                }
+                DatabaseFormat::New => {
+                    let block =
+                        crate::v2::block::read_block(file, offset, self.limits.max_game_bytes)?;
+                    if block.kind != crate::v2::block::TYPE_GAME {
+                        return Err(CbhError::Unsupported(format!(
+                            "2CBG block type {:#06x}",
+                            block.kind
+                        )));
+                    }
+                    let decoded = crate::v2::moves::decode_moves(&block.payload, &self.limits)?;
+                    Ok((decoded.game, decoded.diagnostics))
+                }
             }
-            crate::moves::decode_classic(&file.read_exact_range(offset, length)?, &self.limits)
         };
         match decode() {
-            Ok(mut game) => {
+            Ok((mut game, notes)) => {
+                loaded.diagnostics.extend(notes);
                 for (key, value) in [
                     ("White", &loaded.summary.white),
                     ("Black", &loaded.summary.black),
@@ -320,7 +428,13 @@ impl ClassicDatabase {
                     DataStatus::Corrupt
                 };
                 let mut diagnostic = Diagnostic::new(error.code(), error.to_string());
-                diagnostic.file = Some("cbg".into());
+                diagnostic.file = Some(
+                    match self.format {
+                        DatabaseFormat::Classic => "cbg",
+                        DatabaseFormat::New => "2cbg",
+                    }
+                    .into(),
+                );
                 diagnostic.offset = Some(offset);
                 loaded.diagnostics.push(diagnostic);
             }

@@ -1,16 +1,22 @@
 # Database compatibility
 
-The reader supports classic 46-byte CBH headers and game entries, optional CBP
-player and CBT tournament names, and standard classical CBG move streams.
-The source database is opened read-only. Text entries are not games.
+The reader supports two families, both opened read-only. Text entries are not
+games in either family.
+
+* **Classic:** 46-byte CBH headers and game entries, optional CBP player and
+  CBT tournament names, and standard classical CBG move streams.
+* **Newer 2CBH:** 192-byte records, framed 2CBG move trees (standard and set-up
+  starts) and 2LID player and tournament names. See [formats](formats.md).
 
 CBG records with no flags or only `0x40000000` (28-byte setup) are supported.
 Unencoded (`0x80000000`), special (`0x04000000`), Chess960 (`0x0a000000`), and
 all other flag combinations return an unsupported status without a partial game.
-Setup control byte 0, byte 1's upper three bits and byte 2's upper four bits
-must be zero; other values return `unsupportedSetup`. The turn bit is `0x10`,
+Setup control byte 0 must be 0 or 1. Every Mega Database 2025 setup stores 1,
+and cbh2pgn and libcbh both skip the byte. Byte 1's upper three bits and byte
+2's upper four bits must be zero; other values return `unsupportedSetup`. The turn bit is `0x10`,
 en-passant file is the low four bits (0 absent, 1–8 a–h), and castling rights
-use low bits 1/Q, 2/K, 4/q, 8/k. Move number must be 1–255. The occupancy stream
+use low bits 1/Q, 2/K, 4/q, 8/k. Move number 0 is read as 1. An en-passant file that is impossible on the board
+is dropped, matching ChessBase's own 2CBG copy of the same game. The occupancy stream
 is file-major and MSB-first, with standard chess position validation.
 
 En-passant controls were corroborated against
@@ -21,10 +27,22 @@ Ordered variations, null moves outside check, filler bytes and modulo-256 move
 counters are supported. A terminal root marker is required, with all branch
 frames closed. Byte, node and variation-depth limits apply to every import.
 
-Original CBA annotations are not decoded. Comments and NAGs created in the
-workbench or imported from PGN use the independent editable game tree.
-The newer 2CBH/2CBG format, multimedia and proprietary cloud services are not
-supported by this initial reader.
+Original CBA and 2CBA annotations are not decoded yet. Comments and NAGs
+created in the workbench or imported from PGN use the independent editable game
+tree. Multimedia and proprietary cloud services are not supported.
+
+In the newer family, the following are refused or not read:
+* 2CBG text blocks and extended (for example Chess960) move tokens;
+* set-up controls other than those observed;
+* blocks whose marker, trailer or checksum fails. These are reported corrupt,
+  never partially loaded.
+
+Annotator, source, team and title names are not read in either family.
+Result codes other than 0–2 are reported as uninterpreted.
+
+**Packed ECO** is decoded in both families. Bits 7–15 hold 1–500 for A00–E99,
+and the ChessBase sub-classification in the low seven bits is not shown. The
+formula was verified against the opening moves of 24,162 games.
 
 Local validation on 2026-10-11 compared 238 unique selected entries against the
 pinned MIT cbh2pgn reference: 235 supported games matched ordered UCI trees,
@@ -37,8 +55,7 @@ comparison was 119,946. Peak child RSS was 7.1 MiB. The final rerun matched the
 same 235 games with zero failures, with 5.62 ms page and 349.00 ms load maxima
 (including filesystem/cache variability). These samples establish
 bounded compatibility evidence, not full database or annotation coverage.
-Packed ECO codes remain unknown with a diagnostic until their formula is
-verified. Cloud-backed files may take substantially longer on first access.
+Cloud-backed files may take substantially longer on first access.
 
 CBH is read-only. Saving writes independent PGN and requires an explicit
 acknowledgement when original annotations are omitted. PGN supports legal

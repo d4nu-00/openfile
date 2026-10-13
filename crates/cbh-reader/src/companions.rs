@@ -7,6 +7,7 @@ pub const EXTENSIONS: &[&str] = &[
     "cbh", "cbg", "cbp", "cbt", "cba", "cbc", "cbe", "cbs", "cbl",
 ];
 pub struct CompanionSet {
+    pub format: crate::DatabaseFormat,
     pub paths: HashMap<String, PathBuf>,
 }
 impl CompanionSet {
@@ -15,12 +16,16 @@ impl CompanionSet {
             .file_stem()
             .ok_or(CbhError::InvalidHeader)?
             .as_encoded_bytes();
-        if !path
-            .extension()
-            .is_some_and(|s| s.as_encoded_bytes().eq_ignore_ascii_case(b"cbh"))
-        {
-            return Err(CbhError::Unsupported("Choose a classic .cbh file".into()));
-        }
+        let extension = path.extension().map(|s| s.as_encoded_bytes());
+        let (format, head) = match extension {
+            Some(e) if e.eq_ignore_ascii_case(b"cbh") => (crate::DatabaseFormat::Classic, "cbh"),
+            Some(e) if e.eq_ignore_ascii_case(b"2cbh") => (crate::DatabaseFormat::New, "2cbh"),
+            _ => {
+                return Err(CbhError::Unsupported(
+                    "Choose a .cbh or .2cbh database file".into(),
+                ));
+            }
+        };
         let mut paths = HashMap::new();
         for entry in std::fs::read_dir(
             path.parent()
@@ -47,7 +52,17 @@ impl CompanionSet {
                 || ext.starts_with("2cb")
                 || matches!(
                     ext.as_str(),
-                    "cib" | "cit" | "cib2" | "cit2" | "cko" | "2lgd" | "2lhd" | "2lbd" | "flags"
+                    "cib"
+                        | "cit"
+                        | "cib2"
+                        | "cit2"
+                        | "cko"
+                        | "2lgd"
+                        | "2lhd"
+                        | "2lbd"
+                        | "2lid"
+                        | "2lcd"
+                        | "flags"
                 ))
                 || !p.is_file()
             {
@@ -57,10 +72,10 @@ impl CompanionSet {
                 return Err(CbhError::AmbiguousCompanion);
             }
         }
-        if !paths.contains_key("cbh") {
+        if !paths.contains_key(head) {
             return Err(CbhError::InvalidHeader);
         }
-        Ok(Self { paths })
+        Ok(Self { format, paths })
     }
     pub fn get(&self, extension: &str) -> Option<&Path> {
         self.paths

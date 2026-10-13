@@ -78,7 +78,7 @@ fn invalid_and_truncated_setups_fail() {
     );
     assert!(decode_classic(&[0x40, 0, 0, 5, 0x0c], &ReadLimits::default()).is_err());
     let mut r = setup(0, 0, 1, &[(32, 1), (39, 9)], &[]);
-    r[4] = 1;
+    r[4] = 2;
     assert_eq!(
         decode_classic(&r, &ReadLimits::default())
             .unwrap_err()
@@ -164,4 +164,19 @@ fn unsupported_flags_are_not_empty_games() {
             "unsupportedEncoding"
         );
     }
+}
+#[test]
+fn setup_byte_zero_one_and_impossible_en_passant_are_accepted() {
+    // Byte 0 is 1 in every Mega Database 2025 setup.
+    let mut r = setup(0, 0, 1, &[(32, 1), (39, 9)], &[]);
+    r[4] = 1;
+    let g = decode_classic(&r, &ReadLimits::default()).unwrap();
+    assert_eq!(g.start_fen, "4k3/8/8/8/8/8/8/4K3 w - - 0 1");
+    // En-passant file c with no black pawn on c5 is dropped; move 0 reads as 1.
+    let g = decode_classic(
+        &setup(3, 0, 0, &[(32, 1), (39, 9)], &[]),
+        &ReadLimits::default(),
+    )
+    .unwrap();
+    assert_eq!(g.start_fen, "4k3/8/8/8/8/8/8/4K3 w - - 0 1");
 }

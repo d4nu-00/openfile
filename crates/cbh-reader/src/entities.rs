@@ -78,7 +78,7 @@ fn field(bytes: &[u8]) -> EntityText {
         diagnostics,
     }
 }
-fn missing() -> EntityText {
+pub(crate) fn missing() -> EntityText {
     EntityText {
         text: None,
         diagnostics: vec![Diagnostic::new(
@@ -88,7 +88,7 @@ fn missing() -> EntityText {
     }
 }
 #[derive(Clone)]
-enum Cached {
+pub(crate) enum Cached {
     Player(EntityText),
     Tournament(TournamentText),
 }
@@ -109,13 +109,50 @@ impl Cached {
         }
     }
 }
-pub struct EntityTables {
-    players: Option<Table>,
-    tournaments: Option<Table>,
+/// Byte-budgeted LRU cache of resolved names, keyed by (kind, id).
+pub(crate) struct NameCache {
     budget: usize,
     used: usize,
     cache: HashMap<(u8, u32), Cached>,
     order: VecDeque<(u8, u32)>,
+}
+impl NameCache {
+    pub(crate) fn new(budget: usize) -> Self {
+        Self {
+            budget,
+            used: 0,
+            cache: HashMap::new(),
+            order: VecDeque::new(),
+        }
+    }
+    pub(crate) fn get(&mut self, key: (u8, u32)) -> Option<Cached> {
+        let value = self.cache.get(&key)?.clone();
+        self.order.retain(|&k| k != key);
+        self.order.push_back(key);
+        Some(value)
+    }
+    pub(crate) fn put(&mut self, key: (u8, u32), value: Cached) {
+        let cost = value.cost();
+        if cost > self.budget {
+            return;
+        }
+        while self.used + cost > self.budget {
+            let Some(old) = self.order.pop_front() else {
+                break;
+            };
+            if let Some(v) = self.cache.remove(&old) {
+                self.used -= v.cost();
+            }
+        }
+        self.used += cost;
+        self.cache.insert(key, value);
+        self.order.push_back(key);
+    }
+}
+pub struct EntityTables {
+    players: Option<Table>,
+    tournaments: Option<Table>,
+    cache: NameCache,
 }
 impl EntityTables {
     pub fn open_partial(companions: &CompanionSet, budget: usize) -> (Self, Vec<Diagnostic>) {
@@ -140,10 +177,7 @@ impl EntityTables {
             Self {
                 players,
                 tournaments,
-                budget,
-                used: 0,
-                cache: HashMap::new(),
-                order: VecDeque::new(),
+                cache: NameCache::new(budget),
             },
             diagnostics,
         )
@@ -166,37 +200,11 @@ impl EntityTables {
         Ok(Self {
             players,
             tournaments,
-            budget,
-            used: 0,
-            cache: HashMap::new(),
-            order: VecDeque::new(),
+            cache: NameCache::new(budget),
         })
     }
-    fn get(&mut self, key: (u8, u32)) -> Option<Cached> {
-        let value = self.cache.get(&key)?.clone();
-        self.order.retain(|&k| k != key);
-        self.order.push_back(key);
-        Some(value)
-    }
-    fn put(&mut self, key: (u8, u32), value: Cached) {
-        let cost = value.cost();
-        if cost > self.budget {
-            return;
-        }
-        while self.used + cost > self.budget {
-            let Some(old) = self.order.pop_front() else {
-                break;
-            };
-            if let Some(v) = self.cache.remove(&old) {
-                self.used -= v.cost();
-            }
-        }
-        self.used += cost;
-        self.cache.insert(key, value);
-        self.order.push_back(key);
-    }
     pub fn player(&mut self, id: u32) -> Result<EntityText, CbhError> {
-        if let Some(Cached::Player(v)) = self.get((0, id)) {
+        if let Some(Cached::Player(v)) = self.cache.get((0, id)) {
             return Ok(v);
         }
         let Some(table) = &self.players else {
@@ -213,11 +221,11 @@ impl EntityTables {
             (None, b) => b,
         };
         let v = EntityText { text, diagnostics };
-        self.put((0, id), Cached::Player(v.clone()));
+        self.cache.put((0, id), Cached::Player(v.clone()));
         Ok(v)
     }
     pub fn tournament(&mut self, id: u32) -> Result<TournamentText, CbhError> {
-        if let Some(Cached::Tournament(v)) = self.get((1, id)) {
+        if let Some(Cached::Tournament(v)) = self.cache.get((1, id)) {
             return Ok(v);
         }
         let Some(table) = &self.tournaments else {
@@ -231,11 +239,11 @@ impl EntityTables {
             event: field(&row[9..49]),
             site: field(&row[49..79]),
         };
-        self.put((1, id), Cached::Tournament(v.clone()));
+        self.cache.put((1, id), Cached::Tournament(v.clone()));
         Ok(v)
     }
     pub fn cached_bytes(&self) -> usize {
-        self.used
+        self.cache.used
     }
     pub fn bytes_read(&self) -> u64 {
         self.players.as_ref().map_or(0, |t| t.file.bytes_read())

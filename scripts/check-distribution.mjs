@@ -27,6 +27,7 @@ const documents = new Set([
   "compatibility.md",
   "validation.md",
   "ui-shell.md",
+  "formats.md",
 ]);
 export function allowedSourcePath(candidate) {
   if (

@@ -6,6 +6,7 @@ pub mod header;
 pub mod limits;
 pub mod moves;
 pub mod source;
+pub mod v2;
 pub use database::*;
 pub use error::CbhError;
 pub use limits::ReadLimits;

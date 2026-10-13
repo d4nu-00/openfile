@@ -1,4 +1,4 @@
-use cbh_reader::{ClassicDatabase, ReadLimits};
+use cbh_reader::{Database, ReadLimits};
 use std::{collections::HashMap, io::Write, path::PathBuf, time::Instant};
 fn main() {
     if let Err(error) = run() {
@@ -31,7 +31,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         return Err("--pgn-out requires --entry".into());
     }
     let started = Instant::now();
-    let mut db = ClassicDatabase::open(&path, ReadLimits::default())?;
+    let mut db = Database::open(&path, ReadLimits::default())?;
     let open_ms = started.elapsed().as_secs_f64() * 1000.;
     let start = options
         .get("--page-start")
@@ -86,6 +86,8 @@ fn write_new(path: &str, value: &str) -> Result<(), Box<dyn std::error::Error>> 
         "cbh", "cbg", "cba", "cbp", "cbt", "cbc", "cbe", "cbs", "cbl",
     ]
     .contains(&extension.as_str())
+        || extension.starts_with("2c")
+        || extension.starts_with("2l")
     {
         return Err("Refusing a database companion output path".into());
     }

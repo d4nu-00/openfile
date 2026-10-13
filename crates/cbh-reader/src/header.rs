@@ -63,7 +63,7 @@ impl ClassicHeader {
         })
     }
 }
-fn date(value: u32) -> Option<String> {
+pub(crate) fn date(value: u32) -> Option<String> {
     if value == 0 {
         return None;
     }
@@ -106,6 +106,28 @@ fn date(value: u32) -> Option<String> {
             format!("{d:02}")
         }
     ))
+}
+/// Packed ECO: bits 7-15 hold 1..=500 for A00..E99; 0 means none. The low
+/// seven bits are a ChessBase sub-classification and are not shown.
+pub(crate) fn eco(raw: u16) -> Option<String> {
+    let code = raw >> 7;
+    if code == 0 || code > 500 {
+        return None;
+    }
+    let code = code - 1;
+    Some(format!(
+        "{}{:02}",
+        (b'A' + (code / 100) as u8) as char,
+        code % 100
+    ))
+}
+pub(crate) fn result(code: u8) -> Option<String> {
+    match code {
+        0 => Some("0-1".into()),
+        1 => Some("1/2-1/2".into()),
+        2 => Some("1-0".into()),
+        _ => None,
+    }
 }
 pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
     if bytes.len() != 46 {
@@ -157,12 +179,7 @@ pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
             "Date has an invalid calendar value",
         ));
     }
-    r.result = match bytes[27] {
-        0 => Some("0-1".into()),
-        1 => Some("1/2-1/2".into()),
-        2 => Some("1-0".into()),
-        _ => None,
-    };
+    r.result = result(bytes[27]);
     if r.result.is_none() {
         r.diagnostics.push(Diagnostic::new(
             "unknownResult",

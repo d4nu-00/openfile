@@ -71,6 +71,39 @@ and cache state affect elapsed time. The reader uses bounded per-game reads and
 an 8 MiB entity cache; no whole multi-gigabyte database is loaded into memory.
 Private reports and game exports remain outside the source repository.
 
+## Newer-format cross-check (2026-10-13)
+
+The private Mega Database 2025 copy contains a classic family (11,151,119
+entries) and a 2CBH family (24,783 entries) under the same name. Ordinal *n* in
+the 2CBH family corresponds to classic ordinal *n*, with reassigned name ids.
+
+The release-built `compare_formats` example (`crates/cbh-reader/examples`)
+opened both families through the same `Database` API. It compared all 24,783
+2CBH entries with the classic entries at the same ordinals:
+
+* All 24 text entries agreed on kind, with no games decoded for them.
+* All 24,759 games matched on these fields:
+  * kind, date, result, round and ratings;
+  * white, black and site names (2LID against CBP/CBT);
+  * packed ECO;
+  * the complete ordered move tree, including all 597 set-up games and
+    1,807,103 move nodes.
+* Events matched in 24,758 games. The one difference is in the data itself:
+  "Donhead Consultation" in the classic file against "Donhead consultation" in
+  2LID.
+* No 2CBG block failed its marker, trailer or checksum. There were no
+  unsupported tokens and no unexplained diagnostics. 63 games carry result
+  codes 3–7, which both families report as uninterpreted.
+
+Two classic-decoder corrections came out of this comparison: setup byte 0 = 1,
+and an impossible en-passant file in entry 13409. Both are described in
+[compatibility](compatibility.md). The whole 2CBH comparison took under 10 s
+with a 1.4 ms maximum game load and about 10 MB read from the newer family.
+
+This establishes agreement between two ChessBase encodings of the same games.
+It does not cover 2CBH files written by other ChessBase versions, extended
+move tokens or 2CBA annotations.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private
@@ -88,4 +121,4 @@ Windows/Linux runners. Local Linux/Windows execution, signing/notarization,
 packaged installers and native workflows on those OSs remain outstanding.
 
 See [compatibility](compatibility.md) for unsupported CBA annotations, packed
-ECO, newer formats, special encodings and standard-chess-only restrictions.
+ECO, newer-format limits, special encodings and standard-chess-only restrictions.
