@@ -1,7 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { invoke, isTauri, Channel } from "@tauri-apps/api/core";
-import { open, save } from "@tauri-apps/plugin-dialog";
+import { ask, open, save } from "@tauri-apps/plugin-dialog";
 import type {
   EngineResponse,
   EngineEventDto,
@@ -14,6 +14,7 @@ import type {
   GameResponse,
   PositionResponse,
   StartupRequest,
+  SaveGameResponse,
 } from "./types";
 export const backend = {
   pickEngine: () =>
@@ -105,8 +106,49 @@ export const backend = {
     }),
   startupRequest: () => invoke<StartupRequest | null>("startup_request"),
   startupShown: () => invoke<void>("startup_shown"),
-  openDatabase: (path: string, requestId: string) =>
-    invoke<OpenDatabaseResponse>("open_database", { path, requestId }),
+  openDatabase: (path: string, requestId: string, writable = false) =>
+    invoke<OpenDatabaseResponse>("open_database", {
+      path,
+      requestId,
+      writable,
+    }),
+  chooseNewDatabase: () =>
+    save({
+      title: "New database",
+      defaultPath: "New Database.2cbh",
+      filters: [{ name: "ChessBase database", extensions: ["2cbh"] }],
+    }),
+  confirmEditing: () =>
+    ask(
+      "Games you save, replace or delete will change this database's files. ChessBase's own index files (.2lcd, .2lgd) are not updated; ChessBase's Check Integrity rebuilds them. Keep a backup of databases you care about.",
+      { title: "Open database for editing", kind: "warning" },
+    ),
+  createDatabase: (path: string, requestId: string) =>
+    invoke<OpenDatabaseResponse>("create_database", { path, requestId }),
+  saveGame: (
+    documentId: string,
+    databaseId: string,
+    expectedRevision: string,
+    allowIncomplete: boolean,
+  ) =>
+    invoke<SaveGameResponse>("save_game", {
+      documentId,
+      databaseId,
+      expectedRevision,
+      allowIncomplete,
+    }),
+  replaceGame: (
+    documentId: string,
+    expectedRevision: string,
+    allowIncomplete: boolean,
+  ) =>
+    invoke<SaveGameResponse>("replace_game", {
+      documentId,
+      expectedRevision,
+      allowIncomplete,
+    }),
+  setDeleted: (databaseId: string, ordinal: string, deleted: boolean) =>
+    invoke<void>("set_deleted", { databaseId, ordinal, deleted }),
   readPage: (
     databaseId: string,
     start: string,

@@ -205,6 +205,28 @@ export function App({
   const busy = e.busy;
   const bindings: Bindings = {
     "open-database": { run: () => e.run(w.openDatabase) },
+    "open-database-edit": { run: () => e.run(w.openDatabaseForEditing) },
+    "new-database": { run: () => e.run(w.createDatabase) },
+    "save-game": {
+      // Without a database open for editing, Save exports PGN.
+      run: () =>
+        state.database?.writable ? e.saveToDatabase("save") : e.save(),
+      enabled: !!game && !busy,
+    },
+    "replace-game": {
+      run: () => e.saveToDatabase("replace"),
+      enabled:
+        !!game &&
+        !busy &&
+        !!state.database?.writable &&
+        state.origin?.databaseId === state.database.databaseId,
+    },
+    "delete-game": {
+      run: () => e.toggleDeleted(state.document?.summary.ordinal ?? ""),
+      enabled:
+        !!state.database?.writable &&
+        state.origin?.databaseId === state.database.databaseId,
+    },
     "open-pgn": { run: () => e.run(e.openPgn) },
     "open-board": { run: () => setView("game"), enabled: !!game },
     "database-window": { run: () => setView("database") },

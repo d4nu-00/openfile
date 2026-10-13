@@ -14,6 +14,8 @@ pub struct Document {
     pub dirty: bool,
     pub incomplete_annotations: bool,
     pub source_paths: Vec<PathBuf>,
+    /// The database entry this game was loaded from: database id, ordinal.
+    pub origin: Option<(String, u64)>,
 }
 #[derive(serde::Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -124,6 +126,7 @@ impl Registry {
                 dirty: false,
                 incomplete_annotations: false,
                 source_paths: vec![],
+                origin: None,
             })),
         );
         Ok(DocumentResponse {

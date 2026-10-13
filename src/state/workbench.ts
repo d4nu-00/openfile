@@ -8,8 +8,14 @@ import type {
 } from "../api/types";
 import type { WorkbenchApi } from "../api/client";
 import { SelectionGate } from "./selection";
+/** The database entry a document was loaded from or last saved to. */
+export interface Origin {
+  databaseId: string;
+  ordinal: string;
+}
 export interface WorkbenchState {
   database?: OpenDatabaseResponse;
+  origin?: Origin;
   page?: PageResponse;
   document?: GameResponse;
   position?: PositionResponse;
@@ -51,14 +57,63 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     [api],
   );
   /** Opens `chosen`, or asks for a database when none is given. */
-  async function openDatabase(chosen?: string) {
-    const request = gates.database.begin();
-    let candidate: string | undefined;
-    try {
+  function openDatabase(chosen?: string) {
+    return openWith(async (request) => {
       const path = chosen ?? (await api.chooseDatabase());
       if (typeof path !== "string" || !gates.database.accept(request)) return;
       setStatus("Opening database…");
-      const database = await api.openDatabase(path, request);
+      return api.openDatabase(path, request);
+    });
+  }
+  /** Opens a .2cbh database so games can be saved into it, after a warning. */
+  function openDatabaseForEditing() {
+    return openWith(async (request) => {
+      const path = await api.chooseDatabase();
+      if (typeof path !== "string" || !gates.database.accept(request)) return;
+      if (!/\.2cbh$/i.test(path)) {
+        setDiagnostics([
+          {
+            code: "readOnly",
+            message:
+              "Only .2cbh databases can be edited; classic .cbh databases open read-only.",
+          },
+        ]);
+        return;
+      }
+      if (!(await api.confirmEditing())) return;
+      setStatus("Opening database…");
+      // A database is never open for reading and writing at once, so the
+      // current one is closed first.
+      const open = current.current.database?.databaseId;
+      if (open) await api.closeDatabase(open).catch(() => {});
+      setState((s) => ({ ...s, database: undefined, page: undefined }));
+      return api.openDatabase(path, request, true);
+    });
+  }
+  /** Creates a new, empty .2cbh database and opens it for editing. */
+  function createDatabase() {
+    return openWith(async (request) => {
+      const path = await api.chooseNewDatabase();
+      if (typeof path !== "string" || !gates.database.accept(request)) return;
+      setStatus("Creating database…");
+      return api.createDatabase(path, request);
+    });
+  }
+  async function openWith(
+    opener: (request: string) => Promise<OpenDatabaseResponse | undefined>,
+  ) {
+    const request = gates.database.begin();
+    let candidate: string | undefined;
+    try {
+      const database = await opener(request);
+      if (!database) {
+        setStatus(
+          current.current.database
+            ? `${current.current.database.entryCount} entries`
+            : "Open a CBH database to begin.",
+        );
+        return;
+      }
       candidate = database.databaseId;
       if (!gates.database.accept(database.requestId)) {
         closeDb(candidate);
@@ -87,11 +142,14 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
         page,
         document: undefined,
         position: undefined,
+        origin: undefined,
         dirty: false,
       }));
       setPageStart("1");
       setDiagnostics(database.diagnostics);
-      setStatus(`${database.entryCount} entries`);
+      setStatus(
+        `${database.entryCount} entries${database.writable ? " · editable" : ""}`,
+      );
     } catch (e) {
       closeDb(candidate);
       if (gates.database.accept(request)) {
@@ -162,7 +220,13 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       }
       if (current.current.document?.documentId !== candidate)
         closeDoc(current.current.document?.documentId);
-      setState((s) => ({ ...s, document, position, dirty: false }));
+      setState((s) => ({
+        ...s,
+        document,
+        position,
+        dirty: false,
+        origin: { databaseId: db.databaseId, ordinal },
+      }));
       setDiagnostics([
         ...document.summary.diagnostics,
         ...document.diagnostics,
@@ -211,6 +275,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     pageStart,
     loadingEntry,
     openDatabase,
+    openDatabaseForEditing,
+    createDatabase,
     readPage,
     loadEntry,
     selectNode,

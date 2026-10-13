@@ -65,8 +65,22 @@ Next/Previous Game is F11/Ctrl+F11.
 
 Click a piece and a destination to append a legal move, choose promotion when
 required, and use Apply to store edited comments/NAGs (Ctrl+A focuses the
-comment). Save PGN (Ctrl+S) writes a separate PGN file; it does not write CBH.
-Open PGN imports a bounded collection (up to 2,000 games). Replacement, game
+comment). Open PGN imports a bounded collection (up to 2,000 games).
+
+Databases are written only in ChessBase 18's `.2cbh` format, and only when
+you ask for it:
+* **New** (Ctrl+X) creates an empty database and opens it for editing.
+* **Open for Editing** opens an existing `.2cbh` database after a warning.
+  Classic `.cbh` databases always open read-only.
+
+In an editable database:
+* **Save** (Ctrl+S) appends the game as a new entry.
+* **Replace** (Ctrl+R) overwrites the entry the game came from.
+* **Delete** marks the selected entry deleted, or undeletes it.
+
+Without an editable database, Save writes a PGN file instead, as **Save PGN**
+always does. See [docs/writing.md](docs/writing.md) for what is written; ChessBase's
+Check Integrity rebuilds its own index files. Replacement, game
 close and normal application exit offer Save/Discard/Cancel for unsaved edits.
 On macOS Command-Q uses that same guard.
 

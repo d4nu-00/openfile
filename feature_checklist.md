@@ -33,8 +33,8 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Read the newer 2CBH/2CBG format *(records, blocks, standard and set-up move trees, 2LID players and tournaments; all 24,759 Mega games cross-checked against the classic file)*
 - [x] P1 🟢 Decode CBA annotations: text, symbols, arrows, coloured squares and training *(classic CBA and 2CBA; training, quotations and other kinds are reported, not shown)*
 - [x] P1 🟢 Decode annotators (CBC), sources (CBS), teams (CBE) and other companions *(and the 2LID source and team lists; result codes 3–7; titles and remaining CBJ fields not read)*
-- [ ] P1 🟢 Write databases: save new games, replace games, mark deleted (`SAVEGAME`, `REPLACEGAME`, `DBLISTSAVEGAMECMD`)
-- [ ] P1 🟢 Create a new database (`NEWDATABASE`)
+- [x] P1 🟢 Write databases: save new games, replace games, mark deleted (`SAVEGAME`, `REPLACEGAME`, `DBLISTSAVEGAMECMD`) *(2CBH only; ChessBase's .2lcd/.2lgd indexes are left to its integrity check; see docs/writing.md)*
+- [x] P1 🟢 Create a new database (`NEWDATABASE`) *(2CBH)*
 - [x] P1 🟢 Read and write PGN *(import is bounded to 2,000 games)*
 - [ ] P2 🟢 Append games, append EPD, export a selection as text (`APPENDGAMES`, `APPENDEPD`, `CREATETEXTFILE`)
 - [ ] P2 🟢 Convert between CBH and 2CBH (`CONVERT_TO_FREE_2CBH`, `CONVERTTOCBG`)

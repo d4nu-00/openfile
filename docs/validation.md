@@ -152,6 +152,46 @@ The real macOS app was opened at a richly annotated Mega game (2CBH entry
 snapshot taken in a debug build showed the decoded arrow and coloured square
 on the board, plus text before moves, comments and NAGs in the notation.
 
+## Database writing (2026-10-13)
+
+Writing was checked against the Mega sample from two directions. Outputs stay
+outside the repository.
+
+* **Move encoding.** The `encode_check` example re-encodes every 2CBH game of
+  the sample from its decoded tree. 24,754 of 24,759 payloads are
+  byte-identical to ChessBase's own. This confirms the token table's
+  captured-piece order and ChessBase's chained variation markers. The other
+  five are set-ups that store move number 0; the reader shows that as 1, and
+  the writer stores 1.
+* **Write and read back.** The `write_sample` example copied games into new
+  databases in a temporary directory, read them back with the ordinary reader
+  and compared every node's moves, comments, text before moves, NAGs, squares
+  and arrows. It also compared players, events, sites, dates, rounds, results,
+  ratings, ECO, annotators and sources.
+  * 3,000 games from the 2CBH family (every seventh entry) all match. 2,999
+    move payloads are byte-identical to the source.
+  * 5,000 games from the classic family, spread across all 11.15 million
+    entries (every 2,203rd), all match, including classic set-ups and CBA
+    annotations. One game holds two move symbols; the second goes to the free
+    position slot, as ChessBase stores $8 in the sample.
+  * Two entries in each copy were replaced and marked deleted, and one was
+    undeleted. Each read back as expected without changing the entry count.
+
+  Writing 3,000 games in batches of 500 took 8 s.
+
+Synthetic Rust tests cover:
+* creating a database, saving, replacing and deleting;
+* reuse of names;
+* refusal of existing families and of classic paths;
+* detection of files changed by another program;
+* the registry's read-only and already-open guards.
+
+Frontend tests cover New, Open for Editing, Save, Replace and Delete.
+
+**Not yet verified:** opening these files in ChessBase itself. The files
+ChessBase needs are described in [writing](writing.md), with a checklist for
+that test.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

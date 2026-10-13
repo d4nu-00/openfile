@@ -127,6 +127,8 @@ export function demoApi(): WorkbenchApi {
     chooseDatabase: async () => "/demo/Famous Games.cbh",
     startupRequest: async () => null,
     startupShown: async () => {},
+    chooseNewDatabase: async () => null,
+    confirmEditing: async () => false,
     openDatabase: async (_path, requestId) => ({
       requestId,
       databaseId: "demo",

@@ -78,8 +78,19 @@ same 235 games with zero failures, with 5.62 ms page and 349.00 ms load maxima
 bounded compatibility evidence, not full database or annotation coverage.
 Cloud-backed files may take substantially longer on first access.
 
-CBH is read-only. Saving writes independent PGN and requires an explicit
-acknowledgement when original annotations are omitted. PGN supports legal
+Classic CBH is read-only. 2CBH databases can be created, or opened for editing
+with an explicit command. Games can then be saved, replaced and marked
+deleted; see [writing](writing.md):
+* Moves, game data, players, tournaments, annotators and sources are written.
+* So are text before and after moves, symbols, squares and arrows.
+* Teams, ChessBase's index files (`.2lcd`, `.2lgd`) and several list fields
+  (hash, timestamps, material) are not written.
+* Saving a game whose original annotations are not decoded, or that holds
+  content ChessBase cannot store, needs the same acknowledgement as PGN
+  export.
+
+PGN saving writes an independent file and requires that acknowledgement when
+original annotations are omitted. PGN supports legal
 standard chess moves, setup FEN, ordered variations, comments and numeric NAGs;
 imports are bounded to 20 MiB/2,000 games/100,000 aggregate nodes by default.
 Missing companions, corrupt records and unsupported records are reported
@@ -89,5 +100,5 @@ Local UCI engine analysis is available for standard chess only. Advertised
 Chess960/variant rules cannot be enabled. Engines and private databases are
 separate user-provided files. The first workbench does not yet implement
 ChessBase's full search/indexing, opening books, training, multimedia, cloud
-services or lossless CBH writing. macOS native operation is verified locally;
+services or lossless writing of every ChessBase annotation type. macOS native operation is verified locally;
 Windows/Linux native validation remains outstanding. See [validation](validation.md).
