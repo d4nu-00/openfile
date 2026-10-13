@@ -125,6 +125,8 @@ export function demoApi(): WorkbenchApi {
   });
   const api: Partial<WorkbenchApi> = {
     chooseDatabase: async () => "/demo/Famous Games.cbh",
+    startupRequest: async () => null,
+    startupShown: async () => {},
     openDatabase: async (_path, requestId) => ({
       requestId,
       databaseId: "demo",

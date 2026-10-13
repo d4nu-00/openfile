@@ -162,3 +162,9 @@ export function annotationsIncomplete(status: Status | undefined): boolean {
     status === "unsupported"
   );
 }
+/** A database (and optionally an entry) named on the command line. */
+export interface StartupRequest {
+  path?: string;
+  entry?: string;
+  node?: number;
+}

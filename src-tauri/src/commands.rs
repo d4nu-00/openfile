@@ -356,3 +356,24 @@ pub fn finish_close(app: tauri::AppHandle, state: tauri::State<'_, crate::ExitPo
     state.0.store(true, std::sync::atomic::Ordering::Release);
     app.exit(0);
 }
+#[tauri::command]
+pub fn startup_request(state: tauri::State<'_, crate::StartupRequest>) -> Option<crate::Startup> {
+    state.0.lock().ok()?.take()
+}
+/// The frontend has shown the startup request. In macOS debug builds this
+/// takes the `--snapshot` picture after a short settling delay.
+#[tauri::command]
+pub async fn startup_shown(
+    window: tauri::WebviewWindow,
+    state: tauri::State<'_, crate::StartupRequest>,
+) -> Result<(), AppError> {
+    let destination = state.1.lock().ok().and_then(|mut s| s.take());
+    #[cfg(all(debug_assertions, target_os = "macos"))]
+    if let Some(destination) = destination {
+        std::thread::sleep(std::time::Duration::from_millis(800));
+        crate::snapshot::take(&window, destination).map_err(|e| AppError::new("snapshot", e))?;
+    }
+    #[cfg(not(all(debug_assertions, target_os = "macos")))]
+    let _ = (window, destination);
+    Ok(())
+}

@@ -13,6 +13,7 @@ import type {
   PageResponse,
   GameResponse,
   PositionResponse,
+  StartupRequest,
 } from "./types";
 export const backend = {
   pickEngine: () =>
@@ -102,6 +103,8 @@ export const backend = {
       multiple: false,
       filters: [{ name: "Chess databases", extensions: ["cbh", "2cbh"] }],
     }),
+  startupRequest: () => invoke<StartupRequest | null>("startup_request"),
+  startupShown: () => invoke<void>("startup_shown"),
   openDatabase: (path: string, requestId: string) =>
     invoke<OpenDatabaseResponse>("open_database", { path, requestId }),
   readPage: (
