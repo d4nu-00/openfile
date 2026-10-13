@@ -178,6 +178,10 @@ export function mockApi(firstDatabase = 1) {
         } else if (edit.kind === "setPreComments") {
           game.nodes[edit.node].preComments = edit.comments;
           revision++;
+        } else if (edit.kind === "setMarks") {
+          game.nodes[edit.node].squares = edit.squares;
+          game.nodes[edit.node].arrows = edit.arrows;
+          revision++;
         } else if (edit.kind === "setTags") {
           if (edit.tags.Result === "3-0") throw { message: "Unknown result" };
           game.tags = { ...edit.tags };

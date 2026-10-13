@@ -121,6 +121,44 @@ describe("reference search", () => {
     );
   });
 
+  it("asks before reading every game of a large database", async () => {
+    const ui = renderWorkbench();
+    ui.api.referenceSearch.mockImplementation(
+      async (
+        _db: string,
+        _line: unknown,
+        requestId: string,
+        searchAnyway?: boolean,
+      ) => ({
+        requestId,
+        hits: "0",
+        truncated: false,
+        cancelled: false,
+        source: searchAnyway ? "search" : "notSearched",
+        indexed: false,
+      }),
+    );
+    await ui.user.click(ui.getByRole("tab", { name: "Reference" }));
+    const pane = await ui.findByLabelText("Reference search");
+    expect(
+      await within(pane).findByText(/not in the opening tree/),
+    ).toBeVisible();
+    await ui.user.click(
+      within(pane).getByRole("button", { name: "Search all games" }),
+    );
+    await waitFor(() =>
+      expect(ui.api.referenceSearch).toHaveBeenLastCalledWith(
+        "db-1",
+        expect.anything(),
+        expect.any(String),
+        true,
+      ),
+    );
+    expect(
+      await within(pane).findByText(/0 games by position search/),
+    ).toBeVisible();
+  });
+
   it("shows as an extra pane and stops its search when hidden", async () => {
     const ui = renderWorkbench();
     await ui.user.keyboard("{Control>}{Shift>}{F7}{/Shift}{/Control}");

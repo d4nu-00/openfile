@@ -135,3 +135,21 @@ it("exposes a focusable separator for resizing the analysis pane", () => {
   expect(splitter).toHaveAttribute("tabindex", "0");
   expect(splitter).toHaveAttribute("aria-valuenow");
 });
+it("loads a double-clicked game once", async () => {
+  const ui = renderWorkbench({ clean: true });
+  await ui.user.click(screen.getByRole("button", { name: "Open Database" }));
+  await ui.user.dblClick(
+    await screen.findByRole("button", { name: "Load entry 3" }),
+  );
+  await screen.findByText(/Entry 3 ·/);
+  // Both clicks and the double-click ask for the same game: one load.
+  expect(
+    ui.api.loadEntry.mock.calls.filter((c: unknown[]) => c[1] === "3"),
+  ).toHaveLength(1);
+  // Clicking the game shown does not load it again either.
+  await ui.user.click(screen.getByRole("tab", { name: /^Database/ }));
+  await ui.user.click(screen.getByRole("button", { name: "Load entry 3" }));
+  expect(
+    ui.api.loadEntry.mock.calls.filter((c: unknown[]) => c[1] === "3"),
+  ).toHaveLength(1);
+});

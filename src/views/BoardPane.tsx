@@ -4,7 +4,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
-import { Board } from "../components/Board";
+import { Board, type DrawnMark } from "../components/Board";
 import type { GameNode, PositionResponse } from "../api/types";
 
 export type Step = "first" | "previous" | "next" | "last";
@@ -24,6 +24,7 @@ export function BoardPane({
   onPromote,
   compact,
   node,
+  onMark,
 }: {
   title: string;
   position?: PositionResponse;
@@ -37,6 +38,7 @@ export function BoardPane({
   compact?: boolean;
   /** Current move; its coloured squares and arrows are drawn. */
   node?: GameNode;
+  onMark?: (mark: DrawnMark) => void;
 }) {
   const steps: [Step, string, typeof ChevronLeft][] = [
     ["first", "First move", ChevronsLeft],
@@ -61,6 +63,7 @@ export function BoardPane({
           legalUci={position?.legalUci ?? []}
           compact={compact}
           marks={node}
+          onMark={onMark}
         />
       </div>
       {promotion && promotion.length > 0 && onPromote && (

@@ -39,6 +39,8 @@ import {
   type Selection,
 } from "./state/listSelection";
 import { BoardPane, type Step } from "./views/BoardPane";
+import type { DrawnMark } from "./components/Board";
+import { toggleMark } from "./state/marks";
 import { Ribbon } from "./shell/Ribbon";
 import { CommandPalette } from "./shell/CommandPalette";
 import { useShortcuts, type Bindings } from "./commands/bindings";
@@ -187,6 +189,16 @@ export function App({
         : undefined,
     );
   }
+  /** Draws or removes a coloured square or arrow on the current position. */
+  function drawMark(mark: DrawnMark) {
+    const node = game?.nodes[selected];
+    if (!node || e.busy) return;
+    void e.edit({
+      kind: "setMarks",
+      node: selected,
+      ...toggleMark(node, mark),
+    });
+  }
   function navigate(step: Step) {
     if (!game) return;
     let id = selected;
@@ -328,15 +340,17 @@ export function App({
     setSelection((s) => chooseRow(s, row, mods));
     // Ctrl and Shift only change the selection.
     if (mods?.toggle || mods?.extend) return;
-    void e.run(async () => {
+    void (async () => {
       const entry = await w.rows.entry(row, w.rowCount);
-      if (entry) await w.previewRow(row, entry);
-    });
+      // A second click on the game shown, e.g. a double-click, loads nothing.
+      if (!entry || (await w.showing(entry.ordinal))) return;
+      await e.run(() => w.previewRow(row, entry));
+    })();
   };
   async function open(row: number) {
     const entry = await w.rows.entry(row, w.rowCount);
     if (!entry) return;
-    if (state.document?.summary.ordinal !== entry.ordinal || !game)
+    if (!(await w.showing(entry.ordinal)))
       await e.run(() => w.previewRow(row, entry));
     setView("game");
   }
@@ -433,6 +447,8 @@ export function App({
       hasDatabase={!!state.database}
       hasLine={!!panes.line}
       onOpen={openReference}
+      onSearch={panes.searchReference}
+      onCancel={panes.cancelReference}
     />
   );
 
@@ -679,6 +695,12 @@ export function App({
     "delete-variation": {
       run: () => e.edit({ kind: "deleteVariation", node: selected }),
       enabled: inVariation && !busy,
+    },
+    "delete-colour-commentary": {
+      run: () => e.edit({ kind: "clearMarks" }),
+      enabled:
+        !busy &&
+        !!game?.nodes.some((n) => n.squares?.length || n.arrows?.length),
     },
     "promote-variation": {
       run: () => e.edit({ kind: "promoteVariation", node: selected }),
@@ -1148,6 +1170,7 @@ export function App({
                       node={game?.nodes[selected]}
                       selectedSquare={square}
                       onSquare={clickSquare}
+                      onMark={drawMark}
                       promotion={promotion}
                       onPromote={(uci) => {
                         if (uci)
