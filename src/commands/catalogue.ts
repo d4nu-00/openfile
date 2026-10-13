@@ -713,8 +713,9 @@ const list: CommandMeta[] = [
   {
     id: "tactical-analysis",
     label: "Tactical Analysis",
-    tip: "Check the game for tactical mistakes",
+    tip: "Detect Blunders and small tactics in the game",
     icon: Gauge,
+    keys: "Ctrl+Alt+Shift+U",
     views: game,
   },
   {

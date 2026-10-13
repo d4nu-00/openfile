@@ -250,6 +250,33 @@ export function mockApi(firstDatabase = 1) {
     chooseDatabase: vi.fn().mockResolvedValue("/synthetic/test.cbh"),
     startupRequest: vi.fn().mockResolvedValue(null),
     startupShown: vi.fn().mockResolvedValue(undefined),
+    blunderCheck: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _doc: string,
+          _params: unknown,
+          onProgress: (p: { done: number; total: number }) => void,
+        ) => {
+          onProgress({ done: 2, total: 2 });
+          return {
+            cancelled: false,
+            checked: 2,
+            revision: String(revision),
+            findings: [
+              {
+                node: 1,
+                loss: 180,
+                best: "+0.30",
+                played: "-1.50",
+                depth: 20,
+                line: ["d2d4", "d7d5"],
+              },
+            ],
+          };
+        },
+      ),
+    cancelBlunderCheck: vi.fn().mockResolvedValue(undefined),
     chooseTablebaseFolder: vi.fn().mockResolvedValue("/synthetic/syzygy"),
     probeTablebase: vi
       .fn()

@@ -429,3 +429,75 @@ it("installs engines, keeps a default and toggles the default kibitzer", async (
     expect(ui.api.closeEngine).toHaveBeenCalledWith("engine-1"),
   );
 });
+it("runs Tactical Analysis and adds its findings as one edit", async () => {
+  const ui = renderWorkbench();
+  await ui.user.keyboard("{Control>}{Alt>}{Shift>}u{/Shift}{/Alt}{/Control}");
+  const dialog = await ui.findByRole("dialog", { name: "Tactical Analysis" });
+  const start = within(dialog).getByRole("button", { name: "Start" });
+  // No engine installed yet: one is chosen as a file.
+  expect(start).toBeDisabled();
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "Other engine…" }),
+  );
+  await ui.user.click(within(dialog).getByRole("radio", { name: "White" }));
+  await ui.user.click(
+    within(dialog).getByRole("checkbox", { name: "Store evaluations" }),
+  );
+  await ui.user.click(start);
+  await waitFor(() =>
+    expect(ui.api.blunderCheck).toHaveBeenCalledWith(
+      "doc-1",
+      {
+        engine: "/synthetic/mock-engine",
+        options: {},
+        // Time 3 [s] × 500 ms; Fine is 0.35.
+        millisPerMove: 1500,
+        threshold: 35,
+        side: "white",
+      },
+      expect.any(Function),
+    ),
+  );
+  // A loss of 1.80 pawns is over three times the threshold: "??".
+  await waitFor(() =>
+    expect(ui.api.editDocument).toHaveBeenCalledWith(
+      "doc-1",
+      {
+        kind: "addAnalysis",
+        items: [
+          {
+            node: 1,
+            nag: 4,
+            comment: "-1.50",
+            line: ["d2d4", "d7d5"],
+            lineComment: "+0.30/20",
+          },
+        ],
+      },
+      "0",
+    ),
+  );
+  expect(
+    await ui.findByText("Tactical Analysis: 1 mistakes in 2 positions"),
+  ).toBeVisible();
+  expect(ui.queryByRole("dialog", { name: "Tactical Analysis" })).toBeNull();
+});
+it("adds nothing when Tactical Analysis is stopped", async () => {
+  const ui = renderWorkbench();
+  ui.api.blunderCheck.mockResolvedValue({
+    cancelled: true,
+    checked: 1,
+    findings: [],
+    revision: "0",
+  });
+  await ui.user.keyboard("{Control>}{Alt>}{Shift>}u{/Shift}{/Alt}{/Control}");
+  const dialog = await ui.findByRole("dialog", { name: "Tactical Analysis" });
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "Other engine…" }),
+  );
+  await ui.user.click(within(dialog).getByRole("button", { name: "Start" }));
+  expect(
+    await within(dialog).findByText("Stopped; nothing was added."),
+  ).toBeVisible();
+  expect(ui.api.editDocument).not.toHaveBeenCalled();
+});

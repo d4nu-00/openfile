@@ -184,6 +184,13 @@ export function demoApi(): WorkbenchApi {
     startupShown: async () => {},
     getSettings: async () => structuredClone(settings),
     chooseTablebaseFolder: async () => null,
+    blunderCheck: async () => ({
+      cancelled: false,
+      checked: 0,
+      findings: [],
+      revision: "0",
+    }),
+    cancelBlunderCheck: async () => {},
     probeTablebase: async (_fen, requestId) => ({
       requestId,
       status: "noTables" as const,

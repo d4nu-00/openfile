@@ -7,6 +7,7 @@ import {
   defaultSettings,
   emptyFilter,
   type AppSettings,
+  type BlunderParams,
 } from "./api/types";
 import type {
   CrossLayout,
@@ -27,6 +28,7 @@ import { formatScore } from "./state/analysis";
 import { useKibitzers } from "./state/kibitzers";
 import { EngineManagement } from "./components/EngineManagement";
 import { TablebasePane } from "./components/TablebasePane";
+import { BlunderCheckDialog } from "./components/BlunderCheckDialog";
 import { CommentEditor } from "./components/CommentEditor";
 import { GameDataDialog } from "./components/GameDataDialog";
 import { PositionSetup } from "./components/PositionSetup";
@@ -124,6 +126,12 @@ export function App({
   }
   const k = useKibitzers(api, state, settings, saveSettings);
   const [enginesOpen, setEnginesOpen] = useState(false);
+  /** Tactical Analysis: open, its progress while running, its error. */
+  const [blunder, setBlunder] = useState<{
+    running?: string;
+    error?: string;
+    documentId?: string;
+  }>();
   const [enginesError, setEnginesError] = useState<string>();
   /** The game view shows a game tab; the database view, the preview. */
   const view: ViewId = state.focus !== undefined ? "game" : "database";
@@ -272,6 +280,59 @@ export function App({
     });
     // The pasted move is played; after a pasted line the board stays.
     if (!whole && typeof last === "number") await w.selectNode(last);
+  }
+  /** Runs Tactical Analysis and adds its findings as one edit. */
+  async function runBlunderCheck(
+    params: BlunderParams,
+    storeEvaluations: boolean,
+  ) {
+    const doc = state.document;
+    if (!doc?.documentId) return;
+    const documentId = doc.documentId;
+    setBlunder({ running: "starting…", documentId });
+    try {
+      const report = await api.blunderCheck(documentId, params, (p) =>
+        setBlunder(
+          (b) => b && { ...b, running: `${p.done} of ${p.total} positions` },
+        ),
+      );
+      if (report.cancelled) {
+        setBlunder({ error: "Stopped; nothing was added." });
+        return;
+      }
+      const now = w.current.current.document;
+      if (now?.documentId !== documentId || now.revision !== report.revision) {
+        setBlunder({
+          error: "The game changed during the analysis; run it again.",
+        });
+        return;
+      }
+      if (report.findings.length) {
+        const result = await e.edit({
+          kind: "addAnalysis",
+          items: report.findings.map((f) => ({
+            node: f.node,
+            // "??" from three times the threshold, "?" below.
+            nag: f.loss >= 3 * params.threshold ? 4 : 2,
+            comment: storeEvaluations ? f.played : undefined,
+            line: f.line,
+            lineComment: `${f.best}${f.depth ? `/${f.depth}` : ""}`,
+          })),
+        });
+        if (result === null) {
+          setBlunder({ error: "The findings could not be added." });
+          return;
+        }
+      }
+      setBlunder(undefined);
+      w.setStatus(
+        report.findings.length
+          ? `Tactical Analysis: ${report.findings.length} mistakes in ${report.checked} positions`
+          : `Tactical Analysis: no mistakes in ${report.checked} positions`,
+      );
+    } catch (err) {
+      setBlunder({ error: explain(err) });
+    }
   }
   /** Draws or removes a coloured square or arrow on the current position. */
   function drawMark(mark: DrawnMark) {
@@ -758,6 +819,11 @@ export function App({
       ),
     },
     "engine-management": { run: () => setEnginesOpen(true) },
+    "tactical-analysis": {
+      run: () => setBlunder((b) => b ?? {}),
+      enabled: !!state.document?.documentId,
+      pressed: !!blunder?.running,
+    },
     "toggle-analysis": {
       run: () => (k.current?.enabled ? k.stop() : k.start()),
       enabled: !!k.current && !!state.document?.documentId && !k.current.busy,
@@ -1466,6 +1532,21 @@ export function App({
               })
               .catch((err) => setOptionsError(explain(err)))
           }
+        />
+      )}
+      {blunder && (
+        <BlunderCheckDialog
+          engines={settings.engines}
+          defaultEngine={settings.defaultEngine}
+          running={blunder.running}
+          error={blunder.error}
+          onChooseFile={api.pickEngine}
+          onStart={(params, store) => void runBlunderCheck(params, store)}
+          onCancel={() => {
+            if (blunder.documentId)
+              void api.cancelBlunderCheck(blunder.documentId).catch(() => {});
+          }}
+          onClose={() => setBlunder(undefined)}
         />
       )}
       {enginesOpen && (
