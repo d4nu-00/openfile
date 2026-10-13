@@ -462,6 +462,26 @@ impl Registry {
         OpeningTree::before_change(&path, &db, replaced).ok()?
     }
 
+    /// After games were appended: records every new entry in the tree's
+    /// journal. True when the tree is current.
+    pub(crate) fn tree_after_append(
+        &self,
+        database_id: &str,
+        pending: Option<PendingChange>,
+    ) -> bool {
+        if let Ok(mut state) = self.lock() {
+            state.trees.remove(database_id);
+            state.references.remove(database_id);
+        }
+        let (Some(pending), Ok(db)) = (pending, self.database(database_id)) else {
+            return false;
+        };
+        db.lock()
+            .ok()
+            .and_then(|db| pending.commit_appended(&db).ok())
+            .unwrap_or(false)
+    }
+
     /// After a write: records it in the tree's journal.
     pub(crate) fn tree_after_change(
         &self,
