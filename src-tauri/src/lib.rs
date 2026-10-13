@@ -1,3 +1,4 @@
+pub mod blunder_check;
 pub mod clipboard;
 pub mod commands;
 pub mod database_writes;
@@ -125,6 +126,7 @@ pub fn run() {
             Ok(())
         })
         .manage(settings::Settings::default())
+        .manage(std::sync::Arc::new(blunder_check::BlunderJobs::default()))
         .manage(std::sync::Arc::new(tablebases::Tablebases::default()))
         .manage(ExitPolicy::default())
         .manage(StartupRequest(
@@ -186,6 +188,8 @@ pub fn run() {
             commands::startup_shown,
             engine_commands::probe_engine,
             tablebases::probe_tablebase,
+            blunder_check::blunder_check,
+            blunder_check::cancel_blunder_check,
             settings::get_settings,
             settings::set_settings,
             engine_commands::choose_engine,

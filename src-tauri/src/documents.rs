@@ -77,6 +77,10 @@ pub enum Edit {
         arrows: Vec<chess_core::ArrowMark>,
     },
     ClearMarks,
+    /// Engine annotations of several moves at once (Blunder Check).
+    AddAnalysis {
+        items: Vec<AnalysisItem>,
+    },
     /// Moves from `parent` (an engine line), with a comment after the last.
     AppendLine {
         parent: u32,
@@ -86,6 +90,72 @@ pub enum Edit {
     },
     Undo,
     Redo,
+}
+/// One annotated move: a symbol and a comment for the move played, and the
+/// engine's line from the position before it as a variation.
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnalysisItem {
+    pub node: u32,
+    /// A move symbol, added when the move has none.
+    #[serde(default)]
+    pub nag: Option<u16>,
+    #[serde(default)]
+    pub comment: Option<String>,
+    #[serde(default)]
+    pub line: Vec<String>,
+    #[serde(default)]
+    pub line_comment: Option<String>,
+}
+
+/// Adds `items` to `game`; nothing changes unless all of them apply.
+fn add_analysis(game: &mut chess_core::Game, items: Vec<AnalysisItem>) -> Result<(), AppError> {
+    if items.len() > 500 {
+        return Err(AppError::new(
+            "limitExceeded",
+            "Too many annotations at once",
+        ));
+    }
+    let mut next = game.clone();
+    let push = |g: &mut chess_core::Game, node: u32, text: Option<String>| {
+        let Some(text) = text.filter(|t| !t.trim().is_empty()) else {
+            return Ok(());
+        };
+        let mut comments = g
+            .nodes
+            .get(node as usize)
+            .ok_or_else(|| AppError::new("invalidNode", "Unknown node"))?
+            .comments
+            .clone();
+        if !comments.contains(&text) {
+            comments.push(text);
+            g.set_comments(node, comments)?;
+        }
+        Ok::<_, AppError>(())
+    };
+    for item in items {
+        let n = next
+            .nodes
+            .get(item.node as usize)
+            .ok_or_else(|| AppError::new("invalidNode", "Unknown node"))?;
+        let parent = n
+            .parent
+            .ok_or_else(|| AppError::new("invalidNode", "The start has no move"))?;
+        if let Some(nag) = item.nag
+            && !n.nags.iter().any(|g| (1..=6).contains(g))
+        {
+            let mut nags = n.nags.clone();
+            nags.insert(0, nag);
+            next.set_nags(item.node, nags)?;
+        }
+        push(&mut next, item.node, item.comment)?;
+        if !item.line.is_empty() {
+            let last = next.append_line(parent, &item.line, &chess_core::GameLimits::default())?;
+            push(&mut next, last, item.line_comment)?;
+        }
+    }
+    *game = next;
+    Ok(())
 }
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -319,6 +389,7 @@ impl Registry {
                 arrows,
             } => d.game.set_marks(node, squares, arrows)?,
             Edit::ClearMarks => d.game.clear_marks(),
+            Edit::AddAnalysis { items } => add_analysis(&mut d.game, items)?,
             Edit::AppendLine {
                 parent,
                 moves,
