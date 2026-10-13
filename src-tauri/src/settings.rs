@@ -25,6 +25,9 @@ pub struct AppSettings {
     /// The id of the engine Default Kibitzer starts.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub default_engine: Option<String>,
+    /// The folder of Syzygy tablebase files the user chose.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tablebase_dir: Option<PathBuf>,
 }
 
 impl Default for AppSettings {
@@ -33,6 +36,7 @@ impl Default for AppSettings {
             max_game_tabs: MAX_GAME_TABS,
             engines: vec![],
             default_engine: None,
+            tablebase_dir: None,
         }
     }
 }
@@ -79,6 +83,13 @@ impl AppSettings {
             {
                 return invalid("Too many or too long engine options");
             }
+        }
+        if self
+            .tablebase_dir
+            .as_ref()
+            .is_some_and(|d| !d.is_absolute())
+        {
+            return invalid("The tablebase folder must be an absolute path");
         }
         if let Some(id) = &self.default_engine
             && !ids.contains(id)
@@ -149,8 +160,12 @@ pub fn get_settings(state: tauri::State<'_, Settings>) -> AppSettings {
 #[tauri::command]
 pub fn set_settings(
     state: tauri::State<'_, Settings>,
+    tablebases: tauri::State<'_, std::sync::Arc<crate::tablebases::Tablebases>>,
     settings: AppSettings,
 ) -> Result<AppSettings, AppError> {
+    settings.check()?;
+    // A tablebase folder is opened before it is kept.
+    tablebases.set_dir(settings.tablebase_dir.as_deref())?;
     state.save(&settings)?;
     Ok(settings)
 }
