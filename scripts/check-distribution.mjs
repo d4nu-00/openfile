@@ -13,6 +13,7 @@ const rootFiles = new Set([
   "LICENSE",
   "THIRD_PARTY_NOTICES.md",
   "README.md",
+  "feature_checklist.md",
   "package.json",
   "package-lock.json",
   "rust-toolchain.toml",
