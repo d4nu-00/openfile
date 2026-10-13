@@ -3,6 +3,7 @@ pub mod database_writes;
 pub mod documents;
 pub mod engine_commands;
 pub mod lists;
+pub mod names;
 pub mod registry;
 pub mod save;
 pub mod searches;
@@ -140,6 +141,11 @@ pub fn run() {
             commands::find_row,
             commands::sort_list,
             commands::cancel_sort,
+            commands::name_list,
+            commands::cancel_name_list,
+            commands::read_names,
+            commands::find_name,
+            commands::crosstable,
             commands::load_entry,
             commands::position_at,
             commands::close_database,

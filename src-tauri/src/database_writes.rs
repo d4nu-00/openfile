@@ -96,6 +96,7 @@ impl Registry {
             .map_err(|_| AppError::new("state", "Database unavailable"))? = fresh;
         // The sort order no longer covers every entry; the list asks again.
         self.drop_sort(id);
+        self.drop_name_lists(id);
         Ok(count)
     }
 
