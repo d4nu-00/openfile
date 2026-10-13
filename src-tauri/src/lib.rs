@@ -7,6 +7,7 @@ pub mod save;
 pub mod searches;
 #[cfg(all(debug_assertions, target_os = "macos"))]
 pub mod snapshot;
+pub mod trees;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Emitter, Manager};
 #[derive(Default)]
@@ -93,7 +94,8 @@ pub fn run() {
         })
         .manage(std::sync::Arc::new(registry::Registry::default()))
         .setup(|app| {
-            // Search boosters are the app's own files, never beside a source.
+            // Search boosters and opening trees (in a sibling folder) are the
+            // app's own files, never beside a source.
             if let Ok(dir) = app.path().app_data_dir() {
                 app.state::<std::sync::Arc<registry::Registry>>()
                     .set_index_dir(dir.join("search-boosters"));
@@ -121,6 +123,13 @@ pub fn run() {
             commands::find_position,
             commands::create_search_booster,
             commands::delete_search_booster,
+            commands::create_opening_tree,
+            commands::cancel_opening_tree,
+            commands::delete_opening_tree,
+            commands::opening_tree,
+            commands::reference_search,
+            commands::cancel_reference,
+            commands::read_reference_page,
             commands::read_page,
             commands::load_entry,
             commands::position_at,

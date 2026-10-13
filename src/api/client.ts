@@ -18,6 +18,10 @@ import type {
   GameFilter,
   SearchResponse,
   BoosterProgress,
+  Line,
+  TreeResponse,
+  TreeProgress,
+  ReferenceResponse,
 } from "./types";
 export const backend = {
   pickEngine: () =>
@@ -166,6 +170,40 @@ export const backend = {
   },
   deleteSearchBooster: (databaseId: string) =>
     invoke<void>("delete_search_booster", { databaseId }),
+  createOpeningTree: async (
+    databaseId: string,
+    onProgress: (p: TreeProgress) => void,
+  ) => {
+    const events = new Channel<TreeProgress>();
+    events.onmessage = onProgress;
+    return invoke<boolean>("create_opening_tree", { databaseId, events });
+  },
+  cancelOpeningTree: (databaseId: string) =>
+    invoke<void>("cancel_opening_tree", { databaseId }),
+  deleteOpeningTree: (databaseId: string) =>
+    invoke<void>("delete_opening_tree", { databaseId }),
+  openingTree: (databaseId: string, line: Line, requestId: string) =>
+    invoke<TreeResponse>("opening_tree", { databaseId, line, requestId }),
+  referenceSearch: (databaseId: string, line: Line, requestId: string) =>
+    invoke<ReferenceResponse>("reference_search", {
+      databaseId,
+      line,
+      requestId,
+    }),
+  cancelReference: (databaseId: string) =>
+    invoke<void>("cancel_reference", { databaseId }),
+  readReferencePage: (
+    databaseId: string,
+    start: string,
+    limit: number,
+    requestId: string,
+  ) =>
+    invoke<PageResponse>("read_reference_page", {
+      databaseId,
+      start,
+      limit,
+      requestId,
+    }),
   cancelSearch: (databaseId: string) =>
     invoke<void>("cancel_search", { databaseId }),
   clearSearch: (databaseId: string) =>

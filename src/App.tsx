@@ -11,6 +11,9 @@ import { UnsavedDialog } from "./components/UnsavedDialog";
 import { SearchMask } from "./components/SearchMask";
 import { EnginePanel } from "./components/EnginePanel";
 import { NotationTree } from "./components/NotationTree";
+import { BookPane } from "./components/BookPane";
+import { ReferencePane } from "./components/ReferencePane";
+import { usePositionPanes } from "./state/positionPanes";
 import { Diagnostics } from "./components/Diagnostics";
 import { GameList, matchesFilter } from "./views/GameList";
 import { BoardPane, type Step } from "./views/BoardPane";
@@ -62,9 +65,20 @@ export function App({
   const [square, setSquare] = useState<string>();
   const [promotion, setPromotion] = useState<string[]>([]);
   const [commentFocus, setCommentFocus] = useState(0);
+  // Notation tabs, and the book and reference panes outside them.
+  const [notationTab, setNotationTab] = useState<
+    "notation" | "book" | "reference"
+  >("notation");
+  const [extraBook, setExtraBook] = useState(false);
+  const [extraReference, setExtraReference] = useState(false);
 
   const game = state.document?.game;
   const selected = state.position?.nodeId ?? 0;
+  const inGame = view === "game";
+  const panes = usePositionPanes(api, state, {
+    book: inGame && (notationTab === "book" || extraBook),
+    reference: inGame && (notationTab === "reference" || extraReference),
+  });
   const title = game
     ? `${game.tags.White ?? "?"} — ${game.tags.Black ?? "?"}`
     : "Game board";
@@ -210,6 +224,36 @@ export function App({
     );
   }
 
+  /** Plays a book move: the existing continuation, or a new move. */
+  function playBookMove(uci: string) {
+    if (!game || e.busy) return;
+    const existing = game.nodes[selected]?.children.find(
+      (c) => game.nodes[c]?.uci === uci,
+    );
+    if (existing !== undefined) void w.selectNode(existing);
+    else void e.edit({ kind: "appendMove", parent: selected, uci });
+  }
+  const openReference = (ordinal: string, node: number) =>
+    void e.run(() => w.loadEntry(ordinal, node));
+  const bookPane = (
+    <BookPane
+      book={panes.book}
+      hasDatabase={!!state.database}
+      hasLine={!!panes.line}
+      onPlay={playBookMove}
+      onCreate={() => void w.createTree()}
+      building={w.treeBuild && `Building the opening tree: ${w.treeBuild}`}
+    />
+  );
+  const referencePane = (
+    <ReferencePane
+      reference={panes.reference}
+      hasDatabase={!!state.database}
+      hasLine={!!panes.line}
+      onOpen={openReference}
+    />
+  );
+
   const busy = e.busy;
   const bindings: Bindings = {
     "open-database": { run: () => e.run(w.openDatabase) },
@@ -256,6 +300,37 @@ export function App({
         return w.findPosition(fen);
       },
       enabled: !!state.position && !!state.database,
+    },
+    "open-book": {
+      run: () => {
+        setView("game");
+        setNotationTab("book");
+      },
+      enabled: !!game,
+      pressed: inGame && notationTab === "book",
+    },
+    "toggle-book-pane": {
+      run: () => setExtraBook((v) => !v),
+      pressed: extraBook,
+    },
+    "toggle-reference-pane": {
+      run: () => setExtraReference((v) => !v),
+      pressed: extraReference,
+    },
+    "find-reference": {
+      run: () => {
+        setView("game");
+        setNotationTab("reference");
+      },
+      enabled: !!state.position && !!state.database,
+    },
+    "create-opening-tree": {
+      run: () => w.createTree(),
+      enabled: !!state.database && !w.treeBuild,
+    },
+    "delete-opening-tree": {
+      run: () => w.deleteTree(),
+      enabled: !!state.database?.tree && !w.treeBuild,
     },
     "create-search-booster": {
       run: () => w.createBooster(),
@@ -332,7 +407,10 @@ export function App({
     "theme-gray": { run: () => setTheme("gray"), pressed: theme === "gray" },
     "theme-black": { run: () => setTheme("black"), pressed: theme === "black" },
     "command-search": { run: () => setPalette(true) },
-    "stop-process": { run: () => a.stop(), enabled: a.enabled },
+    "stop-process": {
+      run: () => (w.treeBuild ? w.cancelTree() : a.stop()),
+      enabled: a.enabled || !!w.treeBuild,
+    },
   };
   useEffect(() => {
     if (!startupCommand) return;
@@ -630,14 +708,39 @@ export function App({
                 <Panel id="notation" minSize="20">
                   <section className="pane notation-pane" aria-label="Notation">
                     <div className="pane-header">
-                      <strong>Notation</strong>
+                      <div
+                        className="pane-tabs"
+                        role="tablist"
+                        aria-label="Notation tabs"
+                      >
+                        {(
+                          [
+                            ["notation", "Notation"],
+                            ["book", "Book"],
+                            ["reference", "Reference"],
+                          ] as const
+                        ).map(([tab, label]) => (
+                          <button
+                            key={tab}
+                            role="tab"
+                            aria-selected={notationTab === tab}
+                            onClick={() => setNotationTab(tab)}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                       {pgnSelect}
                       {state.dirty && (
                         <span className="badge">Unsaved changes</span>
                       )}
                     </div>
-                    <div className="notation-scroll">{notation}</div>
-                    {game?.nodes[selected] && (
+                    {notationTab === "book" && bookPane}
+                    {notationTab === "reference" && referencePane}
+                    {notationTab === "notation" && (
+                      <div className="notation-scroll">{notation}</div>
+                    )}
+                    {notationTab === "notation" && game?.nodes[selected] && (
                       <CommentEditor
                         key={commentFocus ? `focus-${commentFocus}` : "editor"}
                         node={game.nodes[selected]}
@@ -663,9 +766,33 @@ export function App({
               aria-label="Resize analysis pane"
             />
             <Panel id="engine" minSize="12">
-              <section className="pane analysis-pane" aria-label="Engine">
-                <EnginePanel a={a} state={state} />
-              </section>
+              <Group orientation="horizontal" className="split">
+                <Panel id="kibitzer" minSize="20">
+                  <section className="pane analysis-pane" aria-label="Engine">
+                    <EnginePanel a={a} state={state} />
+                  </section>
+                </Panel>
+                {extraBook && (
+                  <>
+                    <Separator className="splitter vertical" />
+                    <Panel id="extra-book" minSize="20">
+                      <section className="pane" aria-label="Book pane">
+                        {bookPane}
+                      </section>
+                    </Panel>
+                  </>
+                )}
+                {extraReference && (
+                  <>
+                    <Separator className="splitter vertical" />
+                    <Panel id="extra-reference" minSize="20">
+                      <section className="pane" aria-label="Reference pane">
+                        {referencePane}
+                      </section>
+                    </Panel>
+                  </>
+                )}
+              </Group>
             </Panel>
           </Group>
         )}

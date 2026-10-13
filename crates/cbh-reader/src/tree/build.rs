@@ -337,7 +337,11 @@ impl OpeningTree {
         }
         out.as_file().sync_all()?;
         out.persist(path).map_err(|e| CbhError::Io(e.error))?;
-        Ok(true)
+        // A journal belongs to the tree it was written for.
+        match std::fs::remove_file(journal::journal_path(path)) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.into()),
+            _ => Ok(true),
+        }
     }
 }
 

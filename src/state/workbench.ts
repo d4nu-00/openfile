@@ -48,6 +48,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
   const [status, setStatus] = useState("Open a CBH database to begin.");
   const [pageStart, setPageStart] = useState("1");
   const [loadingEntry, setLoadingEntry] = useState<string>();
+  /** Progress of a running opening tree build. */
+  const [treeBuild, setTreeBuild] = useState<string>();
   const gates = useRef({
     database: new SelectionGate(),
     page: new SelectionGate(),
@@ -269,6 +271,55 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       setStatus("Search booster failed");
     }
   }
+  /** Builds the opening tree used by the book and the reference search. */
+  async function createTree() {
+    const db = current.current.database;
+    if (!db) return;
+    const show = (text: string) => {
+      setTreeBuild(text);
+      setStatus(`Opening tree: ${text}`);
+    };
+    show("starting…");
+    try {
+      const built = await api.createOpeningTree(db.databaseId, (p) => {
+        const pct = Number((BigInt(p.done) * 100n) / BigInt(p.total || "1"));
+        show(
+          p.stage === "reading"
+            ? `reading games, ${pct}% of ${p.total}`
+            : `sorting positions, pass ${p.done} of ${p.total}`,
+        );
+      });
+      if (current.current.database?.databaseId !== db.databaseId) return;
+      setState((s) => ({
+        ...s,
+        database: s.database && { ...s.database, tree: built },
+      }));
+      setStatus(built ? "Opening tree is complete" : "Opening tree cancelled");
+    } catch (e) {
+      setDiagnostics([{ code: "tree", message: explain(e) }]);
+      setStatus("Opening tree failed");
+    } finally {
+      setTreeBuild(undefined);
+    }
+  }
+  async function deleteTree() {
+    const db = current.current.database;
+    if (!db) return;
+    try {
+      await api.deleteOpeningTree(db.databaseId);
+      setState((s) => ({
+        ...s,
+        database: s.database && { ...s.database, tree: false },
+      }));
+      setStatus("Opening tree deleted");
+    } catch (e) {
+      setDiagnostics([{ code: "tree", message: explain(e) }]);
+    }
+  }
+  function cancelTree() {
+    const db = current.current.database;
+    if (db) void api.cancelOpeningTree(db.databaseId).catch(() => {});
+  }
   async function deleteBooster() {
     const db = current.current.database;
     if (!db) return;
@@ -401,6 +452,10 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     findPosition,
     createBooster,
     deleteBooster,
+    treeBuild,
+    createTree,
+    deleteTree,
+    cancelTree,
     cancelSearch,
     clearSearch,
     openDatabaseForEditing,

@@ -1,7 +1,7 @@
 //! Builds an opening tree and answers a line, printing timings.
 //!
 //! Usage: tree --path <db> --tree <file> [--build] [--plies N] [--line e2e4,e7e5]
-//!        [--verify N]
+//!        [--game N --ply K] [--verify N]
 //!
 //! --verify compares N lines, taken from games of the database, with a full
 //! scan of every main line.
@@ -67,6 +67,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         moves.push(pack_move(&m).ok_or("bad move")?);
         pos.play_unchecked(m);
         hashes.push(position_hash(pos.board(), pos.turn()));
+    }
+    if let Some(ordinal) = value("--game") {
+        // The line of a game of the database, up to --ply.
+        let ply: usize = value("--ply").map_or(Ok(40), |p| p.parse())?;
+        let line = db
+            .main_line(ordinal.parse()?, ply)?
+            .ok_or("no main line")?
+            .positions;
+        hashes = line.iter().map(|p| p.0).collect();
+        moves = line[..line.len() - 1].iter().map(|p| p.2).collect();
     }
     let started = Instant::now();
     let answer = tree.query(&db, &hashes, &moves, 100_000, 5_000, &cancel)?;

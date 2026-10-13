@@ -161,8 +161,8 @@ Names in backticks are ChessBase command ids, for traceability.
 
 ## 8. Openings and repertoire
 
-- [ ] P1 🟢 Opening tree from the user's own databases: moves, frequency, score and Elo (`OPENBOOK`, `TOGGLEBOOKPANE`)
-- [ ] P1 🟢 Reference database search for the current position (`TOGGLEREFERENCEPANE`, `FINDREFDBBOARD`, `AutoSearchDB`)
+- [x] P1 🟢 Opening tree from the user's own databases: moves, frequency, score and Elo (`OPENBOOK`, `TOGGLEBOOKPANE`) *(Create Opening Tree builds it into the app data folder; Book tab and extra pane with N, share, %, =%, Av, Perf and last played; main lines only; journal keeps it current across the workbench's own saves; see docs/opening-tree.md)*
+- [x] P1 🟢 Reference database search for the current position (`TOGGLEREFERENCEPANE`, `FINDREFDBBOARD`, `AutoSearchDB`) *(Reference tab and pane follow the board, from the opening tree or Find Position; stale searches are cancelled; the reference database is the open database, a separate reference database setting is not implemented)*
 - [ ] P2 🟢 Opening books: import games or books, copy lines, save the tree (`BOOKIMPORTGAMES`, `BOOKIMPORTBOOK`, `COPYLINETOBOOK`, `SAVETREE`)
 - [ ] P2 🟢 Opening classification with ECO and opening keys (`CLASSIFYGAME`, `ClassifyOpening`)
 - [ ] P2 🟢 Opening report from a database (`OpeningReport`)

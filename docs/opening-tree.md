@@ -139,13 +139,15 @@ program makes the tree stale as before.
 
 ## Measurements
 
-Release build on the development Mac (10 cores, warm cache; 8 decoding
-threads):
+Release build on the development Mac (10 cores, 16 GB, warm cache; 8 decoding
+threads). Details are in [validation](validation.md).
 
 | Database | Games | Build | Tree file | Stored positions |
 |---|---|---|---|---|
 | Mega 2025, 2CBH family | 24,759 | 3.3 s | 0.8 MB | 8,085 |
-| Mega 2025, classic | 11,151,119 entries | see validation.md | | |
+| Mega 2025, classic | 11,148,461 | 9 min 45 s | 686 MB | 3,576,062 |
 
-A stored position is answered in under a millisecond, and the start position
-lists its first 100,000 games in about 0.6 ms on the 2CBH family.
+The classic build peaked at 0.8 GB of memory. Its temporary file of packed
+main lines (about 1.3 GB, estimated from its record size of 6 bytes plus 2 per move) is deleted at the end. A stored position is answered
+in under a millisecond. Listing the first 100,000 games of the start position
+takes about 25 ms.
