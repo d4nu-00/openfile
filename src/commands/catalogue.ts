@@ -390,6 +390,52 @@ const list: CommandMeta[] = [
     views: db,
   },
   {
+    id: "create-opening-tree",
+    label: "Create Opening Tree",
+    tip: "Build the opening tree of this database for the book and the reference search (workbench)",
+    icon: ListTree,
+    views: db,
+  },
+  {
+    id: "delete-opening-tree",
+    label: "Delete Opening Tree",
+    tip: "Delete this database's opening tree (workbench)",
+    icon: Trash2,
+    views: db,
+  },
+  {
+    id: "open-book",
+    label: "Openings Book",
+    tip: "Show the moves played in this position in the open database",
+    icon: BookOpen,
+    keys: "Ctrl+F12",
+    views: game,
+  },
+  {
+    id: "toggle-book-pane",
+    label: "Extra Book Pane",
+    tip: "Toggle extra book window outside the notation tabs",
+    icon: PanelsTopLeft,
+    keys: "Ctrl+Shift+F12",
+    views: game,
+  },
+  {
+    id: "toggle-reference-pane",
+    label: "Reference Search",
+    tip: "Show/Hide the automatic search pane",
+    icon: Search,
+    keys: "Ctrl+Shift+F7",
+    views: game,
+  },
+  {
+    id: "find-reference",
+    label: "Find in Reference Database",
+    tip: "Search the current board position in the reference database",
+    icon: Database,
+    keys: "Shift+F7",
+    views: game,
+  },
+  {
     id: "add-kibitzer",
     label: "Add Kibitzer",
     tip: "Add a Kibitz engine pane to analyse the game",
@@ -765,6 +811,10 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
           label: "Search Booster",
           items: [S("create-search-booster"), S("delete-search-booster")],
         },
+        {
+          label: "Opening Tree",
+          items: [S("create-opening-tree"), S("delete-opening-tree")],
+        },
       ],
     },
     {
@@ -809,7 +859,11 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
         },
         {
           label: "Find Position",
-          items: [S("find-position-online"), S("find-position-db")],
+          items: [
+            S("find-position-online"),
+            S("find-position-db"),
+            S("find-reference"),
+          ],
         },
         {
           label: "Engine",
@@ -881,6 +935,14 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             L("layout-standard"),
             L("layout-board-only"),
             L("layout-tall-engine"),
+          ],
+        },
+        {
+          label: "Panes",
+          items: [
+            L("open-book"),
+            S("toggle-book-pane"),
+            S("toggle-reference-pane"),
           ],
         },
         viewTab.groups[1],

@@ -897,3 +897,79 @@ kbd {
   cursor: pointer;
   padding: 0 6px;
 }
+
+/* Notation tabs, book and reference panes */
+.pane-tabs {
+  display: flex;
+  gap: 2px;
+  align-self: stretch;
+}
+.pane-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-radius: 0;
+}
+.pane-tabs button[aria-selected="true"] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+.book-pane,
+.reference-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.book-list tbody tr {
+  cursor: pointer;
+}
+.book-move {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-weight: 600;
+  color: var(--notation-move);
+}
+.book-list .score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.book-list td.num {
+  font-variant-numeric: tabular-nums;
+}
+.result-bar {
+  display: inline-flex;
+  width: 48px;
+  height: 8px;
+  border: 1px solid var(--pane-border);
+  flex-shrink: 0;
+}
+.result-bar .win {
+  background: var(--result-win);
+}
+.result-bar .draw {
+  background: var(--result-draw);
+}
+.result-bar .loss {
+  background: var(--result-loss);
+}
+.empty-state p {
+  margin: 0 0 8px;
+}
+.mask-tabs {
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--pane-border);
+}
+.mask-row input.mask-fen {
+  flex: 1;
+  min-width: 360px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}

@@ -150,6 +150,49 @@ export function demoApi(): WorkbenchApi {
       return true;
     },
     deleteSearchBooster: async () => {},
+    // A made-up tree for previews: the first legal moves with fixed numbers.
+    createOpeningTree: async (_db, onProgress) => {
+      onProgress({ stage: "reading", done: "2400", total: "2400" });
+      return true;
+    },
+    cancelOpeningTree: async () => {},
+    deleteOpeningTree: async () => {},
+    openingTree: async (_db, line, requestId) => {
+      const legal = (demoLegal[line.moves.length] ?? []).slice(0, 5);
+      const counts = [1200, 640, 310, 95, 12];
+      const total = counts.slice(0, legal.length).reduce((a, b) => a + b, 0);
+      return {
+        requestId,
+        status: "tree" as const,
+        games: total,
+        ended: 0,
+        moves: legal.map((uci, i) => ({
+          uci,
+          san: uci,
+          games: counts[i],
+          share: (counts[i] * 100) / total,
+          score: 55 - i * 3,
+          draws: 30 - i * 2,
+          averageElo: 2450 - i * 40,
+          performance: 2480 - i * 60,
+          firstYear: 1950 + i * 5,
+          lastYear: 2024 - i,
+        })),
+      };
+    },
+    referenceSearch: async (_db, _line, requestId) => ({
+      requestId,
+      hits: "12",
+      truncated: false,
+      cancelled: false,
+      source: "tree" as const,
+      indexed: false,
+    }),
+    cancelReference: async () => {},
+    readReferencePage: async (db, _start, _limit, requestId) => {
+      const page = await api.readPage!(db, "1", 12, requestId);
+      return { ...page, entries: page.entries.slice(0, 12), next: undefined };
+    },
     clearSearch: async () => {},
     readSearchPage: async (db, start, limit, requestId) =>
       api.readPage!(db, start, limit, requestId),

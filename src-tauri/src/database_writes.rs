@@ -164,11 +164,13 @@ impl Registry {
         let (game, revision, _) =
             self.game_for_saving(&document_id, &expected_revision, allow_incomplete)?;
         let (writer, path) = self.writer(&database_id)?;
+        let tree = self.tree_before_change(&database_id, None);
         let (ordinal, _) = writer
             .lock()
             .map_err(|_| AppError::new("state", "Database writer unavailable"))?
             .append(&game)?;
         let count = self.refresh(&database_id, &path)?;
+        self.tree_after_change(&database_id, tree, Some(ordinal));
         self.saved(&document_id, revision, (database_id.clone(), ordinal))?;
         Ok(SaveGameResponse {
             database_id,
@@ -194,11 +196,13 @@ impl Registry {
         let (database_id, ordinal) = origin
             .ok_or_else(|| AppError::new("noOrigin", "This game was not loaded from a database"))?;
         let (writer, path) = self.writer(&database_id)?;
+        let tree = self.tree_before_change(&database_id, Some(ordinal));
         writer
             .lock()
             .map_err(|_| AppError::new("state", "Database writer unavailable"))?
             .replace(ordinal, &game)?;
         let count = self.refresh(&database_id, &path)?;
+        self.tree_after_change(&database_id, tree, Some(ordinal));
         self.saved(&document_id, revision, (database_id.clone(), ordinal))?;
         Ok(SaveGameResponse {
             database_id,
@@ -221,11 +225,13 @@ impl Registry {
             .lock()
             .map_err(|_| AppError::new("state", "Save service unavailable"))?;
         let (writer, path) = self.writer(&database_id)?;
+        let tree = self.tree_before_change(&database_id, None);
         writer
             .lock()
             .map_err(|_| AppError::new("state", "Database writer unavailable"))?
             .set_deleted(ordinal, deleted)?;
         self.refresh(&database_id, &path)?;
+        self.tree_after_change(&database_id, tree, None);
         Ok(())
     }
 }

@@ -45,6 +45,9 @@ pub struct GameFilter {
     pub elo_min: Option<u16>,
     pub elo_max: Option<u16>,
     pub elo_mode: EloMode,
+    /// At most this rating difference between the players; both must be
+    /// rated.
+    pub elo_difference: Option<u16>,
     pub year_min: Option<u16>,
     pub year_max: Option<u16>,
     /// Inclusive ECO range, e.g. "B20".."B99".
@@ -146,6 +149,12 @@ impl GameFilter {
             };
             if !ok {
                 return false;
+            }
+        }
+        if let Some(max) = self.elo_difference {
+            match (r.white_elo, r.black_elo) {
+                (Some(w), Some(b)) if w > 0 && b > 0 && w.abs_diff(b) <= max => {}
+                _ => return false,
             }
         }
         if self.year_min.is_some() || self.year_max.is_some() {

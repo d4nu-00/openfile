@@ -47,6 +47,10 @@
   --board-coord: #ffffff;
   --board-highlight: rgba(255, 213, 79, 0.55);
   --board-target: rgba(20, 50, 80, 0.35);
+  /* Book result bars: the mover's wins, draws and losses. */
+  --result-win: #5b8f4e;
+  --result-draw: #c8c8c8;
+  --result-loss: #b85450;
   color-scheme: light;
 }
 [data-theme="blue"] {

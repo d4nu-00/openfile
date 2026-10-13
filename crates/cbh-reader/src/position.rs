@@ -272,6 +272,16 @@ pub struct PositionResult {
 }
 
 impl Database {
+    /// The first node of entry `ordinal` (depth first) showing `target`;
+    /// `None` for text entries and games that never reach it.
+    pub fn find_node(&self, ordinal: u64, target: &Target) -> Result<Option<NodeId>, CbhError> {
+        let raw = self.raw_chunk(ordinal, 1)?.remove(0);
+        match self.moves_of(&raw)? {
+            Some(game) => target.find_in(&game),
+            None => Ok(None),
+        }
+    }
+
     /// Finds games that reach `target`, using `index` when given and
     /// replaying every game otherwise.
     pub fn find_position(

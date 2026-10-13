@@ -1,0 +1,131 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  GameView,
+  Line,
+  PageResponse,
+  ReferenceResponse,
+  TreeResponse,
+} from "../api/types";
+import type { WorkbenchApi } from "../api/client";
+import type { WorkbenchState } from "./workbench";
+import { SelectionGate } from "./selection";
+
+const explain = (e: unknown) =>
+  (e as { message?: string })?.message ?? String(e);
+
+/** The moves from the game's start to `node`. */
+export function lineTo(game: GameView, node: number): Line | undefined {
+  const moves: string[] = [];
+  let id: number | undefined = node;
+  let steps = 0;
+  while (id !== undefined && id !== 0) {
+    const n: GameView["nodes"][number] | undefined = game.nodes[id];
+    if (!n?.uci || steps++ > game.nodes.length) return undefined;
+    moves.push(n.uci);
+    id = n.parent;
+  }
+  return id === 0
+    ? { startFen: game.startFen, moves: moves.reverse() }
+    : undefined;
+}
+
+export interface BookState {
+  loading: boolean;
+  tree?: TreeResponse;
+  error?: string;
+}
+export interface ReferenceState {
+  loading: boolean;
+  response?: ReferenceResponse;
+  page?: PageResponse;
+  error?: string;
+}
+
+/** Waits this long after a move before asking, so fast replay stays smooth. */
+const SETTLE_MS = 60;
+
+/**
+ * Keeps the book and the reference search in step with the board. Each new
+ * position supersedes the previous request; a stale reference search is
+ * cancelled in the backend.
+ */
+export function usePositionPanes(
+  api: WorkbenchApi,
+  state: WorkbenchState,
+  active: { book: boolean; reference: boolean },
+) {
+  const db = state.database;
+  const game = state.document?.game;
+  const node = state.position?.nodeId;
+  const line = useMemo(
+    () => (game && node !== undefined ? lineTo(game, node) : undefined),
+    [game, node],
+  );
+  const key = line ? `${line.startFen}|${line.moves.join(" ")}` : "";
+  const gates = useRef({
+    book: new SelectionGate(),
+    reference: new SelectionGate(),
+  }).current;
+  const [book, setBook] = useState<BookState>({ loading: false });
+  const [reference, setReference] = useState<ReferenceState>({
+    loading: false,
+  });
+
+  useEffect(() => {
+    if (!active.book || !db || !line) return;
+    const request = gates.book.begin();
+    setBook((b) => ({ ...b, loading: true }));
+    const timer = setTimeout(async () => {
+      try {
+        const tree = await api.openingTree(db.databaseId, line, request);
+        if (gates.book.accept(tree.requestId))
+          setBook({ loading: false, tree });
+      } catch (e) {
+        if (gates.book.accept(request))
+          setBook({ loading: false, error: explain(e) });
+      }
+    }, SETTLE_MS);
+    return () => clearTimeout(timer);
+    // The database object changes when its tree is built or deleted.
+  }, [active.book, db, key]);
+
+  useEffect(() => {
+    if (!active.reference || !db || !line) return;
+    const request = gates.reference.begin();
+    setReference((r) => ({ ...r, loading: true }));
+    const timer = setTimeout(async () => {
+      try {
+        const response = await api.referenceSearch(
+          db.databaseId,
+          line,
+          request,
+        );
+        if (!gates.reference.accept(response.requestId)) return;
+        if (response.cancelled) return;
+        const page =
+          response.hits === "0"
+            ? { requestId: request, entries: [] }
+            : await api.readReferencePage(db.databaseId, "1", 200, request);
+        if (gates.reference.accept(page.requestId))
+          setReference({ loading: false, response, page });
+      } catch (e) {
+        if (gates.reference.accept(request))
+          setReference({ loading: false, error: explain(e) });
+      }
+    }, SETTLE_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [active.reference, db, key]);
+
+  // Leaving the position or closing the pane stops a running search.
+  useEffect(() => {
+    if (!active.reference || !db) return;
+    return () => {
+      gates.reference.begin();
+      void api.cancelReference(db.databaseId).catch(() => {});
+    };
+  }, [active.reference, db?.databaseId]);
+
+  return { line, book, reference };
+}

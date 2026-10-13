@@ -56,6 +56,8 @@ pub struct OpenDatabaseResponse {
     pub writable: bool,
     /// A current search booster exists for fast position search.
     pub booster: bool,
+    /// A current opening tree exists.
+    pub tree: bool,
 }
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -519,4 +521,79 @@ pub async fn delete_search_booster(
 ) -> Result<(), AppError> {
     let s = state.inner().clone();
     blocking(move || s.delete_search_booster(database_id)).await
+}
+#[tauri::command]
+pub async fn create_opening_tree(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    events: tauri::ipc::Channel<crate::trees::TreeProgress>,
+) -> Result<bool, AppError> {
+    let s = state.inner().clone();
+    blocking(move || {
+        let mut last = std::time::Instant::now();
+        s.create_opening_tree(database_id, |stage, done, total| {
+            if last.elapsed().as_millis() >= 250 || done == total {
+                last = std::time::Instant::now();
+                let _ = events.send(crate::trees::TreeProgress {
+                    stage,
+                    done: done.to_string(),
+                    total: total.to_string(),
+                });
+            }
+        })
+    })
+    .await
+}
+#[tauri::command]
+pub fn cancel_opening_tree(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_opening_tree(database_id)
+}
+#[tauri::command]
+pub async fn delete_opening_tree(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.delete_opening_tree(database_id)).await
+}
+#[tauri::command]
+pub async fn opening_tree(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    line: crate::trees::Line,
+    request_id: String,
+) -> Result<crate::trees::TreeResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.opening_tree(database_id, line, request_id)).await
+}
+#[tauri::command]
+pub async fn reference_search(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    line: crate::trees::Line,
+    request_id: String,
+) -> Result<crate::trees::ReferenceResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.reference_search(database_id, line, request_id)).await
+}
+#[tauri::command]
+pub fn cancel_reference(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_reference(database_id)
+}
+#[tauri::command]
+pub async fn read_reference_page(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    start: String,
+    limit: usize,
+    request_id: String,
+) -> Result<PageResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.read_reference_page(database_id, start, limit, request_id)).await
 }

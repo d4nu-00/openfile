@@ -19,6 +19,8 @@ const MAX_POSITION_HITS: usize = 100_000;
 pub struct Hits {
     pub ordinals: Vec<u64>,
     pub nodes: Option<Vec<u32>>,
+    /// The position searched, when nodes are found page by page instead.
+    pub fen: Option<String>,
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -89,20 +91,35 @@ impl Registry {
                 Arc::new(Hits {
                     ordinals: result.ordinals,
                     nodes: None,
+                    fen: None,
                 }),
             );
         }
         Ok(response)
     }
 
-    /// Where the search booster of the database at `path` lives.
+    /// Where the search booster of a database lives.
     fn booster_path(&self, database_id: &str) -> Result<std::path::PathBuf, AppError> {
-        let dir = self
+        self.data_file(database_id, None, "cwpi")
+    }
+
+    /// The app's own file for a database: in the search booster folder, or
+    /// in `sibling` beside it, named by a hash of the database's path.
+    pub(crate) fn data_file(
+        &self,
+        database_id: &str,
+        sibling: Option<&str>,
+        extension: &str,
+    ) -> Result<std::path::PathBuf, AppError> {
+        let mut dir = self
             .index_dir
             .lock()
             .map_err(|_| AppError::new("state", "Registry unavailable"))?
             .clone()
             .ok_or_else(|| AppError::new("noIndexFolder", "No folder for search boosters"))?;
+        if let Some(sibling) = sibling {
+            dir = dir.with_file_name(sibling);
+        }
         let path = self
             .lock()?
             .paths
@@ -110,16 +127,16 @@ impl Registry {
             .cloned()
             .ok_or_else(|| AppError::new("invalidHandle", "Database is closed or unknown"))?;
         let canonical = std::fs::canonicalize(&path).unwrap_or(path);
-        // FNV-1a of the path: one booster per database file.
+        // FNV-1a of the path: one file per database.
         let mut h: u64 = 0xcbf2_9ce4_8422_2325;
         for b in canonical.to_string_lossy().bytes() {
             h = (h ^ b as u64).wrapping_mul(0x100_0000_01b3);
         }
-        Ok(dir.join(format!("{h:016x}.cwpi")))
+        Ok(dir.join(format!("{h:016x}.{extension}")))
     }
 
     /// A separate read-only handle on an open database.
-    fn own_handle(&self, database_id: &str) -> Result<cbh_reader::Database, AppError> {
+    pub(crate) fn own_handle(&self, database_id: &str) -> Result<cbh_reader::Database, AppError> {
         let path = self
             .lock()?
             .paths
@@ -188,7 +205,6 @@ impl Registry {
         request_id: String,
     ) -> Result<SearchResponse, AppError> {
         let target = cbh_reader::position::Target::from_fen(&fen)?;
-        let booster = self.booster_path(&database_id).ok();
         let db = self.database(&database_id)?;
         let cancel = Arc::new(AtomicBool::new(false));
         if let Some(old) = self
@@ -199,20 +215,7 @@ impl Registry {
             old.store(true, Ordering::Relaxed);
         }
         drop(db);
-        let result = {
-            let mut db = self.own_handle(&database_id)?;
-            let mut index = match &booster {
-                Some(path) => cbh_reader::position::PositionIndex::open(path, &db)?,
-                None => None,
-            };
-            db.find_position(
-                &target,
-                index.as_mut(),
-                MAX_POSITION_HITS,
-                &cancel,
-                |_, _| {},
-            )?
-        };
+        let result = self.position_search(&database_id, &target, &cancel)?;
         let mut state = self.lock()?;
         if state
             .search_cancels
@@ -236,10 +239,28 @@ impl Registry {
                 Arc::new(Hits {
                     ordinals,
                     nodes: Some(nodes),
+                    fen: None,
                 }),
             );
         }
         Ok(response)
+    }
+
+    /// Finds games reaching `target` through a separate read handle, with
+    /// the search booster when it is current.
+    pub(crate) fn position_search(
+        &self,
+        database_id: &str,
+        target: &cbh_reader::position::Target,
+        cancel: &AtomicBool,
+    ) -> Result<cbh_reader::position::PositionResult, AppError> {
+        let booster = self.booster_path(database_id).ok();
+        let mut db = self.own_handle(database_id)?;
+        let mut index = match &booster {
+            Some(path) => cbh_reader::position::PositionIndex::open(path, &db)?,
+            None => None,
+        };
+        Ok(db.find_position(target, index.as_mut(), MAX_POSITION_HITS, cancel, |_, _| {})?)
     }
 
     pub fn cancel_search(&self, database_id: String) -> Result<(), AppError> {
@@ -263,19 +284,36 @@ impl Registry {
         limit: usize,
         request_id: String,
     ) -> Result<PageResponse, AppError> {
-        let start = decimal(&start)?;
         let hits = self
             .lock()?
             .searches
             .get(&database_id)
             .cloned()
             .ok_or_else(|| AppError::new("noSearch", "No search result for this database"))?;
+        self.read_hits_page(&database_id, &hits, &start, limit, request_id)
+    }
+
+    /// Entries `start .. start + limit` of `hits`, where `start` counts hits
+    /// from 1.
+    pub(crate) fn read_hits_page(
+        &self,
+        database_id: &str,
+        hits: &Hits,
+        start: &str,
+        limit: usize,
+        request_id: String,
+    ) -> Result<PageResponse, AppError> {
+        let start = decimal(start)?;
         if start == 0 || limit == 0 || limit > 500 || start > hits.ordinals.len() as u64 + 1 {
             return Err(AppError::new("bounds", "Search page is out of range"));
         }
         let from = (start - 1) as usize;
         let to = (from + limit).min(hits.ordinals.len());
-        let db = self.database(&database_id)?;
+        let target = match &hits.fen {
+            Some(fen) => Some(cbh_reader::position::Target::from_fen(fen)?),
+            None => None,
+        };
+        let db = self.database(database_id)?;
         let mut db = db
             .lock()
             .map_err(|_| AppError::new("state", "Database unavailable"))?;
@@ -283,9 +321,14 @@ impl Registry {
         for i in from..to {
             // Entries are read one at a time; a search result is sparse.
             let mut page = db.page(hits.ordinals[i], 1)?;
+            let node = match (&hits.nodes, &target) {
+                (Some(nodes), _) => Some(nodes[i]),
+                (None, Some(target)) => db.find_node(hits.ordinals[i], target)?,
+                (None, None) => None,
+            };
             entries.extend(page.entries.drain(..).map(|e| {
                 let mut dto: crate::commands::EntryDto = e.into();
-                dto.found_node = hits.nodes.as_ref().map(|n| n[i]);
+                dto.found_node = node;
                 dto
             }));
         }

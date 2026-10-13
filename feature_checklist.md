@@ -84,8 +84,8 @@ Names in backticks are ChessBase command ids, for traceability.
 
 ## 4. Search
 
-- [ ] P1 🟢 Search mask, game data: players, colour, event, site, year, Elo, ECO, result, moves, annotator, source (`OPEN_SEARCHMASK`) *(partial: players with Wins Only and Ignore colours, tournament/site, annotator, Elo modes, year, ECO, moves and result search whole databases; source, Elo difference, mate/stalemate/check and text are not yet searchable)*
-- [ ] P1 🟢 Position search: exact position, with OR/NOT boards and mirrored search *(partial: exact board and side to move, in main lines and variations; no OR/NOT boards or mirroring yet)*
+- [ ] P1 🟢 Search mask, game data: players, colour, event, site, year, Elo, ECO, result, moves, annotator, source (`OPEN_SEARCHMASK`) *(partial: players with Wins Only and Ignore colours, tournament/site, annotator, Elo modes, Elo difference, year, ECO, moves and result search whole databases; mate/stalemate/check (needs final positions), text, repertoire and time controls are not yet searchable; the game data tab, dialog 1031, has no source field)*
+- [ ] P1 🟢 Position search: exact position, with OR/NOT boards and mirrored search *(partial: exact board and side to move, in main lines and variations, from the board or the search mask's Position tab as FEN; no board editor, OR/NOT boards or mirroring yet)*
 - [x] P1 🟢 Find the current board position in a database (`FINDINDBBOARD`, `FINDPOSITION`) *(games open at the position found)*
 - [ ] P2 🟢 Material search (endgame type, material balance)
 - [ ] P2 🟢 Annotation and text search: symbols, commentary text, medals (`GENERALSEARCH`)
@@ -161,8 +161,8 @@ Names in backticks are ChessBase command ids, for traceability.
 
 ## 8. Openings and repertoire
 
-- [ ] P1 🟢 Opening tree from the user's own databases: moves, frequency, score and Elo (`OPENBOOK`, `TOGGLEBOOKPANE`)
-- [ ] P1 🟢 Reference database search for the current position (`TOGGLEREFERENCEPANE`, `FINDREFDBBOARD`, `AutoSearchDB`)
+- [x] P1 🟢 Opening tree from the user's own databases: moves, frequency, score and Elo (`OPENBOOK`, `TOGGLEBOOKPANE`) *(Create Opening Tree builds it into the app data folder; Book tab and extra pane with N, share, %, =%, Av, Perf and last played; main lines only; journal keeps it current across the workbench's own saves; see docs/opening-tree.md)*
+- [x] P1 🟢 Reference database search for the current position (`TOGGLEREFERENCEPANE`, `FINDREFDBBOARD`, `AutoSearchDB`) *(Reference tab and pane follow the board, from the opening tree or Find Position; stale searches are cancelled; the reference database is the open database, a separate reference database setting is not implemented)*
 - [ ] P2 🟢 Opening books: import games or books, copy lines, save the tree (`BOOKIMPORTGAMES`, `BOOKIMPORTBOOK`, `COPYLINETOBOOK`, `SAVETREE`)
 - [ ] P2 🟢 Opening classification with ECO and opening keys (`CLASSIFYGAME`, `ClassifyOpening`)
 - [ ] P2 🟢 Opening report from a database (`OpeningReport`)

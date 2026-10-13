@@ -220,6 +220,34 @@ check that a stale booster is not used and that a cancelled build leaves no
 file. In the real app, Find Position on the Opera Game after 4...Bxf3 listed
 9 games, each opening at that move.
 
+## Opening tree (2026-10-13)
+
+The `tree` example built and queried trees on the Mega families (release
+build, 8 decoding threads, development Mac with 10 cores and 16 GB):
+
+| Family | Build | File | Stored positions | Peak memory |
+|---|---|---|---|---|
+| 2CBH, 24,783 entries | 3.3 s | 0.8 MB | 8,085 | — |
+| Classic, 11,151,119 entries | 585 s (385 s decoding, 200 s sorting in 19 passes) | 686 MB | 3,576,062 | 0.8 GB |
+
+The classic build's temporary file of packed main lines is deleted when the
+build ends.
+
+* **Answers.** A stored position is answered in under a millisecond. The start position and
+  the Najdorf after 6.Nc3 a6 each listed their first 100,000 games in 11–25 ms.
+  The Najdorf has 61,217 games for 6.Bg5. Positions from three late classic
+  games at 16, 30 and 60 half-moves, mostly off the stored positions, were
+  followed from the line in 0.3–1.6 ms.
+* **Exactness.** `--verify 3000` compared 3,000 random lines cut from the 2CBH
+  family's games with a scan of every main line. 2,965 were exact. The other
+  35 missed games that transpose into a position reached by fewer than five
+  games, or started from a set-up position. No answer listed a wrong game.
+* **Synthetic tests** check counts, transpositions, variations (not counted),
+  scores from the side to move, unknown results, ratings, years, following
+  rare positions, stale trees, journalled saves and replacements, and that a
+  cancelled build leaves no file. The app test also checks the reference
+  search from the tree, its fallback to Find Position, and found nodes.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

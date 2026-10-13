@@ -24,6 +24,13 @@ pub(crate) struct State {
     /// The current search result of each database.
     pub(crate) searches: HashMap<String, Arc<crate::searches::Hits>>,
     pub(crate) search_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    /// Open opening trees, each with its own read handle.
+    pub(crate) trees: HashMap<String, Arc<Mutex<crate::trees::OpenTree>>>,
+    /// Running opening tree builds.
+    pub(crate) tree_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    /// The reference search result of each database, and its running search.
+    pub(crate) references: HashMap<String, Arc<crate::searches::Hits>>,
+    pub(crate) reference_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     pub documents: HashMap<String, Arc<Mutex<Document>>>,
 }
 impl State {
@@ -103,6 +110,7 @@ impl Registry {
             diagnostics: info.diagnostics.iter().cloned().map(Into::into).collect(),
             writable: writer.is_some(),
             booster: false,
+            tree: false,
         };
         if let Some(writer) = writer {
             state
@@ -116,6 +124,7 @@ impl Registry {
         drop(state);
         let mut response = response;
         response.booster = self.has_booster(&database_id).unwrap_or(false);
+        response.tree = self.has_tree(&database_id).unwrap_or(false);
         Ok(response)
     }
     pub fn read_page(
@@ -259,9 +268,18 @@ impl Registry {
             .ok_or_else(|| AppError::new("invalidHandle", "Database is closed or unknown"))?;
         state.writers.remove(&id);
         state.paths.remove(&id);
+        let state = &mut *state;
         state.searches.remove(&id);
-        if let Some(c) = state.search_cancels.remove(&id) {
-            c.store(true, std::sync::atomic::Ordering::Relaxed);
+        state.trees.remove(&id);
+        state.references.remove(&id);
+        for cancels in [
+            &mut state.search_cancels,
+            &mut state.tree_cancels,
+            &mut state.reference_cancels,
+        ] {
+            if let Some(c) = cancels.remove(&id) {
+                c.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
         }
         Ok(())
     }

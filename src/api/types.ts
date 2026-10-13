@@ -73,6 +73,8 @@ export interface OpenDatabaseResponse {
   writable?: boolean;
   /** A current search booster exists for fast position search. */
   booster?: boolean;
+  /** A current opening tree exists. */
+  tree?: boolean;
 }
 export interface SaveGameResponse {
   databaseId: string;
@@ -203,6 +205,8 @@ export interface GameFilter {
   eloMin?: number;
   eloMax?: number;
   eloMode: EloMode;
+  /** At most this rating difference between the players. */
+  eloDifference?: number;
   yearMin?: number;
   yearMax?: number;
   ecoFrom: string;
@@ -237,4 +241,46 @@ export interface SearchResponse {
 export interface BoosterProgress {
   done: string;
   total: string;
+}
+/** A position as a line: the start position and the moves from it. */
+export interface Line {
+  startFen: string;
+  moves: string[];
+}
+export type TreeStatus = "tree" | "line" | "notInTree" | "tooMany" | "noTree";
+export interface TreeMove {
+  uci: string;
+  san: string;
+  games: number;
+  /** Percentage of the position's games. */
+  share: number;
+  /** Score of the side to move, in percent. */
+  score?: number | null;
+  draws?: number | null;
+  averageElo?: number | null;
+  performance?: number | null;
+  firstYear?: number | null;
+  lastYear?: number | null;
+}
+export interface TreeResponse {
+  requestId: string;
+  status: TreeStatus;
+  games: number;
+  /** Games that end in the position. */
+  ended: number;
+  moves: TreeMove[];
+}
+export interface TreeProgress {
+  stage: "reading" | "sorting";
+  done: string;
+  total: string;
+}
+export interface ReferenceResponse {
+  requestId: string;
+  hits: string;
+  truncated: boolean;
+  cancelled: boolean;
+  source: "tree" | "line" | "search";
+  /** A fallback search used the search booster. */
+  indexed: boolean;
 }

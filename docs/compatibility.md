@@ -99,6 +99,11 @@ separately; an unsupported game is not silently flattened into a partial game.
 Local UCI engine analysis is available for standard chess only. Advertised
 Chess960/variant rules cannot be enabled. Engines and private databases are
 separate user-provided files. The first workbench does not yet implement
-ChessBase's full search/indexing, opening books, training, multimedia, cloud
-services or lossless writing of every ChessBase annotation type. macOS native operation is verified locally;
+ChessBase's full search/indexing, its own opening book files (.ctg and trees),
+training, multimedia, cloud services or lossless writing of every ChessBase
+annotation type. The workbench's opening tree and reference search are built
+from the user's own databases into the app's data folder (see
+[opening tree](opening-tree.md)). They count main lines only, store positions
+reached by at least five games within 60 half-moves, and may miss a game that
+transposes into a rarer position. macOS native operation is verified locally;
 Windows/Linux native validation remains outstanding. See [validation](validation.md).

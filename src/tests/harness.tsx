@@ -227,6 +227,68 @@ export function mockApi() {
       return true;
     }),
     deleteSearchBooster: vi.fn().mockResolvedValue(undefined),
+    createOpeningTree: vi.fn().mockImplementation(async (_db, onProgress) => {
+      onProgress({ stage: "reading", done: "401", total: "401" });
+      onProgress({ stage: "sorting", done: "1", total: "1" });
+      return true;
+    }),
+    cancelOpeningTree: vi.fn().mockResolvedValue(undefined),
+    deleteOpeningTree: vi.fn().mockResolvedValue(undefined),
+    openingTree: vi.fn().mockImplementation(async (_db, line, requestId) => ({
+      requestId,
+      status: "tree",
+      games: 10,
+      ended: 1,
+      moves:
+        line.moves.length === 0
+          ? [
+              {
+                uci: "e2e4",
+                san: "e4",
+                games: 6,
+                share: 60,
+                score: 55,
+                draws: 30,
+                averageElo: 2500,
+                performance: 2535,
+                firstYear: 1990,
+                lastYear: 2024,
+              },
+              {
+                uci: "d2d4",
+                san: "d4",
+                games: 3,
+                share: 30,
+                score: 50,
+                draws: 40,
+                averageElo: null,
+                performance: null,
+                firstYear: null,
+                lastYear: null,
+              },
+            ]
+          : [],
+    })),
+    referenceSearch: vi
+      .fn()
+      .mockImplementation(async (_db, _line, requestId) => ({
+        requestId,
+        hits: "2",
+        truncated: false,
+        cancelled: false,
+        source: "tree",
+        indexed: false,
+      })),
+    cancelReference: vi.fn().mockResolvedValue(undefined),
+    readReferencePage: vi
+      .fn()
+      .mockImplementation(async (_db, _start, _limit, requestId) => ({
+        requestId,
+        entries: [
+          { ...summary, ordinal: "9", foundNode: 1 },
+          { ...summary, ordinal: "12", foundNode: 3 },
+        ],
+      })),
     clearSearch: vi.fn().mockResolvedValue(undefined),
     readSearchPage: vi
       .fn()

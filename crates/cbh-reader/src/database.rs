@@ -130,6 +130,8 @@ pub struct Database {
     info: DatabaseInfo,
     limits: ReadLimits,
     source_paths: Vec<std::path::PathBuf>,
+    /// The path this database was opened from.
+    path: std::path::PathBuf,
 }
 struct TeamIndex {
     file: crate::source::SourceFile,
@@ -266,6 +268,7 @@ impl Database {
         Ok(Self {
             format,
             source_paths: files.paths.values().cloned().collect(),
+            path: path.to_path_buf(),
             header,
             moves,
             annotations,
@@ -286,6 +289,10 @@ impl Database {
         let (a, b) = self.header.stamp();
         let (c, d) = self.moves.as_ref().map_or((0, 0), |f| f.stamp());
         [a, b, c, d]
+    }
+    /// Another read handle on the same files, e.g. for a worker thread.
+    pub fn reopen(&self) -> Result<Self, CbhError> {
+        Self::open(&self.path, self.limits.clone())
     }
     pub fn source_paths(&self) -> &[std::path::PathBuf] {
         &self.source_paths
