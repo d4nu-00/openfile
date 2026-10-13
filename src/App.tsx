@@ -3,7 +3,13 @@ import { Group, Panel, Separator } from "react-resizable-panels";
 import { Database, LayoutGrid, Search, X } from "lucide-react";
 import { backend, type WorkbenchApi } from "./api/client";
 import { annotationsIncomplete, emptyFilter } from "./api/types";
-import type { SortColumn } from "./api/types";
+import type {
+  CrossLayout,
+  Crosstable,
+  NameKind,
+  NameRow,
+  SortColumn,
+} from "./api/types";
 import { useWorkbench, type WorkbenchState } from "./state/workbench";
 import { useEditing } from "./state/editing";
 import { useAnalysis } from "./state/analysis";
@@ -21,6 +27,8 @@ import { ReferencePane } from "./components/ReferencePane";
 import { usePositionPanes } from "./state/positionPanes";
 import { Diagnostics } from "./components/Diagnostics";
 import { GameList } from "./views/GameList";
+import { NamesPane } from "./views/NamesPane";
+import { CrosstableDialog } from "./components/CrosstableDialog";
 import { BoardPane, type Step } from "./views/BoardPane";
 import { Ribbon } from "./shell/Ribbon";
 import { CommandPalette } from "./shell/CommandPalette";
@@ -65,6 +73,18 @@ export function App({
   const [filter, setFilter] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [maskOpen, setMaskOpen] = useState(false);
+  /** The database window's list: games, players or tournaments. */
+  const [listTab, setListTab] = useState<"games" | NameKind>("games");
+  const [openedTabs, setOpenedTabs] = useState<NameKind[]>([]);
+  const [chosenName, setChosenName] = useState<
+    Partial<Record<NameKind, NameRow>>
+  >({});
+  const [cross, setCross] = useState<{
+    tournamentId: number;
+    table?: Crosstable;
+    loading?: boolean;
+    error?: string;
+  }>();
   const [flipped, setFlipped] = useState(false);
   const [ordinal, setOrdinal] = useState("1");
   const [square, setSquare] = useState<string>();
@@ -227,6 +247,57 @@ export function App({
     setView("game");
   }
   const step = (delta: 1 | -1) => void e.run(() => w.stepGame(delta));
+  function showList(tab: "games" | NameKind) {
+    setView("database");
+    setListTab(tab);
+    if (tab !== "games")
+      setOpenedTabs((t) => (t.includes(tab) ? t : [...t, tab]));
+  }
+  /** Shows the games of a player or tournament in the game list. */
+  function gamesOf(kind: NameKind, row: NameRow) {
+    const name = row.name ?? "?";
+    showList("games");
+    return w.search(
+      {
+        ...emptyFilter(),
+        ...(kind === "players"
+          ? { playerId: row.id }
+          : { tournamentId: row.id }),
+      },
+      kind === "players"
+        ? `Games of ${name}`
+        : `${name}${row.site ? `, ${row.site}` : ""}`,
+    );
+  }
+  async function openCrosstable(tournamentId: number, layout?: CrossLayout) {
+    const db = state.database;
+    if (!db) return;
+    setCross({ tournamentId, loading: true });
+    try {
+      const table = await api.crosstable(
+        db.databaseId,
+        tournamentId,
+        layout ?? null,
+      );
+      setCross((c) =>
+        c?.tournamentId === tournamentId ? { tournamentId, table } : c,
+      );
+    } catch (e) {
+      setCross((c) =>
+        c?.tournamentId === tournamentId
+          ? {
+              tournamentId,
+              error: (e as { message?: string })?.message ?? String(e),
+            }
+          : c,
+      );
+    }
+  }
+  /** The tournament for Cross Table: the chosen one, else the game's. */
+  const crossTournament =
+    listTab === "tournaments" && chosenName.tournaments
+      ? chosenName.tournaments.id
+      : state.document?.summary.tournamentId;
   /** Rows the list shows at once, for Page Up and Page Down. */
   const [visibleRows, setVisibleRows] = useState(30);
   function scrollPage(delta: 1 | -1) {
@@ -401,6 +472,43 @@ export function App({
     "reset-filter": {
       run: () => w.clearSearch(),
       enabled: !!state.search,
+    },
+    "toggle-game-list": {
+      run: () => showList("games"),
+      pressed: view === "database" && listTab === "games",
+    },
+    "toggle-players": {
+      run: () => showList("players"),
+      enabled: !!state.database,
+      pressed: view === "database" && listTab === "players",
+    },
+    "toggle-tournaments": {
+      run: () => showList("tournaments"),
+      enabled: !!state.database,
+      pressed: view === "database" && listTab === "tournaments",
+    },
+    "games-of-player": {
+      run: () => {
+        const kind = listTab === "games" ? undefined : listTab;
+        const row = kind && chosenName[kind];
+        if (kind && row) return gamesOf(kind, row);
+      },
+      enabled: listTab !== "games" && !!chosenName[listTab],
+    },
+    "cross-table": {
+      run: () =>
+        crossTournament !== undefined && openCrosstable(crossTournament),
+      enabled: !!state.database && crossTournament !== undefined,
+    },
+    "show-crosstable": {
+      run: () => {
+        const id = state.document?.summary.tournamentId;
+        if (id !== undefined) return openCrosstable(id);
+      },
+      enabled:
+        !!state.database &&
+        state.document?.summary.tournamentId !== undefined &&
+        state.origin?.databaseId === state.database.databaseId,
     },
     "previous-page": {
       run: () => scrollPage(-1),
@@ -666,13 +774,34 @@ export function App({
               minSize="30"
             >
               <section className="pane list-pane" aria-label="Database">
-                <div className="pane-header">
+                <div className="list-tabs" role="tablist" aria-label="Lists">
+                  {(
+                    [
+                      ["games", "Games"],
+                      ["players", "Players"],
+                      ["tournaments", "Tournaments"],
+                    ] as const
+                  ).map(([tab, label]) => (
+                    <button
+                      key={tab}
+                      role="tab"
+                      aria-selected={listTab === tab}
+                      disabled={tab !== "games" && !state.database}
+                      onClick={() => showList(tab)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="pane-header" hidden={listTab !== "games"}>
                   <strong>
-                    {state.search
-                      ? `${state.search.hits} of ${state.database?.entryCount} entries found`
-                      : state.database
-                        ? `${state.database.entryCount} entries`
-                        : "No database open"}
+                    {state.search?.label
+                      ? `${state.search.label}: ${state.search.hits} games`
+                      : state.search
+                        ? `${state.search.hits} of ${state.database?.entryCount} entries found`
+                        : state.database
+                          ? `${state.database.entryCount} entries`
+                          : "No database open"}
                   </strong>
                   {state.search && (
                     <button
@@ -698,7 +827,7 @@ export function App({
                     </span>
                   )}
                 </div>
-                {(filterOpen || filter) && (
+                {listTab === "games" && (filterOpen || filter) && (
                   <form
                     className="filter-bar"
                     onSubmit={(ev) => {
@@ -727,48 +856,70 @@ export function App({
                     </span>
                   </form>
                 )}
-                <GameList
-                  rowCount={w.rowCount}
-                  version={`${state.database?.databaseId}:${state.listVersion}`}
-                  row={(i) => w.rows.row(i)}
-                  want={(from, to) => w.rows.want(from, to, w.rowCount)}
-                  top={w.listTop}
-                  onTop={w.setListTop}
-                  onMeasure={setVisibleRows}
-                  cursor={w.cursor}
-                  selected={state.document?.summary.ordinal}
-                  loading={w.loadingEntry}
-                  sort={state.sort}
-                  sorting={!!w.sorting}
-                  onSort={(s) => void w.sortBy(s?.column, s?.descending)}
-                  onPreview={preview}
-                  onOpen={(row) => void open(row)}
-                />
-                <div className="pager">
-                  <span className="list-position">
-                    {w.rowCount
-                      ? `Rows ${(w.listTop + 1).toLocaleString()}–${Math.min(
-                          w.rowCount,
-                          w.listTop + visibleRows,
-                        ).toLocaleString()} of ${w.rowCount.toLocaleString()}`
-                      : ""}
-                  </span>
-                  <label>
-                    Entry number{" "}
-                    <input
-                      value={ordinal}
-                      onChange={(ev) => setOrdinal(ev.target.value)}
-                      onKeyDown={(ev) => ev.key === "Enter" && void jump()}
-                      inputMode="numeric"
-                    />
-                  </label>
-                  <button
-                    onClick={() => void jump()}
-                    disabled={!state.database}
-                  >
-                    Go to entry
-                  </button>
-                </div>
+                {listTab === "games" && (
+                  <GameList
+                    rowCount={w.rowCount}
+                    version={`${state.database?.databaseId}:${state.listVersion}`}
+                    row={(i) => w.rows.row(i)}
+                    want={(from, to) => w.rows.want(from, to, w.rowCount)}
+                    top={w.listTop}
+                    onTop={w.setListTop}
+                    onMeasure={setVisibleRows}
+                    cursor={w.cursor}
+                    selected={state.document?.summary.ordinal}
+                    loading={w.loadingEntry}
+                    sort={state.sort}
+                    sorting={!!w.sorting}
+                    onSort={(s) => void w.sortBy(s?.column, s?.descending)}
+                    onPreview={preview}
+                    onOpen={(row) => void open(row)}
+                  />
+                )}
+                {state.database &&
+                  openedTabs.map((kind) => (
+                    <div
+                      key={`${state.database!.databaseId}:${kind}`}
+                      className="names-host"
+                      hidden={listTab !== kind}
+                    >
+                      <NamesPane
+                        api={api}
+                        databaseId={state.database!.databaseId}
+                        kind={kind}
+                        onChoose={(row) =>
+                          setChosenName((c) => ({ ...c, [kind]: row }))
+                        }
+                        onGames={(row) => void gamesOf(kind, row)}
+                      />
+                    </div>
+                  ))}
+                {listTab === "games" && (
+                  <div className="pager">
+                    <span className="list-position">
+                      {w.rowCount
+                        ? `Rows ${(w.listTop + 1).toLocaleString()}–${Math.min(
+                            w.rowCount,
+                            w.listTop + visibleRows,
+                          ).toLocaleString()} of ${w.rowCount.toLocaleString()}`
+                        : ""}
+                    </span>
+                    <label>
+                      Entry number{" "}
+                      <input
+                        value={ordinal}
+                        onChange={(ev) => setOrdinal(ev.target.value)}
+                        onKeyDown={(ev) => ev.key === "Enter" && void jump()}
+                        inputMode="numeric"
+                      />
+                    </label>
+                    <button
+                      onClick={() => void jump()}
+                      disabled={!state.database}
+                    >
+                      Go to entry
+                    </button>
+                  </div>
+                )}
               </section>
             </Panel>
             <Separator className="splitter vertical" />
@@ -986,6 +1137,22 @@ export function App({
             setPasting(undefined);
             void pasteText(pasting, text);
           }}
+        />
+      )}
+      {cross && (
+        <CrosstableDialog
+          table={cross.table}
+          loading={cross.loading}
+          error={cross.error}
+          onLayout={(layout) => void openCrosstable(cross.tournamentId, layout)}
+          onOpenGame={(ordinal) => {
+            setCross(undefined);
+            setListTab("games");
+            void e
+              .run(() => w.goToEntry(String(ordinal)))
+              .then(() => setView("game"));
+          }}
+          onClose={() => setCross(undefined)}
         />
       )}
       {maskOpen && (

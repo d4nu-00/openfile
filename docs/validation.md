@@ -296,6 +296,31 @@ cover:
 * that Load Next Game follows the list;
 * that the row cache ignores stale answers and keeps 60 blocks at most.
 
+## Players, tournaments and crosstables (2026-10-13)
+
+The `names` example on the classic Mega (release, warm) listed 463,258
+players in 0.58 s and 105,313 tournaments in 0.13 s. It found "Carlsen, M" in
+0.5 ms; Carlsen, Magnus has 6,925 games from 1999 to 2024. It built the
+crosstable of Tata Steel TOP 81st (Wijk aan Zee 2019, 10 players, 45 games,
+9 rounds) in 3.5 s. The scores and Sonneborn-Berger values were checked by
+hand: the winner's 7 points and SB 29.00 agree with the opponents' scores.
+
+**Tests.**
+* Reader tests check:
+  * player and tournament lists, game counts and years;
+  * the prefix search;
+  * a cancelled build and staleness;
+  * a round-robin table's points, ranks, cells, Sonneborn-Berger, Buchholz,
+    performance, average Elo and category;
+  * that an unscored game is excluded;
+  * the forced Swiss layout's opponents and rounds.
+* App tests check that lists must be prepared before reading, the bounds,
+  searches by player id, the crosstable through the registry, and that
+  saving drops the lists.
+* Frontend tests drive the Players tab: find, choose, and open the games.
+  They also drive the Tournaments tab, the Cross Table dialog, its layout
+  switch and opening a game from a result.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

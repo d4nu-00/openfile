@@ -1,4 +1,4 @@
-# Game list: scrolling and sorting
+# Game list, players, tournaments and crosstables
 
 Status: in progress on branch `game-list` (2026-10-13). The direction was agreed
 in conversation: scroll the whole list without pages, and sort by any column
@@ -142,3 +142,102 @@ of the rows it printed. The build itself took 0.84 s of that.
 
 **Lookups.** Finding the row of an entry in the middle of the classic order
 took 5–20 ms.
+
+## Players and tournaments panes
+
+The database window's list has three tabs:
+
+| Tab | Command | Default key |
+|---|---|---|
+| Games | `TOGGLEGAMELIST` | Ctrl+Alt+G |
+| Players | `TOGGLETOURNPLAYERS` | Ctrl+Alt+P |
+| Tournaments | `TOGGLEPANETOURNAMENTS` | Ctrl+Alt+T |
+
+ChessBase shows these as panes of the database window.
+
+**What a tab shows.** The Players and Tournaments tabs list every name that
+occurs in a game, alphabetically, using the collation of the sort orders.
+Each name shows its number of games and the first and last year it occurs.
+Deleted games are counted. A tournament also shows its site, since many
+events share a name ("London" appears once per year).
+
+**Finding and opening.**
+* Typing in the find field jumps to the first name at or after the text.
+  Players are typed as "Last, First".
+* Double-click or Enter opens the name's games in the Games tab, as a search
+  result. So does Games of Player (`VIEW_GAMES_OF_PLAYER`).
+* A player's games are matched by player id, in either colour; a
+  tournament's by tournament id. Neither is a name prefix.
+
+**Building a list.** A list is the workbench's own file in the app's data
+folder (`name-lists/<database hash>.<kind>.cwnames`). Each row is 12 bytes:
+id, games, first and last year. The file carries the database's fingerprint,
+like the sort orders.
+1. The name table is read and sorted.
+2. One parallel scan of the entry index counts each id's games and years.
+   Each worker counts into its own table, 12 bytes per id. All workers
+   together stay within 512 MB, so fewer workers run on very large name
+   tables.
+3. Name tables with more than 16 M ids are refused.
+
+Saving into a database drops its lists; they are prepared again when shown.
+
+## Crosstable
+
+Cross Table (`DBTOOLSCROSSTABLE`, T) shows the crosstable of the tournament
+chosen in the Tournaments tab, or else of the loaded game's tournament. Show
+Crosstable (`SHOWCROSSTABLE`, game window) shows the loaded game's.
+
+**Which games count.** The tournament's games are found by a search on its
+tournament id, at most 5,000 games and 500 players. They are ordered by round.
+* Deleted games are left out.
+* Games without a result (lines, "0-0") are counted separately and not
+  scored.
+* Forfeits score as their result and are marked "+", "=" and "-".
+
+**Layout.** A field of at most 24 players that played at least half of all
+pairings is a round robin: one column per opponent, results from the row
+player's side. Otherwise the table is Swiss: one column per round, giving the
+opponent's place, colour and result (e.g. "12w1"). Either layout can be
+chosen.
+* The Round robin button corresponds to ChessBase's `FORCEROUNDROBBIN`.
+* Each result opens its game.
+
+**Columns.** Rank, name, Elo, the results, points, games, wins, two
+tiebreaks and performance.
+* **Elo** is the player's first rating in round order.
+* **Tiebreaks.** A round robin shows Sonneborn-Berger, then Buchholz. A Swiss
+  table shows Buchholz, then Sonneborn-Berger. Players are ranked by points,
+  then by those two tiebreaks, then by wins.
+* **Performance** is the rated opponents' average plus the FIDE difference
+  for the score. Forfeits are left out.
+* **Heading.** It gives the average Elo and the FIDE category; category 1 is
+  2251–2275.
+
+**Evidence.**
+* The tiebreak names are ChessBase's. Its tiebreak table (`TiebreakType.cpp`,
+  `.rdata` around file offset `0x110f010`) lists:
+  * Buchholz, Sum of Buchholz;
+  * Median1/2 Buchholz, Cut1/2 Buchholz;
+  * Progressive score;
+  * Sonneborn-Berger (Swiss), Sonneborn-Berger;
+  * Number of wins, Number of black wins, Number of black games;
+  * Direct encounter, Koya.
+
+  Their abbreviations follow, among them "SB", "#W", "#BW", "#BG" and "KY".
+* The messages include "Choose tiebreak" (50954), "Sort table by result"
+  (50956), "Sort table by playername" (50958), "Category" (1096) and
+  "Average Elo" (2556).
+* The crosstable window is drawn by code, not built from a dialog
+  template, so its exact columns were not recovered. The workbench offers
+  only the tiebreaks above. Choosing among the others is not implemented
+  yet.
+
+**Measurements.** On the classic Mega (release, warm cache):
+
+| Step | Result |
+|---|---|
+| Player list | 463,258 names in 0.58 s, 5.6 MB |
+| Tournament list | 105,313 names in 0.13 s, 1.3 MB |
+| Finding a name | under 1 ms |
+| Crosstable of Tata Steel TOP 81st (10 players, 45 games) | 3.5 s, almost all of it the tournament-id search over 11.15 M entries |

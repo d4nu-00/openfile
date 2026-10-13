@@ -23,6 +23,8 @@ export interface ActiveSearch {
   filter?: GameFilter;
   /** The board behind a position search. */
   fen?: string;
+  /** What the list shows, e.g. "Games of Carlsen, Magnus". */
+  label?: string;
   hits: string;
   truncated: boolean;
 }
@@ -83,8 +85,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
   const [sorting, setSorting] = useState<string>();
   const [, rowsArrived] = useState(0);
   const rows = useRef(
-    new RowCache(
-      (...args) => api.readRows(...args),
+    new RowCache<EntrySummary>(
+      (...args) => api.readRows(...args).then((page) => page.entries),
       () => rowsArrived((n) => n + 1),
       (message) => setDiagnostics([{ code: "rows", message }]),
     ),
@@ -285,7 +287,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
   }
   /** The row (from 0) of an entry in the list, if the list has it. */
   async function rowOf(databaseId: string, ordinal: string) {
-    const loaded = rows.find(ordinal);
+    const loaded = rows.find((r) => r.ordinal === ordinal);
     if (loaded !== undefined) return loaded;
     const found = await api.findRow(databaseId, ordinal).catch(() => null);
     return found === null || found === undefined
@@ -332,8 +334,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     return loadEntry(entry.ordinal, entry.foundNode ?? 0);
   }
   /** Searches the whole database and shows the hits in the list. */
-  function search(filter: GameFilter) {
-    return runSearch({ filter }, (db, request) =>
+  function search(filter: GameFilter, label?: string) {
+    return runSearch({ filter, label }, (db, request) =>
       api.searchGames(db, filter, request),
     );
   }
@@ -344,7 +346,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     );
   }
   async function runSearch(
-    what: { filter?: GameFilter; fen?: string },
+    what: { filter?: GameFilter; fen?: string; label?: string },
     run: (databaseId: string, request: string) => Promise<SearchResponse>,
   ) {
     const db = current.current.database;

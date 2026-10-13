@@ -401,6 +401,150 @@ export function mockApi() {
         }),
       ),
     cancelSort: vi.fn().mockResolvedValue(undefined),
+    nameList: vi
+      .fn()
+      .mockImplementation(async (_db: string, kind: string, onProgress) => {
+        onProgress({ done: "401", total: "401" });
+        return { rows: kind === "players" ? "250" : "3" };
+      }),
+    cancelNameList: vi.fn().mockResolvedValue(undefined),
+    readNames: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          kind: string,
+          start: string,
+          limit: number,
+          requestId: string,
+        ) => ({
+          requestId,
+          rows: Array.from(
+            {
+              length: Math.max(
+                0,
+                Math.min(
+                  limit,
+                  (kind === "players" ? 250 : 3) - Number(start) + 1,
+                ),
+              ),
+            },
+            (_, i) => {
+              const n = Number(start) + i;
+              return kind === "players"
+                ? {
+                    id: n,
+                    name: `Player ${n}, A`,
+                    games: n,
+                    firstYear: 2000,
+                    lastYear: 2000 + (n % 5),
+                  }
+                : {
+                    id: n,
+                    name: `Open ${n}`,
+                    site: "Oslo",
+                    games: 10 * n,
+                    firstYear: 2020,
+                    lastYear: 2020,
+                  };
+            },
+          ),
+        }),
+      ),
+    findName: vi.fn().mockResolvedValue("120"),
+    crosstable: vi
+      .fn()
+      .mockImplementation(
+        async (_db: string, tournamentId: number, layout) => ({
+          event: `Open ${tournamentId}`,
+          site: "Oslo",
+          layout: layout ?? "roundRobin",
+          rounds: 1,
+          games: 1,
+          unscored: 0,
+          truncated: false,
+          averageElo: 2400,
+          category: 6,
+          players: [
+            {
+              id: 1,
+              name: "Alpha, A",
+              elo: 2450,
+              points: 1,
+              games: 1,
+              wins: 1,
+              blackGames: 0,
+              blackWins: 0,
+              sonnebornBerger: 0,
+              buchholz: 0,
+              performance: 2750,
+              cells:
+                layout === "swiss"
+                  ? [
+                      [
+                        {
+                          ordinal: 7,
+                          mark: "1",
+                          white: true,
+                          round: 1,
+                          opponent: 1,
+                        },
+                      ],
+                    ]
+                  : [
+                      [],
+                      [
+                        {
+                          ordinal: 7,
+                          mark: "1",
+                          white: true,
+                          round: 1,
+                          opponent: 1,
+                        },
+                      ],
+                    ],
+            },
+            {
+              id: 2,
+              name: "Beta, B",
+              elo: 2350,
+              points: 0,
+              games: 1,
+              wins: 0,
+              blackGames: 1,
+              blackWins: 0,
+              sonnebornBerger: 0,
+              buchholz: 1,
+              performance: 2050,
+              cells:
+                layout === "swiss"
+                  ? [
+                      [
+                        {
+                          ordinal: 7,
+                          mark: "0",
+                          white: false,
+                          round: 1,
+                          opponent: 0,
+                        },
+                      ],
+                    ]
+                  : [
+                      [
+                        {
+                          ordinal: 7,
+                          mark: "0",
+                          white: false,
+                          round: 1,
+                          opponent: 0,
+                        },
+                      ],
+                      [],
+                    ],
+            },
+          ],
+        }),
+      ),
     loadEntry: vi.fn().mockImplementation(async (_db, ordinal, requestId) => ({
       ...selected,
       summary: { ...summary, ordinal },

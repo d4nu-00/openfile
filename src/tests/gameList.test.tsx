@@ -188,21 +188,18 @@ describe("row cache", () => {
   it("ignores rows of an older list and bounds its blocks", async () => {
     let release: (() => void) | undefined;
     const readRows = vi.fn(
-      (_db: string, start: string, limit: number, requestId: string) =>
-        new Promise<{ requestId: string; entries: (typeof summary)[] }>(
-          (resolve) => {
-            const answer = () =>
-              resolve({
-                requestId,
-                entries: Array.from({ length: limit }, (_, i) => ({
-                  ...summary,
-                  ordinal: String(Number(start) + i),
-                })),
-              });
-            if (start === "1" && !release) release = answer;
-            else answer();
-          },
-        ),
+      (_db: string, start: string, limit: number, _requestId: string) =>
+        new Promise<(typeof summary)[]>((resolve) => {
+          const answer = () =>
+            resolve(
+              Array.from({ length: limit }, (_, i) => ({
+                ...summary,
+                ordinal: String(Number(start) + i),
+              })),
+            );
+          if (start === "1" && !release) release = answer;
+          else answer();
+        }),
     );
     const changed = vi.fn();
     const cache = new RowCache(readRows, changed);
@@ -218,6 +215,6 @@ describe("row cache", () => {
     // The first blocks were dropped; the last ones are kept.
     expect(cache.row(0)).toBeUndefined();
     expect(cache.row(6900)).toMatchObject({ ordinal: "6901" });
-    expect(cache.find("6901")).toBe(6900);
+    expect(cache.find((r) => r.ordinal === "6901")).toBe(6900);
   });
 });

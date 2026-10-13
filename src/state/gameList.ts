@@ -1,16 +1,14 @@
-import type { EntrySummary, PageResponse } from "../api/types";
-
 /** Rows read per request. */
 export const BLOCK = 100;
 /** Blocks kept; the least recently wanted are dropped first. */
 const MAX_BLOCKS = 60;
 
-type ReadRows = (
+type ReadRows<T> = (
   databaseId: string,
   start: string,
   limit: number,
   requestId: string,
-) => Promise<PageResponse>;
+) => Promise<T[]>;
 
 /**
  * Rows of the game list, read a block at a time. The list can hold
@@ -18,13 +16,13 @@ type ReadRows = (
  * key (another database, search, sort or a save) drops every block, and
  * answers for an older key are ignored.
  */
-export class RowCache {
-  private blocks = new Map<number, EntrySummary[]>();
+export class RowCache<T> {
+  private blocks = new Map<number, T[]>();
   private pending = new Map<number, Promise<void>>();
   private key = "";
   private databaseId = "";
   constructor(
-    private readRows: ReadRows,
+    private readRows: ReadRows<T>,
     private changed: () => void,
     private failed: (message: string) => void = () => {},
   ) {}
@@ -39,14 +37,14 @@ export class RowCache {
   }
 
   /** The row at `index` (from 0), if its block is loaded. */
-  row(index: number): EntrySummary | undefined {
+  row(index: number): T | undefined {
     return this.blocks.get(Math.floor(index / BLOCK))?.[index % BLOCK];
   }
 
-  /** The row of an entry among the loaded rows. */
-  find(ordinal: string): number | undefined {
+  /** The first loaded row that `match` accepts. */
+  find(match: (row: T) => boolean): number | undefined {
     for (const [block, rows] of this.blocks) {
-      const i = rows.findIndex((r) => r.ordinal === ordinal);
+      const i = rows.findIndex(match);
       if (i >= 0) return block * BLOCK + i;
     }
     return undefined;
@@ -64,7 +62,7 @@ export class RowCache {
   }
 
   /** The row at `index`, read first when needed. */
-  async entry(index: number, rows: number): Promise<EntrySummary | undefined> {
+  async entry(index: number, rows: number): Promise<T | undefined> {
     if (index < 0 || index >= rows) return undefined;
     await this.load(Math.floor(index / BLOCK));
     return this.row(index);
@@ -87,9 +85,9 @@ export class RowCache {
       BLOCK,
       `rows-${key}-${block}`,
     )
-      .then((page) => {
+      .then((rows) => {
         if (this.key !== key) return;
-        this.blocks.set(block, page.entries);
+        this.blocks.set(block, rows);
         while (this.blocks.size > MAX_BLOCKS)
           this.blocks.delete(this.blocks.keys().next().value!);
         this.changed();

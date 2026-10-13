@@ -5,6 +5,8 @@ import type {
   EntrySummary,
   EngineEventDto,
   GameNode,
+  NameKind,
+  NameRow,
   SortColumn,
 } from "../api/types";
 import { demoFens, demoLegal, demoNodes } from "./demoGame";
@@ -135,6 +137,22 @@ const demoKey: Record<SortColumn, (e: EntrySummary) => string | number> = {
   moves: () => 0,
 };
 
+function demoNames(kind: NameKind): NameRow[] {
+  const names =
+    kind === "players"
+      ? entries.flatMap((e) => [e.white!, e.black!])
+      : entries.map((e) => e.event!);
+  const counts = new Map<string, number>();
+  for (const n of names) counts.set(n, (counts.get(n) ?? 0) + 12);
+  return [...counts.keys()].sort().map((name, id) => ({
+    id,
+    name,
+    games: counts.get(name)!,
+    firstYear: 1851,
+    lastYear: 2002,
+  }));
+}
+
 export function demoApi(): WorkbenchApi {
   // The list: a search's hits and a sort order, both over entry numbers.
   let hits: number[] | undefined;
@@ -214,6 +232,51 @@ export function demoApi(): WorkbenchApi {
       };
     },
     cancelSort: async () => {},
+    // Names from the demo games: the famous players and their events.
+    nameList: async (_db, kind) => ({
+      rows: String(demoNames(kind).length),
+    }),
+    cancelNameList: async () => {},
+    readNames: async (_db, kind, start, limit, requestId) => ({
+      requestId,
+      rows: demoNames(kind).slice(Number(start) - 1, Number(start) - 1 + limit),
+    }),
+    findName: async (_db, kind, prefix) => {
+      const i = demoNames(kind).findIndex(
+        (n) => (n.name ?? "").toLowerCase() >= prefix.toLowerCase(),
+      );
+      return String(i < 0 ? demoNames(kind).length : i + 1);
+    },
+    crosstable: async (_db, tournamentId, layout) => {
+      const event = demoNames("tournaments")[tournamentId]?.name;
+      const names = [
+        ...new Set(
+          entries
+            .filter((e) => e.event === event)
+            .flatMap((e) => [e.white!, e.black!]),
+        ),
+      ];
+      return {
+        event,
+        layout: layout ?? "roundRobin",
+        rounds: 0,
+        games: 0,
+        unscored: 0,
+        truncated: false,
+        players: names.map((name, i) => ({
+          id: i,
+          name,
+          points: 0,
+          games: 0,
+          wins: 0,
+          blackGames: 0,
+          blackWins: 0,
+          sonnebornBerger: 0,
+          buchholz: 0,
+          cells: names.map(() => []),
+        })),
+      };
+    },
     createSearchBooster: async (_db, onProgress) => {
       onProgress({ done: "2400", total: "2400" });
       return true;

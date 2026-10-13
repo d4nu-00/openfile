@@ -1122,3 +1122,137 @@ kbd {
   padding: 0 4px;
   font-weight: 600;
 }
+
+/* List tabs: games, players, tournaments */
+.list-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 4px 8px 0;
+  border-bottom: 1px solid var(--pane-border);
+  background: var(--pane-header-bg);
+}
+.list-tabs button {
+  border: 1px solid transparent;
+  border-bottom: 0;
+  background: transparent;
+  padding: 3px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.list-tabs button[aria-selected="true"] {
+  background: var(--pane-bg);
+  border-color: var(--pane-border);
+  color: var(--text);
+  margin-bottom: -1px;
+}
+.names-host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.names-host[hidden] {
+  display: none;
+}
+.names-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.names-pane .filter-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--pane-border);
+}
+.names-pane .filter-bar input {
+  flex: 1;
+}
+.name-button {
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Crosstable */
+.modal.crosstable {
+  max-width: min(1200px, 96vw);
+  max-height: 90vh;
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+.crosstable .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.crosstable-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+.crosstable-body {
+  overflow: auto;
+  min-height: 0;
+}
+.crosstable table {
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.crosstable th,
+.crosstable td {
+  border: 1px solid var(--grid-line);
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+.crosstable th {
+  background: var(--pane-header-bg);
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.crosstable .num {
+  text-align: right;
+}
+.crosstable .center {
+  text-align: center;
+}
+.crosstable .strong {
+  font-weight: 600;
+}
+.cross-self {
+  background: var(--grid-line);
+}
+.cross-cell {
+  text-align: center;
+}
+.cross-game {
+  border: 0;
+  background: transparent;
+  padding: 0 2px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.cross-game:hover {
+  background: var(--row-hover);
+}
+.segmented {
+  display: flex;
+}
+.segmented button {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+.segmented button[aria-pressed="true"] {
+  background: var(--row-selected-bg);
+  color: var(--row-selected-fg);
+}
+.pane-header[hidden] {
+  display: none;
+}

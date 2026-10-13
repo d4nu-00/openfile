@@ -33,6 +33,8 @@ export interface EntrySummary {
   blackTeam?: string;
   /** In a position search: the node where the game reaches the position. */
   foundNode?: number;
+  /** For the crosstable of the game's tournament. */
+  tournamentId?: number;
   diagnostics: Diagnostic[];
 }
 export interface GameNode {
@@ -264,6 +266,58 @@ export interface GameFilter {
   excludeDeleted: boolean;
   /** Quick filter: words matched against names, ECO, year and result. */
   text?: string;
+  /** Games of one player (players pane). */
+  playerId?: number;
+  /** Games of one tournament (tournaments pane). */
+  tournamentId?: number;
+}
+export type NameKind = "players" | "tournaments";
+export interface NameRow {
+  id: number;
+  name?: string;
+  /** Tournaments: the site. */
+  site?: string;
+  games: number;
+  firstYear: number;
+  lastYear: number;
+}
+export interface NamePage {
+  requestId: string;
+  rows: NameRow[];
+}
+export interface CrossGame {
+  ordinal: number;
+  mark: string;
+  white: boolean;
+  round: number;
+  opponent: number;
+}
+export interface CrossPlayer {
+  id: number;
+  name?: string;
+  elo?: number;
+  points: number;
+  games: number;
+  wins: number;
+  blackGames: number;
+  blackWins: number;
+  sonnebornBerger: number;
+  buchholz: number;
+  performance?: number;
+  cells: CrossGame[][];
+}
+export type CrossLayout = "roundRobin" | "swiss";
+export interface Crosstable {
+  event?: string;
+  site?: string;
+  layout: CrossLayout;
+  rounds: number;
+  players: CrossPlayer[];
+  games: number;
+  unscored: number;
+  truncated: boolean;
+  averageElo?: number;
+  category?: number;
 }
 export const emptyFilter = (): GameFilter => ({
   white: { last: "", first: "" },

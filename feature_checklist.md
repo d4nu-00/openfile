@@ -73,12 +73,12 @@ Names in backticks are ChessBase command ids, for traceability.
 - [ ] P1 🟢 Multi-select, copy, paste and delete games between databases (`DBEDITCOPY`, `DBEDITPASTE`, `DBEDITDELETE`, `DBEDITSELECTALL`)
 - [ ] P2 🟢 Edit game data for a selection: tournament, source, annotator, title (`DBTOOLSEDIT`, `EDITTOURNAMENT`, `EDITSOURCE`, `EDITANNOTATOR`, `EDITGAMETITLE`)
 - [ ] P2 🟢 Mark games (medals and flags) (`MARKGAME`)
-- [ ] P1 🟢 Players pane with each player's games (`TOGGLETOURNPLAYERS`, `VIEW_GAMES_OF_PLAYER`)
-- [ ] P1 🟢 Tournaments pane with crosstable (`TOGGLEPANETOURNAMENTS`, `DBTOOLSCROSSTABLE`, `SHOWCROSSTABLE`)
+- [x] P1 🟢 Players pane with each player's games (`TOGGLETOURNPLAYERS`, `VIEW_GAMES_OF_PLAYER`) *(Players tab: every player alphabetically with games and years, find by name, double-click lists the games by player id; 463,258 players of the classic Mega listed in 0.6 s)*
+- [x] P1 🟢 Tournaments pane with crosstable (`TOGGLEPANETOURNAMENTS`, `DBTOOLSCROSSTABLE`, `SHOWCROSSTABLE`) *(Tournaments tab with site, games and year; Cross Table (T) and Show Crosstable: round robin or Swiss layout, points, Sonneborn-Berger, Buchholz, wins, performance, category; results open their games; see docs/game-list.md)*
 - [ ] P2 🟢 Annotators, sources and teams panes
 - [ ] P2 🟢 Opening, theme and endgame keys: classify, insert/transfer keys, key memos (`DBTOOLSCLASSIFYALLKEYS`, `INSERTNEWKEY`, `ASSIGNGAME`, `INSERTMEMOKEY`)
 - [ ] P2 🟢 Clipboard database: clip, unclip, remove doubles (`CLIPLOADEDGAME`, `CLIPUNCLIP`, `OPENCLIPBOARD`, `REMOVEDOUBLESFROMCLIP`)
-- [ ] P2 🟢 Crosstable tools: tiebreaks, sort, format, ASCII/print (`SELECT_FEINWERTUNG`, `CLIPTABLE`, `PRINTTABLE`, `FORCEROUNDROBBIN`)
+- [ ] P2 🟢 Crosstable tools: tiebreaks, sort, format, ASCII/print (`SELECT_FEINWERTUNG`, `CLIPTABLE`, `PRINTTABLE`, `FORCEROUNDROBBIN`) *(partial: round robin/Swiss switch; tiebreaks fixed to Sonneborn-Berger and Buchholz)*
 - [ ] P3 🟢 Replay games automatically (`AUTOMATIC_REPLAY`)
 - [ ] P3 🟢 Header and moves list modes (`SETFULLGAMEHEADER`, `SETHEADERANDMOVES`, `SETMOVESONLY`)
 
@@ -178,7 +178,7 @@ Names in backticks are ChessBase command ids, for traceability.
 
 - [ ] P1 🟢 Player statistics: score by colour, opening and year (`STATISTICS`, `PLAYERSTATISTIC`)
 - [ ] P2 🟢 Player dossier (`PLAYERDOSSIER`)
-- [ ] P2 🟢 Tournament crosstable and report (`DBTOOLSCROSSTABLE`, `TournamentReport`)
+- [ ] P2 🟢 Tournament crosstable and report (`DBTOOLSCROSSTABLE`, `TournamentReport`) *(crosstable done, §3; no report)*
 - [ ] P2 🟢 Error report: blunder statistics and estimated rating (`BLUNDER_REPORT`)
 - [ ] P3 🟢 Style report (`STYLE_REPORT`)
 - [ ] P3 🟢 Game overview and theme classification (`OVERVIEWBOARD`, `THEMECLASSIFYBOARD`)

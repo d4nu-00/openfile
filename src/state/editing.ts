@@ -161,7 +161,7 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
   /** Marks the selected entry deleted, or undeletes it (ChessBase "Delete"). */
   async function toggleDeleted(ordinal: string) {
     const db = w.current.current.database;
-    const at = w.rows.find(ordinal);
+    const at = w.rows.find((r) => r.ordinal === ordinal);
     const entry = at === undefined ? undefined : w.rows.row(at);
     if (!db?.writable || !entry || entry.kind !== "game") return;
     try {
