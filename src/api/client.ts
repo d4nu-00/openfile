@@ -23,6 +23,7 @@ import type {
   TreeProgress,
   ReferenceResponse,
   AppSettings,
+  TablebaseResponse,
   SortColumn,
   SortProgress,
   SortResponse,
@@ -346,6 +347,10 @@ export const backend = {
   closeDocument: (documentId: string) =>
     invoke<void>("close_document", { documentId }),
   getSettings: () => invoke<AppSettings>("get_settings"),
+  chooseTablebaseFolder: () =>
+    open({ directory: true, title: "Choose the folder of Syzygy tablebases" }),
+  probeTablebase: (fen: string, requestId: string) =>
+    invoke<TablebaseResponse>("probe_tablebase", { fen, requestId }),
   setSettings: (settings: AppSettings) =>
     invoke<AppSettings>("set_settings", { settings }),
 };

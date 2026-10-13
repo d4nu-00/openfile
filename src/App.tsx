@@ -26,6 +26,7 @@ import { useEditing } from "./state/editing";
 import { formatScore } from "./state/analysis";
 import { useKibitzers } from "./state/kibitzers";
 import { EngineManagement } from "./components/EngineManagement";
+import { TablebasePane } from "./components/TablebasePane";
 import { CommentEditor } from "./components/CommentEditor";
 import { GameDataDialog } from "./components/GameDataDialog";
 import { PositionSetup } from "./components/PositionSetup";
@@ -166,7 +167,7 @@ export function App({
   const [paletteOpen, setPaletteOpen] = useState(false);
   // Notation tabs, and the book and reference panes outside them.
   const [notationTab, setNotationTab] = useState<
-    "notation" | "book" | "reference"
+    "notation" | "book" | "reference" | "tablebase"
   >("notation");
   const [extraBook, setExtraBook] = useState(false);
   const [extraReference, setExtraReference] = useState(false);
@@ -1330,6 +1331,7 @@ export function App({
                             ["notation", "Notation"],
                             ["book", "Book"],
                             ["reference", "Reference"],
+                            ["tablebase", "Tablebase"],
                           ] as const
                         ).map(([tab, label]) => (
                           <button
@@ -1357,6 +1359,13 @@ export function App({
                     )}
                     {notationTab === "book" && bookPane}
                     {notationTab === "reference" && referencePane}
+                    {notationTab === "tablebase" && (
+                      <TablebasePane
+                        api={api}
+                        fen={state.position?.fen}
+                        onPlay={playBookMove}
+                      />
+                    )}
                     {notationTab === "notation" && (
                       <div className="notation-scroll">{notation}</div>
                     )}
@@ -1445,6 +1454,7 @@ export function App({
         <OptionsDialog
           settings={settings}
           error={optionsError}
+          chooseFolder={api.chooseTablebaseFolder}
           onClose={() => setOptionsOpen(false)}
           onApply={(next) =>
             void api

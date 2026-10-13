@@ -250,6 +250,17 @@ export function mockApi(firstDatabase = 1) {
     chooseDatabase: vi.fn().mockResolvedValue("/synthetic/test.cbh"),
     startupRequest: vi.fn().mockResolvedValue(null),
     startupShown: vi.fn().mockResolvedValue(undefined),
+    chooseTablebaseFolder: vi.fn().mockResolvedValue("/synthetic/syzygy"),
+    probeTablebase: vi
+      .fn()
+      .mockImplementation(async (_fen: string, requestId: string) => ({
+        requestId,
+        status: "noTables",
+        pieces: 32,
+        maxPieces: 0,
+        rounded: false,
+        moves: [],
+      })),
     getSettings: vi
       .fn()
       .mockImplementation(async () => structuredClone(settings)),

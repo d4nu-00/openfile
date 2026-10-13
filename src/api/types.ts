@@ -388,6 +388,36 @@ export interface TreeProgress {
   done: string;
   total: string;
 }
+export type TablebaseOutcome =
+  | "win"
+  | "maybeWin"
+  | "cursedWin"
+  | "draw"
+  | "blessedLoss"
+  | "maybeLoss"
+  | "loss";
+/** Syzygy tablebases for a position, from the side to move. */
+export interface TablebaseResponse {
+  requestId: string;
+  status:
+    "noTables" | "tooManyPieces" | "castling" | "missing" | "failed" | "found";
+  message?: string;
+  pieces: number;
+  maxPieces: number;
+  outcome?: TablebaseOutcome;
+  dtz?: number;
+  rounded: boolean;
+  /** Best first; each outcome is for the side that plays the move. */
+  moves: {
+    uci: string;
+    san: string;
+    outcome: TablebaseOutcome;
+    dtz?: number;
+    rounded: boolean;
+    zeroing: boolean;
+    ends?: "mate" | "stalemate";
+  }[];
+}
 /** An engine in Engine Management. */
 export interface InstalledEngine {
   id: string;
@@ -402,6 +432,8 @@ export interface AppSettings {
   maxGameTabs: number;
   engines: InstalledEngine[];
   defaultEngine?: string;
+  /** The folder of Syzygy tablebase files. */
+  tablebaseDir?: string;
 }
 export const defaultSettings: AppSettings = { maxGameTabs: 8, engines: [] };
 export interface ReferenceResponse {
