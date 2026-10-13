@@ -94,6 +94,8 @@ impl Registry {
         let db = self.database(id)?;
         *db.lock()
             .map_err(|_| AppError::new("state", "Database unavailable"))? = fresh;
+        // The sort order no longer covers every entry; the list asks again.
+        self.drop_sort(id);
         Ok(count)
     }
 

@@ -623,3 +623,54 @@ pub async fn document_pgn(
     let s = state.inner().clone();
     blocking(move || s.document_pgn(document_id)).await
 }
+#[tauri::command]
+pub async fn read_rows(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    start: String,
+    limit: usize,
+    request_id: String,
+) -> Result<PageResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.read_rows(database_id, start, limit, request_id)).await
+}
+#[tauri::command]
+pub async fn find_row(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    ordinal: String,
+) -> Result<Option<String>, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.find_row(database_id, ordinal)).await
+}
+#[tauri::command]
+pub async fn sort_list(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    column: Option<cbh_reader::sort::SortColumn>,
+    descending: bool,
+    events: tauri::ipc::Channel<crate::lists::SortProgress>,
+) -> Result<crate::lists::SortResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || {
+        let mut last = std::time::Instant::now();
+        s.sort_list(database_id, column, descending, |stage, done, total| {
+            if last.elapsed().as_millis() >= 250 || done == total {
+                last = std::time::Instant::now();
+                let _ = events.send(crate::lists::SortProgress {
+                    stage,
+                    done: done.to_string(),
+                    total: total.to_string(),
+                });
+            }
+        })
+    })
+    .await
+}
+#[tauri::command]
+pub fn cancel_sort(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_sort(database_id)
+}

@@ -31,6 +31,9 @@ pub(crate) struct State {
     /// The reference search result of each database, and its running search.
     pub(crate) references: HashMap<String, Arc<crate::searches::Hits>>,
     pub(crate) reference_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    /// The column each database's list is sorted by, and running sorts.
+    pub(crate) sorts: HashMap<String, Arc<crate::lists::ListSort>>,
+    pub(crate) sort_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     pub documents: HashMap<String, Arc<Mutex<Document>>>,
 }
 impl State {
@@ -274,7 +277,9 @@ impl Registry {
         state.searches.remove(&id);
         state.trees.remove(&id);
         state.references.remove(&id);
+        state.sorts.remove(&id);
         for cancels in [
+            &mut state.sort_cancels,
             &mut state.search_cancels,
             &mut state.tree_cancels,
             &mut state.reference_cancels,
