@@ -21,8 +21,8 @@ Names in backticks are ChessBase command ids, for traceability.
 2. Search mask and position search with a local index (§4).
 3. Opening tree built from the user's databases, and the reference search (§8).
 4. Complete notation editing: variation operations, game data, symbols (§6). *(P1 items done except keyboard symbol shortcuts)*
-5. Multiple game tabs, the clipboard database and save/replace into a database (§2, §3).
-6. Engine tools: blunder check, deep analysis, analysis jobs, tablebases (§7).
+5. Multiple game tabs, the clipboard database and save/replace into a database (§2, §3). *(game tabs done)*
+6. Engine tools: blunder check, deep analysis, analysis jobs, tablebases (§7). *(kibitzers, lines, paste, Engine Management, Tactical Analysis and a tablebase tab done; deep analysis and analysis jobs remain)*
 7. Reports, preparation and training (§9–§11), then publishing (§12).
 
 ## 1. Database formats and storage
