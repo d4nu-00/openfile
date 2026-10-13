@@ -35,6 +35,9 @@ import type {
 export const backend = {
   pickEngine: () =>
     open({ multiple: false, title: "Choose a local UCI engine executable" }),
+  /** An engine's UCI name and author; the engine is stopped again. */
+  probeEngine: (path: string) =>
+    invoke<Record<string, string>>("probe_engine", { path }),
   chooseEngine: (path: string) =>
     invoke<EngineResponse>("choose_engine", { path }),
   setEngineOption: (engineId: string, name: string, value: string) =>

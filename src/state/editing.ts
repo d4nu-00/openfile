@@ -257,6 +257,8 @@ export function useEditing(
         await w.selectNode(id);
         return id;
       }
+      // A pasted line: its last move, for the caller to select or not.
+      if (value.kind === "appendLine") return result.selected;
       const id =
         value.kind === "appendMove"
           ? result.game.nodes[value.parent].children.find(

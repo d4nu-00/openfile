@@ -23,7 +23,9 @@ import {
 } from "./state/workbench";
 import { OptionsDialog } from "./components/OptionsDialog";
 import { useEditing } from "./state/editing";
-import { useAnalysis } from "./state/analysis";
+import { formatScore } from "./state/analysis";
+import { useKibitzers } from "./state/kibitzers";
+import { EngineManagement } from "./components/EngineManagement";
 import { CommentEditor } from "./components/CommentEditor";
 import { GameDataDialog } from "./components/GameDataDialog";
 import { PositionSetup } from "./components/PositionSetup";
@@ -115,7 +117,13 @@ export function App({
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [optionsError, setOptionsError] = useState<string>();
   const e = useEditing(w, api, () => settingsRef.current.maxGameTabs);
-  const a = useAnalysis(api, state);
+  /** Saves settings to the config folder and shows them. */
+  async function saveSettings(next: AppSettings) {
+    setSettings(await api.setSettings(next));
+  }
+  const k = useKibitzers(api, state, settings, saveSettings);
+  const [enginesOpen, setEnginesOpen] = useState(false);
+  const [enginesError, setEnginesError] = useState<string>();
   /** The game view shows a game tab; the database view, the preview. */
   const view: ViewId = state.focus !== undefined ? "game" : "database";
   function setView(next: ViewId) {
@@ -233,6 +241,36 @@ export function App({
         ? to
         : undefined,
     );
+  }
+  /** The best line of the active kibitzer, for the position shown. */
+  function bestLine() {
+    const lines = k.current?.lines ?? [];
+    const line = lines.find((l) => l.multipv === 1) ?? lines[0];
+    return line?.rawPv?.length && game ? line : undefined;
+  }
+  /**
+   * Paste Engine Variation (Ctrl+Space) and Paste Engine Move (Shift+Space):
+   * the engine's best line, or its first move, from the current move. Moves
+   * already in the notation are followed; the rest become the continuation
+   * or a variation. A pasted line ends with its score and depth as text.
+   */
+  async function pasteEngine(whole: boolean) {
+    const line = bestLine();
+    if (!line?.rawPv) return;
+    const comment =
+      whole && line.score
+        ? `${formatScore(line.score, line.rootTurn, "white")}${
+            line.depth ? `/${line.depth}` : ""
+          }`
+        : undefined;
+    const last = await e.edit({
+      kind: "appendLine",
+      parent: selected,
+      moves: whole ? line.rawPv : line.rawPv.slice(0, 1),
+      comment,
+    });
+    // The pasted move is played; after a pasted line the board stays.
+    if (!whole && typeof last === "number") await w.selectNode(last);
   }
   /** Draws or removes a coloured square or arrow on the current position. */
   function drawMark(mark: DrawnMark) {
@@ -697,13 +735,49 @@ export function App({
       enabled: !!state.position,
     },
     "flip-board": { run: () => setFlipped((f) => !f), pressed: flipped },
-    "add-kibitzer": { run: () => a.choose(), enabled: !a.busy },
-    "remove-kibitzer": { run: () => a.close(), enabled: !!a.engine && !a.busy },
+    "add-kibitzer": {
+      run: () => (settings.engines.length ? setEnginesOpen(true) : k.choose()),
+      enabled: !k.adding,
+    },
+    "remove-kibitzer": {
+      run: () => k.remove(),
+      enabled: !!k.current && !k.current.busy,
+    },
+    "remove-all-kibitzers": {
+      run: () => k.removeAll(),
+      enabled: k.kibitzers.length > 0,
+    },
+    "default-kibitzer": {
+      run: async () => {
+        if (!(await k.toggleDefault())) setEnginesOpen(true);
+      },
+      enabled: !k.adding,
+      pressed: k.kibitzers.some(
+        (v) => v.installed && v.installed.id === settings.defaultEngine,
+      ),
+    },
+    "engine-management": { run: () => setEnginesOpen(true) },
     "toggle-analysis": {
-      run: () => (a.enabled ? a.stop() : a.start()),
-      enabled: !!a.engine && !!state.document?.documentId && !a.busy,
-      pressed: a.enabled,
-      label: a.enabled ? "Stop Analysis" : "Infinite Analysis",
+      run: () => (k.current?.enabled ? k.stop() : k.start()),
+      enabled: !!k.current && !!state.document?.documentId && !k.current.busy,
+      pressed: !!k.current?.enabled,
+      label: k.current?.enabled ? "Stop Analysis" : "Infinite Analysis",
+    },
+    "increase-lines": {
+      run: () => k.lines(1),
+      enabled: !!k.current && !k.current.busy,
+    },
+    "decrease-lines": {
+      run: () => k.lines(-1),
+      enabled: !!k.current && !k.current.busy && k.current.multipv > 1,
+    },
+    "paste-engine-variation": {
+      run: () => pasteEngine(true),
+      enabled: !busy && !!bestLine(),
+    },
+    "paste-engine-move": {
+      run: () => pasteEngine(false),
+      enabled: !busy && !!bestLine(),
     },
     "load-previous-game": {
       run: () => step(-1),
@@ -795,8 +869,8 @@ export function App({
     "theme-black": { run: () => setTheme("black"), pressed: theme === "black" },
     "command-search": { run: () => setPalette(true) },
     "stop-process": {
-      run: () => (w.treeBuild ? w.cancelTree() : a.stop()),
-      enabled: a.enabled || !!w.treeBuild,
+      run: () => (w.treeBuild ? w.cancelTree() : k.stopAll()),
+      enabled: k.kibitzers.some((v) => v.enabled) || !!w.treeBuild,
     },
   };
   useEffect(() => {
@@ -843,8 +917,10 @@ export function App({
       Number(a.databaseId.replace(/\D/g, "")) -
       Number(b.databaseId.replace(/\D/g, "")),
   );
-  const engineStatus = a.engine
-    ? `${a.engine.identity.name ?? "UCI engine"} · ${a.enabled ? "analysing" : "idle"}`
+  const engineStatus = k.current
+    ? `${k.current.engine.identity.name ?? "UCI engine"} · ${k.current.enabled ? "analysing" : "idle"}${
+        k.kibitzers.length > 1 ? ` (+${k.kibitzers.length - 1})` : ""
+      }`
     : "No engine";
 
   const pgnSelect = e.collection && (
@@ -1313,7 +1389,7 @@ export function App({
               <Group orientation="horizontal" className="split">
                 <Panel id="kibitzer" minSize="20">
                   <section className="pane analysis-pane" aria-label="Engine">
-                    <EnginePanel a={a} state={state} />
+                    <EnginePanel k={k} state={state} />
                   </section>
                 </Panel>
                 {extraBook && (
@@ -1380,6 +1456,48 @@ export function App({
               })
               .catch((err) => setOptionsError(explain(err)))
           }
+        />
+      )}
+      {enginesOpen && (
+        <EngineManagement
+          settings={settings}
+          error={enginesError}
+          onClose={() => {
+            setEnginesOpen(false);
+            setEnginesError(undefined);
+          }}
+          onSave={(next) =>
+            void saveSettings(next)
+              .then(() => setEnginesError(undefined))
+              .catch((err) => setEnginesError(explain(err)))
+          }
+          onAdd={() =>
+            void (async () => {
+              const path = await api.pickEngine();
+              if (typeof path !== "string") return;
+              try {
+                const identity = await api.probeEngine(path);
+                const name =
+                  identity.name ?? path.split(/[\\/]/).pop() ?? "UCI engine";
+                const id = `engine-${Date.now().toString(36)}`;
+                await saveSettings({
+                  ...settings,
+                  engines: [
+                    ...settings.engines,
+                    { id, name, path, options: {} },
+                  ],
+                  defaultEngine: settings.defaultEngine ?? id,
+                });
+                setEnginesError(undefined);
+              } catch (err) {
+                setEnginesError(explain(err));
+              }
+            })()
+          }
+          onStart={(engine) => {
+            setEnginesOpen(false);
+            void k.add(engine.path, engine);
+          }}
         />
       )}
       {setupOpen && (

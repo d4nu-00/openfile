@@ -160,6 +160,7 @@ export type Edit =
       arrows: ArrowMark[];
     }
   | { kind: "clearMarks" }
+  | { kind: "appendLine"; parent: NodeId; moves: string[]; comment?: string }
   | { kind: "undo" }
   | { kind: "redo" };
 /** Edits that change the tree's shape; the selection is re-read after them. */

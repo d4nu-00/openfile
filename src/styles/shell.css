@@ -1256,3 +1256,29 @@ kbd {
 .pane-header[hidden] {
   display: none;
 }
+.lines-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.lines-control span {
+  min-width: 1.5em;
+  text-align: center;
+}
+.kibitzer + .kibitzer {
+  border-top: 1px solid var(--pane-border);
+}
+.engine-management table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.engine-management td.path {
+  max-width: 24em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.engine-management tr[aria-selected="true"] {
+  background: var(--row-selected-bg);
+  color: var(--row-selected-fg);
+}

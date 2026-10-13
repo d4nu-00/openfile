@@ -183,6 +183,7 @@ export function demoApi(): WorkbenchApi {
     startupRequest: async () => null,
     startupShown: async () => {},
     getSettings: async () => structuredClone(settings),
+    probeEngine: async () => ({ name: "Demo engine" }),
     setSettings: async (next) => (settings = structuredClone(next)),
     chooseNewDatabase: async () => null,
     confirmEditing: async () => false,

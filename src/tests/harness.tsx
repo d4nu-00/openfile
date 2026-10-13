@@ -122,6 +122,7 @@ export function mockApi(firstDatabase = 1) {
       status: "ready",
     }),
     setEngineOption: vi.fn().mockResolvedValue(undefined),
+    probeEngine: vi.fn().mockResolvedValue({ name: "Mock engine 1.0" }),
     startAnalysis: vi.fn().mockResolvedValue(undefined),
     stopAnalysis: vi.fn().mockResolvedValue(undefined),
     closeEngine: vi.fn().mockResolvedValue(undefined),
