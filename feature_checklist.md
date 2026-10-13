@@ -104,7 +104,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Flip board (`VIEWFLIPBOARD`, Ctrl+F)
 - [x] P1 🟢 Replay with first/previous/next/last and arrow keys (`GOTOBEGIN`, `GOTOEND`, `RETRACTMOVE`, `EXECMOVE`)
 - [ ] P2 🟢 Board design: square colours and textures, piece sets, table (`DESIGNBOARD`, `BOARD2D_BACKGROUND`, `BOARD2D_PIECES`, `DESIGNWOOD`)
-- [ ] P1 🟢 Draw arrows and coloured squares on the board, stored as annotations *(partial: decoded marks are drawn and round-trip through PGN; no drawing tool yet)*
+- [x] P1 🟢 Draw arrows and coloured squares on the board, stored as annotations *(right button or Alt+left; Shift red, Ctrl yellow; undoable, saved to 2CBH and PGN; Delete Colour Commentary `ANNODELETECOLOR` Ctrl+Alt+Y; see [game window](docs/game-window.md))*
 - [ ] P2 🟢 Drag-and-drop moves
 - [ ] P2 🟢 Board sounds (`BOARDSOUNDS`)
 - [ ] P2 🟢 Show material balance and move tooltips (`NOTASHOWMATERIAL`, `NOTASHOWTOOLTIPS`)
