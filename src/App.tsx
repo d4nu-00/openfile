@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { Database, LayoutGrid, Search, X } from "lucide-react";
 import { backend, type WorkbenchApi } from "./api/client";
-import { annotationsIncomplete } from "./api/types";
+import { annotationsIncomplete, emptyFilter } from "./api/types";
+import type { SortColumn } from "./api/types";
 import { useWorkbench, type WorkbenchState } from "./state/workbench";
 import { useEditing } from "./state/editing";
 import { useAnalysis } from "./state/analysis";
@@ -19,7 +20,7 @@ import { BookPane } from "./components/BookPane";
 import { ReferencePane } from "./components/ReferencePane";
 import { usePositionPanes } from "./state/positionPanes";
 import { Diagnostics } from "./components/Diagnostics";
-import { GameList, matchesFilter } from "./views/GameList";
+import { GameList } from "./views/GameList";
 import { BoardPane, type Step } from "./views/BoardPane";
 import { Ribbon } from "./shell/Ribbon";
 import { CommandPalette } from "./shell/CommandPalette";
@@ -114,11 +115,15 @@ export function App({
       const startup = await api.startupRequest().catch(() => null);
       if (!live || !startup?.path) return;
       await w.openDatabase(startup.path);
+      if (startup.sort) {
+        const [column, order] = startup.sort.split(":");
+        await w.sortBy(column as SortColumn, order === "desc");
+      }
       if (startup.entry) {
-        await w.loadEntry(startup.entry);
+        await w.goToEntry(startup.entry);
         setOrdinal(startup.entry);
         setView("game");
-        if (startup.node !== undefined) await w.selectNode(startup.node);
+        if (startup.node != null) await w.selectNode(startup.node);
       }
       if (startup.command) setStartupCommand(startup.command);
       else await api.startupShown().catch(() => {});
@@ -206,31 +211,33 @@ export function App({
       ]);
       return;
     }
-    await e.run(() => w.loadEntry(BigInt(ordinal).toString()));
+    await e.run(() => w.goToEntry(BigInt(ordinal).toString()));
   }
   // Games from a position search open at the position found.
-  const foundNode = (n: string) =>
-    state.page?.entries.find((x) => x.ordinal === n)?.foundNode ?? 0;
-  const preview = (n: string) => void e.run(() => w.loadEntry(n, foundNode(n)));
-  async function open(n: string) {
-    if (state.document?.summary.ordinal !== n || !game)
-      await e.run(() => w.loadEntry(n, foundNode(n)));
+  const preview = (row: number) =>
+    void e.run(async () => {
+      const entry = await w.rows.entry(row, w.rowCount);
+      if (entry) await w.previewRow(row, entry);
+    });
+  async function open(row: number) {
+    const entry = await w.rows.entry(row, w.rowCount);
+    if (!entry) return;
+    if (state.document?.summary.ordinal !== entry.ordinal || !game)
+      await e.run(() => w.previewRow(row, entry));
     setView("game");
   }
-  function step(delta: 1 | -1) {
-    const current = state.document?.summary.ordinal;
-    if (!current || !state.database) return;
-    const next = BigInt(current) + BigInt(delta);
-    if (next < 1n || next > BigInt(state.database.entryCount)) return;
-    void e.run(() => w.loadEntry(next.toString()));
-  }
-  function readPage(delta: 1 | -1) {
-    if (delta > 0) {
-      if (state.page?.next) void w.readPage(state.page.next);
-      return;
-    }
-    void w.readPage(
-      (BigInt(w.pageStart) > 200n ? BigInt(w.pageStart) - 200n : 1n).toString(),
+  const step = (delta: 1 | -1) => void e.run(() => w.stepGame(delta));
+  /** Rows the list shows at once, for Page Up and Page Down. */
+  const [visibleRows, setVisibleRows] = useState(30);
+  function scrollPage(delta: 1 | -1) {
+    w.setListTop((top) =>
+      Math.max(
+        0,
+        Math.min(
+          top + delta * visibleRows,
+          Math.max(0, w.rowCount - visibleRows),
+        ),
+      ),
     );
   }
 
@@ -340,7 +347,7 @@ export function App({
     },
     "quick-filter": {
       run: () => setFilterOpen((o) => !o),
-      enabled: !!state.page,
+      enabled: !!state.database,
       pressed: filterOpen,
     },
     "find-position-db": {
@@ -396,10 +403,13 @@ export function App({
       enabled: !!state.search,
     },
     "previous-page": {
-      run: () => readPage(-1),
-      enabled: !!state.database && w.pageStart !== "1",
+      run: () => scrollPage(-1),
+      enabled: !!state.database && w.listTop > 0,
     },
-    "next-page": { run: () => readPage(1), enabled: !!state.page?.next },
+    "next-page": {
+      run: () => scrollPage(1),
+      enabled: !!state.database && w.listTop + visibleRows < w.rowCount,
+    },
     "save-pgn": { run: () => e.save(), enabled: !!game && !busy },
     "close-game": {
       run: () => e.run(e.closeDocument),
@@ -538,10 +548,6 @@ export function App({
     return () => window.removeEventListener("keydown", slash);
   }, [palette]);
 
-  const entries = useMemo(
-    () => (state.page?.entries ?? []).filter((x) => matchesFilter(x, filter)),
-    [state.page, filter],
-  );
   const databaseName = state.database ? "Database" : "Databases";
   const engineStatus = a.engine
     ? `${a.engine.identity.name ?? "UCI engine"} · ${a.enabled ? "analysing" : "idle"}`
@@ -680,12 +686,32 @@ export function App({
                   {state.dirty && (
                     <span className="badge">Unsaved changes</span>
                   )}
+                  {w.sorting && (
+                    <span className="sorting">
+                      Sorting: {w.sorting}
+                      <button
+                        className="link-button"
+                        onClick={() => w.cancelSort()}
+                      >
+                        Cancel
+                      </button>
+                    </span>
+                  )}
                 </div>
                 {(filterOpen || filter) && (
-                  <div className="filter-bar">
+                  <form
+                    className="filter-bar"
+                    onSubmit={(ev) => {
+                      ev.preventDefault();
+                      void w.search({
+                        ...(state.search?.filter ?? emptyFilter()),
+                        text: filter,
+                      });
+                    }}
+                  >
                     <input
                       aria-label="Filter games"
-                      placeholder="Filter this page: player, event, ECO, result…"
+                      placeholder="Quick filter: player, tournament, ECO, year, result…"
                       value={filter}
                       autoFocus
                       onChange={(ev) => setFilter(ev.target.value)}
@@ -697,31 +723,36 @@ export function App({
                       }}
                     />
                     <span className="hint">
-                      {entries.length} of {state.page?.entries.length ?? 0} on
-                      this page
+                      Enter searches the whole database
                     </span>
-                  </div>
+                  </form>
                 )}
                 <GameList
-                  entries={entries}
+                  rowCount={w.rowCount}
+                  version={`${state.database?.databaseId}:${state.listVersion}`}
+                  row={(i) => w.rows.row(i)}
+                  want={(from, to) => w.rows.want(from, to, w.rowCount)}
+                  top={w.listTop}
+                  onTop={w.setListTop}
+                  onMeasure={setVisibleRows}
+                  cursor={w.cursor}
                   selected={state.document?.summary.ordinal}
                   loading={w.loadingEntry}
+                  sort={state.sort}
+                  sorting={!!w.sorting}
+                  onSort={(s) => void w.sortBy(s?.column, s?.descending)}
                   onPreview={preview}
-                  onOpen={(n) => void open(n)}
+                  onOpen={(row) => void open(row)}
                 />
                 <div className="pager">
-                  <button
-                    disabled={!state.database || w.pageStart === "1"}
-                    onClick={() => readPage(-1)}
-                  >
-                    Previous page
-                  </button>
-                  <button
-                    disabled={!state.page?.next}
-                    onClick={() => readPage(1)}
-                  >
-                    Next page
-                  </button>
+                  <span className="list-position">
+                    {w.rowCount
+                      ? `Rows ${(w.listTop + 1).toLocaleString()}–${Math.min(
+                          w.rowCount,
+                          w.listTop + visibleRows,
+                        ).toLocaleString()} of ${w.rowCount.toLocaleString()}`
+                      : ""}
+                  </span>
                   <label>
                     Entry number{" "}
                     <input

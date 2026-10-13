@@ -17,7 +17,6 @@ async function start() {
       localStorage.setItem("workbench.theme", q.get("theme")!);
     if (q.has("demo")) {
       const database = await api.openDatabase("/demo", "demo");
-      const page = await api.readPage(database.databaseId, "1", 200, "demo");
       const document = await api.loadEntry(
         database.databaseId,
         q.get("entry") ?? "1",
@@ -28,7 +27,7 @@ async function start() {
         Number(q.get("node") ?? 0),
         "demo",
       );
-      initialState = { database, page, document, position };
+      initialState = { database, document, position };
       initialView = q.get("view") === "game" ? "game" : "database";
     }
   }

@@ -22,6 +22,9 @@ import type {
   TreeResponse,
   TreeProgress,
   ReferenceResponse,
+  SortColumn,
+  SortProgress,
+  SortResponse,
 } from "./types";
 export const backend = {
   pickEngine: () =>
@@ -235,6 +238,33 @@ export const backend = {
     requestId: string,
   ) =>
     invoke<PageResponse>("read_page", { databaseId, start, limit, requestId }),
+  /** Rows of the game list: the database or its search, sorted or not. */
+  readRows: (
+    databaseId: string,
+    start: string,
+    limit: number,
+    requestId: string,
+  ) =>
+    invoke<PageResponse>("read_rows", { databaseId, start, limit, requestId }),
+  findRow: (databaseId: string, ordinal: string) =>
+    invoke<string | null>("find_row", { databaseId, ordinal }),
+  sortList: async (
+    databaseId: string,
+    column: SortColumn | null,
+    descending: boolean,
+    onProgress: (p: SortProgress) => void,
+  ) => {
+    const events = new Channel<SortProgress>();
+    events.onmessage = onProgress;
+    return invoke<SortResponse>("sort_list", {
+      databaseId,
+      column,
+      descending,
+      events,
+    });
+  },
+  cancelSort: (databaseId: string) =>
+    invoke<void>("cancel_sort", { databaseId }),
   loadEntry: (databaseId: string, ordinal: string, requestId: string) =>
     invoke<GameResponse>("load_entry", { databaseId, ordinal, requestId }),
   positionAt: (documentId: string, nodeId: number, requestId: string) =>

@@ -4,12 +4,14 @@ import type {
   GameFilter,
   GameResponse,
   OpenDatabaseResponse,
-  PageResponse,
   PositionResponse,
   Diagnostic,
+  EntrySummary,
+  SortColumn,
 } from "../api/types";
 import type { WorkbenchApi } from "../api/client";
 import { SelectionGate } from "./selection";
+import { RowCache } from "./gameList";
 /** The database entry a document was loaded from or last saved to. */
 export interface Origin {
   databaseId: string;
@@ -24,15 +26,37 @@ export interface ActiveSearch {
   hits: string;
   truncated: boolean;
 }
+/** The column the list is sorted by. */
+export interface ListSort {
+  column: SortColumn;
+  descending: boolean;
+}
 export interface WorkbenchState {
   database?: OpenDatabaseResponse;
   origin?: Origin;
   search?: ActiveSearch;
-  page?: PageResponse;
+  sort?: ListSort;
+  /** Changes whenever the list's rows change: search, sort or a save. */
+  listVersion?: number;
   document?: GameResponse;
   position?: PositionResponse;
   dirty?: boolean;
 }
+/** Column names for messages. */
+export const sortLabels: Record<SortColumn, string> = {
+  white: "White",
+  whiteElo: "Elo W",
+  black: "Black",
+  blackElo: "Elo B",
+  result: "Result",
+  eco: "ECO",
+  tournament: "Tournament",
+  round: "Round",
+  date: "Date",
+  annotator: "Annotator",
+  source: "Source",
+  moves: "Moves",
+};
 const explain = (e: unknown) =>
   (e as { message?: string })?.message ?? String(e);
 export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
@@ -46,8 +70,33 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
   };
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [status, setStatus] = useState("Open a CBH database to begin.");
-  const [pageStart, setPageStart] = useState("1");
   const [loadingEntry, setLoadingEntry] = useState<string>();
+  /** The first row shown, and the row of the game last chosen from the list. */
+  const [listTop, setListTop] = useState(0);
+  const [cursor, setCursorState] = useState<number>();
+  const cursorRef = useRef<number>(undefined);
+  const setCursor = (row: number | undefined) => {
+    cursorRef.current = row;
+    setCursorState(row);
+  };
+  /** Progress of a running sort. */
+  const [sorting, setSorting] = useState<string>();
+  const [, rowsArrived] = useState(0);
+  const rows = useRef(
+    new RowCache(
+      (...args) => api.readRows(...args),
+      () => rowsArrived((n) => n + 1),
+      (message) => setDiagnostics([{ code: "rows", message }]),
+    ),
+  ).current;
+  rows.reset(
+    `${state.database?.databaseId}:${state.listVersion ?? 0}`,
+    state.database?.databaseId ?? "",
+  );
+  /** Rows in the list: the database, or its search result. */
+  const countRows = (s: WorkbenchState) =>
+    s.database ? Number(s.search ? s.search.hits : s.database.entryCount) : 0;
+  const rowCount = countRows(state);
   /** Progress of a running opening tree build. */
   const [treeBuild, setTreeBuild] = useState<string>();
   const gates = useRef({
@@ -100,7 +149,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       // current one is closed first.
       const open = current.current.database?.databaseId;
       if (open) await api.closeDatabase(open).catch(() => {});
-      setState((s) => ({ ...s, database: undefined, page: undefined }));
+      setState((s) => ({ ...s, database: undefined }));
       return api.openDatabase(path, request, true);
     });
   }
@@ -133,18 +182,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
         closeDb(candidate);
         return;
       }
-      const pageId = gates.page.begin();
-      const page =
-        database.entryCount === "0"
-          ? { requestId: pageId, entries: [] }
-          : await api.readPage(database.databaseId, "1", 200, pageId);
-      if (
-        !gates.database.accept(request) ||
-        !gates.page.accept(page.requestId)
-      ) {
-        closeDb(candidate);
-        return;
-      }
+      gates.page.begin();
       gates.game.begin();
       gates.position.begin();
       setLoadingEntry(undefined);
@@ -153,14 +191,16 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       setState((s) => ({
         ...s,
         database,
-        page,
         document: undefined,
         position: undefined,
         origin: undefined,
         search: undefined,
+        sort: undefined,
+        listVersion: (s.listVersion ?? 0) + 1,
         dirty: false,
       }));
-      setPageStart("1");
+      setListTop(0);
+      setCursor(undefined);
       setDiagnostics(database.diagnostics);
       setStatus(
         `${database.entryCount} entries${database.writable ? " · editable" : ""}`,
@@ -173,27 +213,123 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       }
     }
   }
-  /** Reads a page of the database, or of the search result when one is set. */
-  async function readPage(start: string) {
+  /** Reads the list's rows again, e.g. after a save. A sorted list is sorted
+   * again, since saving drops its sort order. */
+  async function refreshList() {
     const db = current.current.database;
     if (!db) return;
-    const request = gates.page.begin();
-    try {
-      const page = current.current.search
-        ? await api.readSearchPage(db.databaseId, start, 200, request)
-        : await api.readPage(db.databaseId, start, 200, request);
-      if (
-        !gates.page.accept(page.requestId) ||
-        current.current.database?.databaseId !== db.databaseId
-      )
-        return;
-      setState((s) => ({ ...s, page }));
-      setPageStart(start);
-      setDiagnostics([]);
-    } catch (e) {
-      if (gates.page.accept(request))
-        setDiagnostics([{ code: "page", message: explain(e) }]);
+    const sort = current.current.sort;
+    if (sort) {
+      await sortBy(sort.column, sort.descending, true);
+      return;
     }
+    setState((s) => ({ ...s, listVersion: (s.listVersion ?? 0) + 1 }));
+  }
+  /** Sorts the list by `column`, or returns to entry order. */
+  async function sortBy(column?: SortColumn, descending = false, keep = false) {
+    const db = current.current.database;
+    if (!db) return;
+    const label = column ? sortLabels[column] : "";
+    const show = (text?: string) => {
+      setSorting(text);
+      if (text) setStatus(`Sorting by ${label}: ${text}`);
+    };
+    show(column ? "starting…" : undefined);
+    try {
+      const sorted = await api.sortList(
+        db.databaseId,
+        column ?? null,
+        descending,
+        (p) => {
+          const pct = Number((BigInt(p.done) * 100n) / BigInt(p.total || "1"));
+          show(
+            p.stage === "names"
+              ? "reading names…"
+              : p.stage === "reading"
+                ? `reading entries, ${pct}%`
+                : `arranging, ${pct}%`,
+          );
+        },
+      );
+      if (current.current.database?.databaseId !== db.databaseId) return;
+      if (sorted.cancelled) {
+        setStatus("Sorting cancelled");
+        return;
+      }
+      setState((s) => ({
+        ...s,
+        sort: sorted.column
+          ? { column: sorted.column, descending: sorted.descending }
+          : undefined,
+        listVersion: (s.listVersion ?? 0) + 1,
+      }));
+      if (!keep) {
+        setListTop(0);
+        setCursor(undefined);
+      }
+      setStatus(
+        sorted.column
+          ? `Sorted by ${sortLabels[sorted.column]}${sorted.descending ? ", descending" : ""}`
+          : "Entry order",
+      );
+    } catch (e) {
+      setDiagnostics([{ code: "sort", message: explain(e) }]);
+      setStatus("Sorting failed");
+    } finally {
+      setSorting(undefined);
+    }
+  }
+  function cancelSort() {
+    const db = current.current.database;
+    if (db) void api.cancelSort(db.databaseId).catch(() => {});
+  }
+  /** The row (from 0) of an entry in the list, if the list has it. */
+  async function rowOf(databaseId: string, ordinal: string) {
+    const loaded = rows.find(ordinal);
+    if (loaded !== undefined) return loaded;
+    const found = await api.findRow(databaseId, ordinal).catch(() => null);
+    return found === null || found === undefined
+      ? undefined
+      : Number(found) - 1;
+  }
+  /** Scrolls to the row of entry `ordinal` and loads it. */
+  async function goToEntry(ordinal: string) {
+    const db = current.current.database;
+    if (!db) return;
+    const row = await rowOf(db.databaseId, ordinal);
+    if (current.current.database?.databaseId !== db.databaseId) return;
+    if (row !== undefined) {
+      setCursor(row);
+      setListTop(Math.max(0, row - 3));
+    }
+    const entry =
+      row === undefined
+        ? undefined
+        : await rows.entry(row, countRows(current.current));
+    await loadEntry(ordinal, entry?.foundNode ?? 0);
+  }
+  /** Loads the game `delta` rows away from the current one in the list. */
+  async function stepGame(delta: 1 | -1) {
+    const db = current.current.database;
+    const ordinal = current.current.document?.summary.ordinal;
+    if (!db || !ordinal) return;
+    const row =
+      cursorRef.current !== undefined &&
+      rows.row(cursorRef.current)?.ordinal === ordinal
+        ? cursorRef.current
+        : await rowOf(db.databaseId, ordinal);
+    if (row === undefined) return;
+    const next = row + delta;
+    const entry = await rows.entry(next, countRows(current.current));
+    if (!entry || current.current.database?.databaseId !== db.databaseId)
+      return;
+    setCursor(next);
+    await loadEntry(entry.ordinal, entry.foundNode ?? 0);
+  }
+  /** Previews the game at `row` of the list. */
+  function previewRow(row: number, entry: EntrySummary) {
+    setCursor(row);
+    return loadEntry(entry.ordinal, entry.foundNode ?? 0);
   }
   /** Searches the whole database and shows the hits in the list. */
   function search(filter: GameFilter) {
@@ -229,18 +365,15 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       setState((s) => ({
         ...s,
         search: { ...what, hits: found.hits, truncated: found.truncated },
+        listVersion: (s.listVersion ?? 0) + 1,
       }));
+      setListTop(0);
+      setCursor(undefined);
       setStatus(
         `${found.hits} games found${found.truncated ? " (stopped at the limit)" : ""}${
           what.fen && !found.indexed ? " · no search booster" : ""
         }`,
       );
-      if (found.hits === "0") {
-        setState((s) => ({ ...s, page: { requestId: request, entries: [] } }));
-        setPageStart("1");
-        return;
-      }
-      await readPage("1");
     } catch (e) {
       if (gates.page.accept(request)) {
         setDiagnostics([{ code: "search", message: explain(e) }]);
@@ -343,9 +476,14 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     const db = current.current.database;
     if (!db || !current.current.search) return;
     void api.clearSearch(db.databaseId).catch(() => {});
-    setState((s) => ({ ...s, search: undefined }));
+    setState((s) => ({
+      ...s,
+      search: undefined,
+      listVersion: (s.listVersion ?? 0) + 1,
+    }));
+    setListTop(0);
+    setCursor(undefined);
     setStatus(`${db.entryCount} entries`);
-    await readPage("1");
   }
   /** Loads an entry and selects `node` (a position search's hit) or the start. */
   async function loadEntry(ordinal: string, node = 0) {
@@ -445,8 +583,19 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     setDiagnostics,
     status,
     setStatus,
-    pageStart,
     loadingEntry,
+    rows,
+    rowCount,
+    listTop,
+    setListTop,
+    cursor,
+    sorting,
+    sortBy,
+    cancelSort,
+    refreshList,
+    goToEntry,
+    stepGame,
+    previewRow,
     openDatabase,
     search,
     findPosition,
@@ -460,7 +609,6 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     clearSearch,
     openDatabaseForEditing,
     createDatabase,
-    readPage,
     loadEntry,
     selectNode,
   };

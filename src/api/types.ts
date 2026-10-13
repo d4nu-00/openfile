@@ -82,6 +82,32 @@ export interface SaveGameResponse {
   entryCount: string;
   savedRevision: string;
 }
+/** A game list column the list can be sorted by. */
+export type SortColumn =
+  | "white"
+  | "whiteElo"
+  | "black"
+  | "blackElo"
+  | "result"
+  | "eco"
+  | "tournament"
+  | "round"
+  | "date"
+  | "annotator"
+  | "source"
+  | "moves";
+export interface SortProgress {
+  stage: "names" | "reading" | "sorting";
+  done: string;
+  total: string;
+}
+export interface SortResponse {
+  /** Rows in the list now. */
+  rows: string;
+  cancelled: boolean;
+  column?: SortColumn;
+  descending: boolean;
+}
 export interface PageResponse {
   requestId: string;
   entries: EntrySummary[];
@@ -204,9 +230,11 @@ export function annotationsIncomplete(status: Status | undefined): boolean {
 export interface StartupRequest {
   path?: string;
   entry?: string;
-  node?: number;
+  node?: number | null;
   /** Debug builds: a command id to run once the entry is shown. */
   command?: string;
+  /** Debug builds: a column to sort the list by, e.g. "date:desc". */
+  sort?: string;
 }
 /** Search mask, game data tab (see docs/search.md). */
 export interface PlayerQuery {
@@ -234,6 +262,8 @@ export interface GameFilter {
   movesMax?: number;
   results: string[];
   excludeDeleted: boolean;
+  /** Quick filter: words matched against names, ECO, year and result. */
+  text?: string;
 }
 export const emptyFilter = (): GameFilter => ({
   white: { last: "", first: "" },

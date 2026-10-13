@@ -261,6 +261,41 @@ pasted PGN (plain text is refused) and copying the game as PGN. Frontend tests
 drive the shortcuts, the Game data and Position setup dialogs, the
 Annotation Palette and the paste fallback dialog.
 
+## Game list: scrolling and sorting (2026-10-13)
+
+The `sort` example built sort orders on the Mega sample (release build, warm
+cache, 8 threads). The classic family's 11,151,119 entries sorted by White in
+0.84 s, by Date in 0.33 s and by Tournament in 0.67 s. Each took 188–220 MB at
+peak and wrote a 44.6 MB file. The 2CBH family's 24,783 entries took
+0.06–0.26 s. The first and last rows were checked by eye: text entries came
+first, then the earliest dates, Zukertort's and Zytogorski's games at the end
+of the name orders, and a tournament's games in round order. Finding the row
+of an entry in the middle of the classic order took 5–20 ms. See
+[game list](game-list.md).
+
+Reader tests build orders for every column of a synthetic 2CBH database. They
+check:
+* names with folded case and accents;
+* that ties keep entry order;
+* ascending and descending reads;
+* finding an entry's place;
+* arranging a search result;
+* that the file is stale after a save or for another column;
+* that a cancelled build leaves no file;
+* the entry limit.
+
+A synthetic classic family covers the record offsets and puts text entries
+first. App tests read rows of the plain, searched and sorted list. They check
+that a save drops the sort and that row bounds are enforced. Frontend tests
+cover:
+* wheel scrolling and block reads;
+* Go to entry;
+* keyboard selection;
+* the header sort cycle and a cancelled sort;
+* the quick filter;
+* that Load Next Game follows the list;
+* that the row cache ignores stale answers and keeps 60 blocks at most.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

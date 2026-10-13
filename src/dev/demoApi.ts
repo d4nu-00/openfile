@@ -1,7 +1,12 @@
 // Browser-only demo backend for UI previews in `npm run dev` outside Tauri.
 // It never ships: main.tsx imports it only in development builds.
 import type { WorkbenchApi } from "../api/client";
-import type { EntrySummary, EngineEventDto, GameNode } from "../api/types";
+import type {
+  EntrySummary,
+  EngineEventDto,
+  GameNode,
+  SortColumn,
+} from "../api/types";
 import { demoFens, demoLegal, demoNodes } from "./demoGame";
 
 const famous: [
@@ -110,7 +115,37 @@ const entries: EntrySummary[] = Array.from({ length: 200 }, (_, i) => {
   };
 });
 
+const demoCount = 2400;
+const demoEntry = (n: number): EntrySummary => ({
+  ...entries[(n - 1) % entries.length],
+  ordinal: String(n),
+});
+const demoKey: Record<SortColumn, (e: EntrySummary) => string | number> = {
+  white: (e) => e.white ?? "",
+  whiteElo: (e) => e.whiteElo ?? 0,
+  black: (e) => e.black ?? "",
+  blackElo: (e) => e.blackElo ?? 0,
+  result: (e) => e.result ?? "",
+  eco: (e) => e.eco ?? "",
+  tournament: (e) => e.event ?? "",
+  round: (e) => Number(e.round ?? 0),
+  date: (e) => e.date ?? "",
+  annotator: (e) => e.annotator ?? "",
+  source: (e) => e.source ?? "",
+  moves: () => 0,
+};
+
 export function demoApi(): WorkbenchApi {
+  // The list: a search's hits and a sort order, both over entry numbers.
+  let hits: number[] | undefined;
+  let order: number[] | undefined;
+  const all = () => Array.from({ length: demoCount }, (_, i) => i + 1);
+  const list = () => {
+    const base = hits ?? all();
+    if (!order) return base;
+    const keep = new Set(base);
+    return order.filter((o) => keep.has(o));
+  };
   let nodes: GameNode[] = structuredClone(demoNodes) as unknown as GameNode[];
   let revision = 0;
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -129,22 +164,56 @@ export function demoApi(): WorkbenchApi {
     startupShown: async () => {},
     chooseNewDatabase: async () => null,
     confirmEditing: async () => false,
-    searchGames: async (_db, _filter, requestId) => ({
-      requestId,
-      hits: "200",
-      scanned: "2400",
-      truncated: false,
-      cancelled: false,
-    }),
+    searchGames: async (_db, _filter, requestId) => {
+      hits = all().filter((n) => n % 12 === 1);
+      return {
+        requestId,
+        hits: String(hits.length),
+        scanned: "2400",
+        truncated: false,
+        cancelled: false,
+      };
+    },
     cancelSearch: async () => {},
-    findPosition: async (_db, _fen, requestId) => ({
+    findPosition: async (_db, _fen, requestId) => {
+      hits = all().filter((n) => n % 12 === 1);
+      return {
+        requestId,
+        hits: String(hits.length),
+        scanned: "2400",
+        truncated: false,
+        cancelled: false,
+        indexed: false,
+      };
+    },
+    readRows: async (_db, start, limit, requestId) => ({
       requestId,
-      hits: "200",
-      scanned: "2400",
-      truncated: false,
-      cancelled: false,
-      indexed: false,
+      entries: list()
+        .slice(Number(start) - 1, Number(start) - 1 + limit)
+        .map(demoEntry),
     }),
+    findRow: async (_db, ordinal) => {
+      const i = list().indexOf(Number(ordinal));
+      return i < 0 ? null : String(i + 1);
+    },
+    sortList: async (_db, column, descending, onProgress) => {
+      if (column) {
+        onProgress({ stage: "reading", done: "2400", total: "2400" });
+        const key = demoKey[column];
+        order = all().sort((a, b) => {
+          const [x, y] = [key(demoEntry(a)), key(demoEntry(b))];
+          const c = x < y ? -1 : x > y ? 1 : a - b;
+          return descending ? -c : c;
+        });
+      } else order = undefined;
+      return {
+        rows: String(list().length),
+        cancelled: false,
+        column: column ?? undefined,
+        descending,
+      };
+    },
+    cancelSort: async () => {},
     createSearchBooster: async (_db, onProgress) => {
       onProgress({ done: "2400", total: "2400" });
       return true;
@@ -193,7 +262,9 @@ export function demoApi(): WorkbenchApi {
       const page = await api.readPage!(db, "1", 12, requestId);
       return { ...page, entries: page.entries.slice(0, 12), next: undefined };
     },
-    clearSearch: async () => {},
+    clearSearch: async () => {
+      hits = undefined;
+    },
     readSearchPage: async (db, start, limit, requestId) =>
       api.readPage!(db, start, limit, requestId),
     openDatabase: async (_path, requestId) => ({
