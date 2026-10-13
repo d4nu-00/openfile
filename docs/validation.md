@@ -402,6 +402,29 @@ mouse buttons.
 A debug build on the classic Mega opened entry 27878 at start, then ran
 Board Window: the snapshot shows both game tabs beside the database tab.
 
+## Engines (2026-10-13)
+
+**Tests.**
+* App tests start 4 kibitzers of the engine crate's mock UCI engine at once,
+  refuse a fifth, close one and then all, and probe the engine's name. They
+  paste an engine line as one edit (a variation beside the game's move, the
+  comment on its last move), undo it, and refuse an illegal line without a
+  change. Core tests cover following existing moves and the unchanged game
+  after an illegal move.
+* Frontend tests cover:
+  * + and − setting MultiPV, stopping and restarting the analysis;
+  * Ctrl+Space pasting the best line with `+0.35/22`, and Shift+Space its
+    first move;
+  * two kibitzers, Remove Kibitzer taking the last one used, and Remove All;
+  * installing an engine (named from its handshake, made the default) and
+    Alt+F2 starting and removing it;
+  * the earlier engine tests, now with kibitzers that start at once.
+
+A debug build on the classic Mega ran Default Kibitzer with Stockfish 17
+installed in a temporary settings file with `MultiPV` 3: the snapshot shows
+the pane analysing node 30 with its lines. The settings file was deleted
+afterwards.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

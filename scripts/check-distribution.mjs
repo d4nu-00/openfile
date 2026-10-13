@@ -33,6 +33,7 @@ const documents = new Set([
   "opening-tree.md",
   "game-list.md",
   "game-window.md",
+  "engines.md",
 ]);
 export function allowedSourcePath(candidate) {
   if (

@@ -143,9 +143,9 @@ Names in backticks are ChessBase command ids, for traceability.
 
 - [x] P1 🟢 Local UCI engine: choose, configure options, start/stop analysis (`ADDKIBITZER`, `CREATEUCIENGINE`, Alt+F2)
 - [x] P1 🟢 MultiPV lines with depth, nodes, score and SAN principal variation
-- [ ] P1 🟢 Increase and decrease the number of lines (`INCREASENLINES`, `DECREASENLINES`) *(command shown, not wired)*
-- [ ] P1 🟢 Paste engine move or variation into the notation (`PASTEENGINEMOVE`, `PASTEENGINEVARIATIONS`, Ctrl+Space)
-- [ ] P1 🟢 Engine management: installed engine list, defaults, several kibitzers (`ENGINEMANAGEMENT`, `CLOSEALLKIBITZERS`, `TOGGLEDEFAULTKIBITZER`)
+- [x] P1 🟢 Increase and decrease the number of lines (`INCREASENLINES`, `DECREASENLINES`) *(+ and −: MultiPV, restarting the analysis; see [engines](docs/engines.md))*
+- [x] P1 🟢 Paste engine move or variation into the notation (`PASTEENGINEMOVE`, `PASTEENGINEVARIATIONS`, Ctrl+Space) *(Shift+Space for the move; one undoable edit; the score and depth as a text comment because ChessBase's evaluation annotation is not decoded)*
+- [x] P1 🟢 Engine management: installed engine list, defaults, several kibitzers (`ENGINEMANAGEMENT`, `CLOSEALLKIBITZERS`, `TOGGLEDEFAULTKIBITZER`) *(up to 4 kibitzers; installed engines, default and kept options in the app's settings; Default Kibitzer Alt+F2)*
 - [ ] P1 🟢 Endgame tablebases (Syzygy) for analysis and the notation
 - [ ] P1 🟢 Tactical analysis or blunder check that annotates a game (`TACTICAL_ANALYSIS`, `BlunderCheck`)
 - [ ] P2 🟢 Deep analysis: tree-building position analysis (`DEEP_ANALYSIS`)
