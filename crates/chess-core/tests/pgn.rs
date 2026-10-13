@@ -159,3 +159,35 @@ fn repeated_move_occurrences_preserve_annotations_and_mainline() {
         .remove(0);
     assert_eq!(reopened, game);
 }
+#[test]
+fn marks_and_text_before_moves_round_trip() {
+    let bytes = b"[Event \"Marks\"]\n[Result \"*\"]\n\n1. e4 {[%csl Gd4,Re5] [%cal Gg1f3] centre} e5 ({idea} 1... c5 {[%cal Yb8c6]}) 2. Nf3 {[%cal Xa1a2] kept} *";
+    let limits = GameLimits::default();
+    let g = parse_pgn(bytes, &limits).unwrap().remove(0);
+    let e4 = &g.nodes[g.nodes[0].children[0] as usize];
+    assert_eq!(e4.comments, vec!["centre"]);
+    assert_eq!(e4.squares.len(), 2);
+    assert_eq!(
+        (e4.squares[1].color, e4.squares[1].square.as_str()),
+        ('R', "e5")
+    );
+    assert_eq!(
+        (
+            e4.arrows[0].color,
+            e4.arrows[0].from.as_str(),
+            e4.arrows[0].to.as_str()
+        ),
+        ('G', "g1", "f3")
+    );
+    let c5 = &g.nodes[e4.children[1] as usize];
+    assert_eq!(c5.pre_comments, vec!["idea"]);
+    assert!(c5.comments.is_empty());
+    assert_eq!(c5.arrows[0].color, 'Y');
+    let e5 = &g.nodes[e4.children[0] as usize];
+    let nf3 = &g.nodes[e5.children[0] as usize];
+    assert_eq!(nf3.comments, vec!["[%cal Xa1a2] kept"]);
+    assert!(nf3.arrows.is_empty());
+    let text = write_pgn(&g).unwrap();
+    assert!(text.contains("{idea} 1... c5"), "{text}");
+    assert_eq!(parse_pgn(text.as_bytes(), &limits).unwrap()[0], g);
+}

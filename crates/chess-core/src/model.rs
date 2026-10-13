@@ -19,6 +19,29 @@ pub struct Node {
     pub children: Vec<NodeId>,
     pub comments: Vec<String>,
     pub nags: Vec<u16>,
+    /// Text shown before the move (ChessBase "text before move").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pre_comments: Vec<String>,
+    /// Coloured squares shown on the position after the move.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub squares: Vec<SquareMark>,
+    /// Coloured arrows shown on the position after the move.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub arrows: Vec<ArrowMark>,
+}
+/// Mark colours use the PGN `[%csl]`/`[%cal]` letters: G green, Y yellow,
+/// R red, B blue, and the further ChessBase letters C and O.
+pub const MARK_COLORS: &str = "GYRBCO";
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SquareMark {
+    pub color: char,
+    pub square: String,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArrowMark {
+    pub color: char,
+    pub from: String,
+    pub to: String,
 }
 #[derive(Clone, Debug)]
 pub struct GameLimits {
@@ -68,6 +91,9 @@ impl Game {
                 children: vec![],
                 comments: vec![],
                 nags: vec![],
+                pre_comments: vec![],
+                squares: vec![],
+                arrows: vec![],
             }],
         })
     }
@@ -158,6 +184,9 @@ impl Game {
             children: vec![],
             comments: vec![],
             nags: vec![],
+            pre_comments: vec![],
+            squares: vec![],
+            arrows: vec![],
         });
         self.nodes[parent as usize].children.push(id);
         Ok(id)

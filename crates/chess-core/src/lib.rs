@@ -3,7 +3,7 @@ pub mod model;
 pub mod pgn;
 pub mod position;
 pub use error::CoreError;
-pub use model::{Game, GameLimits, Node, NodeId};
+pub use model::{ArrowMark, Game, GameLimits, MARK_COLORS, Node, NodeId, SquareMark};
 pub use pgn::{parse_pgn, write_pgn};
 pub use position::PositionView;
 pub mod builder;
