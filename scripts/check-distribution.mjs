@@ -28,6 +28,7 @@ const documents = new Set([
   "validation.md",
   "ui-shell.md",
   "formats.md",
+  "writing.md",
 ]);
 export function allowedSourcePath(candidate) {
   if (
