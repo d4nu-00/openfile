@@ -248,6 +248,19 @@ build ends.
   cancelled build leaves no file. The app test also checks the reference
   search from the tree, its fallback to Find Position, and found nodes.
 
+## Game editing (2026-10-13)
+
+`chess-core` tests delete and promote nested variations and check that node
+ids stay dense and consistent. They also cover deleting the remaining or
+previous moves (the new start position's FEN, en passant square included),
+text before moves, and game data checks: result, ratings, date form, tag
+names and one-line values. The start position's SetUp and FEN tags cannot be
+edited by hand. App tests cover undo and redo across structural edits (a new
+edit clears redo), new games, set-up positions (an impossible one is refused),
+pasted PGN (plain text is refused) and copying the game as PGN. Frontend tests
+drive the shortcuts, the Game data and Position setup dialogs, the
+Annotation Palette and the paste fallback dialog.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

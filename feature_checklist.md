@@ -20,7 +20,7 @@ Names in backticks are ChessBase command ids, for traceability.
 1. Read the newer 2CBH format, decode CBA annotations and write databases (§1).
 2. Search mask and position search with a local index (§4).
 3. Opening tree built from the user's databases, and the reference search (§8).
-4. Complete notation editing: variation operations, game data, symbols (§6).
+4. Complete notation editing: variation operations, game data, symbols (§6). *(P1 items done except keyboard symbol shortcuts)*
 5. Multiple game tabs, the clipboard database and save/replace into a database (§2, §3).
 6. Engine tools: blunder check, deep analysis, analysis jobs, tablebases (§7).
 7. Reports, preparation and training (§9–§11), then publishing (§12).
@@ -118,15 +118,15 @@ Names in backticks are ChessBase command ids, for traceability.
 
 - [x] P1 🟢 Notation with variations, move numbers, comments and NAG symbols
 - [x] P1 🟢 Enter legal moves and new variations by clicking
-- [x] P1 🟢 Text after move, and NAGs by number (`ANNOPOSTTEXT`) *(partial: no symbol palette yet)*
-- [ ] P1 🟢 Text before move (`ANNOPRETEXT`) *(partial: decoded, shown and kept in PGN; no editor yet)*
-- [ ] P1 🟢 Annotation symbol palette and keyboard symbols (`SHOWSYMBOLPALETTE`)
-- [ ] P1 🟢 Delete and promote variations; delete remaining or previous moves (`DELETEVARIATION`, `PROMOTEVARIATION`, `DELETEREMAININGMOVES`, `DELETEPREVIOUSMOVES`)
-- [ ] P1 🟢 Undo/redo for game edits (`EDIT_UNDO`, `EDIT_REDO`)
-- [ ] P1 🟢 Edit game data: players, event, result, Elo, ECO (`EDITGAMEHEADER`, F2)
-- [ ] P1 🟢 New game and position setup (`GAMENEW`, `NEWPOSITION`)
+- [x] P1 🟢 Text after move, and NAGs by number (`ANNOPOSTTEXT`)
+- [x] P1 🟢 Text before move (`ANNOPRETEXT`) *(Ctrl+Shift+A focuses the editor below the notation)*
+- [ ] P1 🟢 Annotation symbol palette and keyboard symbols (`SHOWSYMBOLPALETTE`) *(partial: the palette (Ctrl+Alt+S) sets move marks, evaluations and other symbols as NAGs; ChessBase's per-symbol keyboard shortcuts were not recovered)*
+- [x] P1 🟢 Delete and promote variations; delete remaining or previous moves (`DELETEVARIATION`, `PROMOTEVARIATION`, `DELETEREMAININGMOVES`, `DELETEPREVIOUSMOVES`) *(Ctrl+Y, Alt+Up; Delete Previous Moves starts the game from the current position)*
+- [x] P1 🟢 Undo/redo for game edits (`EDIT_UNDO`, `EDIT_REDO`) *(Ctrl+Z, Ctrl+Alt+Shift+Y; the last 100 edits, at most 200,000 stored nodes)*
+- [x] P1 🟢 Edit game data: players, event, result, Elo, ECO (`EDITGAMEHEADER`, F2) *(players, ratings, tournament, site, round, date, result, ECO and annotator as PGN tags, checked before they are kept)*
+- [x] P1 🟢 New game and position setup (`GAMENEW`, `NEWPOSITION`) *(Ctrl+N; S opens a board editor with side to move, castling, en passant, move number and FEN)*
 - [x] P1 🟢 Copy the position as FEN (`EDITCOPYPOSITION`) *(partial: no picture yet)*
-- [ ] P1 🟢 Copy and paste games as PGN; paste a position from FEN (`EDITCOPYGAME`, `EDITPASTEGAME`, `EDITPASTEPOSITION`)
+- [x] P1 🟢 Copy and paste games as PGN; paste a position from FEN (`EDITCOPYGAME`, `EDITPASTEGAME`, `EDITPASTEPOSITION`) *(Ctrl+C, Ctrl+V; when the clipboard cannot be read, a dialog takes the text)*
 - [ ] P2 🟢 Null move, exchange moves, insert a variation into the game, reorder or clean up variations (`GAMENULLMOVE`, `EXCHANGEMOVES`, `INSERTVARIATIONINTOGAME`, `REORDERVARIATIONS`, `CLEANUPVARIATIONS`)
 - [ ] P2 🟢 Fold and unfold variations (`FOLDALL`, `UNFOLDALL`, `FOLDNEXTNODE`)
 - [ ] P2 🟢 Delete commentary by kind: all, colour, evaluation/time, text, training, multimedia (`ANNODELETEALL`, `ANNODELETECOLOR`, `ANNODELETEFRITZ`)

@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { GameNode } from "../api/types";
 
-const nagSymbols: Record<number, string> = {
+export const nagSymbols: Record<number, string> = {
   1: "!",
   2: "?",
   3: "!!",
@@ -21,8 +21,8 @@ const nagSymbols: Record<number, string> = {
   19: "−+",
   22: "⨀",
   32: "⟳",
-  36: "→",
-  40: "↑",
+  36: "↑",
+  40: "→",
   44: "=∞",
   132: "⇆",
   140: "∆",

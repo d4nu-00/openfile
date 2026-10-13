@@ -7,6 +7,10 @@ import { useWorkbench, type WorkbenchState } from "./state/workbench";
 import { useEditing } from "./state/editing";
 import { useAnalysis } from "./state/analysis";
 import { CommentEditor } from "./components/CommentEditor";
+import { GameDataDialog } from "./components/GameDataDialog";
+import { PositionSetup } from "./components/PositionSetup";
+import { PasteDialog } from "./components/PasteDialog";
+import { AnnotationPalette } from "./components/AnnotationPalette";
 import { UnsavedDialog } from "./components/UnsavedDialog";
 import { SearchMask } from "./components/SearchMask";
 import { EnginePanel } from "./components/EnginePanel";
@@ -65,6 +69,12 @@ export function App({
   const [square, setSquare] = useState<string>();
   const [promotion, setPromotion] = useState<string[]>([]);
   const [commentFocus, setCommentFocus] = useState(0);
+  const [focusField, setFocusField] = useState<"after" | "before">("after");
+  const [gameDataOpen, setGameDataOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [setupError, setSetupError] = useState<string>();
+  const [pasting, setPasting] = useState<"game" | "position">();
+  const [paletteOpen, setPaletteOpen] = useState(false);
   // Notation tabs, and the book and reference panes outside them.
   const [notationTab, setNotationTab] = useState<
     "notation" | "book" | "reference"
@@ -254,6 +264,47 @@ export function App({
     />
   );
 
+  /** Shows the notation's text editor with the given field focused. */
+  function focusText(field: "after" | "before") {
+    setNotationTab("notation");
+    setFocusField(field);
+    setCommentFocus((n) => n + 1);
+  }
+  /** A move is in a variation when it, or a move before it, is not the
+   * first continuation of its parent. */
+  const inVariation = useMemo(() => {
+    if (!game) return false;
+    let id = selected;
+    for (let steps = 0; id !== 0 && steps <= game.nodes.length; steps++) {
+      const parent = game.nodes[id]?.parent;
+      if (parent === undefined) return false;
+      if (game.nodes[parent].children[0] !== id) return true;
+      id = parent;
+    }
+    return false;
+  }, [game, selected]);
+  /** Pastes a game (PGN) or position (FEN) from the clipboard, or asks for
+   * the text when the clipboard cannot be read. */
+  async function paste(kind: "game" | "position") {
+    let text = "";
+    try {
+      text = (await api.readClipboard()) ?? "";
+    } catch {
+      // Reading may be refused; the dialog takes the text instead.
+    }
+    if (!text.trim()) {
+      setPasting(kind);
+      return;
+    }
+    await pasteText(kind, text);
+  }
+  const pasteText = (kind: "game" | "position", text: string) =>
+    e.run(async () => {
+      if (kind === "game") await e.pasteGame(text);
+      else await e.newGame(text.trim());
+      setView("game");
+    });
+
   const busy = e.busy;
   const bindings: Bindings = {
     "open-database": { run: () => e.run(w.openDatabase) },
@@ -383,9 +434,50 @@ export function App({
           BigInt(state.database.entryCount),
     },
     "text-after": {
-      run: () => setCommentFocus((n) => n + 1),
+      run: () => focusText("after"),
       enabled: !!game?.nodes[selected],
     },
+    "text-before": {
+      run: () => focusText("before"),
+      enabled: !!game && selected !== 0,
+    },
+    "new-game": { run: () => e.run(() => e.newGame()) },
+    "position-setup": {
+      run: () => {
+        setSetupError(undefined);
+        setSetupOpen(true);
+      },
+    },
+    undo: { run: () => e.edit({ kind: "undo" }), enabled: !!game && !busy },
+    redo: { run: () => e.edit({ kind: "redo" }), enabled: !!game && !busy },
+    "delete-variation": {
+      run: () => e.edit({ kind: "deleteVariation", node: selected }),
+      enabled: inVariation && !busy,
+    },
+    "promote-variation": {
+      run: () => e.edit({ kind: "promoteVariation", node: selected }),
+      enabled: inVariation && !busy,
+    },
+    "delete-remaining-moves": {
+      run: () => e.edit({ kind: "deleteRemaining", node: selected }),
+      enabled: !!game?.nodes[selected]?.children.length && !busy,
+    },
+    "delete-previous-moves": {
+      run: () => e.edit({ kind: "deletePrevious", node: selected }),
+      enabled: !!game && selected !== 0 && !busy,
+    },
+    "edit-game-data": {
+      run: () => setGameDataOpen(true),
+      enabled: !!game && !busy,
+    },
+    "annotation-palette": {
+      run: () => setPaletteOpen((o) => !o),
+      enabled: !!game,
+      pressed: paletteOpen,
+    },
+    "copy-game": { run: () => e.copyGame(), enabled: !!game },
+    "paste-game": { run: () => paste("game") },
+    "paste-position": { run: () => paste("position") },
     "layout-standard": {
       run: () => setLayout("standard"),
       pressed: layout === "standard",
@@ -425,7 +517,13 @@ export function App({
   useShortcuts(
     view,
     bindings,
-    !!e.question || palette || maskOpen || promotion.length > 0,
+    !!e.question ||
+      palette ||
+      maskOpen ||
+      gameDataOpen ||
+      setupOpen ||
+      !!pasting ||
+      promotion.length > 0,
   );
   // "/" also opens command search when focus is not in a field.
   useEffect(() => {
@@ -735,6 +833,14 @@ export function App({
                         <span className="badge">Unsaved changes</span>
                       )}
                     </div>
+                    {paletteOpen && (
+                      <AnnotationPalette
+                        node={game?.nodes[selected]}
+                        disabled={busy}
+                        edit={e.edit}
+                        onClose={() => setPaletteOpen(false)}
+                      />
+                    )}
                     {notationTab === "book" && bookPane}
                     {notationTab === "reference" && referencePane}
                     {notationTab === "notation" && (
@@ -746,7 +852,7 @@ export function App({
                         node={game.nodes[selected]}
                         disabled={busy}
                         edit={e.edit}
-                        autoFocus={commentFocus > 0}
+                        autoFocus={commentFocus > 0 ? focusField : undefined}
                       />
                     )}
                     <Diagnostics items={w.diagnostics} />
@@ -810,6 +916,47 @@ export function App({
         />
       )}
       <UnsavedDialog question={e.question} answer={e.answer} />
+      {gameDataOpen && game && (
+        <GameDataDialog
+          tags={game.tags}
+          onClose={() => setGameDataOpen(false)}
+          onApply={(tags) =>
+            void e.edit({ kind: "setTags", tags }).then((r) => {
+              if (r !== null) setGameDataOpen(false);
+            })
+          }
+        />
+      )}
+      {setupOpen && (
+        <PositionSetup
+          boardFen={state.position?.fen}
+          error={setupError}
+          onClose={() => setSetupOpen(false)}
+          onApply={(fen) =>
+            void e.run(async () => {
+              try {
+                await e.newGame(fen);
+                setSetupOpen(false);
+                setView("game");
+              } catch (err) {
+                setSetupError(
+                  (err as { message?: string })?.message ?? String(err),
+                );
+              }
+            })
+          }
+        />
+      )}
+      {pasting && (
+        <PasteDialog
+          kind={pasting}
+          onClose={() => setPasting(undefined)}
+          onPaste={(text) => {
+            setPasting(undefined);
+            void pasteText(pasting, text);
+          }}
+        />
+      )}
       {maskOpen && (
         <SearchMask
           initial={state.search?.filter}

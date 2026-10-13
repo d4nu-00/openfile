@@ -73,6 +73,7 @@ export function Board({
                 aria-selected={square === selectedSquare}
               >
                 <button
+                  type="button"
                   aria-label={`${square} ${label}`}
                   aria-pressed={square === selectedSquare}
                   className={`square ${(files.indexOf(f) + ranks.indexOf(r)) % 2 ? "dark" : "light"} ${selectedSquare === square ? "selected" : ""}`}

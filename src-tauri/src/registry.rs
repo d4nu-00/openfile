@@ -189,6 +189,8 @@ impl Registry {
                             | cbh_reader::DataStatus::Corrupt
                             | cbh_reader::DataStatus::Unsupported
                     ),
+                    history: vec![],
+                    future: vec![],
                 })),
             );
             (Some(id), Some(view))

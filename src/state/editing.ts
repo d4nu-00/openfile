@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { WorkbenchApi } from "../api/client";
 import {
   annotationsIncomplete,
+  structuralEdits,
+  type DocumentResponse,
   type Edit,
   type PgnCollectionResponse,
   type GameResponse,
@@ -213,10 +215,11 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
       }
     }
   }
-  async function edit(value: Edit): Promise<number | undefined> {
-    if (transition.current || editBusy.current || pending.current) return;
+  /** Applies an edit; resolves to the node to select, or null on failure. */
+  async function edit(value: Edit): Promise<number | undefined | null> {
+    if (transition.current || editBusy.current || pending.current) return null;
     const d = w.current.current.document;
-    if (!d?.documentId) return;
+    if (!d?.documentId) return null;
     editBusy.current = true;
     setBusy(true);
     try {
@@ -231,20 +234,92 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
         document: s.document && { ...s.document, ...result },
         dirty: result.dirty,
       }));
+      if (structuralEdits.includes(value.kind)) {
+        // Ids may have changed: select what the edit chose, or keep the
+        // current node while it exists.
+        const current = w.current.current.position?.nodeId ?? 0;
+        const id =
+          result.selected ?? (current < result.game.nodes.length ? current : 0);
+        await w.selectNode(id);
+        return id;
+      }
       const id =
         value.kind === "appendMove"
           ? result.game.nodes[value.parent].children.find(
               (n) => result.game.nodes[n].uci === value.uci,
             )
-          : value.node;
+          : "node" in value
+            ? value.node
+            : undefined;
       if (value.kind === "appendMove" && id !== undefined)
         await w.selectNode(id);
       return id;
     } catch (e) {
       report(e);
+      return null;
     } finally {
       editBusy.current = false;
       setBusy(transition.current);
+    }
+  }
+  /** Shows a new game in the game tab: empty, set up, or pasted. */
+  async function openDocument(
+    make: (request: string) => Promise<DocumentResponse>,
+    status: string,
+  ) {
+    const request = gate.begin();
+    let candidate: string | undefined;
+    try {
+      const made = await make(request);
+      candidate = made.documentId;
+      const position = await api.positionAt(made.documentId, 0, request);
+      if (!gate.accept(request)) {
+        void api.closeDocument(candidate).catch(() => {});
+        return;
+      }
+      const old = w.current.current.document?.documentId;
+      const doc: GameResponse = {
+        ...made,
+        requestId: request,
+        summary: { ordinal: "", kind: "game", deleted: false, diagnostics: [] },
+        metadataStatus: "available",
+        movesStatus: "available",
+        annotationsStatus: "available",
+        diagnostics: [],
+      };
+      w.setState((s) => ({
+        ...s,
+        document: doc,
+        position,
+        dirty: false,
+        origin: undefined,
+      }));
+      if (old && old !== candidate) void api.closeDocument(old).catch(() => {});
+      w.setDiagnostics([]);
+      w.setStatus(status);
+    } catch (e) {
+      if (candidate) void api.closeDocument(candidate).catch(() => {});
+      if (gate.accept(request)) report(e);
+      throw e;
+    }
+  }
+  /** A new game from the initial position, or from a set-up position. */
+  const newGame = (fen?: string) =>
+    openDocument(
+      (request) => api.newDocument(fen ?? null, request),
+      fen ? "New game from a set-up position" : "New game",
+    );
+  const pasteGame = (text: string) =>
+    openDocument((request) => api.pasteGame(text, request), "Pasted game");
+  /** Copies the game as PGN. */
+  async function copyGame() {
+    const d = w.current.current.document;
+    if (!d?.documentId) return;
+    try {
+      await api.writeClipboard(await api.documentPgn(d.documentId));
+      w.setStatus("Game copied as PGN");
+    } catch (e) {
+      report(e);
     }
   }
   const closeCollection = (id?: string) => {
@@ -381,5 +456,8 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
     openPgn,
     loadPgn,
     closeDocument,
+    newGame,
+    pasteGame,
+    copyGame,
   };
 }
