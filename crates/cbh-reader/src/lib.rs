@@ -8,6 +8,7 @@ pub mod limits;
 pub mod moves;
 pub mod position;
 pub mod search;
+pub mod sort;
 pub mod source;
 pub mod tree;
 pub mod v2;

@@ -389,6 +389,27 @@ impl Database {
             Names::New(t) => t.each_annotator(f),
         }
     }
+    pub(crate) fn names_each_source(
+        &self,
+        f: &mut dyn FnMut(u32, &str) -> bool,
+    ) -> Result<(), CbhError> {
+        match &self.entities {
+            Names::Classic(t) => t.each_source(f),
+            Names::New(t) => t.each_source(f),
+        }
+    }
+    pub(crate) fn format(&self) -> DatabaseFormat {
+        self.format
+    }
+    /// Raw entry-index bytes of records `start .. start + n`.
+    pub(crate) fn record_bytes(&self, start: u64, n: u64) -> Result<Vec<u8>, CbhError> {
+        if start == 0 || n == 0 || start + n - 1 > self.info.entry_count {
+            return Err(CbhError::Bounds);
+        }
+        let size = self.format.record_size() as u64;
+        self.header
+            .read_exact_range(start * size, (n * size) as usize)
+    }
     fn summary(&mut self, r: crate::header::RawEntry) -> Result<EntrySummary, CbhError> {
         let mut diagnostics = r.diagnostics;
         let entities = &mut self.entities;

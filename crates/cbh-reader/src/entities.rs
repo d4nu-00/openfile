@@ -384,6 +384,13 @@ impl EntityTables {
         };
         t.scan(|id, row| f(id, &field(&row[9..54]).text.unwrap_or_default()))
     }
+    /// Every source as (id, title).
+    pub fn each_source(&self, mut f: impl FnMut(u32, &str) -> bool) -> Result<(), CbhError> {
+        let Some(t) = &self.sources else {
+            return Ok(());
+        };
+        t.scan(|id, row| f(id, &field(&row[9..34]).text.unwrap_or_default()))
+    }
 }
 /// "Last, First" from the two player name fields.
 pub(crate) fn join_names(last: EntityText, first: EntityText) -> EntityText {
