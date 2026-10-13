@@ -124,14 +124,16 @@ struct Running {
     failed: bool,
 }
 struct Active {
-    id: String,
     inner: Arc<Mutex<Running>>,
     stopped: Arc<AtomicBool>,
     worker: JoinHandle<()>,
 }
+/// Kibitzers running at once.
+pub const MAX_KIBITZERS: usize = 4;
 #[derive(Default)]
 pub struct EngineManager {
-    active: Mutex<Option<Active>>,
+    /// Running engines (kibitzers), by engine id.
+    active: Mutex<HashMap<String, Active>>,
     lifecycle: Mutex<()>,
     sequence: AtomicU64,
     closed: AtomicBool,
@@ -174,12 +176,16 @@ impl EngineManager {
             .map(|n| n + 1)
             .map_err(|_| AppError::new("limitExceeded", "Engine handle space exhausted"))
     }
+    /// Starts the engine at `path` as one more kibitzer.
     pub fn choose(&self, path: PathBuf, ticket: u64) -> Result<EngineResponse, AppError> {
         let _lifecycle = self.lifecycle.lock().map_err(error)?;
-        if self.closed.load(Ordering::Acquire) || self.sequence.load(Ordering::Acquire) != ticket {
+        if self.closed.load(Ordering::Acquire) {
+            return Err(AppError::new("staleSelection", "The app is closing"));
+        }
+        if self.active.lock().map_err(error)?.len() >= MAX_KIBITZERS {
             return Err(AppError::new(
-                "staleSelection",
-                "Engine selection superseded",
+                "limitExceeded",
+                "Remove a kibitzer before adding another",
             ));
         }
         let mut session = EngineSession::spawn(
@@ -190,12 +196,9 @@ impl EngineManager {
             Duration::from_secs(5),
         )
         .map_err(error)?;
-        if self.closed.load(Ordering::Acquire) || self.sequence.load(Ordering::Acquire) != ticket {
+        if self.closed.load(Ordering::Acquire) {
             let _ = session.shutdown();
-            return Err(AppError::new(
-                "staleSelection",
-                "Engine selection superseded",
-            ));
+            return Err(AppError::new("staleSelection", "The app is closing"));
         }
         for option in session.options() {
             if let Some(value) = &option.default {
@@ -260,28 +263,19 @@ impl EngineManager {
                 thread::sleep(Duration::from_millis(1));
             }
         });
-        let mut active = self.active.lock().map_err(error)?;
         let next = Active {
-            id,
             inner,
             stopped,
             worker,
         };
-        if let Some(old) = active.take()
-            && let Err(error) = stop_worker(old)
-        {
-            let _ = stop_worker(next);
-            return Err(error);
-        }
-        *active = Some(next);
+        self.active.lock().map_err(error)?.insert(id, next);
         Ok(response)
     }
     fn running(&self, id: &str) -> Result<Arc<Mutex<Running>>, AppError> {
         self.active
             .lock()
             .map_err(error)?
-            .as_ref()
-            .filter(|a| a.id == id)
+            .get(id)
             .map(|a| a.inner.clone())
             .ok_or_else(|| AppError::new("invalidHandle", "Engine is closed or unknown"))
     }
@@ -345,14 +339,16 @@ impl EngineManager {
         }
         r.session.set_option(name, value).map_err(error)
     }
+    /// Stops every kibitzer analysing document `id`.
     pub fn stop_document(&self, id: &str) -> Result<(), AppError> {
-        let inner = self
+        let running: Vec<_> = self
             .active
             .lock()
             .map_err(error)?
-            .as_ref()
-            .map(|a| a.inner.clone());
-        if let Some(inner) = inner {
+            .values()
+            .map(|a| a.inner.clone())
+            .collect();
+        for inner in running {
             let mut r = inner.lock().map_err(error)?;
             if r.current_document.as_deref() == Some(id) {
                 r.current_document = None;
@@ -365,25 +361,31 @@ impl EngineManager {
     }
     pub fn close(&self, id: &str) -> Result<(), AppError> {
         let _lifecycle = self.lifecycle.lock().map_err(error)?;
-        let mut active = self.active.lock().map_err(error)?;
-        if !active.as_ref().is_some_and(|a| a.id == id) {
-            return Err(AppError::new(
-                "invalidHandle",
-                "Engine is closed or unknown",
-            ));
-        }
-        if let Some(active) = active.take() {
-            stop_worker(active)?;
-        }
-        Ok(())
+        let active = self
+            .active
+            .lock()
+            .map_err(error)?
+            .remove(id)
+            .ok_or_else(|| AppError::new("invalidHandle", "Engine is closed or unknown"))?;
+        stop_worker(active)
     }
     pub fn shutdown(&self) -> Result<(), AppError> {
         self.closed.store(true, Ordering::Release);
         let _lifecycle = self.lifecycle.lock().map_err(error)?;
-        if let Some(active) = self.active.lock().map_err(error)?.take() {
-            stop_worker(active)?;
+        let all: Vec<_> = self
+            .active
+            .lock()
+            .map_err(error)?
+            .drain()
+            .map(|(_, a)| a)
+            .collect();
+        let mut result = Ok(());
+        for active in all {
+            if let Err(e) = stop_worker(active) {
+                result = Err(e);
+            }
         }
-        Ok(())
+        result
     }
 }
 impl Drop for EngineManager {
@@ -406,6 +408,25 @@ pub async fn choose_engine(
     let ticket = state.begin_choice()?;
     let s = state.inner().clone();
     blocking(move || s.choose(path, ticket)).await
+}
+/// An engine's name and author, from the UCI handshake, for Engine
+/// Management. The engine is stopped again at once.
+pub fn probe(path: PathBuf) -> Result<BTreeMap<String, String>, AppError> {
+    let mut session = EngineSession::spawn(
+        EngineSpec {
+            executable: path,
+            arguments: vec![],
+        },
+        Duration::from_secs(5),
+    )
+    .map_err(error)?;
+    let identity = session.identity().clone();
+    let _ = session.shutdown();
+    Ok(identity)
+}
+#[tauri::command]
+pub async fn probe_engine(path: PathBuf) -> Result<BTreeMap<String, String>, AppError> {
+    blocking(move || probe(path)).await
 }
 #[tauri::command]
 pub async fn set_engine_option(

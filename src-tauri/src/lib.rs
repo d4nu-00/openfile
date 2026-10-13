@@ -172,6 +172,7 @@ pub fn run() {
             commands::finish_close,
             commands::startup_request,
             commands::startup_shown,
+            engine_commands::probe_engine,
             settings::get_settings,
             settings::set_settings,
             engine_commands::choose_engine,
