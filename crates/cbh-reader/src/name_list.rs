@@ -16,7 +16,8 @@ use std::{
 const MAGIC: &[u8; 8] = b"CWNAME01";
 /// Magic, kind and version, rows, entry count, database fingerprint.
 const HEADER: u64 = 8 + 8 + 8 + 8 + 32;
-const VERSION: u32 = 1;
+/// 2: classic names decoded as Windows-1252 with figurines, not lossy UTF-8.
+const VERSION: u32 = 2;
 const ROW: u64 = 12;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]

@@ -62,7 +62,7 @@ fn reads_both_entity_header_versions_and_unicode_names() {
     }
 }
 #[test]
-fn invalid_utf8_and_full_width_strings_are_diagnosed() {
+fn windows_1252_names_and_full_width_strings() {
     let dir = tempfile::tempdir().unwrap();
     let h = dir.path().join("Synthetic.cbh");
     std::fs::write(&h, []).unwrap();
@@ -73,7 +73,10 @@ fn invalid_utf8_and_full_width_strings_are_diagnosed() {
     bytes[32 + 67 + 9..32 + 67 + 39].fill(b'X');
     std::fs::write(&p, bytes).unwrap();
     let mut tables = EntityTables::open(&CompanionSet::discover(&h).unwrap(), 100).unwrap();
-    assert!(!tables.player(0).unwrap().diagnostics.is_empty());
+    // Not UTF-8: read as Windows-1252, which has a character for every byte.
+    let latin = tables.player(0).unwrap();
+    assert!(latin.text.unwrap().contains('ÿ'));
+    assert!(latin.diagnostics.is_empty());
     let row = tables.player(1).unwrap();
     assert_eq!(row.text.as_deref(), Some("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"));
     assert!(!row.diagnostics.is_empty());
@@ -101,4 +104,17 @@ fn corrupt_entity_stride_is_rejected() {
     std::fs::write(&h, []).unwrap();
     table(&dir.path().join("Synthetic.cbp"), 65, 32, 1);
     assert!(EntityTables::open(&CompanionSet::discover(&h).unwrap(), 1000).is_err());
+}
+
+#[test]
+fn classic_names_decode_utf8_windows_1252_and_figurines() {
+    use cbh_reader::entities::decode_name;
+    assert_eq!(decode_name(b"Carlsen"), "Carlsen");
+    assert_eq!(decode_name("Ánand".as_bytes()), "Ánand");
+    // Not UTF-8: Windows-1252, with a no-break space.
+    assert_eq!(decode_name(b"Rodrigo\xa0Pereira"), "Rodrigo\u{a0}Pereira");
+    assert_eq!(decode_name(b"M\xfcller"), "Müller");
+    // Opening lines stored as names use ChessBase's figurine bytes.
+    assert_eq!(decode_name(b"1.b3 e5 2.\xa5b2 \xa4c6"), "1.b3 e5 2.♗b2 ♘c6");
+    assert_eq!(decode_name(b"\xa2b1 \xa3d5 \xa6fd8"), "♔b1 ♕d5 ♖fd8");
 }
