@@ -104,14 +104,14 @@ impl Default for SortOptions {
 
 /// The fields of one entry-index record that sort keys use.
 #[derive(Clone, Copy, Default, Debug)]
-struct Fields {
-    game: bool,
-    white: Option<u32>,
-    black: Option<u32>,
-    tournament: Option<u32>,
+pub(crate) struct Fields {
+    pub game: bool,
+    pub white: Option<u32>,
+    pub black: Option<u32>,
+    pub tournament: Option<u32>,
     annotator: Option<u32>,
     source: Option<u32>,
-    date: u32,
+    pub date: u32,
     result: u8,
     round: u16,
     subround: u16,
@@ -130,7 +130,7 @@ fn le16(b: &[u8], i: usize) -> u16 {
 
 /// Reads the sort fields from a record. The offsets are those of
 /// `header::parse_record` (classic) and `v2::record::parse_record` (2CBH).
-fn fields(format: DatabaseFormat, b: &[u8]) -> Fields {
+pub(crate) fn fields(format: DatabaseFormat, b: &[u8]) -> Fields {
     match format {
         DatabaseFormat::Classic => {
             if b[0] & 15 != 1 {
@@ -246,8 +246,7 @@ pub fn collation_key(name: &str) -> String {
 }
 
 /// Ranks of names given as (id, collation key); ties keep id order.
-fn rank(mut names: Vec<(String, u32)>) -> Ranks {
-    names.sort_unstable();
+fn rank(names: Vec<(String, u32)>) -> Ranks {
     let max = names.iter().map(|n| n.1).max().unwrap_or(0) as usize;
     // Equal keys share a rank, so equal names sort by entry number.
     let mut ranks = Vec::with_capacity(names.len());
@@ -278,6 +277,16 @@ impl Database {
         column: SortColumn,
         cancel: &AtomicBool,
     ) -> Result<Option<Ranks>, CbhError> {
+        Ok(self.sorted_names(column, cancel)?.map(rank))
+    }
+
+    /// The names behind a column as (collation key, id), in alphabetical
+    /// order, or None when the column has no names.
+    pub(crate) fn sorted_names(
+        &self,
+        column: SortColumn,
+        cancel: &AtomicBool,
+    ) -> Result<Option<Vec<(String, u32)>>, CbhError> {
         let mut names = vec![];
         let go = || !cancel.load(Ordering::Relaxed);
         match column {
@@ -307,7 +316,8 @@ impl Database {
             })?,
             _ => return Ok(None),
         }
-        Ok(Some(rank(names)))
+        names.sort_unstable();
+        Ok(Some(names))
     }
 }
 

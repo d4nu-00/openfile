@@ -61,6 +61,10 @@ pub struct GameFilter {
     /// Quick filter: every word must match a player, the tournament or its
     /// site, the annotator, the source, the ECO code, the year or the result.
     pub text: String,
+    /// Games of this player id, with either colour (the players pane).
+    pub player_id: Option<u32>,
+    /// Games of this tournament id (the tournaments pane).
+    pub tournament_id: Option<u32>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -189,6 +193,15 @@ impl GameFilter {
             }
         }
         if !has(&c.tournaments, r.tournament_id) || !has(&c.annotators, r.annotator_id) {
+            return false;
+        }
+        if self
+            .player_id
+            .is_some_and(|p| r.white_id != Some(p) && r.black_id != Some(p))
+            || self
+                .tournament_id
+                .is_some_and(|t| r.tournament_id != Some(t))
+        {
             return false;
         }
         if self.elo_mode != EloMode::None && (self.elo_min.is_some() || self.elo_max.is_some()) {

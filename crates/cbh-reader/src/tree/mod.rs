@@ -290,7 +290,7 @@ impl GameStats {
 /// Performance rating differences for scores of 50% to 100% in steps of one
 /// percent: FIDE's conversion table (Handbook B.02, 8.1a). The same table
 /// is in CBase18.exe 18.1 at .data 0x141978ad0.
-const DP: [u16; 51] = [
+pub(crate) const DP: [u16; 51] = [
     0, 7, 14, 21, 29, 36, 43, 50, 57, 65, 72, 80, 87, 95, 102, 110, 117, 125, 133, 141, 149, 158,
     166, 175, 184, 193, 202, 211, 220, 230, 240, 251, 262, 273, 284, 296, 309, 322, 336, 351, 366,
     383, 401, 422, 444, 470, 501, 538, 589, 677, 800,
