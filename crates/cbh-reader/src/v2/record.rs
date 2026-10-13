@@ -89,8 +89,11 @@ pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
         tournament_id: None,
         annotator_id: None,
         source_id: None,
+        white_team_id: None,
+        black_team_id: None,
         date: None,
         result: None,
+        result_code: None,
         white_elo: None,
         black_elo: None,
         round: None,
@@ -109,6 +112,9 @@ pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
     r.tournament_id = id(bytes, 40, d);
     r.annotator_id = id(bytes, 48, d);
     r.source_id = id(bytes, 56, d);
+    // Same team names as the classic CBJ references (see formats.md).
+    r.white_team_id = id(bytes, 64, d);
+    r.black_team_id = id(bytes, 72, d);
     let packed = le32(bytes, 188);
     r.date = crate::header::date(packed);
     if packed != 0 && r.date.is_none() {
@@ -117,7 +123,8 @@ pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
             "Date has an invalid calendar value",
         ));
     }
-    r.result = crate::header::result(bytes[88]);
+    r.result_code = Some(bytes[88]);
+    r.result = crate::header::result(bytes[88], bytes[89]);
     if r.result.is_none() {
         r.diagnostics.push(Diagnostic::new(
             "unknownResult",

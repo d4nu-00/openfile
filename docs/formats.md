@@ -19,7 +19,7 @@ that executable. No ChessBase code or resources were copied.
 | `.2cbh` | Entry index: one 192-byte record per game or text | Read |
 | `.2cbg` | Framed blocks: move trees (type `0x0001`) and texts (`0x1000`) | Moves read; texts unsupported |
 | `.2cba` | Framed blocks of type `0x2000`, one per game | Text, symbols, squares and arrows read |
-| `.2lid` | Name lists: players, tournaments, sources, annotators, teams, titles | Players and tournaments read |
+| `.2lid` | Name lists: players, tournaments, sources, annotators, teams, titles | Players, tournaments, sources and teams read |
 | `.2lcd`, `.2lgd` | Catalogue and search structures for the name lists | Not needed for reading |
 
 ## 2CBH records
@@ -38,12 +38,25 @@ field, which fixes these offsets:
 | 8 | 8 | 2CBG block offset |
 | 16 | 8 | 2CBA block offset (games) |
 | 24–56 | 8 each | White, black, tournament, annotator, source ids; all-ones means none |
-| 88 | 1 | Result: 0 `0-1`, 1 `½-½`, 2 `1-0`; other codes not interpreted |
-| 89 | 1 | Classic evaluation byte (not interpreted) |
+| 64, 72 | 8 each | White and black team ids (2LID teams); all-ones means none |
+| 88 | 1 | Result code (below) |
+| 89 | 1 | Evaluation NAG of a line (below) |
 | 90, 92 | 2 each | Round, subround |
 | 96, 112 | 2 each | White and black rating; Elo is the low 12 bits, as in classic |
 | 128 | 2 | Packed ECO (below) |
 | 188 | 4 | Date, packed as in classic: `year << 9 | month << 5 | day` |
+
+**Result codes** (both families; classic bytes 27 and 28). The code is
+`kind + 4 × forfeit`. Kind 0 is a Black win, 1 a draw, 2 a White win and 3 a
+line without a result. The display routine `0x140c41440` reads kind, NAG and a
+forfeit flag. It shows forfeits as `-:+`, `=:=` and `+:-`, and a forfeited
+line as `0-0`. A line shows the symbol of its evaluation NAG, or "Line" when
+there is none. The game-data dialog lists the same seven choices. In the
+classic Mega every code 0–7 occurs: 6,543 lines (most with moves), and
+2,045 / 129 / 2,763 / 357 games with codes 4–7, nearly all without moves.
+Only lines carry a NAG; the values seen are evaluations 10–19 and 36, 40, 44,
+132, 138 and 146. The PGN `Result` tag keeps a forfeit's winner and is `*` for
+lines and `0-0`.
 
 **Packed ECO** (both families). Bits 7–15 hold 1–500 for A00–E99, and 0 means
 no code. The low seven bits are a ChessBase sub-classification that the reader
@@ -120,9 +133,36 @@ LE32-length-prefixed UTF-8:
 * players: last name, then first name;
 * tournaments: site, then event. A packed date follows the event.
 
-Every player and tournament reference in the sample matched the classic CBP
-and CBT names. Other record fields, and the source, annotator, team and title
-lists, are not read yet.
+The other lists:
+* sources: title, publisher, then LE32 publication and version dates packed
+  as in CBH, then four bytes not interpreted (version and quality in CBS);
+* teams: the name, then five bytes. The year is LE16 at +2 and the nation at
+  +4, matching CBE; neither is shown;
+* titles: a LE32 count of (LE32 language, string) pairs, the titles of text
+  entries. Not read yet;
+* annotators: empty in the sample. **2CBH annotator ids index the player
+  list.** Annotator 17 is the player "ChessBase", for example.
+
+Every player, tournament, source and team reference in the sample matched the
+classic names, and so did every annotator. Classic CBC keeps annotators as
+"Last,First", and 40 games name an annotator "Mackenzie" where the linked
+player is "MacKenzie". The remaining player fields are not interpreted.
+
+## Classic name tables and CBJ
+
+Each classic name table has a 28- or 32-byte header, then fixed records. A
+record starts with a nine-byte tree prefix (LE32 left, LE32 right, balance)
+and ends with the LE32 game count and first game:
+* CBC annotators (62 bytes): a 45-byte name;
+* CBS sources (68): 25-byte title, 16-byte publisher, LE32 publication and
+  version dates, version and quality bytes;
+* CBE teams (72): 45-byte name, LE32 number, season byte, LE32 year, nation
+  byte.
+
+Teams are referenced from **CBJ**, which has a 32-byte header (LE32 version 11,
+LE32 record size 120, LE32 entry count) and one record per entry from entry 1.
+Its first eight bytes are the BE32 white and black team ids; all-ones means
+none. The rest of the record is not interpreted.
 
 ## Classic set-ups (corrections found here)
 

@@ -3,14 +3,18 @@
 The reader supports two families, both opened read-only. Text entries are not
 games in either family.
 
-* **Classic:** 46-byte CBH headers and game entries, optional CBP player and
-  CBT tournament names, and standard classical CBG move streams.
+* **Classic:** 46-byte CBH headers and game entries, optional CBP player, CBT
+  tournament, CBC annotator, CBS source and CBE team names (team references
+  from CBJ), and standard classical CBG move streams.
 * **Newer 2CBH:** 192-byte records, framed 2CBG move trees (standard and set-up
-  starts) and 2LID player and tournament names. See [formats](formats.md).
+  starts) and 2LID player, tournament, source and team names. Annotators are
+  player entries. See [formats](formats.md).
 
 CBG records with no flags or only `0x40000000` (28-byte setup) are supported.
 Unencoded (`0x80000000`), special (`0x04000000`), Chess960 (`0x0a000000`), and
 all other flag combinations return an unsupported status without a partial game.
+In the classic Mega these are 893 Chess960 games (892 with a set-up) and 11
+with flags `0x01`, `0x04` or `0x05`; none is unencoded.
 Setup control byte 0 must be 0 or 1. Every Mega Database 2025 setup stores 1,
 and cbh2pgn and libcbh both skip the byte. Byte 1's upper three bits and byte
 2's upper four bits must be zero; other values return `unsupportedSetup`. The turn bit is `0x10`,
@@ -51,8 +55,11 @@ In the newer family, the following are refused or not read:
 * blocks whose marker, trailer or checksum fails. These are reported corrupt,
   never partially loaded.
 
-Annotator, source, team and title names are not read in either family.
-Result codes other than 0–2 are reported as uninterpreted.
+Title lists (2LID) and the other CBJ fields are not read. Result codes 3–7 are
+shown as ChessBase shows them: lines with their evaluation symbol or "Line",
+and forfeits as `+:-`, `-:+`, `=:=` and `0-0`. PGN export keeps a forfeit's
+winner and writes `*` for lines and `0-0`. Codes above 7 are reported as
+uninterpreted.
 
 **Packed ECO** is decoded in both families. Bits 7–15 hold 1–500 for A00–E99,
 and the ChessBase sub-classification in the low seven bits is not shown. The

@@ -16,8 +16,12 @@ pub struct RawEntry {
     pub tournament_id: Option<u32>,
     pub annotator_id: Option<u32>,
     pub source_id: Option<u32>,
+    /// From CBJ in the classic family, from the record in 2CBH.
+    pub white_team_id: Option<u32>,
+    pub black_team_id: Option<u32>,
     pub date: Option<String>,
     pub result: Option<String>,
+    pub result_code: Option<u8>,
     pub white_elo: Option<u16>,
     pub black_elo: Option<u16>,
     pub round: Option<String>,
@@ -121,13 +125,56 @@ pub(crate) fn eco(raw: u16) -> Option<String> {
         code % 100
     ))
 }
-pub(crate) fn result(code: u8) -> Option<String> {
+/// Stored result code: `kind + 4 * forfeit`, where kind is 0 Black wins,
+/// 1 draw, 2 White wins, 3 line (no result). The display routine
+/// `0x140c41440` shows forfeits as `-:+`, `=:=`, `+:-` and `0-0`, and a line
+/// as its evaluation symbol (the next byte, a NAG) or "Line".
+pub(crate) fn result(code: u8, evaluation: u8) -> Option<String> {
+    Some(
+        match code {
+            0 => "0-1",
+            1 => "1/2-1/2",
+            2 => "1-0",
+            3 => evaluation_symbol(evaluation).unwrap_or("Line"),
+            4 => "-:+",
+            5 => "=:=",
+            6 => "+:-",
+            7 => "0-0",
+            _ => return None,
+        }
+        .into(),
+    )
+}
+/// The PGN `Result` tag for a stored result code: forfeits keep their
+/// winner, lines and `0-0` have no PGN result.
+pub fn pgn_result(code: u8) -> Option<&'static str> {
     match code {
-        0 => Some("0-1".into()),
-        1 => Some("1/2-1/2".into()),
-        2 => Some("1-0".into()),
+        0 | 4 => Some("0-1"),
+        1 | 5 => Some("1/2-1/2"),
+        2 | 6 => Some("1-0"),
+        3 | 7 => Some("*"),
         _ => None,
     }
+}
+/// Symbols of the evaluation NAGs seen on lines.
+fn evaluation_symbol(nag: u8) -> Option<&'static str> {
+    Some(match nag {
+        10..=12 => "=",
+        13 => "∞",
+        14 => "⩲",
+        15 => "⩱",
+        16 => "±",
+        17 => "∓",
+        18 => "+-",
+        19 => "-+",
+        36 => "↑",
+        40 => "→",
+        44 => "=∞",
+        132 => "⇆",
+        138 => "⊕",
+        146 => "N",
+        _ => return None,
+    })
 }
 pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
     if bytes.len() != 46 {
@@ -152,8 +199,11 @@ pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
         tournament_id: None,
         annotator_id: None,
         source_id: None,
+        white_team_id: None,
+        black_team_id: None,
         date: None,
         result: None,
+        result_code: None,
         white_elo: None,
         black_elo: None,
         round: None,
@@ -179,7 +229,8 @@ pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
             "Date has an invalid calendar value",
         ));
     }
-    r.result = result(bytes[27]);
+    r.result_code = Some(bytes[27]);
+    r.result = result(bytes[27], bytes[28]);
     if r.result.is_none() {
         r.diagnostics.push(Diagnostic::new(
             "unknownResult",

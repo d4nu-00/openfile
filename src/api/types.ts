@@ -26,6 +26,11 @@ export interface EntrySummary {
   whiteElo?: number;
   blackElo?: number;
   eco?: string;
+  annotator?: string;
+  /** Source title. */
+  source?: string;
+  whiteTeam?: string;
+  blackTeam?: string;
   diagnostics: Diagnostic[];
 }
 export interface GameNode {

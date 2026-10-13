@@ -1,7 +1,7 @@
 //! Cross-checks a 2CBH family against a classic CBH family entry by entry.
 //!
 //! Usage: compare_formats --classic <file.cbh> --new <file.2cbh> [--limit N]
-//! Prints a JSON summary. Only metadata and decoded move trees are compared;
+//! Prints a JSON summary. Metadata, names, move trees and annotations are compared;
 //! source files are opened read-only.
 use cbh_reader::{DataStatus, Database, EntryKind, ReadLimits};
 use std::{collections::BTreeMap, path::PathBuf, time::Instant};
@@ -71,18 +71,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             bump("textEntries");
             continue;
         }
+        // Classic CBC stores annotators as "Last,First"; 2CBH uses a player
+        // entry, shown as "Last, First".
+        let annotator = |v: &Option<String>| v.as_ref().map(|v| v.replace(", ", ","));
+        let (ca, na) = (annotator(&s.annotator), annotator(&t.annotator));
         for (field, x, y) in [
             ("white", &s.white, &t.white),
             ("black", &s.black, &t.black),
             ("event", &s.event, &t.event),
             ("site", &s.site, &t.site),
             ("eco", &s.eco, &t.eco),
+            ("annotator", &ca, &na),
+            ("source", &s.source, &t.source),
+            ("sourcePublisher", &s.source_publisher, &t.source_publisher),
+            ("sourceDate", &s.source_date, &t.source_date),
+            ("whiteTeam", &s.white_team, &t.white_team),
+            ("blackTeam", &s.black_team, &t.black_team),
         ] {
+            if x.is_some() {
+                bump(&format!("{field}Present"));
+            }
             if x == y {
                 bump(&format!("{field}Match"));
             } else {
                 bump(&format!("{field}Mismatch"));
-                if failures.len() < 50 {
+                if failures.len() < 50 || std::env::var_os("COMPARE_ALL").is_some() {
                     failures.push(format!("{ordinal}: {field} {x:?} vs {y:?}"));
                 }
             }
@@ -116,7 +129,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         bump("annotationsMatch");
                     } else {
                         bump("annotationsDiffer");
-                        if failures.len() < 50 {
+                        if failures.len() < 50 || std::env::var_os("COMPARE_ALL").is_some() {
                             failures.push(format!(
                                 "{ordinal}: annotations differ {:?} / {:?}",
                                 x.diagnostics.iter().map(|d| &d.code).collect::<Vec<_>>(),
@@ -145,7 +158,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             )),
         }
     }
-    failures.truncate(50);
+    failures.truncate(if std::env::var_os("COMPARE_ALL").is_some() {
+        usize::MAX
+    } else {
+        50
+    });
     println!(
         "{}",
         serde_json::to_string_pretty(&serde_json::json!({

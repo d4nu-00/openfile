@@ -79,6 +79,14 @@ pub struct EntryDto {
     pub black_elo: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub eco: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub annotator: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub white_team: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub black_team: Option<String>,
     pub diagnostics: Vec<DiagnosticDto>,
 }
 impl From<cbh_reader::EntrySummary> for EntryDto {
@@ -102,6 +110,10 @@ impl From<cbh_reader::EntrySummary> for EntryDto {
             white_elo: e.white_elo,
             black_elo: e.black_elo,
             eco: e.eco,
+            annotator: e.annotator,
+            source: e.source,
+            white_team: e.white_team,
+            black_team: e.black_team,
             diagnostics: e.diagnostics.into_iter().map(Into::into).collect(),
         }
     }

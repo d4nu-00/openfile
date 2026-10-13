@@ -93,7 +93,7 @@ opened both families through the same `Database` API. It compared all 24,783
   2LID.
 * No 2CBG block failed its marker, trailer or checksum. There were no
   unsupported tokens and no unexplained diagnostics. 63 games carry result
-  codes 3–7, which both families report as uninterpreted.
+  codes 3–7; both families show the same strings for them (see below).
 
 Two classic-decoder corrections came out of this comparison: setup byte 0 = 1,
 and an impossible en-passant file in entry 13409. Both are described in
@@ -131,6 +131,26 @@ one load while the cloud-backed file hydrated.
 The position-to-move mapping was chosen statistically (see
 [formats](formats.md)) and then confirmed by the agreement between the two
 encodings. It is not a native trace of the numbering code.
+
+## Names, results and the real app (2026-10-13)
+
+The same comparison now also resolves annotators, sources and teams:
+
+* Sources (title, publisher and date) matched in all 24,759 games, and teams
+  in all 162 games that have them (CBJ and CBE against 2LID).
+* 2,374 games name an annotator. Annotators matched in 24,719 games, after
+  writing classic "Last,First" as "Last, First". In the other 40 games the
+  classic CBC entry is "Mackenzie,George Henry", while the 2CBH annotator id
+  points at the player entry "MacKenzie, George Henry".
+* Result strings, including codes 3–7, matched in every game.
+
+The run took 14 s. Its output is kept outside the repository with the other
+comparison runs.
+
+The real macOS app was opened at a richly annotated Mega game (2CBH entry
+3763) using the command-line options described in the README. A WebKit
+snapshot taken in a debug build showed the decoded arrow and coloured square
+on the board, plus text before moves, comments and NAGs in the notation.
 
 ## Distribution and remaining acceptance
 
