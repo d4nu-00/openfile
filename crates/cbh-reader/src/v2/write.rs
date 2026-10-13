@@ -324,13 +324,23 @@ pub fn pack_eco(eco: &str) -> u16 {
     }
 }
 
-fn result_code(result: Option<&str>) -> u8 {
-    match result {
+fn result_code(result: Option<&str>, chessbase: Option<&str>) -> u8 {
+    let plain = match result {
         Some("1-0") => 2,
         Some("0-1") => 0,
         Some("1/2-1/2") => 1,
         _ => 3,
-    }
+    };
+    // A forfeit or "0-0" kept from a ChessBase database, with the plain
+    // code its PGN result maps to; used while the PGN result still agrees.
+    let (kept, agrees) = match chessbase {
+        Some("+:-") => (6, 2),
+        Some("=:=") => (5, 1),
+        Some("-:+") => (4, 0),
+        Some("0-0") => (7, 3),
+        _ => return plain,
+    };
+    if plain == agrees { kept } else { plain }
 }
 
 /// Main-line move count as ChessBase stores it (classic byte 45), capped.
@@ -473,7 +483,10 @@ impl Writer {
             r[at..at + 8].copy_from_slice(&id.to_le_bytes());
         }
         r[80..88].copy_from_slice(&2u64.to_le_bytes());
-        r[88] = result_code(tag("Result").or(game.tags.get("Result").map(String::as_str)));
+        r[88] = result_code(
+            tag("Result").or(game.tags.get("Result").map(String::as_str)),
+            game.tags.get(crate::RESULT_TAG).map(String::as_str),
+        );
         if let Some(round) = tag("Round") {
             let mut parts = round.split('.').map(|p| p.parse::<u16>().unwrap_or(0));
             r[90..92].copy_from_slice(&parts.next().unwrap_or(0).to_le_bytes());
