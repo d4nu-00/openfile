@@ -125,10 +125,12 @@ pub(crate) fn eco(raw: u16) -> Option<String> {
         code % 100
     ))
 }
-/// Stored result code: `kind + 4 * forfeit`, where kind is 0 Black wins,
-/// 1 draw, 2 White wins, 3 line (no result). The display routine
-/// `0x140c41440` shows forfeits as `-:+`, `=:=`, `+:-` and `0-0`, and a line
-/// as its evaluation symbol (the next byte, a NAG) or "Line".
+/// Stored result code: the getters `0x1401ceca0` and `0x1401cecc0` split it
+/// into kind (`code & 3`: 0 Black wins, 1 draw, 2 White wins, 3 line) and
+/// flags (`code >> 2`, bit 0 forfeit). The display routine `0x140c41440`
+/// shows forfeits as `-:+`, `=:=`, `+:-` and `0-0`, and a line as its
+/// evaluation symbol (the next byte, a NAG) or "Line". Codes above 7 never
+/// occur in the sample and are left uninterpreted.
 pub(crate) fn result(code: u8, evaluation: u8) -> Option<String> {
     Some(
         match code {

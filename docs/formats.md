@@ -47,11 +47,13 @@ field, which fixes these offsets:
 | 188 | 4 | Date, packed as in classic: `year << 9 | month << 5 | day` |
 
 **Result codes** (both families; classic bytes 27 and 28). The code is
-`kind + 4 × forfeit`. Kind 0 is a Black win, 1 a draw, 2 a White win and 3 a
-line without a result. The display routine `0x140c41440` reads kind, NAG and a
-forfeit flag. It shows forfeits as `-:+`, `=:=` and `+:-`, and a forfeited
-line as `0-0`. A line shows the symbol of its evaluation NAG, or "Line" when
-there is none. The game-data dialog lists the same seven choices. In the
+`kind + 4 × flags`: the getters `0x1401ceca0` and `0x1401cecc0` return
+`code & 3` and `code >> 2`, and `0x1401ceb50` returns the NAG byte. Kind 0 is
+a Black win, 1 a draw, 2 a White win and 3 a line without a result. Flag bit 0
+marks a forfeit; with bit 2 set the display routine `0x140c41440` shows no
+result at all. That routine shows forfeits as `-:+`, `=:=` and `+:-`, and
+a forfeited line as `0-0`. A line shows the symbol of its evaluation NAG, or
+"Line" when there is none. The game-data dialog lists the same seven choices. In the
 classic Mega every code 0–7 occurs: 6,543 lines (most with moves), and
 2,045 / 129 / 2,763 / 357 games with codes 4–7, nearly all without moves.
 Only lines carry a NAG; the values seen are evaluations 10–19 and 36, 40, 44,
