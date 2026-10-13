@@ -597,3 +597,29 @@ pub async fn read_reference_page(
     let s = state.inner().clone();
     blocking(move || s.read_reference_page(database_id, start, limit, request_id)).await
 }
+#[tauri::command]
+pub async fn new_document(
+    state: tauri::State<'_, Arc<Registry>>,
+    fen: Option<String>,
+    request_id: String,
+) -> Result<crate::documents::DocumentResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.new_document(fen, request_id)).await
+}
+#[tauri::command]
+pub async fn paste_game(
+    state: tauri::State<'_, Arc<Registry>>,
+    text: String,
+    request_id: String,
+) -> Result<crate::documents::DocumentResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.paste_game(text, request_id)).await
+}
+#[tauri::command]
+pub async fn document_pgn(
+    state: tauri::State<'_, Arc<Registry>>,
+    document_id: String,
+) -> Result<String, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.document_pgn(document_id)).await
+}

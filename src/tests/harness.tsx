@@ -159,11 +159,29 @@ export function mockApi() {
             game.nodes[edit.parent].children.push(id);
             revision++;
           }
-        } else {
+        } else if (edit.kind === "setComments" || edit.kind === "setNags") {
           game.nodes[edit.node][
             edit.kind === "setComments" ? "comments" : "nags"
           ] = edit.comments ?? edit.nags;
           revision++;
+        } else if (edit.kind === "setPreComments") {
+          game.nodes[edit.node].preComments = edit.comments;
+          revision++;
+        } else if (edit.kind === "setTags") {
+          if (edit.tags.Result === "3-0") throw { message: "Unknown result" };
+          game.tags = { ...edit.tags };
+          revision++;
+        } else {
+          // Structural edits: the backend's tree logic is tested in Rust;
+          // here the game stays and the start is selected.
+          revision++;
+          return {
+            documentId,
+            game: structuredClone(game),
+            revision: String(revision),
+            dirty: true,
+            selected: 0,
+          };
         }
         return {
           documentId,
@@ -172,6 +190,39 @@ export function mockApi() {
           dirty: revision > 0,
         };
       }),
+    newDocument: vi
+      .fn()
+      .mockImplementation(async (fen: string | null, requestId: string) => {
+        if (fen?.startsWith("8/8/8/8/8/8/8/8"))
+          throw { message: "Invalid position: no kings" };
+        return {
+          documentId: "doc-new",
+          requestId,
+          revision: "0",
+          dirty: false,
+          game: {
+            startFen: fen ?? startFen,
+            tags: { White: "?", Black: "?", Result: "*" },
+            nodes: [{ id: 0, children: [], comments: [], nags: [] }],
+          },
+        };
+      }),
+    pasteGame: vi
+      .fn()
+      .mockImplementation(async (_text: string, requestId: string) => ({
+        documentId: "doc-pasted",
+        requestId,
+        revision: "0",
+        dirty: false,
+        game: {
+          startFen,
+          tags: { White: "Pasted", Black: "Game", Result: "1-0" },
+          nodes: [{ id: 0, children: [], comments: [], nags: [] }],
+        },
+      })),
+    documentPgn: vi.fn().mockResolvedValue('[Result "*"]\n\n1. e4 *\n'),
+    readClipboard: vi.fn().mockResolvedValue(""),
+    writeClipboard: vi.fn().mockResolvedValue(undefined),
     saveDocument: vi
       .fn()
       .mockImplementation(async (_id, destination, expectedRevision) => ({

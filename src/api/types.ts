@@ -116,13 +116,32 @@ export interface WireError {
 export type Edit =
   | { kind: "appendMove"; parent: NodeId; uci: string }
   | { kind: "setComments"; node: NodeId; comments: string[] }
-  | { kind: "setNags"; node: NodeId; nags: number[] };
+  | { kind: "setNags"; node: NodeId; nags: number[] }
+  | { kind: "setPreComments"; node: NodeId; comments: string[] }
+  | { kind: "deleteVariation"; node: NodeId }
+  | { kind: "promoteVariation"; node: NodeId }
+  | { kind: "deleteRemaining"; node: NodeId }
+  | { kind: "deletePrevious"; node: NodeId }
+  | { kind: "setTags"; tags: Record<string, string> }
+  | { kind: "undo" }
+  | { kind: "redo" };
+/** Edits that change the tree's shape; the selection is re-read after them. */
+export const structuralEdits: Edit["kind"][] = [
+  "deleteVariation",
+  "promoteVariation",
+  "deleteRemaining",
+  "deletePrevious",
+  "undo",
+  "redo",
+];
 export interface DocumentResponse {
   documentId: string;
   requestId?: string;
   game: GameView;
   revision: string;
   dirty: boolean;
+  /** The node to select after a structural edit. */
+  selected?: NodeId;
 }
 export interface PgnCollectionResponse {
   requestId: string;

@@ -329,6 +329,7 @@ const list: CommandMeta[] = [
     label: "Redo",
     tip: "Redo last change to game",
     icon: Redo2,
+    keys: "Ctrl+Alt+Shift+Y",
     views: game,
   },
   {
@@ -527,6 +528,36 @@ const list: CommandMeta[] = [
     tip: "Promote the current variation to main line of previous level",
     icon: ArrowUpToLine,
     keys: "Alt+Up",
+    views: game,
+  },
+  {
+    id: "delete-remaining-moves",
+    label: "Delete Remaining Moves",
+    tip: "Delete all moves after the current move",
+    icon: Trash2,
+    views: game,
+  },
+  {
+    id: "delete-previous-moves",
+    label: "Delete Previous Moves",
+    tip: "Delete all moves before the current move; the game starts from this position",
+    icon: Trash2,
+    views: game,
+  },
+  {
+    id: "annotation-palette",
+    label: "Annotation Palette",
+    tip: "Open a palette with annotation symbols",
+    icon: Palette,
+    keys: "Ctrl+Alt+S",
+    views: game,
+  },
+  {
+    id: "position-setup",
+    label: "Position Setup",
+    tip: "Set up a position and start a new game from it",
+    icon: LayoutGrid,
+    keys: "S",
     views: game,
   },
   {
@@ -855,7 +886,13 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
         },
         {
           label: "Game",
-          items: [S("new-game"), S("input-mode"), S("undo"), S("redo")],
+          items: [
+            S("new-game"),
+            S("position-setup"),
+            S("input-mode"),
+            S("undo"),
+            S("redo"),
+          ],
         },
         {
           label: "Find Position",
@@ -888,13 +925,23 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
     {
       label: "Insert",
       groups: [
-        { label: "Moves", items: [L("text-after"), S("text-before")] },
+        {
+          label: "Moves",
+          items: [
+            L("text-after"),
+            S("text-before"),
+            S("annotation-palette"),
+            S("edit-game-data"),
+          ],
+        },
         {
           label: "Variations",
           items: [
             S("begin-variation"),
             S("delete-variation"),
             S("promote-variation"),
+            S("delete-remaining-moves"),
+            S("delete-previous-moves"),
           ],
         },
       ],

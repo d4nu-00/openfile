@@ -9,13 +9,16 @@ export function CommentEditor({
   node: GameNode;
   disabled: boolean;
   edit: (e: Edit) => Promise<unknown>;
-  autoFocus?: boolean;
+  /** Which text field takes focus: after the move, or before it. */
+  autoFocus?: "after" | "before";
 }) {
   const [comments, setComments] = useState(""),
+    [before, setBefore] = useState(""),
     [nags, setNags] = useState("");
   const [error, setError] = useState("");
   useEffect(() => {
     setComments(node.comments.join("\n"));
+    setBefore((node.preComments ?? []).join("\n"));
     setNags(node.nags.join(" "));
     setError("");
   }, [node]);
@@ -26,7 +29,7 @@ export function CommentEditor({
         <textarea
           value={comments}
           disabled={disabled}
-          autoFocus={autoFocus}
+          autoFocus={autoFocus === "after"}
           onChange={(e) => setComments(e.target.value)}
         />
       </label>
@@ -42,6 +45,31 @@ export function CommentEditor({
       >
         Apply comments
       </button>
+      {node.id !== 0 && (
+        <>
+          <label>
+            Text before move
+            <textarea
+              value={before}
+              disabled={disabled}
+              autoFocus={autoFocus === "before"}
+              onChange={(e) => setBefore(e.target.value)}
+            />
+          </label>
+          <button
+            disabled={disabled}
+            onClick={() =>
+              void edit({
+                kind: "setPreComments",
+                node: node.id,
+                comments: before ? before.split("\n") : [],
+              })
+            }
+          >
+            Apply text before
+          </button>
+        </>
+      )}
       <label>
         NAGs
         <input

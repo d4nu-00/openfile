@@ -1,3 +1,4 @@
+pub mod edit;
 pub mod error;
 pub mod model;
 pub mod pgn;

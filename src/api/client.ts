@@ -88,6 +88,14 @@ export const backend = {
     }),
   closePgn: (collectionId: string) =>
     invoke<void>("close_pgn", { collectionId }),
+  newDocument: (fen: string | null, requestId: string) =>
+    invoke<DocumentResponse>("new_document", { fen, requestId }),
+  pasteGame: (text: string, requestId: string) =>
+    invoke<DocumentResponse>("paste_game", { text, requestId }),
+  documentPgn: (documentId: string) =>
+    invoke<string>("document_pgn", { documentId }),
+  readClipboard: () => navigator.clipboard.readText(),
+  writeClipboard: (text: string) => navigator.clipboard.writeText(text),
   editDocument: (documentId: string, edit: Edit, expectedRevision: string) =>
     invoke<DocumentResponse>("edit_document", {
       documentId,

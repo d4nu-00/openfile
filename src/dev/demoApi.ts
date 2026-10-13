@@ -250,6 +250,21 @@ export function demoApi(): WorkbenchApi {
         dirty: true,
       };
     },
+    newDocument: async (fen, requestId) => ({
+      documentId: "demo-new",
+      requestId,
+      revision: "0",
+      dirty: false,
+      game: {
+        startFen:
+          fen ?? "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        tags: { White: "?", Black: "?", Result: "*" },
+        nodes: [{ id: 0, children: [], comments: [], nags: [] }],
+      },
+    }),
+    documentPgn: async () => '[Result "*"]\n\n*\n',
+    readClipboard: async () => "",
+    writeClipboard: async () => {},
     closeDatabase: async () => {},
     closeDocument: async () => {},
     watchClose: async () => () => {},

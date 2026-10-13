@@ -973,3 +973,86 @@ kbd {
   font-family: ui-monospace, monospace;
   font-size: 12px;
 }
+
+/* Game data, position setup, paste and the annotation palette */
+.game-data-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin-bottom: 8px;
+}
+.game-data-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.game-data-grid input {
+  color: var(--text);
+}
+.position-setup .setup-body {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.position-setup {
+  max-width: min(760px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+}
+.position-setup .setup-board {
+  /* The board fills its container; here a fixed square. */
+  container-type: size;
+  width: 320px;
+  height: 320px;
+  max-width: 100%;
+}
+.setup-side {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 260px;
+}
+.setup-palette {
+  display: grid;
+  grid-template-columns: repeat(6, 34px);
+  gap: 4px;
+}
+.setup-palette button {
+  width: 34px;
+  height: 34px;
+  padding: 2px;
+}
+.setup-palette button img {
+  width: 100%;
+  height: 100%;
+}
+.setup-palette button[aria-checked="true"],
+.palette-group button[aria-pressed="true"] {
+  background: var(--ribbon-pressed);
+  border-color: var(--accent);
+}
+.paste-dialog textarea {
+  width: 100%;
+  min-height: 160px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+.annotation-palette {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--pane-border);
+  padding-bottom: 4px;
+}
+.palette-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 3px 8px;
+}
+.palette-group button {
+  min-width: 30px;
+  height: 26px;
+  padding: 0 4px;
+  font-weight: 600;
+}
