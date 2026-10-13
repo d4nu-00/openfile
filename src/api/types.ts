@@ -387,6 +387,22 @@ export interface TreeProgress {
   done: string;
   total: string;
 }
+/** An engine in Engine Management. */
+export interface InstalledEngine {
+  id: string;
+  name: string;
+  path: string;
+  /** Options changed from the engine's defaults. */
+  options: Record<string, string>;
+}
+/** The workbench's settings, kept in its config folder. */
+export interface AppSettings {
+  /** ChessBase's "Maximum Board Windows": 1 to 8, 8 by default. */
+  maxGameTabs: number;
+  engines: InstalledEngine[];
+  defaultEngine?: string;
+}
+export const defaultSettings: AppSettings = { maxGameTabs: 8, engines: [] };
 export interface ReferenceResponse {
   requestId: string;
   hits: string;

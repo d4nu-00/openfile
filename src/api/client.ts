@@ -22,6 +22,7 @@ import type {
   TreeResponse,
   TreeProgress,
   ReferenceResponse,
+  AppSettings,
   SortColumn,
   SortProgress,
   SortResponse,
@@ -341,5 +342,8 @@ export const backend = {
     invoke<void>("close_database", { databaseId }),
   closeDocument: (documentId: string) =>
     invoke<void>("close_document", { documentId }),
+  getSettings: () => invoke<AppSettings>("get_settings"),
+  setSettings: (settings: AppSettings) =>
+    invoke<AppSettings>("set_settings", { settings }),
 };
 export type WorkbenchApi = typeof backend;

@@ -363,6 +363,21 @@ const list: CommandMeta[] = [
     views: both,
   },
   {
+    id: "new-board-window",
+    label: "Board Window",
+    tip: "Create a new board window",
+    icon: LayoutGrid,
+    views: both,
+  },
+  {
+    id: "options",
+    label: "Options",
+    tip: "Set the main program options",
+    icon: Settings,
+    keys: "Ctrl+Alt+O",
+    views: both,
+  },
+  {
     id: "input-mode",
     label: "Input mode",
     tip: "Enter moves by keyboard",
@@ -837,6 +852,7 @@ const viewTab: RibbonTab = {
         S("theme-black"),
       ],
     },
+    { label: "Options", items: [L("options")] },
   ],
 };
 const helpTab: RibbonTab = {
@@ -971,6 +987,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
           label: "Game",
           items: [
             S("new-game"),
+            S("new-board-window"),
             S("position-setup"),
             S("input-mode"),
             S("undo"),

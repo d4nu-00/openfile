@@ -142,14 +142,18 @@ it("loads a double-clicked game once", async () => {
     await screen.findByRole("button", { name: "Load entry 3" }),
   );
   await screen.findByText(/Entry 3 ·/);
-  // Both clicks and the double-click ask for the same game: one load.
+  // Both clicks and the double-click ask for the same game: one load, and
+  // the game moves into a tab of its own.
+  const loads = () =>
+    ui.api.loadEntry.mock.calls.filter((c: unknown[]) => c[1] === "3");
+  expect(loads()).toHaveLength(1);
   expect(
-    ui.api.loadEntry.mock.calls.filter((c: unknown[]) => c[1] === "3"),
-  ).toHaveLength(1);
-  // Clicking the game shown does not load it again either.
+    screen.getByRole("tab", { name: /Alpha — Beta/, selected: true }),
+  ).toBeVisible();
+  // Back in the list, the preview is empty: a click loads the game there,
+  // and a second click on it loads nothing.
   await ui.user.click(screen.getByRole("tab", { name: /^Database/ }));
   await ui.user.click(screen.getByRole("button", { name: "Load entry 3" }));
-  expect(
-    ui.api.loadEntry.mock.calls.filter((c: unknown[]) => c[1] === "3"),
-  ).toHaveLength(1);
+  await ui.user.click(screen.getByRole("button", { name: "Load entry 3" }));
+  await waitFor(() => expect(loads()).toHaveLength(2));
 });

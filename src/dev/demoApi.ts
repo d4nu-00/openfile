@@ -8,6 +8,7 @@ import type {
   NameKind,
   NameRow,
   SortColumn,
+  AppSettings,
 } from "../api/types";
 import { demoFens, demoLegal, demoNodes } from "./demoGame";
 
@@ -176,10 +177,13 @@ export function demoApi(): WorkbenchApi {
     },
     nodes,
   });
+  let settings: AppSettings = { maxGameTabs: 8, engines: [] };
   const api: Partial<WorkbenchApi> = {
     chooseDatabase: async () => "/demo/Famous Games.cbh",
     startupRequest: async () => null,
     startupShown: async () => {},
+    getSettings: async () => structuredClone(settings),
+    setSettings: async (next) => (settings = structuredClone(next)),
     chooseNewDatabase: async () => null,
     confirmEditing: async () => false,
     searchGames: async (_db, _filter, requestId) => {

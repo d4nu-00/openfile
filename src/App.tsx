@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { Database, LayoutGrid, Search, X } from "lucide-react";
 import { backend, type WorkbenchApi } from "./api/client";
-import { annotationsIncomplete, emptyFilter } from "./api/types";
+import {
+  annotationsIncomplete,
+  defaultSettings,
+  emptyFilter,
+  type AppSettings,
+} from "./api/types";
 import type {
   CrossLayout,
   Crosstable,
@@ -10,7 +15,13 @@ import type {
   NameRow,
   SortColumn,
 } from "./api/types";
-import { useWorkbench, type WorkbenchState } from "./state/workbench";
+import {
+  addTab,
+  tabGames,
+  useWorkbench,
+  type WorkbenchState,
+} from "./state/workbench";
+import { OptionsDialog } from "./components/OptionsDialog";
 import { useEditing } from "./state/editing";
 import { useAnalysis } from "./state/analysis";
 import { CommentEditor } from "./components/CommentEditor";
@@ -73,11 +84,49 @@ export function App({
   initialState?: WorkbenchState;
   initialView?: ViewId;
 }) {
-  const w = useWorkbench(api, initialState);
+  // A game given for the game view starts in a tab of its own.
+  const [start] = useState(() =>
+    initialView === "game" &&
+    initialState?.document &&
+    !initialState.tabs?.length
+      ? addTab(
+          { ...initialState, document: undefined },
+          {
+            document: initialState.document,
+            position: initialState.position,
+            dirty: initialState.dirty,
+            origin: initialState.origin,
+          },
+        )
+      : initialState,
+  );
+  const w = useWorkbench(api, start);
   const { state } = w;
-  const e = useEditing(w, api);
+  /** The workbench's settings, from its config folder. */
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  useEffect(() => {
+    void api
+      .getSettings()
+      .then(setSettings)
+      .catch(() => {});
+  }, [api]);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [optionsError, setOptionsError] = useState<string>();
+  const e = useEditing(w, api, () => settingsRef.current.maxGameTabs);
   const a = useAnalysis(api, state);
-  const [view, setView] = useState<ViewId>(initialView);
+  /** The game view shows a game tab; the database view, the preview. */
+  const view: ViewId = state.focus !== undefined ? "game" : "database";
+  function setView(next: ViewId) {
+    if (next === "database") return w.focusGame(undefined);
+    if (w.current.current.focus !== undefined) return;
+    const last = [...(w.current.current.tabs ?? [])].sort(
+      (x, y) => y.used - x.used,
+    )[0];
+    if (last) w.focusGame(last.id);
+    else void e.openPreview();
+  }
   const [theme, setTheme] = useState<Theme>(storedTheme);
   const [layout, setLayout] = useState<Layout>("standard");
   const [palette, setPalette] = useState(false);
@@ -153,7 +202,7 @@ export function App({
       if (startup.entry) {
         await w.goToEntry(startup.entry);
         setOrdinal(startup.entry);
-        setView("game");
+        await e.openPreview();
         if (startup.node != null) await w.selectNode(startup.node);
       }
       if (startup.command) setStartupCommand(startup.command);
@@ -163,10 +212,6 @@ export function App({
       live = false;
     };
   }, [api]);
-  // Closing the game returns to the list.
-  useEffect(() => {
-    if (!game && view === "game") setView("database");
-  }, [game, view]);
 
   function clickSquare(to: string) {
     if (e.busy || !game) return;
@@ -352,7 +397,7 @@ export function App({
     if (!entry) return;
     if (!(await w.showing(entry.ordinal)))
       await e.run(() => w.previewRow(row, entry));
-    setView("game");
+    if (await w.showing(entry.ordinal)) await e.openPreview();
   }
   const step = (delta: 1 | -1) => void e.run(() => w.stepGame(delta));
   function showList(tab: "games" | NameKind) {
@@ -429,8 +474,9 @@ export function App({
     if (existing !== undefined) void w.selectNode(existing);
     else void e.edit({ kind: "appendMove", parent: selected, uci });
   }
+  // Games from the reference list open in a tab of their own.
   const openReference = (ordinal: string, node: number) =>
-    void e.run(() => w.loadEntry(ordinal, node));
+    void e.openEntry(ordinal, node);
   const bookPane = (
     <BookPane
       book={panes.book}
@@ -490,8 +536,7 @@ export function App({
     e.run(async () => {
       if (kind === "game") await e.pasteGame(text);
       else await e.newGame(text.trim());
-      setView("game");
-    });
+    }, false);
 
   const busy = e.busy;
   const bindings: Bindings = {
@@ -532,7 +577,7 @@ export function App({
         (selectedCount(selection) > 1 ||
           state.origin?.databaseId === state.database.databaseId),
     },
-    "open-pgn": { run: () => e.run(e.openPgn) },
+    "open-pgn": { run: () => e.run(e.openPgn, false) },
     "open-board": { run: () => setView("game"), enabled: !!game },
     "database-window": { run: () => setView("database") },
     "filter-games": {
@@ -683,7 +728,9 @@ export function App({
       run: () => focusText("before"),
       enabled: !!game && selected !== 0,
     },
-    "new-game": { run: () => e.run(() => e.newGame()) },
+    "new-game": { run: () => e.run(() => e.newGame(), false) },
+    "new-board-window": { run: () => e.run(() => e.newGame(), false) },
+    options: { run: () => setOptionsOpen(true) },
     "position-setup": {
       run: () => {
         setSetupError(undefined);
@@ -894,36 +941,45 @@ export function App({
               </span>
             );
           })}
-          {game && (
-            <span
-              className="workspace-tab-wrap"
-              data-selected={view === "game"}
-            >
-              <button
-                role="tab"
-                aria-selected={view === "game"}
-                className="workspace-tab"
-                onClick={() => setView("game")}
+          {tabGames(state).map((tab) => {
+            const shown = tab.id === state.focus;
+            const tags = tab.document?.game?.tags;
+            const name = tags
+              ? `${tags.White ?? "?"} — ${tags.Black ?? "?"}`
+              : "Game";
+            return (
+              <span
+                key={tab.id}
+                className="workspace-tab-wrap"
+                data-selected={shown}
               >
-                <LayoutGrid size={14} aria-hidden />
-                <span>{title}</span>
-                {state.dirty && (
-                  <span className="dirty-dot" title="Unsaved changes">
-                    ●
-                  </span>
-                )}
-              </button>
-              <button
-                className="tab-close"
-                aria-label="Close game tab"
-                title="Close game"
-                disabled={busy}
-                onClick={() => void e.run(e.closeDocument)}
-              >
-                <X size={12} />
-              </button>
-            </span>
-          )}
+                <button
+                  role="tab"
+                  aria-selected={shown}
+                  className="workspace-tab"
+                  title={name}
+                  onClick={() => e.showTab(tab.id)}
+                >
+                  <LayoutGrid size={14} aria-hidden />
+                  <span>{name}</span>
+                  {tab.dirty && (
+                    <span className="dirty-dot" title="Unsaved changes">
+                      ●
+                    </span>
+                  )}
+                </button>
+                <button
+                  className="tab-close"
+                  aria-label={`Close game tab ${name}`}
+                  title="Close game"
+                  disabled={busy}
+                  onClick={() => void e.closeTab(tab.id)}
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            );
+          })}
         </nav>
         <button
           className="command-search"
@@ -1309,6 +1365,23 @@ export function App({
           }
         />
       )}
+      {optionsOpen && (
+        <OptionsDialog
+          settings={settings}
+          error={optionsError}
+          onClose={() => setOptionsOpen(false)}
+          onApply={(next) =>
+            void api
+              .setSettings(next)
+              .then((saved) => {
+                setSettings(saved);
+                setOptionsOpen(false);
+                setOptionsError(undefined);
+              })
+              .catch((err) => setOptionsError(explain(err)))
+          }
+        />
+      )}
       {setupOpen && (
         <PositionSetup
           boardFen={state.position?.fen}
@@ -1319,13 +1392,12 @@ export function App({
               try {
                 await e.newGame(fen);
                 setSetupOpen(false);
-                setView("game");
               } catch (err) {
                 setSetupError(
                   (err as { message?: string })?.message ?? String(err),
                 );
               }
-            })
+            }, false)
           }
         />
       )}
@@ -1348,9 +1420,7 @@ export function App({
           onOpenGame={(ordinal) => {
             setCross(undefined);
             setListTab("games");
-            void e
-              .run(() => w.goToEntry(String(ordinal)))
-              .then(() => setView("game"));
+            void e.openEntry(String(ordinal));
           }}
           onClose={() => setCross(undefined)}
         />
