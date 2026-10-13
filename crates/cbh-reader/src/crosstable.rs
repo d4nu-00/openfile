@@ -1,6 +1,12 @@
 //! Tournament crosstables (ChessBase's Cross Table, `DBTOOLSCROSSTABLE`, and
 //! Show Crosstable, `SHOWCROSSTABLE`). See docs/game-list.md.
-use crate::{CbhError, Database, EntryKind, header::RawEntry, search::GameFilter, tree::DP};
+use crate::{
+    CbhError, Database, EntryKind,
+    header::RawEntry,
+    search::GameFilter,
+    sort::{SortColumn, SortOrder, collation_key},
+    tree::DP,
+};
 use std::{collections::HashMap, sync::atomic::AtomicBool};
 
 /// Games read for one table at most.
@@ -114,6 +120,73 @@ fn performance(opponents: u64, count: u32, half_points: u32) -> Option<u32> {
 }
 
 impl Database {
+    /// The sort key of an entry's tournament: its name and site, or None for
+    /// entries that are not games (they sort first).
+    fn tournament_key(&mut self, ordinal: u64) -> Result<Option<String>, CbhError> {
+        let r = self.raw(ordinal)?;
+        if r.kind != EntryKind::Game {
+            return Ok(None);
+        }
+        let (event, site) = match r.tournament_id {
+            Some(id) => self.tournament_name(id)?,
+            None => (None, None),
+        };
+        Ok(Some(format!(
+            "{}\u{1}{}",
+            collation_key(event.as_deref().unwrap_or("")),
+            collation_key(site.as_deref().unwrap_or(""))
+        )))
+    }
+
+    /// The games of a tournament from a sort order by tournament, which
+    /// keeps them together: a binary search by the tournament's name, then
+    /// the run of entries with that name.
+    fn tournament_games(
+        &mut self,
+        order: &mut SortOrder,
+        tournament_id: u32,
+    ) -> Result<(Vec<u64>, bool), CbhError> {
+        let (event, site) = self.tournament_name(tournament_id)?;
+        let target = Some(format!(
+            "{}\u{1}{}",
+            collation_key(event.as_deref().unwrap_or("")),
+            collation_key(site.as_deref().unwrap_or(""))
+        ));
+        let at = |db: &mut Self,
+                  order: &mut SortOrder,
+                  row: u64|
+         -> Result<(u64, Option<String>), CbhError> {
+            let ordinal = *order.read(row, 1, false)?.first().ok_or(CbhError::Bounds)?;
+            Ok((ordinal, db.tournament_key(ordinal)?))
+        };
+        let (mut lo, mut hi) = (0, order.len());
+        while lo < hi {
+            let mid = lo + (hi - lo) / 2;
+            if at(self, order, mid)?.1 < target {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        let mut games = vec![];
+        let mut row = lo;
+        while row < order.len() {
+            let (ordinal, key) = at(self, order, row)?;
+            if key != target {
+                break;
+            }
+            if self.raw(ordinal)?.tournament_id == Some(tournament_id) {
+                if games.len() == MAX_GAMES {
+                    return Ok((games, true));
+                }
+                games.push(ordinal);
+            }
+            row += 1;
+        }
+        games.sort_unstable();
+        Ok((games, false))
+    }
+
     /// The crosstable of a tournament, from its games in this database.
     /// `layout` forces a layout; otherwise fields of at most 24 players that
     /// played at least half of all pairings are round robins.
@@ -123,21 +196,40 @@ impl Database {
         layout: Option<Layout>,
         cancel: &AtomicBool,
     ) -> Result<Option<Crosstable>, CbhError> {
-        let found = self.search(
-            &GameFilter {
-                tournament_id: Some(tournament_id),
-                ..Default::default()
-            },
-            MAX_GAMES,
-            cancel,
-            |_| {},
-        )?;
-        if found.cancelled {
-            return Ok(None);
-        }
-        let mut truncated = found.truncated;
+        self.crosstable_with(tournament_id, layout, None, cancel)
+    }
+
+    /// The crosstable, finding the games through `order`, a current sort
+    /// order by tournament, when one is given.
+    pub fn crosstable_with(
+        &mut self,
+        tournament_id: u32,
+        layout: Option<Layout>,
+        order: Option<&mut SortOrder>,
+        cancel: &AtomicBool,
+    ) -> Result<Option<Crosstable>, CbhError> {
+        let (ordinals, mut truncated) = match order {
+            Some(order) if order.column() == SortColumn::Tournament => {
+                self.tournament_games(order, tournament_id)?
+            }
+            _ => {
+                let found = self.search(
+                    &GameFilter {
+                        tournament_id: Some(tournament_id),
+                        ..Default::default()
+                    },
+                    MAX_GAMES,
+                    cancel,
+                    |_| {},
+                )?;
+                if found.cancelled {
+                    return Ok(None);
+                }
+                (found.ordinals, found.truncated)
+            }
+        };
         let mut games = vec![];
-        for &o in &found.ordinals {
+        for &o in &ordinals {
             let r = self.raw(o)?;
             if r.kind == EntryKind::Game && !r.deleted {
                 games.push(r);
