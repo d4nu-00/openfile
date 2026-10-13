@@ -49,6 +49,8 @@ impl From<cbh_reader::Diagnostic> for DiagnosticDto {
 pub struct OpenDatabaseResponse {
     pub request_id: String,
     pub database_id: String,
+    /// The file name without its extension, for the database's tab.
+    pub name: String,
     pub entry_count: String,
     pub companions: Vec<cbh_reader::CompanionInfo>,
     pub diagnostics: Vec<DiagnosticDto>,
@@ -738,4 +740,54 @@ pub async fn crosstable(
 ) -> Result<cbh_reader::crosstable::Crosstable, AppError> {
     let s = state.inner().clone();
     blocking(move || s.crosstable(database_id, tournament_id, layout)).await
+}
+#[tauri::command]
+pub async fn copy_rows(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    ranges: Vec<crate::clipboard::RowRange>,
+) -> Result<crate::clipboard::CopyResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.copy_rows(database_id, ranges)).await
+}
+#[tauri::command]
+pub fn clip_size(state: tauri::State<'_, Arc<Registry>>) -> Result<String, AppError> {
+    state.clip_size()
+}
+#[tauri::command]
+pub async fn paste_games(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    events: tauri::ipc::Channel<crate::clipboard::PasteProgress>,
+) -> Result<crate::clipboard::PasteResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || {
+        let mut last = std::time::Instant::now();
+        s.paste_games(database_id, |done, total| {
+            if last.elapsed().as_millis() >= 250 || done == total {
+                last = std::time::Instant::now();
+                let _ = events.send(crate::clipboard::PasteProgress {
+                    done: done.to_string(),
+                    total: total.to_string(),
+                });
+            }
+        })
+    })
+    .await
+}
+#[tauri::command]
+pub fn cancel_paste(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_paste(database_id)
+}
+#[tauri::command]
+pub async fn delete_rows(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    ranges: Vec<crate::clipboard::RowRange>,
+) -> Result<String, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.delete_rows(database_id, ranges)).await
 }
