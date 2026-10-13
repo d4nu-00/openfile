@@ -104,6 +104,21 @@ const list: CommandMeta[] = [
     views: db,
   },
   {
+    id: "open-database-edit",
+    label: "Open for Editing",
+    tip: "Open a .2cbh database so games can be saved into it (workbench)",
+    icon: FolderOpen,
+    views: both,
+  },
+  {
+    id: "delete-game",
+    label: "Delete",
+    tip: "Mark selected games as deleted",
+    icon: Trash2,
+    keys: "Delete",
+    views: db,
+  },
+  {
     id: "my-databases",
     label: "My Databases",
     tip: "Show your favourite databases",
@@ -303,11 +318,26 @@ const list: CommandMeta[] = [
     views: game,
   },
   {
-    id: "save-pgn",
-    label: "Save PGN",
-    tip: "Save this game to a PGN file (ChessBase: Save)",
+    id: "save-game",
+    label: "Save",
+    tip: "Save a new version of this game to the database",
     icon: Save,
     keys: "Ctrl+S",
+    views: game,
+  },
+  {
+    id: "replace-game",
+    label: "Replace",
+    tip: "Replace the game in the database with this version",
+    icon: RotateCcw,
+    keys: "Ctrl+R",
+    views: game,
+  },
+  {
+    id: "save-pgn",
+    label: "Save PGN",
+    tip: "Save this game to a PGN file (workbench)",
+    icon: FileText,
     views: game,
   },
   {
@@ -647,13 +677,17 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
     {
       label: "Home",
       groups: [
-        { label: "Copy", items: [L("db-paste"), S("db-copy")] },
+        {
+          label: "Copy",
+          items: [L("db-paste"), S("db-copy"), S("delete-game")],
+        },
         {
           label: "Database",
           items: [
             L("open-database"),
             L("open-pgn"),
             S("new-database"),
+            S("open-database-edit"),
             S("my-databases"),
             S("cloud-databases"),
           ],
@@ -714,7 +748,9 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
         {
           label: "File",
           items: [
-            L("save-pgn"),
+            L("save-game"),
+            S("replace-game"),
+            S("save-pgn"),
             S("open-database"),
             S("open-pgn"),
             S("close-game"),

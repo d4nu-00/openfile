@@ -9,7 +9,7 @@ import {
 import type { useWorkbench } from "./workbench";
 type Workbench = ReturnType<typeof useWorkbench>;
 export interface Question {
-  kind: "unsaved" | "compatibility";
+  kind: "unsaved" | "compatibility" | "database";
   resolve: (answer: string) => void;
 }
 export function useEditing(w: Workbench, api: WorkbenchApi) {
@@ -81,11 +81,116 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
       setBusy(transition.current || editBusy.current);
     }
   }
+  /**
+   * Saves the game into a database opened for editing: as a new entry
+   * (ChessBase "Save"), or over the entry it came from ("Replace").
+   */
+  async function saveToDatabase(mode: "save" | "replace"): Promise<boolean> {
+    const d = w.current.current.document;
+    const db = w.current.current.database;
+    const origin = w.current.current.origin;
+    if (!d?.documentId || !d.game || saveBusy.current) return false;
+    const target = mode === "replace" ? origin?.databaseId : db?.databaseId;
+    if (!target || (mode === "save" && !db?.writable)) {
+      report(
+        new Error(
+          mode === "replace"
+            ? "This game was not loaded from a database opened for editing"
+            : "Create a database or open one for editing first",
+        ),
+      );
+      return false;
+    }
+    saveBusy.current = true;
+    setBusy(true);
+    try {
+      let acknowledged = annotationsIncomplete(d.annotationsStatus);
+      if (acknowledged && (await ask("database")) !== "save") return false;
+      const attempt = () =>
+        mode === "save"
+          ? api.saveGame(d.documentId!, target, d.revision ?? "0", acknowledged)
+          : api.replaceGame(d.documentId!, d.revision ?? "0", acknowledged);
+      let result;
+      try {
+        result = await attempt();
+      } catch (e) {
+        // Content ChessBase cannot store is found only while encoding.
+        const code = (e as { code?: string })?.code;
+        if (code !== "incompleteAnnotations" || acknowledged) throw e;
+        if ((await ask("database")) !== "save") return false;
+        acknowledged = true;
+        result = await attempt();
+      }
+      if (w.current.current.document?.documentId === d.documentId) {
+        const clean =
+          w.current.current.document?.revision === result.savedRevision;
+        w.setState((s) => ({
+          ...s,
+          dirty: clean ? false : s.dirty,
+          origin: { databaseId: result.databaseId, ordinal: result.ordinal },
+          document: s.document && {
+            ...s.document,
+            dirty: clean ? false : s.document.dirty,
+            summary: { ...s.document.summary, ordinal: result.ordinal },
+            annotationsStatus: acknowledged
+              ? "available"
+              : s.document.annotationsStatus,
+          },
+          database:
+            s.database?.databaseId === result.databaseId
+              ? { ...s.database, entryCount: result.entryCount }
+              : s.database,
+        }));
+      }
+      if (w.current.current.database?.databaseId === result.databaseId)
+        await w.readPage(w.pageStart);
+      w.setStatus(
+        `${mode === "save" ? "Saved as" : "Replaced"} game ${result.ordinal}`,
+      );
+      return true;
+    } catch (e) {
+      report(e);
+      return false;
+    } finally {
+      saveBusy.current = false;
+      setBusy(transition.current || editBusy.current);
+    }
+  }
+  /** Marks the selected entry deleted, or undeletes it (ChessBase "Delete"). */
+  async function toggleDeleted(ordinal: string) {
+    const db = w.current.current.database;
+    const entry = w.current.current.page?.entries.find(
+      (e) => e.ordinal === ordinal,
+    );
+    if (!db?.writable || !entry || entry.kind !== "game") return;
+    try {
+      await api.setDeleted(db.databaseId, ordinal, !entry.deleted);
+      await w.readPage(w.pageStart);
+      w.setStatus(
+        `Game ${ordinal} ${entry.deleted ? "undeleted" : "marked deleted"}`,
+      );
+    } catch (e) {
+      report(e);
+    }
+  }
+  /**
+   * The save behind the unsaved-changes dialog: replace the entry the game
+   * came from when its database is open for editing, otherwise save into the
+   * editable database, otherwise export PGN.
+   */
+  function saveDefault(): Promise<boolean> {
+    const { origin, database } = w.current.current;
+    if (database?.writable && origin?.databaseId === database.databaseId)
+      return saveToDatabase("replace");
+    if (database?.writable) return saveToDatabase("save");
+    return save();
+  }
   async function guard(): Promise<boolean> {
     if (editBusy.current || saveBusy.current) return false;
     if (!w.current.current.dirty) return true;
     const value = await ask("unsaved");
-    if (value === "save") return (await save()) && !w.current.current.dirty;
+    if (value === "save")
+      return (await saveDefault()) && !w.current.current.dirty;
     return value === "discard";
   }
   async function run(action: () => Promise<void>) {
@@ -172,7 +277,13 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
         annotationsStatus: "available",
         diagnostics: [],
       };
-      w.setState((s) => ({ ...s, document: doc, position, dirty: false }));
+      w.setState((s) => ({
+        ...s,
+        document: doc,
+        position,
+        dirty: false,
+        origin: undefined,
+      }));
       if (old && old !== candidate) void api.closeDocument(old).catch(() => {});
       closeCollection(
         collectionRef.current?.collectionId === c.collectionId
@@ -223,6 +334,7 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
       ...s,
       document: undefined,
       position: undefined,
+      origin: undefined,
       dirty: false,
     }));
   }
@@ -260,6 +372,8 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
     answer,
     busy,
     save,
+    saveToDatabase,
+    toggleDeleted,
     guard,
     run,
     edit,

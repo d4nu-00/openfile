@@ -52,6 +52,8 @@ pub struct OpenDatabaseResponse {
     pub entry_count: String,
     pub companions: Vec<cbh_reader::CompanionInfo>,
     pub diagnostics: Vec<DiagnosticDto>,
+    /// Opened for editing: games can be saved, replaced and marked deleted.
+    pub writable: bool,
 }
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -250,9 +252,58 @@ pub async fn open_database(
     state: tauri::State<'_, Arc<Registry>>,
     path: PathBuf,
     request_id: String,
+    writable: Option<bool>,
 ) -> Result<OpenDatabaseResponse, AppError> {
     let s = state.inner().clone();
-    blocking(move || s.open_database(path, request_id)).await
+    blocking(move || s.open_database_with(path, request_id, writable.unwrap_or(false))).await
+}
+#[tauri::command]
+pub async fn create_database(
+    state: tauri::State<'_, Arc<Registry>>,
+    path: PathBuf,
+    request_id: String,
+) -> Result<OpenDatabaseResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.create_database(path, request_id)).await
+}
+#[tauri::command]
+pub async fn save_game(
+    state: tauri::State<'_, Arc<Registry>>,
+    document_id: String,
+    database_id: String,
+    expected_revision: String,
+    allow_incomplete: bool,
+) -> Result<crate::database_writes::SaveGameResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || {
+        s.save_game(
+            document_id,
+            database_id,
+            expected_revision,
+            allow_incomplete,
+        )
+    })
+    .await
+}
+#[tauri::command]
+pub async fn replace_game(
+    state: tauri::State<'_, Arc<Registry>>,
+    document_id: String,
+    expected_revision: String,
+    allow_incomplete: bool,
+) -> Result<crate::database_writes::SaveGameResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.replace_game(document_id, expected_revision, allow_incomplete)).await
+}
+#[tauri::command]
+pub async fn set_deleted(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    ordinal: String,
+    deleted: bool,
+) -> Result<(), AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.set_deleted(database_id, ordinal, deleted)).await
 }
 #[tauri::command]
 pub async fn read_page(

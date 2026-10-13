@@ -14,7 +14,11 @@ pub struct Registry {
 pub(crate) struct State {
     next: u64,
     pub collections: HashMap<String, Arc<Vec<chess_core::Game>>>,
-    databases: HashMap<String, Arc<Mutex<cbh_reader::Database>>>,
+    pub(crate) databases: HashMap<String, Arc<Mutex<cbh_reader::Database>>>,
+    /// Writers of databases opened for editing, by database id.
+    pub(crate) writers: HashMap<String, Arc<Mutex<cbh_reader::v2::write::Writer>>>,
+    /// The path each database was opened from.
+    pub(crate) paths: HashMap<String, PathBuf>,
     pub documents: HashMap<String, Arc<Mutex<Document>>>,
 }
 impl State {
@@ -32,7 +36,7 @@ impl Registry {
             .lock()
             .map_err(|_| AppError::new("state", "Registry unavailable"))
     }
-    fn database(&self, id: &str) -> Result<Arc<Mutex<cbh_reader::Database>>, AppError> {
+    pub(crate) fn database(&self, id: &str) -> Result<Arc<Mutex<cbh_reader::Database>>, AppError> {
         self.lock()?
             .databases
             .get(id)
@@ -51,6 +55,15 @@ impl Registry {
         path: PathBuf,
         request_id: String,
     ) -> Result<OpenDatabaseResponse, AppError> {
+        self.open_database_with(path, request_id, false)
+    }
+    /// Opens a database; `writable` also opens its writer (2CBH only).
+    pub fn open_database_with(
+        &self,
+        path: PathBuf,
+        request_id: String,
+        writable: bool,
+    ) -> Result<OpenDatabaseResponse, AppError> {
         if self.lock()?.databases.len() >= 4 {
             return Err(AppError::new(
                 "limitExceeded",
@@ -58,6 +71,12 @@ impl Registry {
             ));
         }
         let db = cbh_reader::Database::open(&path, cbh_reader::ReadLimits::default())?;
+        self.reject_open_alias(db.source_paths(), writable)?;
+        let writer = if writable {
+            Some(cbh_reader::v2::write::Writer::open(&path)?)
+        } else {
+            None
+        };
         let mut state = self.lock()?;
         if state.databases.len() >= 4 {
             return Err(AppError::new("limitExceeded", "Database budget exhausted"));
@@ -77,7 +96,14 @@ impl Registry {
                 })
                 .collect(),
             diagnostics: info.diagnostics.iter().cloned().map(Into::into).collect(),
+            writable: writer.is_some(),
         };
+        if let Some(writer) = writer {
+            state
+                .writers
+                .insert(database_id.clone(), Arc::new(Mutex::new(writer)));
+        }
+        state.paths.insert(database_id.clone(), path);
         state
             .databases
             .insert(database_id, Arc::new(Mutex::new(db)));
@@ -109,6 +135,7 @@ impl Registry {
         request_id: String,
     ) -> Result<GameResponse, AppError> {
         let ordinal = decimal(&ordinal)?;
+        let id_for_origin = id.clone();
         let db = self.database(&id)?;
         let loaded = db
             .lock()
@@ -136,6 +163,7 @@ impl Registry {
                     revision: 0,
                     dirty: false,
                     source_paths,
+                    origin: Some((id_for_origin.clone(), ordinal)),
                     incomplete_annotations: matches!(
                         loaded.annotations_status,
                         cbh_reader::DataStatus::NotDecoded
@@ -215,10 +243,13 @@ impl Registry {
             .any(|doc| doc.lock().map(|d| d.dirty).unwrap_or(true))
     }
     pub fn close_database(&self, id: String) -> Result<(), AppError> {
-        self.lock()?
+        let mut state = self.lock()?;
+        state
             .databases
             .remove(&id)
             .ok_or_else(|| AppError::new("invalidHandle", "Database is closed or unknown"))?;
+        state.writers.remove(&id);
+        state.paths.remove(&id);
         Ok(())
     }
     pub fn close_document(&self, id: String) -> Result<(), AppError> {

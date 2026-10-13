@@ -67,6 +67,14 @@ export interface OpenDatabaseResponse {
   entryCount: string;
   companions: { extension: string; status: Status }[];
   diagnostics: Diagnostic[];
+  /** Opened for editing: games can be saved, replaced and marked deleted. */
+  writable?: boolean;
+}
+export interface SaveGameResponse {
+  databaseId: string;
+  ordinal: string;
+  entryCount: string;
+  savedRevision: string;
 }
 export interface PageResponse {
   requestId: string;

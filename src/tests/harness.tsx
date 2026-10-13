@@ -181,10 +181,36 @@ export function mockApi() {
     chooseDatabase: vi.fn().mockResolvedValue("/synthetic/test.cbh"),
     startupRequest: vi.fn().mockResolvedValue(null),
     startupShown: vi.fn().mockResolvedValue(undefined),
-    openDatabase: vi.fn().mockImplementation(async (_path, requestId) => ({
+    chooseNewDatabase: vi.fn().mockResolvedValue("/synthetic/new.2cbh"),
+    confirmEditing: vi.fn().mockResolvedValue(true),
+    createDatabase: vi.fn().mockImplementation(async (_path, requestId) => ({
       ...database,
+      entryCount: "0",
+      writable: true,
       requestId,
     })),
+    saveGame: vi
+      .fn()
+      .mockImplementation(async (_doc, databaseId, expectedRevision) => ({
+        databaseId,
+        ordinal: "201",
+        entryCount: "201",
+        savedRevision: expectedRevision,
+      })),
+    replaceGame: vi.fn().mockImplementation(async (_doc, expectedRevision) => ({
+      databaseId: "db-1",
+      ordinal: "1",
+      entryCount: "200",
+      savedRevision: expectedRevision,
+    })),
+    setDeleted: vi.fn().mockResolvedValue(undefined),
+    openDatabase: vi
+      .fn()
+      .mockImplementation(async (_path, requestId, writable = false) => ({
+        ...database,
+        requestId,
+        writable,
+      })),
     readPage: vi
       .fn()
       .mockImplementation(async (_db, start, _limit, requestId) => ({

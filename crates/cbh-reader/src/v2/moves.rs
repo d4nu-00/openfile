@@ -29,6 +29,17 @@ pub struct TokenMove {
     pub color: Color,
     pub role: Role,
     pub promotion: Option<Role>,
+    /// Which captured-piece alternative this token is: the piece taken, or
+    /// none. The reader does not check it against the board; the writer
+    /// chooses it from the board (see docs/writing.md).
+    pub capture: Capture,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Capture {
+    None,
+    Piece(Role),
+    EnPassant,
 }
 
 const KING: &[(i8, i8)] = &[
@@ -63,8 +74,24 @@ const KNIGHT: &[(i8, i8)] = &[
 ];
 const BISHOP: &[(i8, i8)] = &[(-1, -1), (1, -1), (1, 1), (-1, 1)];
 const ROOK: &[(i8, i8)] = &[(-1, 0), (0, -1), (1, 0), (0, 1)];
-/// Nonpawn captures: none, queen, knight, bishop, rook, pawn.
-const NONPAWN_CAPTURES: usize = 6;
+/// Nonpawn captured-piece alternatives: none, queen, knight, bishop, rook,
+/// pawn.
+const NONPAWN_CAPTURES: [Option<Role>; 6] = [
+    None,
+    Some(Role::Queen),
+    Some(Role::Knight),
+    Some(Role::Bishop),
+    Some(Role::Rook),
+    Some(Role::Pawn),
+];
+/// Pawn captures: queen, knight, bishop, rook, then pawn (not on promotion).
+const PAWN_CAPTURES: [Role; 5] = [
+    Role::Queen,
+    Role::Knight,
+    Role::Bishop,
+    Role::Rook,
+    Role::Pawn,
+];
 const PROMOTIONS: [Role; 4] = [Role::Queen, Role::Knight, Role::Bishop, Role::Rook];
 
 pub fn table() -> &'static [Option<TokenMove>] {
@@ -74,13 +101,14 @@ pub fn table() -> &'static [Option<TokenMove>] {
 
 fn build() -> Vec<Option<TokenMove>> {
     let mut table = vec![None];
-    let add = |table: &mut Vec<_>, from: u8, to: u8, color, role, promotion| {
+    let add = |table: &mut Vec<_>, from: u8, to: u8, color, role, promotion, capture| {
         table.push(Some(TokenMove {
             from,
             to,
             color,
             role,
             promotion,
+            capture,
         }))
     };
     let pieces = [
@@ -97,8 +125,17 @@ fn build() -> Vec<Option<TokenMove>> {
                 for &(df, dr) in directions {
                     let (mut f, mut r) = (file + df, rank + dr);
                     while (0..8).contains(&f) && (0..8).contains(&r) {
-                        for _ in 0..NONPAWN_CAPTURES {
-                            add(&mut table, from, (f * 8 + r) as u8, color, role, None);
+                        for captured in NONPAWN_CAPTURES {
+                            let capture = captured.map_or(Capture::None, Capture::Piece);
+                            add(
+                                &mut table,
+                                from,
+                                (f * 8 + r) as u8,
+                                color,
+                                role,
+                                None,
+                                capture,
+                            );
                         }
                         if !slides {
                             break;
@@ -137,22 +174,28 @@ fn build() -> Vec<Option<TokenMove>> {
             let promote = rank == last;
             for (f, r, capture) in targets {
                 let to = (f * 8 + r) as u8;
-                // Captured-piece alternatives: queen, knight, bishop, rook, pawn.
-                let captures = match (capture, promote) {
-                    (false, _) => 1,
-                    (true, true) => 4,
-                    (true, false) => 5,
+                // Captured-piece alternatives: queen, knight, bishop, rook,
+                // pawn; a push has a single token and a promotion capture no
+                // pawn alternative.
+                let alternatives: Vec<Capture> = match (capture, promote) {
+                    (false, _) => vec![Capture::None],
+                    (true, true) => PAWN_CAPTURES[..4]
+                        .iter()
+                        .map(|&r| Capture::Piece(r))
+                        .collect(),
+                    (true, false) => PAWN_CAPTURES.iter().map(|&r| Capture::Piece(r)).collect(),
                 };
-                for captured in 0..captures {
+                for taken in alternatives {
                     if promote {
                         for role in PROMOTIONS {
-                            add(&mut table, from, to, color, Role::Pawn, Some(role));
+                            add(&mut table, from, to, color, Role::Pawn, Some(role), taken);
                         }
                     } else {
-                        add(&mut table, from, to, color, Role::Pawn, None);
+                        add(&mut table, from, to, color, Role::Pawn, None, taken);
                     }
-                    if capture && !promote && captured == 4 && rank == passant {
-                        add(&mut table, from, to, color, Role::Pawn, None);
+                    if !promote && taken == Capture::Piece(Role::Pawn) && rank == passant {
+                        let ep = Capture::EnPassant;
+                        add(&mut table, from, to, color, Role::Pawn, None, ep);
                     }
                 }
             }
@@ -165,7 +208,7 @@ fn build() -> Vec<Option<TokenMove>> {
         (39, 23, Color::Black),
         (39, 55, Color::Black),
     ] {
-        add(&mut table, from, to, color, Role::King, None);
+        add(&mut table, from, to, color, Role::King, None, Capture::None);
     }
     table
 }

@@ -13,7 +13,11 @@ export function UnsavedDialog({
         role="dialog"
         aria-modal="true"
         aria-label={
-          question.kind === "unsaved" ? "Save changes?" : "Export compatibility"
+          question.kind === "unsaved"
+            ? "Save changes?"
+            : question.kind === "database"
+              ? "Database compatibility"
+              : "Export compatibility"
         }
         className="modal"
       >
@@ -25,6 +29,18 @@ export function UnsavedDialog({
               Save
             </button>
             <button onClick={() => answer("discard")}>Discard</button>
+          </>
+        ) : question.kind === "database" ? (
+          <>
+            <h2>Database compatibility</h2>
+            <p>
+              The database receives the moves, game data and the annotations
+              shown here. Original annotations that are not decoded, and marks
+              or symbols ChessBase cannot store, are left out.
+            </p>
+            <button autoFocus onClick={() => answer("save")}>
+              Save without them
+            </button>
           </>
         ) : (
           <>

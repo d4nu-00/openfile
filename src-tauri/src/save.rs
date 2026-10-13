@@ -38,7 +38,7 @@ pub fn reject_source_destination(
     }
     Ok(())
 }
-fn same_source(a: &Path, b: &Path) -> Result<bool, AppError> {
+pub(crate) fn same_source(a: &Path, b: &Path) -> Result<bool, AppError> {
     let a_meta = std::fs::metadata(a).map_err(io_error)?;
     let b_meta = match std::fs::metadata(b) {
         Ok(v) => v,

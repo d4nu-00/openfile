@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod database_writes;
 pub mod documents;
 pub mod engine_commands;
 pub mod registry;
@@ -97,6 +98,10 @@ pub fn run() {
         ))
         .invoke_handler(tauri::generate_handler![
             commands::open_database,
+            commands::create_database,
+            commands::save_game,
+            commands::replace_game,
+            commands::set_deleted,
             commands::read_page,
             commands::load_entry,
             commands::position_at,
