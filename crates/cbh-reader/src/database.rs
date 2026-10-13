@@ -618,6 +618,13 @@ impl Database {
                 {
                     game.tags.insert("Result".into(), result.into());
                 }
+                // PGN has no forfeits or "0-0"; the stored code is kept so a
+                // copy or a save stores the same result.
+                if let Some(4..=7) = loaded.summary.result_code
+                    && let Some(shown) = &loaded.summary.result
+                {
+                    game.tags.insert(crate::RESULT_TAG.into(), shown.clone());
+                }
                 for (key, value) in [
                     ("WhiteElo", loaded.summary.white_elo),
                     ("BlackElo", loaded.summary.black_elo),

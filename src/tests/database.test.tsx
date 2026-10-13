@@ -14,9 +14,8 @@ describe("database writing", () => {
     expect(ui.api.chooseSave).toHaveBeenCalled();
 
     await ui.user.click(ui.getByRole("tab", { name: /Database/ }));
+    // The game stays open while a new database is created.
     await ui.user.click(ui.getByRole("button", { name: "New" }));
-    // The unsaved game is guarded first.
-    await ui.user.click(ui.getByRole("button", { name: "Discard" }));
     expect(ui.api.createDatabase).toHaveBeenCalledWith(
       "/synthetic/new.2cbh",
       expect.any(String),
@@ -43,18 +42,18 @@ describe("database writing", () => {
     await ui.user.click(await ui.findByRole("button", { name: "Save" }));
     // Its original annotations are not decoded: saving asks first.
     await ui.user.click(ui.getByRole("button", { name: "Save without them" }));
-    expect(ui.api.saveGame).toHaveBeenCalledWith("doc-1", "db-1", "0", true);
+    expect(ui.api.saveGame).toHaveBeenCalledWith("doc-1", "db-2", "0", true);
     expect(await ui.findByText("Saved as game 201")).toBeVisible();
     // Once saved, the omission is acknowledged and Replace does not ask.
     await ui.user.click(ui.getByRole("button", { name: "Replace" }));
     expect(ui.api.replaceGame).toHaveBeenCalledWith("doc-1", "0", false);
 
-    await ui.user.click(ui.getByRole("tab", { name: /Database/ }));
+    await ui.user.click(ui.getByRole("tab", { name: "Database edit" }));
     // Delete acts on the selected entry of the list.
     await ui.user.click(ui.getByRole("button", { name: "Load entry 1" }));
     await ui.findByText(/Entry 1 ·/);
     await ui.user.click(ui.getByRole("button", { name: "Delete" }));
-    expect(ui.api.setDeleted).toHaveBeenCalledWith("db-1", "1", true);
+    expect(ui.api.setDeleted).toHaveBeenCalledWith("db-2", "1", true);
     expect(await ui.findByText("Game 1 marked deleted")).toBeVisible();
   });
 

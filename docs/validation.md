@@ -321,6 +321,38 @@ hand: the winner's 7 points and SB 29.00 agree with the opponents' scores.
   They also drive the Tournaments tab, the Cross Table dialog, its layout
   switch and opening a game from a result.
 
+## Several databases, copy and paste (2026-10-13)
+
+`cbh-reader/examples/copy_games.rs` copies games the way Paste does, then
+reads every copy back and compares it. Into a new 2CBH file in the scratch
+folder, it copied:
+* 2,000 games of the classic Mega in 1.0 s;
+* 20,000 games in 9.9 s, about 0.5 ms per game, warm.
+
+All copies matched their source in names, event, result and number of
+move-tree nodes. The first run found a "0-0" game stored back as a line. The
+`CBResult` tag fixes that. The file was deleted afterwards.
+
+**Tests.**
+* A write test covers the kept forfeit and 0-0 codes, and that an edited
+  Result wins.
+* App tests cover:
+  * copying rows of a sorted list;
+  * pasting with progress;
+  * moves and comments arriving in the copy;
+  * refusals for an empty clip and for the source database;
+  * batch delete and undelete.
+* Frontend tests cover:
+  * the selection ranges;
+  * a Shift-click selection copied and pasted into a database opened for
+    editing in a second tab;
+  * Select All with Delete;
+  * keeping the game and the other database when another opens;
+  * switching between and closing database tabs.
+
+The paste was not driven in the real app: the app's debug startup options
+open only one database.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

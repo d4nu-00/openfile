@@ -2,13 +2,12 @@ import { it, expect } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { SelectionGate } from "../state/selection";
 import { renderWorkbench, selected } from "./harness";
-it("closes a stale database after its delayed page finishes", async () => {
+it("keeps each open database's list and closes databases from their tabs", async () => {
   const ui = renderWorkbench({ clean: true });
-  let resolve: (p: any) => void = () => {};
-  let old = "";
   ui.api.openDatabase.mockImplementationOnce(async (_p, requestId) => ({
     requestId,
     databaseId: "db-old",
+    name: "Old",
     entryCount: "1",
     companions: [],
     diagnostics: [],
@@ -16,25 +15,41 @@ it("closes a stale database after its delayed page finishes", async () => {
   ui.api.openDatabase.mockImplementationOnce(async (_p, requestId) => ({
     requestId,
     databaseId: "db-current",
+    name: "Current",
     entryCount: "2",
     companions: [],
     diagnostics: [],
   }));
-  ui.api.readPage.mockImplementationOnce((_d, _s, _n, requestId) => {
-    old = requestId;
-    return new Promise((r) => {
-      resolve = r;
-    });
-  });
   await ui.user.click(screen.getByRole("button", { name: "Open Database" }));
-  await waitFor(() => expect(ui.api.readPage).toHaveBeenCalledTimes(1));
+  await screen.findByRole("tab", { name: "Database Old" });
   await ui.user.click(screen.getByRole("button", { name: "Open Database" }));
-  await waitFor(() => expect(screen.getAllByText("2 entries")).toHaveLength(2));
-  resolve({ requestId: old, entries: [] });
-  await waitFor(() =>
-    expect(ui.api.closeDatabase).toHaveBeenCalledWith("db-old"),
+  await screen.findByRole("tab", { name: "Database Current" });
+  expect(screen.getByRole("tab", { name: "Database Current" })).toHaveAttribute(
+    "aria-selected",
+    "true",
   );
-  expect(screen.getAllByText("2 entries")).toHaveLength(2);
+  await ui.user.click(screen.getByRole("tab", { name: "Database Old" }));
+  expect(screen.getByRole("tab", { name: "Database Old" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await waitFor(() =>
+    expect(ui.api.readRows).toHaveBeenLastCalledWith(
+      "db-old",
+      "1",
+      100,
+      expect.any(String),
+    ),
+  );
+  await ui.user.click(
+    screen.getByRole("button", { name: "Close database Old" }),
+  );
+  expect(ui.api.closeDatabase).toHaveBeenCalledWith("db-old");
+  expect(screen.getByRole("tab", { name: "Database Current" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  expect(screen.queryByRole("tab", { name: "Database Old" })).toBeNull();
 });
 it("rejects an older selection result", () => {
   const g = new SelectionGate();

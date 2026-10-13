@@ -178,3 +178,47 @@ fn unstorable_annotations_are_reported() {
     let (_, omitted) = encode::encode_annotations(&g);
     assert_eq!(omitted.notes.len(), 2);
 }
+
+#[test]
+fn forfeits_and_double_zero_keep_their_code_while_the_result_agrees() {
+    let d = tempfile::tempdir().unwrap();
+    let path = d.path().join("Results.2cbh");
+    let mut w = Writer::create(&path).unwrap();
+    let with = |result: &str, kept: &str| {
+        let mut g = pgn(&format!("[Result \"{result}\"]\n\n1. e4 {result}"));
+        g.tags.insert(cbh_reader::RESULT_TAG.into(), kept.into());
+        g
+    };
+    for g in [
+        with("1-0", "+:-"),
+        with("1/2-1/2", "=:="),
+        with("0-1", "-:+"),
+        with("*", "0-0"),
+        // Edited since: the PGN result wins.
+        with("0-1", "+:-"),
+    ] {
+        w.append(&g).unwrap();
+    }
+    drop(w);
+    let mut db = Database::open(&path, ReadLimits::default()).unwrap();
+    let shown: Vec<_> = db
+        .page(1, 5)
+        .unwrap()
+        .entries
+        .into_iter()
+        .map(|e| e.result.unwrap())
+        .collect();
+    assert_eq!(shown, ["+:-", "=:=", "-:+", "0-0", "0-1"]);
+    // Loading keeps the code in the tag, so a copy stores it again.
+    let loaded = db.load(1).unwrap().game.unwrap();
+    assert_eq!(loaded.tags[cbh_reader::RESULT_TAG], "+:-");
+    assert_eq!(loaded.tags["Result"], "1-0");
+    assert!(
+        !db.load(5)
+            .unwrap()
+            .game
+            .unwrap()
+            .tags
+            .contains_key(cbh_reader::RESULT_TAG)
+    );
+}

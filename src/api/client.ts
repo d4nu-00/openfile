@@ -29,6 +29,7 @@ import type {
   NamePage,
   Crosstable,
   CrossLayout,
+  PasteResponse,
 } from "./types";
 export const backend = {
   pickEngine: () =>
@@ -297,6 +298,30 @@ export const backend = {
     }),
   findName: (databaseId: string, kind: NameKind, prefix: string) =>
     invoke<string>("find_name", { databaseId, kind, prefix }),
+  /** Copy: remembers the games in the given rows of the current list. */
+  copyRows: (databaseId: string, ranges: { start: string; end: string }[]) =>
+    invoke<{ games: string; truncated: boolean }>("copy_rows", {
+      databaseId,
+      ranges,
+    }),
+  pasteGames: async (
+    databaseId: string,
+    onProgress: (p: { done: string; total: string }) => void,
+  ) => {
+    const events = new Channel<{ done: string; total: string }>();
+    events.onmessage = onProgress;
+    return invoke<PasteResponse>("paste_games", { databaseId, events });
+  },
+  cancelPaste: (databaseId: string) =>
+    invoke<void>("cancel_paste", { databaseId }),
+  /** Delete: marks the rows' games deleted, or undeletes them all. */
+  deleteRows: (databaseId: string, ranges: { start: string; end: string }[]) =>
+    invoke<string>("delete_rows", { databaseId, ranges }),
+  confirmPaste: (games: string) =>
+    ask(
+      `Append ${games} games to this database? Annotations that are not decoded, or that ChessBase cannot store, are left out; the games affected are counted.`,
+      { title: "Paste games", kind: "warning" },
+    ),
   crosstable: (
     databaseId: string,
     tournamentId: number,

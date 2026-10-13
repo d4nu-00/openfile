@@ -33,8 +33,20 @@ export interface ListSort {
   column: SortColumn;
   descending: boolean;
 }
+/** An open database other than the active one, as its list was left. */
+export interface ParkedDatabase {
+  database: OpenDatabaseResponse;
+  search?: ActiveSearch;
+  sort?: ListSort;
+  listVersion?: number;
+  top: number;
+  cursor?: number;
+}
 export interface WorkbenchState {
+  /** The active database: its list is shown. */
   database?: OpenDatabaseResponse;
+  /** Other open databases, in tab order. */
+  parked?: ParkedDatabase[];
   origin?: Origin;
   search?: ActiveSearch;
   sort?: ListSort;
@@ -74,7 +86,13 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
   const [status, setStatus] = useState("Open a CBH database to begin.");
   const [loadingEntry, setLoadingEntry] = useState<string>();
   /** The first row shown, and the row of the game last chosen from the list. */
-  const [listTop, setListTop] = useState(0);
+  const [listTop, setListTopState] = useState(0);
+  const listTopRef = useRef(0);
+  const setListTop = (top: SetStateAction<number>) => {
+    const next = typeof top === "function" ? top(listTopRef.current) : top;
+    listTopRef.current = next;
+    setListTopState(next);
+  };
   const [cursor, setCursorState] = useState<number>();
   const cursorRef = useRef<number>(undefined);
   const setCursor = (row: number | undefined) => {
@@ -118,6 +136,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       Object.values(gates).forEach((g) => g.begin());
       closeDoc(current.current.document?.documentId);
       closeDb(current.current.database?.databaseId);
+      for (const p of current.current.parked ?? [])
+        closeDb(p.database.databaseId);
     },
     [api],
   );
@@ -147,11 +167,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       }
       if (!(await api.confirmEditing())) return;
       setStatus("Opening database…");
-      // A database is never open for reading and writing at once, so the
-      // current one is closed first.
-      const open = current.current.database?.databaseId;
-      if (open) await api.closeDatabase(open).catch(() => {});
-      setState((s) => ({ ...s, database: undefined }));
+      // A database is never open for reading and writing at once; the
+      // backend refuses while the same files are open in another tab.
       return api.openDatabase(path, request, true);
     });
   }
@@ -185,21 +202,14 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
         return;
       }
       gates.page.begin();
-      gates.game.begin();
-      gates.position.begin();
-      setLoadingEntry(undefined);
-      closeDb(current.current.database?.databaseId);
-      closeDoc(current.current.document?.documentId);
+      // The previous database stays open in its tab; the game stays loaded.
       setState((s) => ({
         ...s,
+        parked: [...(s.parked ?? []), ...park(s)],
         database,
-        document: undefined,
-        position: undefined,
-        origin: undefined,
         search: undefined,
         sort: undefined,
         listVersion: (s.listVersion ?? 0) + 1,
-        dirty: false,
       }));
       setListTop(0);
       setCursor(undefined);
@@ -214,6 +224,77 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
         setStatus("Database open failed");
       }
     }
+  }
+  /** The active database's list, to keep while another is shown. */
+  function park(s: WorkbenchState): ParkedDatabase[] {
+    if (!s.database) return [];
+    return [
+      {
+        database: s.database,
+        search: s.search,
+        sort: s.sort,
+        listVersion: s.listVersion,
+        top: listTopRef.current,
+        cursor: cursorRef.current,
+      },
+    ];
+  }
+  /** Shows the list of another open database. */
+  function switchDatabase(databaseId: string) {
+    const s = current.current;
+    const target = s.parked?.find((p) => p.database.databaseId === databaseId);
+    if (!target) return;
+    gates.page.begin();
+    setState((s) => ({
+      ...s,
+      parked: [
+        ...(s.parked ?? []).filter((p) => p.database.databaseId !== databaseId),
+        ...park(s),
+      ],
+      database: target.database,
+      search: target.search,
+      sort: target.sort,
+      listVersion: (s.listVersion ?? 0) + 1,
+    }));
+    setListTop(target.top);
+    setCursor(target.cursor);
+    setStatus(
+      `${target.database.entryCount} entries${target.database.writable ? " · editable" : ""}`,
+    );
+  }
+  /** Closes an open database; the next open one becomes active. */
+  function closeDatabase(databaseId: string) {
+    const s = current.current;
+    closeDb(databaseId);
+    const origin = s.origin?.databaseId === databaseId ? undefined : s.origin;
+    if (s.database?.databaseId !== databaseId) {
+      setState((s) => ({
+        ...s,
+        origin,
+        parked: (s.parked ?? []).filter(
+          (p) => p.database.databaseId !== databaseId,
+        ),
+      }));
+      return;
+    }
+    const next = s.parked?.at(-1);
+    gates.page.begin();
+    setState((s) => ({
+      ...s,
+      origin,
+      parked: (s.parked ?? []).slice(0, -1),
+      database: next?.database,
+      search: next?.search,
+      sort: next?.sort,
+      listVersion: (s.listVersion ?? 0) + 1,
+    }));
+    setListTop(next?.top ?? 0);
+    setCursor(next?.cursor);
+    setStatus(
+      next
+        ? `${next.database.entryCount} entries`
+        : "Open a CBH database to begin.",
+    );
   }
   /** Reads the list's rows again, e.g. after a save. A sorted list is sorted
    * again, since saving drops its sort order. */
@@ -586,6 +667,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     status,
     setStatus,
     loadingEntry,
+    switchDatabase,
+    closeDatabase,
     rows,
     rowCount,
     listTop,

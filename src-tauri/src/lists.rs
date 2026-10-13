@@ -248,6 +248,33 @@ impl Registry {
         }
     }
 
+    /// Entry numbers of rows `start .. start + n` of the list (from 1).
+    pub(crate) fn list_ordinals(
+        &self,
+        database_id: &str,
+        start: u64,
+        n: usize,
+    ) -> Result<Vec<u64>, AppError> {
+        if start == 0 {
+            return Err(AppError::new("bounds", "Row range is out of range"));
+        }
+        Ok(match self.rows(database_id)? {
+            Rows::All(count) => (start..(start + n as u64).min(count + 1)).collect(),
+            Rows::Hits(hits) => hits
+                .ordinals
+                .iter()
+                .skip(start as usize - 1)
+                .take(n)
+                .copied()
+                .collect(),
+            Rows::Sorted(sort) => sort
+                .order
+                .lock()
+                .map_err(|_| AppError::new("state", "Sort order unavailable"))?
+                .read(start - 1, n, sort.descending)?,
+        })
+    }
+
     /// The row (from 1) that shows entry `ordinal`, if the list has it.
     pub fn find_row(
         &self,

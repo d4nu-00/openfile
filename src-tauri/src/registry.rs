@@ -41,6 +41,9 @@ pub(crate) struct State {
     >,
     pub(crate) name_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     pub(crate) crosstable_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    /// Games copied in a database window, and running pastes.
+    pub(crate) clip: Option<Arc<crate::clipboard::Clip>>,
+    pub(crate) paste_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     pub documents: HashMap<String, Arc<Mutex<Document>>>,
 }
 impl State {
@@ -108,6 +111,10 @@ impl Registry {
         let response = OpenDatabaseResponse {
             request_id,
             database_id: database_id.clone(),
+            name: path
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default(),
             entry_count: info.entry_count.to_string(),
             companions: info
                 .companions
@@ -290,6 +297,7 @@ impl Registry {
             &mut state.sort_cancels,
             &mut state.name_cancels,
             &mut state.crosstable_cancels,
+            &mut state.paste_cancels,
             &mut state.search_cancels,
             &mut state.tree_cancels,
             &mut state.reference_cancels,

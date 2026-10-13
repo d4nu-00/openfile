@@ -110,5 +110,11 @@ and sorts by any column, from sort orders kept in the same folder (see
 [game list](game-list.md)). It sorts names by its own collation: case is
 folded and common accents removed. ChessBase's own collation was not traced.
 Its Fix Sort Order and Sort Database, which rewrite the files, are not
-implemented. macOS native operation is verified locally;
+implemented.
+
+Games can be copied from any open database and pasted into a .2cbh database
+opened for editing. Annotations that are not decoded, or that ChessBase
+cannot store, are left out and counted, as when a single game is saved. PGN
+cannot express forfeits or "0-0". Loaded games keep such results in a
+`CBResult` tag, which the writer stores again and PGN exports carry. macOS native operation is verified locally;
 Windows/Linux native validation remains outstanding. See [validation](validation.md).

@@ -47,7 +47,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [ ] P1 🟢 Database start screen: icons, folders, My Databases, recent files (`DBFavorites`, `TOGGLE_FOLDERTREE`, `ADDFOLDERSHORTCUT`)
 - [ ] P2 🟢 Database views: Tile, Details, Symbols and Small Symbols (`VIEW_TILE`, `VIEWREPORTEXPL`, `VIEWSYMBOLSEXPL`)
 - [ ] P2 🟢 Database properties: icon, type, description (`EDITDBPROPERTIES`, `Properties`)
-- [ ] P2 🟢 Several databases open at once
+- [x] P2 🟢 Several databases open at once *(up to four, a tab each; each keeps its own search, sort and scroll position)*
 - [x] P1 🟢 Search Booster: create and delete the fast position index (`DBTOOLSCREATESEARCHBOOSTER`, `DBTOOLSDELETESEARCHBOOSTER`) *(the workbench's own index in its data folder; ChessBase's .cit/.cib files are not read)*
 - [ ] P2 🟢 Remove deleted games, i.e. compact the database (`DBTOOLSPHYSICALDELETIONS`, `REMOVEDELETEDGAMES`)
 - [ ] P2 🟢 Check integrity (`CHECKINTEGRITY`)
@@ -70,7 +70,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Virtual scrolling across the whole database instead of 200-entry pages *(blocks of 100 rows read as needed, the list's own scrollbar; Go to entry and Load Next/Previous Game follow the list; the 11.15 M-entry classic Mega scrolls end to end)*
 - [x] P1 🟢 Sort the list by any column *(header click: ascending, descending, entry order; a sort order per column in the app data folder, built in parallel, cancellable; 0.3–0.8 s on the classic Mega warm; search results shown in that order; see docs/game-list.md)*
 - [ ] P2 🟢 Configurable columns, list formats and fonts (`SETSELFDEFINEDLISTFORMAT`, `CHOOSEGAMELISTFONT`, `ABBREVIATEFIRSTNAME`)
-- [ ] P1 🟢 Multi-select, copy, paste and delete games between databases (`DBEDITCOPY`, `DBEDITPASTE`, `DBEDITDELETE`, `DBEDITSELECTALL`)
+- [x] P1 🟢 Multi-select, copy, paste and delete games between databases (`DBEDITCOPY`, `DBEDITPASTE`, `DBEDITDELETE`, `DBEDITSELECTALL`) *(Ctrl/Shift-click and Ctrl+A; copy up to 50,000 games in list order; paste into a .2cbh opened for editing with progress and cancel, about 0.5 ms per game; forfeits and 0-0 kept via a CBResult tag; see docs/game-list.md)*
 - [ ] P2 🟢 Edit game data for a selection: tournament, source, annotator, title (`DBTOOLSEDIT`, `EDITTOURNAMENT`, `EDITSOURCE`, `EDITANNOTATOR`, `EDITGAMETITLE`)
 - [ ] P2 🟢 Mark games (medals and flags) (`MARKGAME`)
 - [x] P1 🟢 Players pane with each player's games (`TOGGLETOURNPLAYERS`, `VIEW_GAMES_OF_PLAYER`) *(Players tab: every player alphabetically with games and years, find by name, double-click lists the games by player id; 463,258 players of the classic Mega listed in 0.6 s)*

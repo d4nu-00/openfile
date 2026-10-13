@@ -1,3 +1,4 @@
+pub mod clipboard;
 pub mod commands;
 pub mod database_writes;
 pub mod documents;
@@ -146,6 +147,11 @@ pub fn run() {
             commands::read_names,
             commands::find_name,
             commands::crosstable,
+            commands::copy_rows,
+            commands::clip_size,
+            commands::paste_games,
+            commands::cancel_paste,
+            commands::delete_rows,
             commands::load_entry,
             commands::position_at,
             commands::close_database,
