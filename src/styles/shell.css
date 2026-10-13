@@ -1282,3 +1282,22 @@ kbd {
   background: var(--row-selected-bg);
   color: var(--row-selected-fg);
 }
+/* Options, Engine Management and Tactical Analysis: one row per setting. */
+.modal.options,
+.modal.engine-management,
+.modal.blunder-check {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: min(560px, calc(100vw - 32px));
+}
+.modal.options .mask-row,
+.modal.blunder-check .mask-row {
+  flex-wrap: wrap;
+}
+.modal.options .path,
+.modal.blunder-check select {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
