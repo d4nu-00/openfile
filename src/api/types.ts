@@ -68,6 +68,8 @@ export interface GameView {
 export interface OpenDatabaseResponse {
   requestId: string;
   databaseId: string;
+  /** The file name without its extension. */
+  name?: string;
   entryCount: string;
   companions: { extension: string; status: Status }[];
   diagnostics: Diagnostic[];
@@ -386,4 +388,15 @@ export interface ReferenceResponse {
   source: "tree" | "line" | "search";
   /** A fallback search used the search booster. */
   indexed: boolean;
+}
+export interface PasteResponse {
+  pasted: string;
+  /** Entries that are not games, or whose moves could not be read. */
+  skipped: string;
+  /** Games stored without some annotations. */
+  incomplete: string;
+  cancelled: boolean;
+  entryCount: string;
+  /** The opening tree no longer covers the database. */
+  treeStale: boolean;
 }

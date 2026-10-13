@@ -54,6 +54,7 @@ import {
   ArrowDownUp,
   Trophy,
   Grid3x3,
+  ListChecks,
   List,
   type LucideIcon,
 } from "lucide-react";
@@ -138,15 +139,25 @@ const list: CommandMeta[] = [
   {
     id: "db-copy",
     label: "Copy",
-    tip: "Copy selected games",
+    tip: "Prepare the selected games for copying",
     icon: Copy,
+    keys: "Ctrl+C",
     views: db,
   },
   {
     id: "db-paste",
     label: "Paste",
-    tip: "Paste games into this database",
+    tip: "Append a copy selection to this database",
     icon: ClipboardPaste,
+    keys: "Ctrl+V",
+    views: db,
+  },
+  {
+    id: "db-select-all",
+    label: "Select All",
+    tip: "Select the whole list",
+    icon: ListChecks,
+    keys: "Ctrl+A",
     views: db,
   },
   {
@@ -833,7 +844,12 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
       groups: [
         {
           label: "Copy",
-          items: [L("db-paste"), S("db-copy"), S("delete-game")],
+          items: [
+            L("db-paste"),
+            S("db-copy"),
+            S("delete-game"),
+            S("db-select-all"),
+          ],
         },
         {
           label: "Database",

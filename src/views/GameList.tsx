@@ -120,6 +120,7 @@ export function GameList({
   onSort,
   onPreview,
   onOpen,
+  isSelected,
   label = "Game list",
 }: {
   rowCount: number;
@@ -139,10 +140,21 @@ export function GameList({
   sorting?: boolean;
   /** Without it, headers do not sort. */
   onSort?: (sort: ListSort | undefined) => void;
-  onPreview: (row: number) => void;
+  /** Ctrl toggles a row, Shift extends to it. */
+  onPreview: (row: number, mods?: { toggle: boolean; extend: boolean }) => void;
   onOpen: (row: number) => void;
+  /** Rows of a multiple selection; without it, the chosen row is selected. */
+  isSelected?: (row: number) => boolean;
   label?: string;
 }) {
+  const mods = (e: {
+    ctrlKey: boolean;
+    metaKey: boolean;
+    shiftKey: boolean;
+  }) => ({
+    toggle: e.ctrlKey || e.metaKey,
+    extend: e.shiftKey,
+  });
   const ariaSort = (column?: SortColumn) =>
     sort?.column === column
       ? sort?.descending
@@ -208,11 +220,13 @@ export function GameList({
         key={i}
         aria-rowindex={i + 2}
         aria-selected={
-          cursor === i || (cursor === undefined && selected === e.ordinal)
+          isSelected
+            ? isSelected(i)
+            : cursor === i || (cursor === undefined && selected === e.ordinal)
         }
         data-deleted={e.deleted || undefined}
         data-kind={e.kind}
-        onClick={() => onPreview(i)}
+        onClick={(ev) => onPreview(i, mods(ev))}
         onDoubleClick={() => onOpen(i)}
       >
         <td className="num">
@@ -221,7 +235,7 @@ export function GameList({
             tabIndex={-1}
             onClick={(ev) => {
               ev.stopPropagation();
-              onPreview(i);
+              onPreview(i, mods(ev));
             }}
             aria-label={`Load entry ${e.ordinal}`}
           >

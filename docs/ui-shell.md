@@ -63,9 +63,10 @@ command names are facts about the interface; they are not copied artwork.
 
 * Clicking a list row previews the game; double-click or Enter opens the game tab.
 * The game tab shows board, notation, and engine panes in resizable splits.
-* First round: one database tab and one game tab, because the frontend state
-  holds one database and one document. Multiple simultaneous game tabs require
-  a multi-document state refactor and are follow-up work.
+* Up to four databases have a tab each (see [game list](game-list.md)).
+  There is one game tab, because the frontend state holds one document.
+  Multiple simultaneous game tabs require a multi-document state refactor
+  and are follow-up work.
 * ChessBase binds Ctrl+K to Add Kibitzer, so command search uses `/` and
   Ctrl+Shift+Space instead of ⌘K.
 

@@ -29,6 +29,15 @@ import { Diagnostics } from "./components/Diagnostics";
 import { GameList } from "./views/GameList";
 import { NamesPane } from "./views/NamesPane";
 import { CrosstableDialog } from "./components/CrosstableDialog";
+import {
+  chooseRow,
+  isSelected,
+  noSelection,
+  rowRanges,
+  selectAll,
+  selectedCount,
+  type Selection,
+} from "./state/listSelection";
 import { BoardPane, type Step } from "./views/BoardPane";
 import { Ribbon } from "./shell/Ribbon";
 import { CommandPalette } from "./shell/CommandPalette";
@@ -233,12 +242,97 @@ export function App({
     }
     await e.run(() => w.goToEntry(BigInt(ordinal).toString()));
   }
+  // The list's multiple selection, per list.
+  const listKey = `${state.database?.databaseId}:${state.listVersion}`;
+  const [selection, setSelection] = useState<Selection>(noSelection);
+  useEffect(() => setSelection(noSelection), [listKey]);
+  /** Games copied and waiting to be pasted, and a running paste. */
+  const [clipGames, setClipGames] = useState(0);
+  const [pastingGames, setPastingGames] = useState<string>();
+  const explain = (err: unknown) =>
+    (err as { message?: string })?.message ?? String(err);
+  /** The selection, or the chosen row when nothing is selected. */
+  const chosenRanges = () =>
+    selection.ranges.length
+      ? rowRanges(selection)
+      : w.cursor !== undefined
+        ? rowRanges({ ranges: [[w.cursor, w.cursor + 1]] })
+        : [];
+  async function copyGames() {
+    const db = state.database;
+    const ranges = chosenRanges();
+    if (!db || !ranges.length) return;
+    try {
+      const copied = await api.copyRows(db.databaseId, ranges);
+      setClipGames(Number(copied.games));
+      w.setStatus(
+        `${copied.games} games copied${copied.truncated ? " (stopped at the limit)" : ""}`,
+      );
+    } catch (err) {
+      w.setDiagnostics([{ code: "copy", message: explain(err) }]);
+    }
+  }
+  async function pasteGames() {
+    const db = state.database;
+    if (!db?.writable || !clipGames) return;
+    if (!(await api.confirmPaste(String(clipGames)))) return;
+    setPastingGames("starting…");
+    try {
+      const result = await api.pasteGames(db.databaseId, (p) =>
+        setPastingGames(`${p.done} of ${p.total}`),
+      );
+      w.setState((s) => ({
+        ...s,
+        database:
+          s.database?.databaseId === db.databaseId
+            ? { ...s.database, entryCount: result.entryCount }
+            : s.database,
+      }));
+      await w.refreshList();
+      const notes = [
+        result.cancelled ? "cancelled" : "",
+        result.skipped !== "0" ? `${result.skipped} skipped` : "",
+        result.incomplete !== "0"
+          ? `${result.incomplete} without some annotations`
+          : "",
+        result.treeStale ? "the opening tree needs rebuilding" : "",
+      ].filter(Boolean);
+      w.setStatus(
+        `${result.pasted} games pasted${notes.length ? ` (${notes.join(", ")})` : ""}`,
+      );
+    } catch (err) {
+      w.setDiagnostics([{ code: "paste", message: explain(err) }]);
+    } finally {
+      setPastingGames(undefined);
+    }
+  }
+  /** Delete: the selection's games, or the loaded game. */
+  async function deleteGames() {
+    const db = state.database;
+    if (!db?.writable) return;
+    if (selectedCount(selection) <= 1)
+      return e.toggleDeleted(state.document?.summary.ordinal ?? "");
+    try {
+      const changed = await api.deleteRows(db.databaseId, rowRanges(selection));
+      await w.refreshList();
+      w.setStatus(`${changed} games changed`);
+    } catch (err) {
+      w.setDiagnostics([{ code: "delete", message: explain(err) }]);
+    }
+  }
   // Games from a position search open at the position found.
-  const preview = (row: number) =>
+  const preview = (
+    row: number,
+    mods?: { toggle: boolean; extend: boolean },
+  ) => {
+    setSelection((s) => chooseRow(s, row, mods));
+    // Ctrl and Shift only change the selection.
+    if (mods?.toggle || mods?.extend) return;
     void e.run(async () => {
       const entry = await w.rows.entry(row, w.rowCount);
       if (entry) await w.previewRow(row, entry);
     });
+  };
   async function open(row: number) {
     const entry = await w.rows.entry(row, w.rowCount);
     if (!entry) return;
@@ -385,9 +479,10 @@ export function App({
 
   const busy = e.busy;
   const bindings: Bindings = {
-    "open-database": { run: () => e.run(w.openDatabase) },
-    "open-database-edit": { run: () => e.run(w.openDatabaseForEditing) },
-    "new-database": { run: () => e.run(w.createDatabase) },
+    // Opening a database keeps the game; the database gets its own tab.
+    "open-database": { run: () => w.openDatabase() },
+    "open-database-edit": { run: () => w.openDatabaseForEditing() },
+    "new-database": { run: () => w.createDatabase() },
     "save-game": {
       // Without a database open for editing, Save exports PGN.
       run: () =>
@@ -402,11 +497,24 @@ export function App({
         !!state.database?.writable &&
         state.origin?.databaseId === state.database.databaseId,
     },
+    "db-copy": {
+      run: () => copyGames(),
+      enabled: !!state.database && w.rowCount > 0,
+    },
+    "db-paste": {
+      run: () => pasteGames(),
+      enabled: !!state.database?.writable && clipGames > 0 && !pastingGames,
+    },
+    "db-select-all": {
+      run: () => setSelection(selectAll(w.rowCount)),
+      enabled: w.rowCount > 0,
+    },
     "delete-game": {
-      run: () => e.toggleDeleted(state.document?.summary.ordinal ?? ""),
+      run: () => deleteGames(),
       enabled:
         !!state.database?.writable &&
-        state.origin?.databaseId === state.database.databaseId,
+        (selectedCount(selection) > 1 ||
+          state.origin?.databaseId === state.database.databaseId),
     },
     "open-pgn": { run: () => e.run(e.openPgn) },
     "open-board": { run: () => setView("game"), enabled: !!game },
@@ -657,6 +765,15 @@ export function App({
   }, [palette]);
 
   const databaseName = state.database ? "Database" : "Databases";
+  /** Open databases in the order they were opened. */
+  const openDatabases = [
+    ...(state.parked ?? []).map((p) => p.database),
+    ...(state.database ? [state.database] : []),
+  ].sort(
+    (a, b) =>
+      Number(a.databaseId.replace(/\D/g, "")) -
+      Number(b.databaseId.replace(/\D/g, "")),
+  );
   const engineStatus = a.engine
     ? `${a.engine.identity.name ?? "UCI engine"} · ${a.enabled ? "analysing" : "idle"}`
     : "No engine";
@@ -709,16 +826,52 @@ export function App({
           <LayoutGrid size={16} />
         </div>
         <nav className="workspace-tabs" role="tablist" aria-label="Workspace">
-          <button
-            role="tab"
-            aria-selected={view === "database"}
-            className="workspace-tab"
-            onClick={() => setView("database")}
-          >
-            <Database size={14} aria-hidden />
-            <span>{databaseName}</span>
-            {state.database && <small>{state.database.entryCount}</small>}
-          </button>
+          {openDatabases.length === 0 && (
+            <button
+              role="tab"
+              aria-selected={view === "database"}
+              className="workspace-tab"
+              onClick={() => setView("database")}
+            >
+              <Database size={14} aria-hidden />
+              <span>{databaseName}</span>
+            </button>
+          )}
+          {openDatabases.map((db) => {
+            const active = db.databaseId === state.database?.databaseId;
+            return (
+              <span
+                key={db.databaseId}
+                className="workspace-tab-wrap"
+                data-selected={view === "database" && active}
+              >
+                <button
+                  role="tab"
+                  aria-selected={view === "database" && active}
+                  aria-label={`Database ${db.name ?? ""}`.trim()}
+                  className="workspace-tab"
+                  onClick={() => {
+                    if (!active) w.switchDatabase(db.databaseId);
+                    setView("database");
+                  }}
+                >
+                  <Database size={14} aria-hidden />
+                  <span>{db.name || databaseName}</span>
+                  <small>{db.entryCount}</small>
+                  {db.writable && <small title="Opened for editing">✎</small>}
+                </button>
+                <button
+                  className="tab-close"
+                  aria-label={`Close database ${db.name ?? ""}`.trim()}
+                  title="Close database"
+                  disabled={busy}
+                  onClick={() => w.closeDatabase(db.databaseId)}
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            );
+          })}
           {game && (
             <span
               className="workspace-tab-wrap"
@@ -815,6 +968,25 @@ export function App({
                   {state.dirty && (
                     <span className="badge">Unsaved changes</span>
                   )}
+                  {pastingGames && (
+                    <span className="sorting">
+                      Pasting: {pastingGames}
+                      <button
+                        className="link-button"
+                        onClick={() =>
+                          state.database &&
+                          void api.cancelPaste(state.database.databaseId)
+                        }
+                      >
+                        Cancel
+                      </button>
+                    </span>
+                  )}
+                  {selectedCount(selection) > 1 && (
+                    <span className="hint">
+                      {selectedCount(selection).toLocaleString()} selected
+                    </span>
+                  )}
                   {w.sorting && (
                     <span className="sorting">
                       Sorting: {w.sorting}
@@ -873,6 +1045,11 @@ export function App({
                     onSort={(s) => void w.sortBy(s?.column, s?.descending)}
                     onPreview={preview}
                     onOpen={(row) => void open(row)}
+                    isSelected={
+                      selectedCount(selection) > 1
+                        ? (row) => isSelected(selection, row)
+                        : undefined
+                    }
                   />
                 )}
                 {state.database &&

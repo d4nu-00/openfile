@@ -1,4 +1,4 @@
-# Game list, players, tournaments and crosstables
+# Database window: game list, players, tournaments, crosstables, copy and paste
 
 Status: in progress on branch `game-list` (2026-10-13). The direction was agreed
 in conversation: scroll the whole list without pages, and sort by any column
@@ -241,3 +241,61 @@ tiebreaks and performance.
 | Tournament list | 105,313 names in 0.13 s, 1.3 MB |
 | Finding a name | under 1 ms |
 | Crosstable of Tata Steel TOP 81st (10 players, 45 games) | 3.5 s, almost all of it the tournament-id search over 11.15 M entries |
+
+## Several databases, selection, copy and paste
+
+**Several databases.** Up to four databases can be open at once, each with
+its own tab in the title strip. Opening a database leaves the others, and
+the loaded game, open.
+* Each database keeps its own search, sort and scroll position while
+  another is shown.
+* A tab's × closes that database.
+* The backend still refuses to open the same files for reading and editing
+  at once ("This database is already open; close it first").
+
+**Selection.** Selection follows ChessBase's database window:
+* a click selects one game;
+* Ctrl-click (⌘ on macOS) adds or removes a game;
+* Shift-click extends to the game from the last one chosen;
+* Select All (`DBEDITSELECTALL`, Ctrl+A) selects the whole list.
+
+A selection is stored as ranges of rows. Selecting all 11 M rows of the
+classic Mega costs nothing until a command uses it.
+
+**Copy** (`DBEDITCOPY`, Ctrl+C) resolves the selection, or else the chosen
+row, to entry numbers. It follows the list's current order, search or sort,
+and remembers them, at most 50,000.
+
+**Paste** (`DBEDITPASTE`, Ctrl+V) appends the copied games to the active
+database. It works only with a .2cbh database opened for editing.
+* Each game is loaded from the source and written in batches of 200, each
+  synced once. The paste shows progress and can be cancelled between
+  batches.
+* Before it starts, the user agrees that annotations not decoded, or not
+  storable by ChessBase, are left out. The result counts the games affected.
+* Entries without readable moves are skipped and counted.
+* Pasting into the database the games came from is refused.
+* A pasted database's opening tree is not journalled game by game. It
+  becomes stale, and the status says it needs rebuilding.
+
+**Results PGN cannot express.** PGN has no forfeits or "0-0". When a game is
+loaded, a stored result of +:-, =:=, -:+ or 0-0 is kept in a `CBResult` tag.
+The writer stores that code again while the PGN Result still agrees with it,
+so a copied or saved game keeps its result. If the user edits Result, the
+plain result wins. PGN exports carry the tag.
+
+**Delete** (`DBEDITDELETE`, Delete) marks the selected games deleted. If all
+of them are deleted already, it undeletes them, as the single-game command
+does. It works only in a database opened for editing, on at most 50,000
+games at once.
+
+**Measurements.** Games of the classic Mega were copied into a new 2CBH file
+in the scratch folder, the same way Paste does, by
+`cbh-reader/examples/copy_games.rs`:
+* 2,000 games in 1.0 s and 20,000 in 9.9 s, about 0.5 ms per game (warm
+  cache), split roughly 55 % loading and 45 % writing;
+* every copy was read back and compared: names, event, result and the
+  number of move-tree nodes all matched;
+* the first comparison found one "0-0" game that came back as "Line", which
+  led to the `CBResult` tag above;
+* a cold first run took 26 ms per game, waiting on the disk.

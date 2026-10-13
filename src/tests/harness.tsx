@@ -88,7 +88,9 @@ export function mockRows(start: number, limit: number, count = 401) {
     rows.push(page.entries[i - 1] ?? { ...summary, ordinal: String(i) });
   return rows;
 }
-export function mockApi() {
+export function mockApi(firstDatabase = 1) {
+  // Each opened database gets its own id, as the backend's do.
+  let nextDatabase = firstDatabase;
   let game = structuredClone(selected.game!);
   let revision = 0;
   // The list shows these entries while a search is active.
@@ -245,6 +247,7 @@ export function mockApi() {
     confirmEditing: vi.fn().mockResolvedValue(true),
     createDatabase: vi.fn().mockImplementation(async (_path, requestId) => ({
       ...database,
+      databaseId: `db-${nextDatabase++}`,
       entryCount: "0",
       writable: true,
       requestId,
@@ -367,8 +370,13 @@ export function mockApi() {
       })),
     openDatabase: vi
       .fn()
-      .mockImplementation(async (_path, requestId, writable = false) => ({
+      .mockImplementation(async (path, requestId, writable = false) => ({
         ...database,
+        databaseId: `db-${nextDatabase++}`,
+        name: String(path)
+          .split("/")
+          .pop()!
+          .replace(/\.[^.]+$/, ""),
         requestId,
         writable,
       })),
@@ -408,6 +416,37 @@ export function mockApi() {
         return { rows: kind === "players" ? "250" : "3" };
       }),
     cancelNameList: vi.fn().mockResolvedValue(undefined),
+    copyRows: vi
+      .fn()
+      .mockImplementation(
+        async (_db: string, ranges: { start: string; end: string }[]) => ({
+          games: String(
+            ranges.reduce((n, r) => n + Number(r.end) - Number(r.start), 0),
+          ),
+          truncated: false,
+        }),
+      ),
+    pasteGames: vi.fn().mockImplementation(async (_db: string, onProgress) => {
+      onProgress({ done: "3", total: "3" });
+      return {
+        pasted: "3",
+        skipped: "0",
+        incomplete: "1",
+        cancelled: false,
+        entryCount: "404",
+        treeStale: false,
+      };
+    }),
+    cancelPaste: vi.fn().mockResolvedValue(undefined),
+    deleteRows: vi
+      .fn()
+      .mockImplementation(
+        async (_db: string, ranges: { start: string; end: string }[]) =>
+          String(
+            ranges.reduce((n, r) => n + Number(r.end) - Number(r.start), 0),
+          ),
+      ),
+    confirmPaste: vi.fn().mockResolvedValue(true),
     readNames: vi
       .fn()
       .mockImplementation(
@@ -588,7 +627,7 @@ export function renderWorkbench({
   position?: PositionResponse;
   initialView?: "database" | "game";
 } = {}) {
-  const api = mockApi();
+  const api = mockApi(clean ? 1 : 2);
   const user = userEvent.setup();
   const view = render(
     <App

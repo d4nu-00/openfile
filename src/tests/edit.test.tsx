@@ -5,9 +5,9 @@ import { renderWorkbench, database } from "./harness";
 describe("working copies", () => {
   it("keeps an edited game when replacement is cancelled", async () => {
     const ui = renderWorkbench({ dirty: true });
-    await ui.user.click(ui.getByRole("button", { name: "Open Database" }));
+    await ui.user.click(ui.getByRole("button", { name: "Open PGN" }));
     await ui.user.click(ui.getByRole("button", { name: "Cancel" }));
-    expect(ui.api.openDatabase).not.toHaveBeenCalled();
+    expect(ui.api.choosePgn).not.toHaveBeenCalled();
     expect(ui.getByText("Unsaved changes")).toBeVisible();
     expect(ui.getByRole("button", { name: "e2 White pawn" })).toBeVisible();
   });
@@ -121,13 +121,16 @@ it("rejects a stale edit without changing the working game", async () => {
   expect(ui.queryByText("Unsaved changes")).toBeNull();
   expect(ui.getByRole("button", { name: "d2 White pawn" })).toBeVisible();
 });
-it("discards the working copy only after a replacement database opens", async () => {
+it("keeps the working copy when another database opens", async () => {
   const ui = renderWorkbench({ dirty: true });
   await ui.user.click(ui.getByRole("button", { name: "Open Database" }));
-  await ui.user.click(ui.getByRole("button", { name: "Discard" }));
   expect(ui.api.openDatabase).toHaveBeenCalled();
-  expect(ui.queryByText("Unsaved changes")).toBeNull();
-  expect(ui.api.closeDocument).toHaveBeenCalledWith("doc-1");
+  expect(ui.queryByRole("button", { name: "Discard" })).toBeNull();
+  // Both databases have tabs; the game stays open and unsaved.
+  expect(await ui.findAllByRole("tab", { name: /^Database/ })).toHaveLength(2);
+  expect(ui.getByRole("tab", { name: /Alpha — Beta/ })).toBeVisible();
+  expect(ui.api.closeDocument).not.toHaveBeenCalled();
+  expect(ui.api.closeDatabase).not.toHaveBeenCalled();
 });
 it("allows editing a new PGN while an older database open is still pending", async () => {
   const ui = renderWorkbench();

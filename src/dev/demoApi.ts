@@ -237,6 +237,23 @@ export function demoApi(): WorkbenchApi {
       rows: String(demoNames(kind).length),
     }),
     cancelNameList: async () => {},
+    copyRows: async (_db, ranges) => ({
+      games: String(
+        ranges.reduce((n, r) => n + Number(r.end) - Number(r.start), 0),
+      ),
+      truncated: false,
+    }),
+    pasteGames: async () => ({
+      pasted: "0",
+      skipped: "0",
+      incomplete: "0",
+      cancelled: false,
+      entryCount: "2400",
+      treeStale: false,
+    }),
+    cancelPaste: async () => {},
+    deleteRows: async () => "0",
+    confirmPaste: async () => false,
     readNames: async (_db, kind, start, limit, requestId) => ({
       requestId,
       rows: demoNames(kind).slice(Number(start) - 1, Number(start) - 1 + limit),
