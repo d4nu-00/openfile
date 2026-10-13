@@ -7,6 +7,8 @@ use std::{
 #[derive(Default)]
 pub struct Registry {
     pub(crate) state: Mutex<State>,
+    /// Folder for search boosters (position indexes); the app's data folder.
+    pub(crate) index_dir: Mutex<Option<PathBuf>>,
     // Persistence is serialized without holding registry/document state locks.
     pub(crate) save_lock: Mutex<()>,
 }
@@ -19,8 +21,8 @@ pub(crate) struct State {
     pub(crate) writers: HashMap<String, Arc<Mutex<cbh_reader::v2::write::Writer>>>,
     /// The path each database was opened from.
     pub(crate) paths: HashMap<String, PathBuf>,
-    /// The current search result of each database, as entry numbers.
-    pub(crate) searches: HashMap<String, Arc<Vec<u64>>>,
+    /// The current search result of each database.
+    pub(crate) searches: HashMap<String, Arc<crate::searches::Hits>>,
     pub(crate) search_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     pub documents: HashMap<String, Arc<Mutex<Document>>>,
 }
@@ -100,6 +102,7 @@ impl Registry {
                 .collect(),
             diagnostics: info.diagnostics.iter().cloned().map(Into::into).collect(),
             writable: writer.is_some(),
+            booster: false,
         };
         if let Some(writer) = writer {
             state
@@ -109,7 +112,10 @@ impl Registry {
         state.paths.insert(database_id.clone(), path);
         state
             .databases
-            .insert(database_id, Arc::new(Mutex::new(db)));
+            .insert(database_id.clone(), Arc::new(Mutex::new(db)));
+        drop(state);
+        let mut response = response;
+        response.booster = self.has_booster(&database_id).unwrap_or(false);
         Ok(response)
     }
     pub fn read_page(

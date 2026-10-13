@@ -17,6 +17,7 @@ import type {
   SaveGameResponse,
   GameFilter,
   SearchResponse,
+  BoosterProgress,
 } from "./types";
 export const backend = {
   pickEngine: () =>
@@ -153,6 +154,18 @@ export const backend = {
     invoke<void>("set_deleted", { databaseId, ordinal, deleted }),
   searchGames: (databaseId: string, filter: GameFilter, requestId: string) =>
     invoke<SearchResponse>("search_games", { databaseId, filter, requestId }),
+  findPosition: (databaseId: string, fen: string, requestId: string) =>
+    invoke<SearchResponse>("find_position", { databaseId, fen, requestId }),
+  createSearchBooster: async (
+    databaseId: string,
+    onProgress: (p: BoosterProgress) => void,
+  ) => {
+    const events = new Channel<BoosterProgress>();
+    events.onmessage = onProgress;
+    return invoke<boolean>("create_search_booster", { databaseId, events });
+  },
+  deleteSearchBooster: (databaseId: string) =>
+    invoke<void>("delete_search_booster", { databaseId }),
   cancelSearch: (databaseId: string) =>
     invoke<void>("cancel_search", { databaseId }),
   clearSearch: (databaseId: string) =>

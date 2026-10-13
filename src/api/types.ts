@@ -31,6 +31,8 @@ export interface EntrySummary {
   source?: string;
   whiteTeam?: string;
   blackTeam?: string;
+  /** In a position search: the node where the game reaches the position. */
+  foundNode?: number;
   diagnostics: Diagnostic[];
 }
 export interface GameNode {
@@ -69,6 +71,8 @@ export interface OpenDatabaseResponse {
   diagnostics: Diagnostic[];
   /** Opened for editing: games can be saved, replaced and marked deleted. */
   writable?: boolean;
+  /** A current search booster exists for fast position search. */
+  booster?: boolean;
 }
 export interface SaveGameResponse {
   databaseId: string;
@@ -180,6 +184,8 @@ export interface StartupRequest {
   path?: string;
   entry?: string;
   node?: number;
+  /** Debug builds: a command id to run once the entry is shown. */
+  command?: string;
 }
 /** Search mask, game data tab (see docs/search.md). */
 export interface PlayerQuery {
@@ -225,4 +231,10 @@ export interface SearchResponse {
   scanned: string;
   truncated: boolean;
   cancelled: boolean;
+  /** A position search used the search booster. */
+  indexed?: boolean;
+}
+export interface BoosterProgress {
+  done: string;
+  total: string;
 }

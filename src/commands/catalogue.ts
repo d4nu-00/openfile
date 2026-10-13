@@ -376,6 +376,20 @@ const list: CommandMeta[] = [
     views: game,
   },
   {
+    id: "create-search-booster",
+    label: "Create Search Booster",
+    tip: "Create Search Booster (Big index files for fast position search)",
+    icon: Gauge,
+    views: db,
+  },
+  {
+    id: "delete-search-booster",
+    label: "Delete Search Booster",
+    tip: "Delete Search Booster Files",
+    icon: Trash2,
+    views: db,
+  },
+  {
     id: "add-kibitzer",
     label: "Add Kibitzer",
     tip: "Add a Kibitz engine pane to analyse the game",
@@ -746,6 +760,10 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             S("find-double-games"),
             S("sort-database"),
           ],
+        },
+        {
+          label: "Search Booster",
+          items: [S("create-search-booster"), S("delete-search-booster")],
         },
       ],
     },

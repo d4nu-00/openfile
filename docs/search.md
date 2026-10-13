@@ -37,6 +37,27 @@ pages through it in place of the whole database.
 
 ## Position search
 
-To come in a later step. Its plan: an index built by the workbench into its
-own data folder, keyed by material and pawn structure, narrows the
-candidates; candidate games are then replayed to confirm the exact position.
+Find Position (game window, Find Position › Hard Disk) looks for the board
+and side to move of the current position. Castling rights, en passant and
+move numbers are ignored, as in ChessBase. It looks through every game,
+including variations. Each hit records the first node showing the
+position, so the game opens there.
+
+**Search booster.** Create Search Booster (Maintenance) builds the
+workbench's own index. It is written to the app's data folder
+(`search-boosters/`), never beside the database. The index holds one
+128-byte Bloom signature per entry, made of the game's *structure keys*: a
+hash of the pawn placement, the piece counts of both sides and the side to
+move. These keys change only when a pawn moves or something is captured, so
+a game has few of them. A search reads the signatures, keeps the games whose
+signature can hold the target's key, and replays only those.
+
+* An index records the size and modification time of the entry index and the
+  move file. It is not used once either changes, for example after saving a
+  game.
+* A cancelled build leaves nothing behind.
+
+**Replay.** A candidate is replayed depth first. A line is abandoned once
+either side has fewer pawns, or fewer men, than the target, since neither
+can come back (promotion only turns a pawn into a piece). Without a booster
+every game is replayed. Position searches keep at most 100,000 hits.

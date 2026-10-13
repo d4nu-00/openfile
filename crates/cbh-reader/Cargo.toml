@@ -9,6 +9,6 @@ chess-core = { path = "../chess-core" }
 serde.workspace = true
 thiserror.workspace = true
 same-file = "1"
-[dev-dependencies]
 tempfile.workspace = true
+[dev-dependencies]
 serde_json.workspace = true

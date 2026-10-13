@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type SetStateAction } from "react";
 import type {
+  SearchResponse,
   GameFilter,
   GameResponse,
   OpenDatabaseResponse,
@@ -16,7 +17,10 @@ export interface Origin {
 }
 /** The current search result; the list pages through its hits. */
 export interface ActiveSearch {
-  filter: GameFilter;
+  /** The search mask behind a game-data search. */
+  filter?: GameFilter;
+  /** The board behind a position search. */
+  fen?: string;
   hits: string;
   truncated: boolean;
 }
@@ -190,13 +194,27 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     }
   }
   /** Searches the whole database and shows the hits in the list. */
-  async function search(filter: GameFilter) {
+  function search(filter: GameFilter) {
+    return runSearch({ filter }, (db, request) =>
+      api.searchGames(db, filter, request),
+    );
+  }
+  /** Finds games that reach the position `fen`. */
+  function findPosition(fen: string) {
+    return runSearch({ fen }, (db, request) =>
+      api.findPosition(db, fen, request),
+    );
+  }
+  async function runSearch(
+    what: { filter?: GameFilter; fen?: string },
+    run: (databaseId: string, request: string) => Promise<SearchResponse>,
+  ) {
     const db = current.current.database;
     if (!db) return;
     const request = gates.page.begin();
-    setStatus("Searching…");
+    setStatus(what.fen ? "Searching position…" : "Searching…");
     try {
-      const found = await api.searchGames(db.databaseId, filter, request);
+      const found = await run(db.databaseId, request);
       if (
         !gates.page.accept(found.requestId) ||
         current.current.database?.databaseId !== db.databaseId
@@ -208,10 +226,12 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       }
       setState((s) => ({
         ...s,
-        search: { filter, hits: found.hits, truncated: found.truncated },
+        search: { ...what, hits: found.hits, truncated: found.truncated },
       }));
       setStatus(
-        `${found.hits} games found${found.truncated ? " (stopped at the limit)" : ""}`,
+        `${found.hits} games found${found.truncated ? " (stopped at the limit)" : ""}${
+          what.fen && !found.indexed ? " · no search booster" : ""
+        }`,
       );
       if (found.hits === "0") {
         setState((s) => ({ ...s, page: { requestId: request, entries: [] } }));
@@ -224,6 +244,43 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
         setDiagnostics([{ code: "search", message: explain(e) }]);
         setStatus("Search failed");
       }
+    }
+  }
+  /** Builds the search booster for fast position search. */
+  async function createBooster() {
+    const db = current.current.database;
+    if (!db) return;
+    setStatus("Search booster: starting…");
+    try {
+      const built = await api.createSearchBooster(db.databaseId, (p) => {
+        const pct = Number((BigInt(p.done) * 100n) / BigInt(p.total || "1"));
+        setStatus(`Search booster: ${pct}% of ${p.total} entries`);
+      });
+      if (current.current.database?.databaseId !== db.databaseId) return;
+      setState((s) => ({
+        ...s,
+        database: s.database && { ...s.database, booster: built },
+      }));
+      setStatus(
+        built ? "Search booster is complete" : "Search booster cancelled",
+      );
+    } catch (e) {
+      setDiagnostics([{ code: "booster", message: explain(e) }]);
+      setStatus("Search booster failed");
+    }
+  }
+  async function deleteBooster() {
+    const db = current.current.database;
+    if (!db) return;
+    try {
+      await api.deleteSearchBooster(db.databaseId);
+      setState((s) => ({
+        ...s,
+        database: s.database && { ...s.database, booster: false },
+      }));
+      setStatus("Search booster deleted");
+    } catch (e) {
+      setDiagnostics([{ code: "booster", message: explain(e) }]);
     }
   }
   function cancelSearch() {
@@ -239,7 +296,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     setStatus(`${db.entryCount} entries`);
     await readPage("1");
   }
-  async function loadEntry(ordinal: string) {
+  /** Loads an entry and selects `node` (a position search's hit) or the start. */
+  async function loadEntry(ordinal: string, node = 0) {
     const db = current.current.database;
     if (!db) return;
     const request = gates.game.begin();
@@ -272,7 +330,9 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
         return;
       }
       const posId = gates.position.begin();
-      const position = await api.positionAt(document.documentId, 0, posId);
+      const position = await api
+        .positionAt(document.documentId, node, posId)
+        .catch(() => api.positionAt(document.documentId!, 0, posId));
       if (
         !gates.game.accept(request) ||
         !gates.position.accept(position.requestId)
@@ -338,6 +398,9 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     loadingEntry,
     openDatabase,
     search,
+    findPosition,
+    createBooster,
+    deleteBooster,
     cancelSearch,
     clearSearch,
     openDatabaseForEditing,

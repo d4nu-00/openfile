@@ -81,7 +81,9 @@ export function App({
     }
     document.documentElement.dataset.theme = theme;
   }, [theme]);
-  // A database named on the command line opens at start, optionally at an entry.
+  // A database named on the command line opens at start, optionally at an
+  // entry; debug builds may also run one command before the snapshot.
+  const [startupCommand, setStartupCommand] = useState<string>();
   useEffect(() => {
     let live = true;
     void (async () => {
@@ -94,7 +96,8 @@ export function App({
         setView("game");
         if (startup.node !== undefined) await w.selectNode(startup.node);
       }
-      await api.startupShown().catch(() => {});
+      if (startup.command) setStartupCommand(startup.command);
+      else await api.startupShown().catch(() => {});
     })();
     return () => {
       live = false;
@@ -181,10 +184,13 @@ export function App({
     }
     await e.run(() => w.loadEntry(BigInt(ordinal).toString()));
   }
-  const preview = (n: string) => void e.run(() => w.loadEntry(n));
+  // Games from a position search open at the position found.
+  const foundNode = (n: string) =>
+    state.page?.entries.find((x) => x.ordinal === n)?.foundNode ?? 0;
+  const preview = (n: string) => void e.run(() => w.loadEntry(n, foundNode(n)));
   async function open(n: string) {
     if (state.document?.summary.ordinal !== n || !game)
-      await e.run(() => w.loadEntry(n));
+      await e.run(() => w.loadEntry(n, foundNode(n)));
     setView("game");
   }
   function step(delta: 1 | -1) {
@@ -241,6 +247,23 @@ export function App({
       run: () => setFilterOpen((o) => !o),
       enabled: !!state.page,
       pressed: filterOpen,
+    },
+    "find-position-db": {
+      run: () => {
+        const fen = state.position?.fen;
+        if (!fen) return;
+        setView("database");
+        return w.findPosition(fen);
+      },
+      enabled: !!state.position && !!state.database,
+    },
+    "create-search-booster": {
+      run: () => w.createBooster(),
+      enabled: !!state.database,
+    },
+    "delete-search-booster": {
+      run: () => w.deleteBooster(),
+      enabled: !!state.database?.booster,
     },
     "reset-filter": {
       run: () => w.clearSearch(),
@@ -311,6 +334,16 @@ export function App({
     "command-search": { run: () => setPalette(true) },
     "stop-process": { run: () => a.stop(), enabled: a.enabled },
   };
+  useEffect(() => {
+    if (!startupCommand) return;
+    setStartupCommand(undefined);
+    void (async () => {
+      await bindings[startupCommand]?.run();
+      // Let the result render before the picture is taken.
+      await new Promise((r) => setTimeout(r, 500));
+      await api.startupShown().catch(() => {});
+    })();
+  }, [startupCommand]);
   useShortcuts(
     view,
     bindings,

@@ -19,6 +19,8 @@ pub struct Startup {
     pub path: Option<String>,
     pub entry: Option<String>,
     pub node: Option<u32>,
+    /// Debug builds: a command id to run once the entry is shown.
+    pub command: Option<String>,
     /// Debug builds on macOS: write a PNG of the window once this is shown.
     #[serde(skip)]
     pub snapshot: Option<std::path::PathBuf>,
@@ -40,6 +42,7 @@ impl Startup {
                 "--snapshot" if cfg!(debug_assertions) => {
                     startup.snapshot = args.next().map(Into::into)
                 }
+                "--command" if cfg!(debug_assertions) => startup.command = args.next(),
                 // Platform launchers may add their own flags (e.g. -psn_ on macOS).
                 flag if flag.starts_with('-') => {}
                 path if startup.path.is_none() => startup.path = Some(path.into()),
@@ -89,6 +92,14 @@ pub fn run() {
             }
         })
         .manage(std::sync::Arc::new(registry::Registry::default()))
+        .setup(|app| {
+            // Search boosters are the app's own files, never beside a source.
+            if let Ok(dir) = app.path().app_data_dir() {
+                app.state::<std::sync::Arc<registry::Registry>>()
+                    .set_index_dir(dir.join("search-boosters"));
+            }
+            Ok(())
+        })
         .manage(ExitPolicy::default())
         .manage(StartupRequest(
             std::sync::Mutex::new(Some(startup.clone())),
@@ -107,6 +118,9 @@ pub fn run() {
             commands::cancel_search,
             commands::clear_search,
             commands::read_search_page,
+            commands::find_position,
+            commands::create_search_booster,
+            commands::delete_search_booster,
             commands::read_page,
             commands::load_entry,
             commands::position_at,
