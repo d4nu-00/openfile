@@ -19,6 +19,9 @@ pub(crate) struct State {
     pub(crate) writers: HashMap<String, Arc<Mutex<cbh_reader::v2::write::Writer>>>,
     /// The path each database was opened from.
     pub(crate) paths: HashMap<String, PathBuf>,
+    /// The current search result of each database, as entry numbers.
+    pub(crate) searches: HashMap<String, Arc<Vec<u64>>>,
+    pub(crate) search_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     pub documents: HashMap<String, Arc<Mutex<Document>>>,
 }
 impl State {
@@ -250,6 +253,10 @@ impl Registry {
             .ok_or_else(|| AppError::new("invalidHandle", "Database is closed or unknown"))?;
         state.writers.remove(&id);
         state.paths.remove(&id);
+        state.searches.remove(&id);
+        if let Some(c) = state.search_cancels.remove(&id) {
+            c.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
         Ok(())
     }
     pub fn close_document(&self, id: String) -> Result<(), AppError> {

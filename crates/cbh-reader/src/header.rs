@@ -26,6 +26,10 @@ pub struct RawEntry {
     pub black_elo: Option<u16>,
     pub round: Option<String>,
     pub eco_raw: Option<u16>,
+    /// Year of the packed date, if any.
+    pub year: Option<u16>,
+    /// Stored main-line move count (classic byte 45, 2CBH byte 138).
+    pub move_count: u8,
     pub diagnostics: Vec<Diagnostic>,
 }
 pub fn be24(bytes: &[u8]) -> u32 {
@@ -110,6 +114,11 @@ pub(crate) fn date(value: u32) -> Option<String> {
             format!("{d:02}")
         }
     ))
+}
+/// Year of a packed date; 0 means unknown.
+pub(crate) fn year(value: u32) -> Option<u16> {
+    let y = ((value >> 9) & 4095) as u16;
+    (y != 0).then_some(y)
 }
 /// Packed ECO: bits 7-15 hold 1..=500 for A00..E99; 0 means none. The low
 /// seven bits are a ChessBase sub-classification and are not shown.
@@ -210,6 +219,8 @@ pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
         black_elo: None,
         round: None,
         eco_raw: None,
+        year: None,
+        move_count: 0,
         diagnostics: vec![],
     };
     if r.kind != EntryKind::Game {
@@ -225,6 +236,8 @@ pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
     r.source_id = Some(be24(&bytes[21..24]));
     let packed = be24(&bytes[24..27]);
     r.date = date(packed);
+    r.year = year(packed);
+    r.move_count = bytes[45];
     if packed != 0 && r.date.is_none() {
         r.diagnostics.push(Diagnostic::new(
             "invalidDate",

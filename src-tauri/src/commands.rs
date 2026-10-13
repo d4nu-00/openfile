@@ -440,3 +440,38 @@ pub async fn startup_shown(
     let _ = (window, destination);
     Ok(())
 }
+#[tauri::command]
+pub async fn search_games(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    filter: cbh_reader::search::GameFilter,
+    request_id: String,
+) -> Result<crate::searches::SearchResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.search_games(database_id, filter, request_id)).await
+}
+#[tauri::command]
+pub fn cancel_search(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_search(database_id)
+}
+#[tauri::command]
+pub fn clear_search(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.clear_search(database_id)
+}
+#[tauri::command]
+pub async fn read_search_page(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    start: String,
+    limit: usize,
+    request_id: String,
+) -> Result<PageResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.read_search_page(database_id, start, limit, request_id)).await
+}

@@ -84,7 +84,7 @@ Names in backticks are ChessBase command ids, for traceability.
 
 ## 4. Search
 
-- [ ] P1 🟢 Search mask, game data: players, colour, event, site, year, Elo, ECO, result, moves, annotator, source (`OPEN_SEARCHMASK`)
+- [ ] P1 🟢 Search mask, game data: players, colour, event, site, year, Elo, ECO, result, moves, annotator, source (`OPEN_SEARCHMASK`) *(partial: players with Wins Only and Ignore colours, tournament/site, annotator, Elo modes, year, ECO, moves and result search whole databases; source, Elo difference, mate/stalemate/check and text are not yet searchable)*
 - [ ] P1 🟢 Position search: exact position, with OR/NOT boards and mirrored search
 - [ ] P1 🟢 Find the current board position in a database (`FINDINDBBOARD`, `FINDPOSITION`)
 - [ ] P2 🟢 Material search (endgame type, material balance)
@@ -92,7 +92,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [ ] P2 🟢 Manoeuvre search (piece routes) and attack/defence patterns
 - [ ] P3 🟢 Game phase and structural theme filters
 - [ ] P2 🟢 Save and load search masks (`SAVE_SEARCHMASK`)
-- [ ] P1 🟢 Filter the list from the search mask (`DBTOOLSSEARCH`) *(partial: workbench filters the loaded page only)*
+- [x] P1 🟢 Filter the list from the search mask (`DBTOOLSSEARCH`) *(Ctrl+F searches the whole database; the page text filter is kept as Quick Filter)*
 - [ ] P2 🟢 Search white/black games of a player, games with the same players (`INSTALLWHITESUBSET`, `FIND_PREDECESSORS`)
 - [ ] P2 🟢 Similar endgames, structures, moves, tactics and patterns (`SIMILAR_ENDGAMES`, `SIMILAR_STRUCTURES`, `SIMILAR_MOVES`, `AR_TACTICS`, `SimilarPattern`)
 - [ ] P2 🟡 Online database search; Lichess's opening explorer API could stand in (`FINDONLINEDBBOARD`, `FindOnlineDB`)

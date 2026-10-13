@@ -129,6 +129,17 @@ export function demoApi(): WorkbenchApi {
     startupShown: async () => {},
     chooseNewDatabase: async () => null,
     confirmEditing: async () => false,
+    searchGames: async (_db, _filter, requestId) => ({
+      requestId,
+      hits: "200",
+      scanned: "2400",
+      truncated: false,
+      cancelled: false,
+    }),
+    cancelSearch: async () => {},
+    clearSearch: async () => {},
+    readSearchPage: async (db, start, limit, requestId) =>
+      api.readPage!(db, start, limit, requestId),
     openDatabase: async (_path, requestId) => ({
       requestId,
       databaseId: "demo",

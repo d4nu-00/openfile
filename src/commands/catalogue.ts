@@ -157,9 +157,23 @@ const list: CommandMeta[] = [
   {
     id: "filter-games",
     label: "Filter Games",
-    tip: "Filter the games shown in this list",
+    tip: "Use the search mask as filter in this game list",
     icon: Filter,
     keys: "Ctrl+F",
+    views: db,
+  },
+  {
+    id: "quick-filter",
+    label: "Quick Filter",
+    tip: "Filter the loaded page by any text (workbench)",
+    icon: Search,
+    views: db,
+  },
+  {
+    id: "reset-filter",
+    label: "Reset Filter",
+    tip: "Show all games of the database again (workbench)",
+    icon: X,
     views: db,
   },
   {
@@ -695,7 +709,13 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
         { label: "Board", items: [L("open-board")] },
         {
           label: "Search games",
-          items: [L("filter-games"), S("search-online"), S("search-hard-disk")],
+          items: [
+            L("filter-games"),
+            S("quick-filter"),
+            S("reset-filter"),
+            S("search-online"),
+            S("search-hard-disk"),
+          ],
         },
         {
           label: "Players",

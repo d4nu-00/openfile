@@ -15,6 +15,8 @@ import type {
   PositionResponse,
   StartupRequest,
   SaveGameResponse,
+  GameFilter,
+  SearchResponse,
 } from "./types";
 export const backend = {
   pickEngine: () =>
@@ -149,6 +151,24 @@ export const backend = {
     }),
   setDeleted: (databaseId: string, ordinal: string, deleted: boolean) =>
     invoke<void>("set_deleted", { databaseId, ordinal, deleted }),
+  searchGames: (databaseId: string, filter: GameFilter, requestId: string) =>
+    invoke<SearchResponse>("search_games", { databaseId, filter, requestId }),
+  cancelSearch: (databaseId: string) =>
+    invoke<void>("cancel_search", { databaseId }),
+  clearSearch: (databaseId: string) =>
+    invoke<void>("clear_search", { databaseId }),
+  readSearchPage: (
+    databaseId: string,
+    start: string,
+    limit: number,
+    requestId: string,
+  ) =>
+    invoke<PageResponse>("read_search_page", {
+      databaseId,
+      start,
+      limit,
+      requestId,
+    }),
   readPage: (
     databaseId: string,
     start: string,

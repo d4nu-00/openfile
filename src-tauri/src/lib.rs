@@ -4,6 +4,7 @@ pub mod documents;
 pub mod engine_commands;
 pub mod registry;
 pub mod save;
+pub mod searches;
 #[cfg(all(debug_assertions, target_os = "macos"))]
 pub mod snapshot;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -102,6 +103,10 @@ pub fn run() {
             commands::save_game,
             commands::replace_game,
             commands::set_deleted,
+            commands::search_games,
+            commands::cancel_search,
+            commands::clear_search,
+            commands::read_search_page,
             commands::read_page,
             commands::load_entry,
             commands::position_at,

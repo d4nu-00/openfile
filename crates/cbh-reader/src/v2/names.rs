@@ -277,6 +277,59 @@ impl NameIndex {
         self.cache.put((TEAM, id), Cached::Name(v.clone()));
         Ok(v)
     }
+    /// Calls `f` with each record's leading strings, in id order.
+    fn each(
+        &self,
+        kind: usize,
+        n: usize,
+        mut f: impl FnMut(u32, &[String]) -> bool,
+    ) -> Result<(), CbhError> {
+        let Some(lists) = &self.lists else {
+            return Ok(());
+        };
+        for id in 0..lists.lists[kind].count {
+            let bytes = lists.record(kind, id)?;
+            let mut fields = Fields {
+                bytes: &bytes,
+                at: 0,
+            };
+            let mut values = Vec::with_capacity(n);
+            for _ in 0..n {
+                values.push(
+                    fields
+                        .text()
+                        .map(|t| t.text.unwrap_or_default())
+                        .unwrap_or_default(),
+                );
+            }
+            if !f(id, &values) {
+                break;
+            }
+        }
+        Ok(())
+    }
+    /// Every player as (id, last name, first name).
+    pub fn each_player(&self, mut f: impl FnMut(u32, &str, &str) -> bool) -> Result<(), CbhError> {
+        self.each(PLAYERS, 2, |id, v| f(id, &v[0], &v[1]))
+    }
+    /// Every tournament as (id, event, site).
+    pub fn each_tournament(
+        &self,
+        mut f: impl FnMut(u32, &str, &str) -> bool,
+    ) -> Result<(), CbhError> {
+        self.each(TOURNAMENTS, 2, |id, v| f(id, &v[1], &v[0]))
+    }
+    /// Annotators are player records in 2CBH: (id, "Last, First").
+    pub fn each_annotator(&self, mut f: impl FnMut(u32, &str) -> bool) -> Result<(), CbhError> {
+        self.each(PLAYERS, 2, |id, v| {
+            let name = match (v[0].is_empty(), v[1].is_empty()) {
+                (_, true) => v[0].clone(),
+                (true, false) => v[1].clone(),
+                _ => format!("{}, {}", v[0], v[1]),
+            };
+            f(id, &name)
+        })
+    }
     pub fn verify_unchanged(&self) -> Result<(), CbhError> {
         self.lists
             .as_ref()

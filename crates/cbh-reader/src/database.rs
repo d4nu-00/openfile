@@ -286,7 +286,7 @@ impl Database {
     pub fn info(&self) -> &DatabaseInfo {
         &self.info
     }
-    fn verify(&self) -> Result<(), CbhError> {
+    pub(crate) fn verify(&self) -> Result<(), CbhError> {
         self.header.verify_unchanged()?;
         self.entities.verify_unchanged()?;
         if let Some(file) = &self.moves {
@@ -323,6 +323,56 @@ impl Database {
                 Ok(raw)
             }
             DatabaseFormat::New => crate::v2::record::parse_record(&bytes, ordinal),
+        }
+    }
+    /// Records `start .. start + n` read in one range (game entries only get
+    /// their classic team ids in `raw`, which search does not need).
+    pub(crate) fn raw_chunk(
+        &self,
+        start: u64,
+        n: u64,
+    ) -> Result<Vec<crate::header::RawEntry>, CbhError> {
+        if start == 0 || start + n - 1 > self.info.entry_count {
+            return Err(CbhError::Bounds);
+        }
+        let size = self.format.record_size();
+        let bytes = self
+            .header
+            .read_exact_range(start * size as u64, n as usize * size)?;
+        bytes
+            .chunks_exact(size)
+            .enumerate()
+            .map(|(i, b)| match self.format {
+                DatabaseFormat::Classic => crate::header::parse_record(b, start + i as u64),
+                DatabaseFormat::New => crate::v2::record::parse_record(b, start + i as u64),
+            })
+            .collect()
+    }
+    pub(crate) fn names_each_player(
+        &self,
+        f: &mut dyn FnMut(u32, &str, &str) -> bool,
+    ) -> Result<(), CbhError> {
+        match &self.entities {
+            Names::Classic(t) => t.each_player(f),
+            Names::New(t) => t.each_player(f),
+        }
+    }
+    pub(crate) fn names_each_tournament(
+        &self,
+        f: &mut dyn FnMut(u32, &str, &str) -> bool,
+    ) -> Result<(), CbhError> {
+        match &self.entities {
+            Names::Classic(t) => t.each_tournament(f),
+            Names::New(t) => t.each_tournament(f),
+        }
+    }
+    pub(crate) fn names_each_annotator(
+        &self,
+        f: &mut dyn FnMut(u32, &str) -> bool,
+    ) -> Result<(), CbhError> {
+        match &self.entities {
+            Names::Classic(t) => t.each_annotator(f),
+            Names::New(t) => t.each_annotator(f),
         }
     }
     fn summary(&mut self, r: crate::header::RawEntry) -> Result<EntrySummary, CbhError> {

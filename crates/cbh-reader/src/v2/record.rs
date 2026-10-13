@@ -98,6 +98,8 @@ pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
         black_elo: None,
         round: None,
         eco_raw: None,
+        year: None,
+        move_count: 0,
         diagnostics: vec![],
     };
     let offset = |v: u64| if v == 0 { None } else { Some(v) };
@@ -117,6 +119,8 @@ pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
     r.black_team_id = id(bytes, 72, d);
     let packed = le32(bytes, 188);
     r.date = crate::header::date(packed);
+    r.year = crate::header::year(packed);
+    r.move_count = bytes[138];
     if packed != 0 && r.date.is_none() {
         r.diagnostics.push(Diagnostic::new(
             "invalidDate",

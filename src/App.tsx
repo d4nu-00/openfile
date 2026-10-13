@@ -8,6 +8,7 @@ import { useEditing } from "./state/editing";
 import { useAnalysis } from "./state/analysis";
 import { CommentEditor } from "./components/CommentEditor";
 import { UnsavedDialog } from "./components/UnsavedDialog";
+import { SearchMask } from "./components/SearchMask";
 import { EnginePanel } from "./components/EnginePanel";
 import { NotationTree } from "./components/NotationTree";
 import { Diagnostics } from "./components/Diagnostics";
@@ -55,6 +56,7 @@ export function App({
   const [palette, setPalette] = useState(false);
   const [filter, setFilter] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
+  const [maskOpen, setMaskOpen] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [ordinal, setOrdinal] = useState("1");
   const [square, setSquare] = useState<string>();
@@ -231,9 +233,18 @@ export function App({
     "open-board": { run: () => setView("game"), enabled: !!game },
     "database-window": { run: () => setView("database") },
     "filter-games": {
+      run: () => setMaskOpen(true),
+      enabled: !!state.database,
+      pressed: !!state.search,
+    },
+    "quick-filter": {
       run: () => setFilterOpen((o) => !o),
       enabled: !!state.page,
       pressed: filterOpen,
+    },
+    "reset-filter": {
+      run: () => w.clearSearch(),
+      enabled: !!state.search,
     },
     "previous-page": {
       run: () => readPage(-1),
@@ -300,7 +311,11 @@ export function App({
     "command-search": { run: () => setPalette(true) },
     "stop-process": { run: () => a.stop(), enabled: a.enabled },
   };
-  useShortcuts(view, bindings, !!e.question || palette || promotion.length > 0);
+  useShortcuts(
+    view,
+    bindings,
+    !!e.question || palette || maskOpen || promotion.length > 0,
+  );
   // "/" also opens command search when focus is not in a field.
   useEffect(() => {
     function slash(event: KeyboardEvent) {
@@ -438,10 +453,20 @@ export function App({
               <section className="pane list-pane" aria-label="Database">
                 <div className="pane-header">
                   <strong>
-                    {state.database
-                      ? `${state.database.entryCount} entries`
-                      : "No database open"}
+                    {state.search
+                      ? `${state.search.hits} of ${state.database?.entryCount} entries found`
+                      : state.database
+                        ? `${state.database.entryCount} entries`
+                        : "No database open"}
                   </strong>
+                  {state.search && (
+                    <button
+                      className="link-button"
+                      onClick={() => void w.clearSearch()}
+                    >
+                      Reset filter
+                    </button>
+                  )}
                   {pgnSelect}
                   {state.dirty && (
                     <span className="badge">Unsaved changes</span>
@@ -625,6 +650,17 @@ export function App({
         />
       )}
       <UnsavedDialog question={e.question} answer={e.answer} />
+      {maskOpen && (
+        <SearchMask
+          initial={state.search?.filter}
+          onClose={() => setMaskOpen(false)}
+          onSearch={(filter) => {
+            setMaskOpen(false);
+            setView("database");
+            void w.search(filter);
+          }}
+        />
+      )}
     </div>
   );
 }

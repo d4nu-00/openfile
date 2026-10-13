@@ -192,6 +192,19 @@ Frontend tests cover New, Open for Editing, Save, Replace and Delete.
 ChessBase needs are described in [writing](writing.md), with a checklist for
 that test.
 
+## Game-data search (2026-10-13)
+
+The `search` example ran whole-database searches on the Mega sample (release
+build, warm cache):
+* Kasparov against Karpov, colours ignored: 193 games from the classic
+  family's 11,151,119 entries in 4.3 s.
+* Carlsen wins since 2024 in B20–B99: 87 games in 3.7 s.
+* Morphy wins in the 2CBH family: 320 games from 24,783 entries in 0.23 s.
+
+Only the entry index and the name tables are read; no game is decoded.
+Synthetic tests check each field, the colour and wins rules, deletion, the
+hit limit and cancellation in both families.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

@@ -197,3 +197,28 @@ fn classic_annotators_sources_and_teams_resolve() {
     );
     assert_eq!(db.page(1, 1).unwrap().entries[0].white_team, None);
 }
+#[test]
+fn classic_search_resolves_names_from_the_tables() {
+    use cbh_reader::search::{GameFilter, PlayerQuery};
+    let d = family(true);
+    let mut db = open(&d);
+    let filter = GameFilter {
+        white: PlayerQuery {
+            last: "alp".into(),
+            first: String::new(),
+        },
+        tournament: "alpha".into(),
+        ..Default::default()
+    };
+    let found = db
+        .search(
+            &filter,
+            10,
+            &std::sync::atomic::AtomicBool::new(false),
+            |_| {},
+        )
+        .unwrap();
+    // Entries 1 and 2 are games naming player 0 and tournament 0; 3 is text.
+    assert_eq!(found.ordinals, [1, 2]);
+    assert_eq!(found.scanned, 3);
+}

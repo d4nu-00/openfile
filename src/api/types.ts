@@ -181,3 +181,48 @@ export interface StartupRequest {
   entry?: string;
   node?: number;
 }
+/** Search mask, game data tab (see docs/search.md). */
+export interface PlayerQuery {
+  last: string;
+  first: string;
+}
+export type EloMode = "none" | "one" | "both" | "average";
+export interface GameFilter {
+  white: PlayerQuery;
+  black: PlayerQuery;
+  ignoreColors: boolean;
+  winsOnly: boolean;
+  tournament: string;
+  annotator: string;
+  eloMin?: number;
+  eloMax?: number;
+  eloMode: EloMode;
+  yearMin?: number;
+  yearMax?: number;
+  ecoFrom: string;
+  ecoTo: string;
+  movesMin?: number;
+  movesMax?: number;
+  results: string[];
+  excludeDeleted: boolean;
+}
+export const emptyFilter = (): GameFilter => ({
+  white: { last: "", first: "" },
+  black: { last: "", first: "" },
+  ignoreColors: false,
+  winsOnly: false,
+  tournament: "",
+  annotator: "",
+  eloMode: "none",
+  ecoFrom: "",
+  ecoTo: "",
+  results: [],
+  excludeDeleted: false,
+});
+export interface SearchResponse {
+  requestId: string;
+  hits: string;
+  scanned: string;
+  truncated: boolean;
+  cancelled: boolean;
+}
