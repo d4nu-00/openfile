@@ -1,6 +1,6 @@
 use crate::{
     commands::{AppError, GameView},
-    registry::{Registry, decimal},
+    registry::{MAX_DOCUMENTS, Registry, decimal},
     save,
 };
 use std::{
@@ -173,7 +173,7 @@ impl Registry {
             .clone();
         let view = GameView::from_game(&game)?;
         let mut state = self.lock()?;
-        if state.documents.len() >= 10 {
+        if state.documents.len() >= MAX_DOCUMENTS {
             return Err(AppError::new("limitExceeded", "Document budget exhausted"));
         }
         let document_id = state.id("doc")?;
@@ -236,7 +236,7 @@ impl Registry {
     ) -> Result<DocumentResponse, AppError> {
         let view = GameView::from_game(&game)?;
         let mut state = self.lock()?;
-        if state.documents.len() >= 10 {
+        if state.documents.len() >= MAX_DOCUMENTS {
             return Err(AppError::new("limitExceeded", "Document budget exhausted"));
         }
         let document_id = state.id("doc")?;

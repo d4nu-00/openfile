@@ -4,6 +4,9 @@ use std::{
     path::PathBuf,
     sync::{Arc, Mutex, MutexGuard},
 };
+/// Open game documents: 8 game tabs, the preview, and games still being
+/// replaced.
+pub(crate) const MAX_DOCUMENTS: usize = 16;
 #[derive(Default)]
 pub struct Registry {
     pub(crate) state: Mutex<State>,
@@ -194,7 +197,7 @@ impl Registry {
         let (document_id, game) = if let Some(game) = loaded.game {
             let view = GameView::from_game(&game)?;
             let mut state = self.lock()?;
-            if state.documents.len() >= 10 {
+            if state.documents.len() >= MAX_DOCUMENTS {
                 return Err(AppError::new(
                     "limitExceeded",
                     "Close a document before loading another",
