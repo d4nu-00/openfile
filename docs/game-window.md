@@ -1,8 +1,9 @@
 # Game window: opening games, drawing on the board, game tabs
 
 Status: opening speed and drawing are implemented on branch
-`game-open-and-drawing` (2026-10-13). The game-tab design below is agreed
-direction; its implementation follows on its own branch.
+`game-open-and-drawing` (2026-10-13, PR #9). Game tabs are implemented on
+branch `game-tabs`, stacked on it. The direction was agreed in conversation;
+the user asked to proceed without review gates.
 
 ## Opening a game
 
@@ -113,3 +114,62 @@ convention, not a traced one.
 
 The preview board in the database window does not draw: it shows a game
 that is not open for editing.
+
+## Game tabs
+
+### What ChessBase does
+
+* Every game loaded from a database list opens in its own **board window**,
+  until **Maximum Board Windows** are open. The option is in Options ›
+  Limits (message group 50064 "Limits", item 50065), a number from 1 to 8
+  (dialog builder `0x1406cd9df`: minimum at `+0xe0` = 1, maximum at `+0xe4`
+  = 8). It is stored as `MaxGameWins` (key string `.rdata 0x1411da3e8`,
+  read at `0x14079b6db` into field `+0xc0`), and its default is **8**
+  (constructor `0x14079c01d`). The neighbouring `MaxDBListWins` ("Maximum
+  Database Windows", 50066) defaults to 5.
+* **Board Window** (`NEWBOARDWINDOW`, "Create a new board window", no default
+  key) opens an empty board window.
+* Load Next and Load Previous Game (`LOADNEXTGAME`, `LOADPREVIOUSGAME`) replace
+  the game in the current board window.
+
+How ChessBase picks the window to reuse once the maximum is reached was not
+traced.
+
+### Workbench
+
+* **Tabs.** Each open game has a tab beside the database tabs. A tab keeps
+  its own game document, selected move, unsaved-changes flag, undo history
+  (in the backend document) and origin (database and entry).
+* **The preview is not a tab.** Clicking a row in the database window shows
+  the game in the preview. Opening it (double-click, Enter, Open game) moves
+  that game into a new tab, without loading it again.
+* **New tabs.** New Game, Position Setup, Paste Game, Open PGN, Board
+  Window, and games opened from the Reference pane or a crosstable open a
+  new tab. A game that already has a tab is shown there instead.
+* **Same tab.** Load Next/Previous Game and choosing another game of a PGN
+  file replace the game in the active tab, after asking about unsaved
+  changes. Load Next/Previous needs the game to come from the database
+  shown.
+* **Maximum game tabs.** Options (`SETOPTIONS`, Ctrl+Alt+O) sets it from 1
+  to 8; the default is 8, as in ChessBase. When a new tab is needed and the
+  maximum is open, the game replaces the least recently used tab without
+  unsaved changes. If every tab has unsaved changes, the oldest one is shown
+  and the user is asked about it first. With a maximum of 1, every game
+  opens in the one tab: the behaviour of a single game window.
+* **Closing.** A tab's close button, or Close Game, closes the active tab
+  after asking about its unsaved changes. Quitting asks about every tab with
+  unsaved changes, one at a time, and stops on Cancel.
+* **Following the active tab.** The book, the reference search and the engine
+  follow the game shown: the active tab in the game view, the preview in the
+  database window.
+
+### State
+
+`WorkbenchState` keeps the shown game in its existing fields (`document`,
+`position`, `dirty`, `origin`), so editing, saving and analysis work on it
+unchanged. `focus` names its owner: a tab id, or none for the preview. The
+other games wait in `tabs` and `preview`. Changing focus stores the shown
+fields into their owner, takes the target's out, and begins new game and
+position requests, so a load started for one tab can never land in
+another. The backend keeps up to 16 documents: 8 tabs, the preview and loads
+that are still being replaced.

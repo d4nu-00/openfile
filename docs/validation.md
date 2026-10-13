@@ -381,6 +381,27 @@ Position without a search booster, the reference pane's old fallback, took
 Drawing was not driven in the real app: its debug snapshots cannot press
 mouse buttons.
 
+## Game tabs (2026-10-13)
+
+**Tests.**
+* App tests cover the settings file: ChessBase's default of 8 tabs, checks
+  of the values, a round trip, and a damaged file read as the defaults
+  without being overwritten. The document budget test now allows 16.
+* Frontend tests cover:
+  * two games opened from the list in two tabs, each keeping its game and
+    unsaved state;
+  * closing a tab with unsaved changes (Cancel, then Discard), and showing
+    the last used tab after it;
+  * at a maximum of 2 tabs set in Options, the least recently used clean
+    tab reused, and a game with a tab shown in it;
+  * quitting with two edited tabs: Cancel on the second keeps the app open,
+    and discarding both quits;
+  * New Game opening a second tab;
+  * the tab state functions.
+
+A debug build on the classic Mega opened entry 27878 at start, then ran
+Board Window: the snapshot shows both game tabs beside the database tab.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private
