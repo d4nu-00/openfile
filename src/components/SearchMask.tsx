@@ -13,18 +13,26 @@ const RESULTS: [string, string][] = [
 ];
 
 /**
- * ChessBase's search mask, game data tab: players, tournament, annotator,
- * Elo, year, ECO, moves and result. Searching filters the game list.
+ * ChessBase's search mask. The game data tab has players, tournament,
+ * annotator, Elo, year, ECO, moves and result; the position tab finds a board
+ * and side to move. Searching filters the game list.
  */
 export function SearchMask({
   initial,
+  boardFen,
   onSearch,
+  onFindPosition,
   onClose,
 }: {
   initial?: GameFilter;
+  /** The current board, offered on the position tab. */
+  boardFen?: string;
   onSearch: (filter: GameFilter) => void;
+  onFindPosition: (fen: string) => void;
   onClose: () => void;
 }) {
+  const [tab, setTab] = useState<"game" | "position">("game");
+  const [fen, setFen] = useState(boardFen ?? "");
   const [f, setF] = useState<GameFilter>(initial ?? emptyFilter());
   const set = (patch: Partial<GameFilter>) => setF((v) => ({ ...v, ...patch }));
   const player = (side: "white" | "black", label: string) => (
@@ -92,102 +100,170 @@ export function SearchMask({
         className="modal search-mask"
         onSubmit={(e) => {
           e.preventDefault();
-          onSearch(f);
+          if (tab === "position") onFindPosition(fen.trim());
+          else onSearch(f);
         }}
         onKeyDown={(e) => e.key === "Escape" && onClose()}
       >
         <h2>Search mask</h2>
-        {player("white", "White")}
-        <label className="mask-check">
-          <input
-            type="checkbox"
-            checked={f.winsOnly}
-            onChange={(e) => set({ winsOnly: e.target.checked })}
-          />
-          Wins Only
-        </label>
-        {player("black", "Black")}
-        <label className="mask-check">
-          <input
-            type="checkbox"
-            checked={f.ignoreColors}
-            onChange={(e) => set({ ignoreColors: e.target.checked })}
-          />
-          Ignore colours
-        </label>
-        <div className="mask-row">
-          <span className="mask-label">Tournament</span>
-          <input
-            aria-label="Tournament"
-            value={f.tournament}
-            onChange={(e) => set({ tournament: e.target.value })}
-          />
-        </div>
-        <div className="mask-row">
-          <span className="mask-label">Annotator</span>
-          <input
-            aria-label="Annotator"
-            value={f.annotator}
-            onChange={(e) => set({ annotator: e.target.value })}
-          />
-        </div>
-        {range("Elo", "eloMin", "eloMax")}
-        <div className="mask-row" role="radiogroup" aria-label="Elo applies to">
-          <span className="mask-label" />
+        <div className="pane-tabs mask-tabs" role="tablist">
           {(
             [
-              ["none", "None"],
-              ["one", "One"],
-              ["both", "Both"],
-              ["average", "Av"],
-            ] as [EloMode, string][]
-          ).map(([mode, label]) => (
-            <label key={mode} className="mask-check">
-              <input
-                type="radio"
-                name="elo-mode"
-                checked={f.eloMode === mode}
-                onChange={() => set({ eloMode: mode })}
-              />
+              ["game", "Game data"],
+              ["position", "Position"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+            >
               {label}
-            </label>
+            </button>
           ))}
         </div>
-        {range("Year", "yearMin", "yearMax")}
-        {range("ECO", "ecoFrom", "ecoTo", "text")}
-        {range("Moves", "movesMin", "movesMax")}
-        <fieldset className="mask-row">
-          <legend className="mask-label">Result</legend>
-          {RESULTS.map(([value, label]) => (
-            <label key={value} className="mask-check">
+        {tab === "position" && (
+          <>
+            <div className="mask-row">
+              <span className="mask-label">Position</span>
+              <input
+                aria-label="Position (FEN)"
+                className="mask-fen"
+                value={fen}
+                onChange={(e) => setFen(e.target.value)}
+              />
+            </div>
+            <div className="mask-row">
+              <span className="mask-label" />
+              <button
+                type="button"
+                disabled={!boardFen}
+                onClick={() => boardFen && setFen(boardFen)}
+              >
+                Current board
+              </button>
+            </div>
+            <p className="hint">
+              Finds the board and side to move in every game, variations
+              included. Castling rights, en passant and move numbers are
+              ignored.
+            </p>
+          </>
+        )}
+        {tab === "game" && (
+          <>
+            {player("white", "White")}
+            <label className="mask-check">
               <input
                 type="checkbox"
-                checked={f.results.includes(value)}
-                onChange={(e) =>
-                  set({
-                    results: e.target.checked
-                      ? [...f.results, value]
-                      : f.results.filter((r) => r !== value),
-                  })
-                }
+                checked={f.winsOnly}
+                onChange={(e) => set({ winsOnly: e.target.checked })}
               />
-              {label}
+              Wins Only
             </label>
-          ))}
-        </fieldset>
-        <label className="mask-check">
-          <input
-            type="checkbox"
-            checked={f.excludeDeleted}
-            onChange={(e) => set({ excludeDeleted: e.target.checked })}
-          />
-          Skip deleted games
-        </label>
+            {player("black", "Black")}
+            <label className="mask-check">
+              <input
+                type="checkbox"
+                checked={f.ignoreColors}
+                onChange={(e) => set({ ignoreColors: e.target.checked })}
+              />
+              Ignore colours
+            </label>
+            <div className="mask-row">
+              <span className="mask-label">Tournament</span>
+              <input
+                aria-label="Tournament"
+                value={f.tournament}
+                onChange={(e) => set({ tournament: e.target.value })}
+              />
+            </div>
+            <div className="mask-row">
+              <span className="mask-label">Annotator</span>
+              <input
+                aria-label="Annotator"
+                value={f.annotator}
+                onChange={(e) => set({ annotator: e.target.value })}
+              />
+            </div>
+            {range("Elo", "eloMin", "eloMax")}
+            <div
+              className="mask-row"
+              role="radiogroup"
+              aria-label="Elo applies to"
+            >
+              <span className="mask-label" />
+              {(
+                [
+                  ["none", "None"],
+                  ["one", "One"],
+                  ["both", "Both"],
+                  ["average", "Av"],
+                ] as [EloMode, string][]
+              ).map(([mode, label]) => (
+                <label key={mode} className="mask-check">
+                  <input
+                    type="radio"
+                    name="elo-mode"
+                    checked={f.eloMode === mode}
+                    onChange={() => set({ eloMode: mode })}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <div className="mask-row">
+              <span className="mask-label">Difference</span>
+              <input
+                aria-label="Elo difference at most"
+                inputMode="numeric"
+                placeholder="max"
+                value={text(f.eloDifference)}
+                onChange={(e) => set({ eloDifference: num(e.target.value) })}
+              />
+            </div>
+            {range("Year", "yearMin", "yearMax")}
+            {range("ECO", "ecoFrom", "ecoTo", "text")}
+            {range("Moves", "movesMin", "movesMax")}
+            <fieldset className="mask-row">
+              <legend className="mask-label">Result</legend>
+              {RESULTS.map(([value, label]) => (
+                <label key={value} className="mask-check">
+                  <input
+                    type="checkbox"
+                    checked={f.results.includes(value)}
+                    onChange={(e) =>
+                      set({
+                        results: e.target.checked
+                          ? [...f.results, value]
+                          : f.results.filter((r) => r !== value),
+                      })
+                    }
+                  />
+                  {label}
+                </label>
+              ))}
+            </fieldset>
+            <label className="mask-check">
+              <input
+                type="checkbox"
+                checked={f.excludeDeleted}
+                onChange={(e) => set({ excludeDeleted: e.target.checked })}
+              />
+              Skip deleted games
+            </label>
+          </>
+        )}
         <div className="mask-buttons">
           <button type="submit" autoFocus>
             Search
           </button>
-          <button type="button" onClick={() => setF(emptyFilter())}>
+          <button
+            type="button"
+            onClick={() => (tab === "game" ? setF(emptyFilter()) : setFen(""))}
+          >
             Reset
           </button>
           <button type="button" onClick={onClose}>

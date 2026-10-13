@@ -179,6 +179,13 @@ fn names_ranges_results_and_deletion() {
     assert_eq!(hits(&mut db, elo(EloMode::One, 2300)), [1, 2]);
     assert_eq!(hits(&mut db, elo(EloMode::Both, 2300)), Vec::<u64>::new());
     assert_eq!(hits(&mut db, elo(EloMode::Average, 2200)), [1, 2]);
+    // Rating difference at most N: 210 and 170 points; unrated games never.
+    let difference = |max| GameFilter {
+        elo_difference: Some(max),
+        ..all.clone()
+    };
+    assert_eq!(hits(&mut db, difference(200)), [2]);
+    assert_eq!(hits(&mut db, difference(250)), [1, 2]);
     // The hit limit stops the scan and says so.
     let r = db.search(&all, 2, &AtomicBool::new(false), |_| {}).unwrap();
     assert!(r.truncated);

@@ -205,6 +205,8 @@ export interface GameFilter {
   eloMin?: number;
   eloMax?: number;
   eloMode: EloMode;
+  /** At most this rating difference between the players. */
+  eloDifference?: number;
   yearMin?: number;
   yearMax?: number;
   ecoFrom: string;

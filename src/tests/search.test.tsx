@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderWorkbench, summary } from "./harness";
+import { renderWorkbench, startFen, summary } from "./harness";
 
 describe("search mask", () => {
   it("filters the whole database and resets", async () => {
@@ -10,6 +10,7 @@ describe("search mask", () => {
     await ui.user.type(ui.getByLabelText("White last name"), "Kasparov");
     await ui.user.click(ui.getByLabelText("Ignore colours"));
     await ui.user.type(ui.getByLabelText("Year from"), "1985");
+    await ui.user.type(ui.getByLabelText("Elo difference at most"), "150");
     await ui.user.click(ui.getByLabelText("½-½"));
     await ui.user.click(ui.getByRole("button", { name: "Search" }));
     expect(ui.api.searchGames).toHaveBeenCalledWith(
@@ -18,6 +19,7 @@ describe("search mask", () => {
         white: { last: "Kasparov", first: "" },
         ignoreColors: true,
         yearMin: 1985,
+        eloDifference: 150,
         results: ["1/2-1/2"],
       }),
       expect.any(String),
@@ -42,6 +44,23 @@ describe("search mask", () => {
 });
 
 describe("position search", () => {
+  it("finds a position from the search mask's position tab", async () => {
+    const ui = renderWorkbench({ initialView: "database" });
+    await ui.user.keyboard("{Control>}f{/Control}");
+    await ui.user.click(ui.getByRole("tab", { name: "Position" }));
+    const fen = ui.getByLabelText("Position (FEN)");
+    expect(fen).toHaveValue(startFen);
+    await ui.user.clear(fen);
+    await ui.user.type(fen, "8/8/8/4k3/8/8/8/4K3 w - - 0 1");
+    await ui.user.click(ui.getByRole("button", { name: "Search" }));
+    expect(ui.api.findPosition).toHaveBeenCalledWith(
+      "db-1",
+      "8/8/8/4k3/8/8/8/4K3 w - - 0 1",
+      expect.any(String),
+    );
+    expect(await ui.findByText("2 of 401 entries found")).toBeVisible();
+  });
+
   it("finds the board position and opens games at it", async () => {
     const ui = renderWorkbench();
     ui.api.readSearchPage.mockImplementation(

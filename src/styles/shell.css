@@ -963,3 +963,13 @@ kbd {
 .empty-state p {
   margin: 0 0 8px;
 }
+.mask-tabs {
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--pane-border);
+}
+.mask-row input.mask-fen {
+  flex: 1;
+  min-width: 360px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}

@@ -813,6 +813,12 @@ export function App({
       {maskOpen && (
         <SearchMask
           initial={state.search?.filter}
+          boardFen={state.position?.fen}
+          onFindPosition={(fen) => {
+            setMaskOpen(false);
+            setView("database");
+            void w.findPosition(fen);
+          }}
           onClose={() => setMaskOpen(false)}
           onSearch={(filter) => {
             setMaskOpen(false);

@@ -18,12 +18,20 @@ A filter combines any of these fields; every given field must match:
 | Tournament | Case-insensitive substring of the event or the site |
 | Annotator | Case-insensitive substring of the annotator's name |
 | Elo | Range for none, one, both or the average of the two ratings |
+| Difference | At most this rating difference between the players; both must be rated |
 | Year | Inclusive range; games without a year never match a year range |
 | ECO | Inclusive range of codes, A00–E99 |
 | Moves | Inclusive range of the stored main-line move count |
 | Result | Any of 1-0, 0-1, ½-½, 0-0; forfeits count as their PGN result |
 
 Text entries never match. Deleted games match unless the filter excludes them.
+
+**Difference.** In dialog 1031, "&Difference:" is an auto-checkbox (control
+1079, style `0x50010003`) beside one number field (1023) with an up-down
+(1024), in the column of the upper Elo bound. The workbench reads it as a
+maximum rating difference. This reading follows the layout and was not
+confirmed in ChessBase's code. The tab has no source field. Mate, stalemate
+and check need each game's final position and are not searched yet.
 
 **How it runs.** Name fields are resolved once: the reader scans the name
 table (CBP/CBT/CBC or 2LID) and collects the matching ids. The entry index
@@ -36,6 +44,9 @@ The result is a list of entry numbers kept by the app. The game list then
 pages through it in place of the whole database.
 
 ## Position search
+
+The search mask's Position tab takes a FEN, starting from the current board,
+and runs the same search.
 
 Find Position (game window, Find Position › Hard Disk) looks for the board
 and side to move of the current position. Castling rights, en passant and
