@@ -849,3 +849,51 @@ kbd {
 .palette-empty {
   color: var(--text-muted);
 }
+.search-mask {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+.mask-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.mask-row input:not([type]),
+.mask-row input[inputmode] {
+  flex: 1;
+  min-width: 0;
+}
+.mask-label {
+  width: 88px;
+  flex: none;
+  float: left;
+  padding: 0;
+}
+.mask-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.search-mask > .mask-check {
+  margin-left: 94px;
+}
+.mask-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.link-button {
+  border: 0;
+  background: none;
+  color: var(--accent, #2b5797);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0 6px;
+}

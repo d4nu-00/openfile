@@ -54,6 +54,8 @@ pub struct OpenDatabaseResponse {
     pub diagnostics: Vec<DiagnosticDto>,
     /// Opened for editing: games can be saved, replaced and marked deleted.
     pub writable: bool,
+    /// A current search booster exists for fast position search.
+    pub booster: bool,
 }
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -89,6 +91,9 @@ pub struct EntryDto {
     pub white_team: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub black_team: Option<String>,
+    /// In a position search: the node where the game reaches the position.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub found_node: Option<u32>,
     pub diagnostics: Vec<DiagnosticDto>,
 }
 impl From<cbh_reader::EntrySummary> for EntryDto {
@@ -116,6 +121,7 @@ impl From<cbh_reader::EntrySummary> for EntryDto {
             source: e.source,
             white_team: e.white_team,
             black_team: e.black_team,
+            found_node: None,
             diagnostics: e.diagnostics.into_iter().map(Into::into).collect(),
         }
     }
@@ -439,4 +445,78 @@ pub async fn startup_shown(
     #[cfg(not(all(debug_assertions, target_os = "macos")))]
     let _ = (window, destination);
     Ok(())
+}
+#[tauri::command]
+pub async fn search_games(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    filter: cbh_reader::search::GameFilter,
+    request_id: String,
+) -> Result<crate::searches::SearchResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.search_games(database_id, filter, request_id)).await
+}
+#[tauri::command]
+pub fn cancel_search(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_search(database_id)
+}
+#[tauri::command]
+pub fn clear_search(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.clear_search(database_id)
+}
+#[tauri::command]
+pub async fn read_search_page(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    start: String,
+    limit: usize,
+    request_id: String,
+) -> Result<PageResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.read_search_page(database_id, start, limit, request_id)).await
+}
+#[tauri::command]
+pub async fn find_position(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    fen: String,
+    request_id: String,
+) -> Result<crate::searches::SearchResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.find_position(database_id, fen, request_id)).await
+}
+#[tauri::command]
+pub async fn create_search_booster(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    events: tauri::ipc::Channel<crate::searches::BoosterProgress>,
+) -> Result<bool, AppError> {
+    let s = state.inner().clone();
+    blocking(move || {
+        let mut last = std::time::Instant::now();
+        s.create_search_booster(database_id, |done, total| {
+            if last.elapsed().as_millis() >= 250 || done == total {
+                last = std::time::Instant::now();
+                let _ = events.send(crate::searches::BoosterProgress {
+                    done: done.to_string(),
+                    total: total.to_string(),
+                });
+            }
+        })
+    })
+    .await
+}
+#[tauri::command]
+pub async fn delete_search_booster(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.delete_search_booster(database_id)).await
 }

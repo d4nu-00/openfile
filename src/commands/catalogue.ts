@@ -157,9 +157,23 @@ const list: CommandMeta[] = [
   {
     id: "filter-games",
     label: "Filter Games",
-    tip: "Filter the games shown in this list",
+    tip: "Use the search mask as filter in this game list",
     icon: Filter,
     keys: "Ctrl+F",
+    views: db,
+  },
+  {
+    id: "quick-filter",
+    label: "Quick Filter",
+    tip: "Filter the loaded page by any text (workbench)",
+    icon: Search,
+    views: db,
+  },
+  {
+    id: "reset-filter",
+    label: "Reset Filter",
+    tip: "Show all games of the database again (workbench)",
+    icon: X,
     views: db,
   },
   {
@@ -360,6 +374,20 @@ const list: CommandMeta[] = [
     tip: "Find the current position in a database",
     icon: HardDrive,
     views: game,
+  },
+  {
+    id: "create-search-booster",
+    label: "Create Search Booster",
+    tip: "Create Search Booster (Big index files for fast position search)",
+    icon: Gauge,
+    views: db,
+  },
+  {
+    id: "delete-search-booster",
+    label: "Delete Search Booster",
+    tip: "Delete Search Booster Files",
+    icon: Trash2,
+    views: db,
   },
   {
     id: "add-kibitzer",
@@ -695,7 +723,13 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
         { label: "Board", items: [L("open-board")] },
         {
           label: "Search games",
-          items: [L("filter-games"), S("search-online"), S("search-hard-disk")],
+          items: [
+            L("filter-games"),
+            S("quick-filter"),
+            S("reset-filter"),
+            S("search-online"),
+            S("search-hard-disk"),
+          ],
         },
         {
           label: "Players",
@@ -726,6 +760,10 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             S("find-double-games"),
             S("sort-database"),
           ],
+        },
+        {
+          label: "Search Booster",
+          items: [S("create-search-booster"), S("delete-search-booster")],
         },
       ],
     },

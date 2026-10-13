@@ -59,6 +59,26 @@ impl Table {
             count,
         })
     }
+    /// Calls `f` with every record in id order, reading in chunks; stops when
+    /// `f` returns false.
+    fn scan(&self, mut f: impl FnMut(u32, &[u8]) -> bool) -> Result<(), CbhError> {
+        const CHUNK: u32 = 4096;
+        let mut id = 0;
+        while id < self.count {
+            let n = CHUNK.min(self.count - id);
+            let bytes = self.file.read_exact_range(
+                self.start + id as u64 * self.stride as u64,
+                n as usize * self.stride,
+            )?;
+            for (i, row) in bytes.chunks_exact(self.stride).enumerate() {
+                if !f(id + i as u32, row) {
+                    return Ok(());
+                }
+            }
+            id += n;
+        }
+        Ok(())
+    }
     fn record(&self, id: u32) -> Result<Vec<u8>, CbhError> {
         if id >= self.count {
             return Err(CbhError::Bounds);
@@ -331,6 +351,38 @@ impl EntityTables {
     }
     pub fn bytes_read(&self) -> u64 {
         self.all().map(|t| t.file.bytes_read()).sum()
+    }
+    /// Every player as (id, last name, first name); `f` returns false to stop.
+    pub fn each_player(&self, mut f: impl FnMut(u32, &str, &str) -> bool) -> Result<(), CbhError> {
+        let Some(t) = &self.players else {
+            return Ok(());
+        };
+        t.scan(|id, row| {
+            let last = field(&row[9..39]).text.unwrap_or_default();
+            let first = field(&row[39..59]).text.unwrap_or_default();
+            f(id, &last, &first)
+        })
+    }
+    /// Every tournament as (id, event, site).
+    pub fn each_tournament(
+        &self,
+        mut f: impl FnMut(u32, &str, &str) -> bool,
+    ) -> Result<(), CbhError> {
+        let Some(t) = &self.tournaments else {
+            return Ok(());
+        };
+        t.scan(|id, row| {
+            let event = field(&row[9..49]).text.unwrap_or_default();
+            let site = field(&row[49..79]).text.unwrap_or_default();
+            f(id, &event, &site)
+        })
+    }
+    /// Every annotator as (id, name).
+    pub fn each_annotator(&self, mut f: impl FnMut(u32, &str) -> bool) -> Result<(), CbhError> {
+        let Some(t) = &self.annotators else {
+            return Ok(());
+        };
+        t.scan(|id, row| f(id, &field(&row[9..54]).text.unwrap_or_default()))
     }
 }
 /// "Last, First" from the two player name fields.

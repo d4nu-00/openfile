@@ -280,13 +280,20 @@ impl Database {
             limits,
         })
     }
+    /// Stamps of the entry index and the move file; a position index built
+    /// from this database is current while they are unchanged.
+    pub fn fingerprint(&self) -> [u64; 4] {
+        let (a, b) = self.header.stamp();
+        let (c, d) = self.moves.as_ref().map_or((0, 0), |f| f.stamp());
+        [a, b, c, d]
+    }
     pub fn source_paths(&self) -> &[std::path::PathBuf] {
         &self.source_paths
     }
     pub fn info(&self) -> &DatabaseInfo {
         &self.info
     }
-    fn verify(&self) -> Result<(), CbhError> {
+    pub(crate) fn verify(&self) -> Result<(), CbhError> {
         self.header.verify_unchanged()?;
         self.entities.verify_unchanged()?;
         if let Some(file) = &self.moves {
@@ -323,6 +330,56 @@ impl Database {
                 Ok(raw)
             }
             DatabaseFormat::New => crate::v2::record::parse_record(&bytes, ordinal),
+        }
+    }
+    /// Records `start .. start + n` read in one range (game entries only get
+    /// their classic team ids in `raw`, which search does not need).
+    pub(crate) fn raw_chunk(
+        &self,
+        start: u64,
+        n: u64,
+    ) -> Result<Vec<crate::header::RawEntry>, CbhError> {
+        if start == 0 || start + n - 1 > self.info.entry_count {
+            return Err(CbhError::Bounds);
+        }
+        let size = self.format.record_size();
+        let bytes = self
+            .header
+            .read_exact_range(start * size as u64, n as usize * size)?;
+        bytes
+            .chunks_exact(size)
+            .enumerate()
+            .map(|(i, b)| match self.format {
+                DatabaseFormat::Classic => crate::header::parse_record(b, start + i as u64),
+                DatabaseFormat::New => crate::v2::record::parse_record(b, start + i as u64),
+            })
+            .collect()
+    }
+    pub(crate) fn names_each_player(
+        &self,
+        f: &mut dyn FnMut(u32, &str, &str) -> bool,
+    ) -> Result<(), CbhError> {
+        match &self.entities {
+            Names::Classic(t) => t.each_player(f),
+            Names::New(t) => t.each_player(f),
+        }
+    }
+    pub(crate) fn names_each_tournament(
+        &self,
+        f: &mut dyn FnMut(u32, &str, &str) -> bool,
+    ) -> Result<(), CbhError> {
+        match &self.entities {
+            Names::Classic(t) => t.each_tournament(f),
+            Names::New(t) => t.each_tournament(f),
+        }
+    }
+    pub(crate) fn names_each_annotator(
+        &self,
+        f: &mut dyn FnMut(u32, &str) -> bool,
+    ) -> Result<(), CbhError> {
+        match &self.entities {
+            Names::Classic(t) => t.each_annotator(f),
+            Names::New(t) => t.each_annotator(f),
         }
     }
     fn summary(&mut self, r: crate::header::RawEntry) -> Result<EntrySummary, CbhError> {
@@ -491,32 +548,7 @@ impl Database {
             return Ok(loaded);
         };
         let offset = offset.ok_or(CbhError::Bounds)?;
-        let format = self.format;
-        let decode = || -> Result<(chess_core::Game, Vec<Diagnostic>), CbhError> {
-            match format {
-                DatabaseFormat::Classic => {
-                    let head = file.read_exact_range(offset, 4)?;
-                    let length = crate::header::be24(&head[1..]) as usize;
-                    if length > self.limits.max_game_bytes {
-                        return Err(CbhError::LimitExceeded);
-                    }
-                    let record = file.read_exact_range(offset, length)?;
-                    Ok((crate::moves::decode_classic(&record, &self.limits)?, vec![]))
-                }
-                DatabaseFormat::New => {
-                    let block =
-                        crate::v2::block::read_block(file, offset, self.limits.max_game_bytes)?;
-                    if block.kind != crate::v2::block::TYPE_GAME {
-                        return Err(CbhError::Unsupported(format!(
-                            "2CBG block type {:#06x}",
-                            block.kind
-                        )));
-                    }
-                    let decoded = crate::v2::moves::decode_moves(&block.payload, &self.limits)?;
-                    Ok((decoded.game, decoded.diagnostics))
-                }
-            }
-        };
+        let decode = || self.decode_moves_at(file, offset);
         match decode() {
             Ok((mut game, notes)) => {
                 loaded.diagnostics.extend(notes);
@@ -587,6 +619,53 @@ impl Database {
             }
         }
         Ok(loaded)
+    }
+    /// Decodes the move tree stored at `offset` of the move file.
+    fn decode_moves_at(
+        &self,
+        file: &crate::source::SourceFile,
+        offset: u64,
+    ) -> Result<(chess_core::Game, Vec<Diagnostic>), CbhError> {
+        match self.format {
+            DatabaseFormat::Classic => {
+                let head = file.read_exact_range(offset, 4)?;
+                let length = crate::header::be24(&head[1..]) as usize;
+                if length > self.limits.max_game_bytes {
+                    return Err(CbhError::LimitExceeded);
+                }
+                let record = file.read_exact_range(offset, length)?;
+                Ok((crate::moves::decode_classic(&record, &self.limits)?, vec![]))
+            }
+            DatabaseFormat::New => {
+                let block = crate::v2::block::read_block(file, offset, self.limits.max_game_bytes)?;
+                if block.kind != crate::v2::block::TYPE_GAME {
+                    return Err(CbhError::Unsupported(format!(
+                        "2CBG block type {:#06x}",
+                        block.kind
+                    )));
+                }
+                let decoded = crate::v2::moves::decode_moves(&block.payload, &self.limits)?;
+                Ok((decoded.game, decoded.diagnostics))
+            }
+        }
+    }
+    /// The move tree of a game entry from [`Database::raw_chunk`], without
+    /// names or annotations. `None` for text entries and games whose moves
+    /// are missing, unsupported or damaged; only a changed source is an error.
+    pub(crate) fn moves_of(
+        &self,
+        raw: &crate::header::RawEntry,
+    ) -> Result<Option<chess_core::Game>, CbhError> {
+        let (Some(file), Some(offset), EntryKind::Game) =
+            (&self.moves, raw.moves_offset, &raw.kind)
+        else {
+            return Ok(None);
+        };
+        match self.decode_moves_at(file, offset) {
+            Ok((game, _)) => Ok(Some(game)),
+            Err(CbhError::SourceChanged) => Err(CbhError::SourceChanged),
+            Err(_) => Ok(None),
+        }
     }
     /// Decodes this game's CBA/2CBA annotations into `game`. Only a changed
     /// source is an error; anything else becomes a status and diagnostics.

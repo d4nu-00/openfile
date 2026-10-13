@@ -204,6 +204,39 @@ export function mockApi() {
       savedRevision: expectedRevision,
     })),
     setDeleted: vi.fn().mockResolvedValue(undefined),
+    searchGames: vi
+      .fn()
+      .mockImplementation(async (_db, _filter, requestId) => ({
+        requestId,
+        hits: "2",
+        scanned: "401",
+        truncated: false,
+        cancelled: false,
+      })),
+    cancelSearch: vi.fn().mockResolvedValue(undefined),
+    findPosition: vi.fn().mockImplementation(async (_db, _fen, requestId) => ({
+      requestId,
+      hits: "2",
+      scanned: "401",
+      truncated: false,
+      cancelled: false,
+      indexed: true,
+    })),
+    createSearchBooster: vi.fn().mockImplementation(async (_db, onProgress) => {
+      onProgress({ done: "401", total: "401" });
+      return true;
+    }),
+    deleteSearchBooster: vi.fn().mockResolvedValue(undefined),
+    clearSearch: vi.fn().mockResolvedValue(undefined),
+    readSearchPage: vi
+      .fn()
+      .mockImplementation(async (_db, _start, _limit, requestId) => ({
+        requestId,
+        entries: [
+          { ...summary, ordinal: "7" },
+          { ...summary, ordinal: "42" },
+        ],
+      })),
     openDatabase: vi
       .fn()
       .mockImplementation(async (_path, requestId, writable = false) => ({

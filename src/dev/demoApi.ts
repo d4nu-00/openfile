@@ -129,6 +129,30 @@ export function demoApi(): WorkbenchApi {
     startupShown: async () => {},
     chooseNewDatabase: async () => null,
     confirmEditing: async () => false,
+    searchGames: async (_db, _filter, requestId) => ({
+      requestId,
+      hits: "200",
+      scanned: "2400",
+      truncated: false,
+      cancelled: false,
+    }),
+    cancelSearch: async () => {},
+    findPosition: async (_db, _fen, requestId) => ({
+      requestId,
+      hits: "200",
+      scanned: "2400",
+      truncated: false,
+      cancelled: false,
+      indexed: false,
+    }),
+    createSearchBooster: async (_db, onProgress) => {
+      onProgress({ done: "2400", total: "2400" });
+      return true;
+    },
+    deleteSearchBooster: async () => {},
+    clearSearch: async () => {},
+    readSearchPage: async (db, start, limit, requestId) =>
+      api.readPage!(db, start, limit, requestId),
     openDatabase: async (_path, requestId) => ({
       requestId,
       databaseId: "demo",

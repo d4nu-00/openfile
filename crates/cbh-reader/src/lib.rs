@@ -6,6 +6,8 @@ pub mod error;
 pub mod header;
 pub mod limits;
 pub mod moves;
+pub mod position;
+pub mod search;
 pub mod source;
 pub mod v2;
 pub use database::*;

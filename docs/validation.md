@@ -192,6 +192,34 @@ Frontend tests cover New, Open for Editing, Save, Replace and Delete.
 ChessBase needs are described in [writing](writing.md), with a checklist for
 that test.
 
+## Game-data search (2026-10-13)
+
+The `search` example ran whole-database searches on the Mega sample (release
+build, warm cache):
+* Kasparov against Karpov, colours ignored: 193 games from the classic
+  family's 11,151,119 entries in 4.3 s.
+* Carlsen wins since 2024 in B20–B99: 87 games in 3.7 s.
+* Morphy wins in the 2CBH family: 320 games from 24,783 entries in 0.23 s.
+
+Only the entry index and the name tables are read; no game is decoded.
+Synthetic tests check each field, the colour and wins rules, deletion, the
+hit limit and cancellation in both families.
+
+Position search on the 2CBH family (24,783 entries, warm cache):
+* Building the search booster took 4.5 s (3.2 MB), about 0.18 ms per game.
+  The 11.15-million-entry classic family would take about 35 minutes.
+* The Ruy Lopez after 3.Bb5 is reached in 3,700 games. With the booster,
+  11,009 candidates were replayed in 1.15 s; replaying every game took
+  2.5 s. Both runs found the same games at the same nodes.
+* The final position of Morphy–Duke of Brunswick: 1 game, 65 candidates,
+  0.01 s with the booster.
+
+Synthetic tests compare booster and full-replay results, including
+transpositions, positions only in variations and the side to move. They also
+check that a stale booster is not used and that a cancelled build leaves no
+file. In the real app, Find Position on the Opera Game after 4...Bxf3 listed
+9 games, each opening at that move.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

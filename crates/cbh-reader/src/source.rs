@@ -67,6 +67,15 @@ impl SourceFile {
         self.verify_unchanged()?;
         Ok(bytes)
     }
+    /// Length and modification time (nanoseconds since the epoch, 0 if
+    /// unknown), to tell whether files derived from this one are current.
+    pub fn stamp(&self) -> (u64, u64) {
+        let modified = self
+            .modified
+            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+            .map_or(0, |d| d.as_nanos() as u64);
+        (self.length, modified)
+    }
     pub fn bytes_read(&self) -> u64 {
         self.bytes.load(Ordering::Relaxed)
     }

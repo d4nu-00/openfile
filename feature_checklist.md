@@ -48,7 +48,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [ ] P2 🟢 Database views: Tile, Details, Symbols and Small Symbols (`VIEW_TILE`, `VIEWREPORTEXPL`, `VIEWSYMBOLSEXPL`)
 - [ ] P2 🟢 Database properties: icon, type, description (`EDITDBPROPERTIES`, `Properties`)
 - [ ] P2 🟢 Several databases open at once
-- [ ] P1 🟢 Search Booster: create and delete the fast position index (`DBTOOLSCREATESEARCHBOOSTER`, `DBTOOLSDELETESEARCHBOOSTER`)
+- [x] P1 🟢 Search Booster: create and delete the fast position index (`DBTOOLSCREATESEARCHBOOSTER`, `DBTOOLSDELETESEARCHBOOSTER`) *(the workbench's own index in its data folder; ChessBase's .cit/.cib files are not read)*
 - [ ] P2 🟢 Remove deleted games, i.e. compact the database (`DBTOOLSPHYSICALDELETIONS`, `REMOVEDELETEDGAMES`)
 - [ ] P2 🟢 Check integrity (`CHECKINTEGRITY`)
 - [ ] P2 🟢 Find and mark double games, with keep-better and annotation options (`REMOVEDOUBLESCMD`, `DeleteDubs`)
@@ -84,15 +84,15 @@ Names in backticks are ChessBase command ids, for traceability.
 
 ## 4. Search
 
-- [ ] P1 🟢 Search mask, game data: players, colour, event, site, year, Elo, ECO, result, moves, annotator, source (`OPEN_SEARCHMASK`)
-- [ ] P1 🟢 Position search: exact position, with OR/NOT boards and mirrored search
-- [ ] P1 🟢 Find the current board position in a database (`FINDINDBBOARD`, `FINDPOSITION`)
+- [ ] P1 🟢 Search mask, game data: players, colour, event, site, year, Elo, ECO, result, moves, annotator, source (`OPEN_SEARCHMASK`) *(partial: players with Wins Only and Ignore colours, tournament/site, annotator, Elo modes, year, ECO, moves and result search whole databases; source, Elo difference, mate/stalemate/check and text are not yet searchable)*
+- [ ] P1 🟢 Position search: exact position, with OR/NOT boards and mirrored search *(partial: exact board and side to move, in main lines and variations; no OR/NOT boards or mirroring yet)*
+- [x] P1 🟢 Find the current board position in a database (`FINDINDBBOARD`, `FINDPOSITION`) *(games open at the position found)*
 - [ ] P2 🟢 Material search (endgame type, material balance)
 - [ ] P2 🟢 Annotation and text search: symbols, commentary text, medals (`GENERALSEARCH`)
 - [ ] P2 🟢 Manoeuvre search (piece routes) and attack/defence patterns
 - [ ] P3 🟢 Game phase and structural theme filters
 - [ ] P2 🟢 Save and load search masks (`SAVE_SEARCHMASK`)
-- [ ] P1 🟢 Filter the list from the search mask (`DBTOOLSSEARCH`) *(partial: workbench filters the loaded page only)*
+- [x] P1 🟢 Filter the list from the search mask (`DBTOOLSSEARCH`) *(Ctrl+F searches the whole database; the page text filter is kept as Quick Filter)*
 - [ ] P2 🟢 Search white/black games of a player, games with the same players (`INSTALLWHITESUBSET`, `FIND_PREDECESSORS`)
 - [ ] P2 🟢 Similar endgames, structures, moves, tactics and patterns (`SIMILAR_ENDGAMES`, `SIMILAR_STRUCTURES`, `SIMILAR_MOVES`, `AR_TACTICS`, `SimilarPattern`)
 - [ ] P2 🟡 Online database search; Lichess's opening explorer API could stand in (`FINDONLINEDBBOARD`, `FindOnlineDB`)

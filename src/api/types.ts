@@ -31,6 +31,8 @@ export interface EntrySummary {
   source?: string;
   whiteTeam?: string;
   blackTeam?: string;
+  /** In a position search: the node where the game reaches the position. */
+  foundNode?: number;
   diagnostics: Diagnostic[];
 }
 export interface GameNode {
@@ -69,6 +71,8 @@ export interface OpenDatabaseResponse {
   diagnostics: Diagnostic[];
   /** Opened for editing: games can be saved, replaced and marked deleted. */
   writable?: boolean;
+  /** A current search booster exists for fast position search. */
+  booster?: boolean;
 }
 export interface SaveGameResponse {
   databaseId: string;
@@ -180,4 +184,57 @@ export interface StartupRequest {
   path?: string;
   entry?: string;
   node?: number;
+  /** Debug builds: a command id to run once the entry is shown. */
+  command?: string;
+}
+/** Search mask, game data tab (see docs/search.md). */
+export interface PlayerQuery {
+  last: string;
+  first: string;
+}
+export type EloMode = "none" | "one" | "both" | "average";
+export interface GameFilter {
+  white: PlayerQuery;
+  black: PlayerQuery;
+  ignoreColors: boolean;
+  winsOnly: boolean;
+  tournament: string;
+  annotator: string;
+  eloMin?: number;
+  eloMax?: number;
+  eloMode: EloMode;
+  yearMin?: number;
+  yearMax?: number;
+  ecoFrom: string;
+  ecoTo: string;
+  movesMin?: number;
+  movesMax?: number;
+  results: string[];
+  excludeDeleted: boolean;
+}
+export const emptyFilter = (): GameFilter => ({
+  white: { last: "", first: "" },
+  black: { last: "", first: "" },
+  ignoreColors: false,
+  winsOnly: false,
+  tournament: "",
+  annotator: "",
+  eloMode: "none",
+  ecoFrom: "",
+  ecoTo: "",
+  results: [],
+  excludeDeleted: false,
+});
+export interface SearchResponse {
+  requestId: string;
+  hits: string;
+  scanned: string;
+  truncated: boolean;
+  cancelled: boolean;
+  /** A position search used the search booster. */
+  indexed?: boolean;
+}
+export interface BoosterProgress {
+  done: string;
+  total: string;
 }

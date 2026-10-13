@@ -37,7 +37,8 @@ Signing, notarization and packaged Windows/Linux installers remain outstanding.
 
 A database named on the command line opens at start, optionally at an entry:
 `chess-workbench "My Games.2cbh" --entry 42`. With `tauri dev`, put the
-arguments after `-- --`. Debug builds also accept `--node N` to select a move,
+arguments after `-- --`. Debug builds also accept `--node N` to select a move and `--command ID` to run
+one command (for example `find-position-db`),
 and on macOS `--snapshot out.png` to save a picture of the window once it is
 shown; this needs no screen-recording permission.
 
@@ -77,6 +78,14 @@ In an editable database:
 * **Save** (Ctrl+S) appends the game as a new entry.
 * **Replace** (Ctrl+R) overwrites the entry the game came from.
 * **Delete** marks the selected entry deleted, or undeletes it.
+
+**Filter Games** (Ctrl+F) opens the search mask. It searches the whole
+database by players, tournament, annotator, Elo, year, ECO, moves and result;
+the list then shows the hits until **Reset Filter**. **Quick Filter** narrows
+the loaded page by any text. In the game window, **Find Position › Hard Disk**
+lists the games that reach the current position and opens each one there.
+**Create Search Booster** (Maintenance) indexes a database so position
+searches replay only likely games; see [docs/search.md](docs/search.md).
 
 Without an editable database, Save writes a PGN file instead, as **Save PGN**
 always does. See [docs/writing.md](docs/writing.md) for what is written; ChessBase's
