@@ -179,6 +179,8 @@ export function mockApi() {
         destination,
       })),
     chooseDatabase: vi.fn().mockResolvedValue("/synthetic/test.cbh"),
+    startupRequest: vi.fn().mockResolvedValue(null),
+    startupShown: vi.fn().mockResolvedValue(undefined),
     openDatabase: vi.fn().mockImplementation(async (_path, requestId) => ({
       ...database,
       requestId,

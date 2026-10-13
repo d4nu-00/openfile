@@ -3,11 +3,59 @@ pub mod documents;
 pub mod engine_commands;
 pub mod registry;
 pub mod save;
+#[cfg(all(debug_assertions, target_os = "macos"))]
+pub mod snapshot;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Emitter, Manager};
 #[derive(Default)]
 pub struct ExitPolicy(AtomicBool);
+/// What the command line asked to open: `chess-workbench [database] [--entry N]`.
+/// `--node N` (debug builds only) also selects a node, for previews.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Startup {
+    pub path: Option<String>,
+    pub entry: Option<String>,
+    pub node: Option<u32>,
+    /// Debug builds on macOS: write a PNG of the window once this is shown.
+    #[serde(skip)]
+    pub snapshot: Option<std::path::PathBuf>,
+}
+impl Startup {
+    pub fn parse(args: impl IntoIterator<Item = String>) -> Self {
+        let mut startup = Self::default();
+        let mut args = args.into_iter();
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "--entry" => {
+                    startup.entry = args
+                        .next()
+                        .filter(|v| v.parse::<u64>().is_ok_and(|n| n > 0))
+                }
+                "--node" if cfg!(debug_assertions) => {
+                    startup.node = args.next().and_then(|v| v.parse().ok())
+                }
+                "--snapshot" if cfg!(debug_assertions) => {
+                    startup.snapshot = args.next().map(Into::into)
+                }
+                // Platform launchers may add their own flags (e.g. -psn_ on macOS).
+                flag if flag.starts_with('-') => {}
+                path if startup.path.is_none() => startup.path = Some(path.into()),
+                _ => {}
+            }
+        }
+        startup
+    }
+}
+/// Handed to the frontend once, so a reload does not reopen the file. The
+/// snapshot destination stays here until the frontend reports it is ready.
+#[derive(Default)]
+pub struct StartupRequest(
+    pub std::sync::Mutex<Option<Startup>>,
+    pub std::sync::Mutex<Option<std::path::PathBuf>>,
+);
 pub fn run() {
+    let startup = Startup::parse(std::env::args().skip(1));
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .menu(|app| {
@@ -40,6 +88,10 @@ pub fn run() {
         })
         .manage(std::sync::Arc::new(registry::Registry::default()))
         .manage(ExitPolicy::default())
+        .manage(StartupRequest(
+            std::sync::Mutex::new(Some(startup.clone())),
+            std::sync::Mutex::new(startup.snapshot),
+        ))
         .manage(std::sync::Arc::new(
             engine_commands::EngineManager::default(),
         ))
@@ -56,6 +108,8 @@ pub fn run() {
             commands::edit_document,
             commands::save_document,
             commands::finish_close,
+            commands::startup_request,
+            commands::startup_shown,
             engine_commands::choose_engine,
             engine_commands::set_engine_option,
             engine_commands::start_analysis,

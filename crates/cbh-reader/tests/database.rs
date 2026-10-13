@@ -145,3 +145,55 @@ fn classic_annotations_load_and_bad_records_are_corrupt() {
     assert_eq!(g.annotations_status, DataStatus::Corrupt);
     assert!(g.game.is_some());
 }
+#[test]
+fn classic_annotators_sources_and_teams_resolve() {
+    let d = family(true);
+    let table = |ext: &str, stride: usize, fields: &[(usize, &[u8])]| {
+        let mut t = vec![0u8; 28 + stride];
+        t[0..4].copy_from_slice(&1u32.to_le_bytes());
+        t[8..12].copy_from_slice(&1234567890u32.to_le_bytes());
+        t[12..16].copy_from_slice(&((stride - 9) as u32).to_le_bytes());
+        for (at, bytes) in fields {
+            t[28 + at..28 + at + bytes.len()].copy_from_slice(bytes);
+        }
+        fs::write(d.path().join(format!("Synthetic.{ext}")), t).unwrap();
+    };
+    let date = ((1985u32 << 9) | (3 << 5) | 1).to_le_bytes();
+    table("cbc", 62, &[(9, b"Lasker,Emanuel")]);
+    table(
+        "cbs",
+        68,
+        &[(9, b"CBM 001"), (34, b"ChessBase"), (50, &date)],
+    );
+    table("cbe", 72, &[(9, b"Metropolitan")]);
+    // CBJ: LE32 version, record size and count; BE32 team ids from byte 32.
+    let mut j = vec![0u8; 32 + 3 * 120];
+    j[0..4].copy_from_slice(&11u32.to_le_bytes());
+    j[4..8].copy_from_slice(&120u32.to_le_bytes());
+    j[8..12].copy_from_slice(&3u32.to_le_bytes());
+    j[32 + 4..32 + 8].fill(0xff);
+    j[152..160].fill(0xff);
+    fs::write(d.path().join("Synthetic.cbj"), j).unwrap();
+    let mut db = open(&d);
+    let e = &db.page(1, 3).unwrap().entries;
+    assert_eq!(e[0].annotator.as_deref(), Some("Lasker,Emanuel"));
+    assert_eq!(e[0].source.as_deref(), Some("CBM 001"));
+    assert_eq!(e[0].source_publisher.as_deref(), Some("ChessBase"));
+    assert_eq!(e[0].source_date.as_deref(), Some("1985.03.01"));
+    assert_eq!(e[0].white_team.as_deref(), Some("Metropolitan"));
+    assert_eq!(e[0].black_team, None);
+    assert_eq!(e[1].white_team, None);
+    let g = db.load(1).unwrap().game.unwrap();
+    assert_eq!(g.tags["Annotator"], "Lasker,Emanuel");
+    assert_eq!(g.tags["SourceDate"], "1985.03.01");
+    // A damaged CBJ leaves the teams unknown and is reported.
+    fs::write(d.path().join("Synthetic.cbj"), [0u8; 40]).unwrap();
+    let mut db = open(&d);
+    assert!(
+        db.info()
+            .diagnostics
+            .iter()
+            .any(|d| d.message.contains("cbj"))
+    );
+    assert_eq!(db.page(1, 1).unwrap().entries[0].white_team, None);
+}

@@ -12,7 +12,10 @@
 use crate::{
     CbhError, Diagnostic,
     companions::CompanionSet,
-    entities::{Cached, EntityText, NameCache, TournamentText, missing},
+    entities::{
+        ANNOTATOR, Cached, EntityText, NameCache, PLAYER, SOURCE, SourceText, TEAM, TOURNAMENT,
+        TournamentText, join_names, missing,
+    },
     source::SourceFile,
 };
 
@@ -21,6 +24,12 @@ pub const DECODED_COMPANIONS: &[&str] = &["2cbh", "2cbg", "2cba", "2lid"];
 
 pub const PLAYERS: usize = 0;
 pub const TOURNAMENTS: usize = 1;
+pub const SOURCES: usize = 2;
+/// Never referenced in the sample: 2CBH annotator ids index the player list.
+pub const ANNOTATORS: usize = 3;
+pub const TEAMS: usize = 4;
+/// Multilingual titles of text entries.
+pub const TITLES: usize = 5;
 pub const LISTS: usize = 6;
 const MAX_HEADER: usize = 4096;
 const MAX_SLOT: u32 = 64 * 1024;
@@ -108,6 +117,14 @@ struct Fields<'a> {
     at: usize,
 }
 impl Fields<'_> {
+    fn le32(&mut self) -> Result<u32, CbhError> {
+        let v = self
+            .bytes
+            .get(self.at..self.at + 4)
+            .ok_or(CbhError::Truncated)?;
+        self.at += 4;
+        Ok(u32::from_le_bytes(v.try_into().unwrap()))
+    }
     fn text(&mut self) -> Result<EntityText, CbhError> {
         let head = self
             .bytes
@@ -166,42 +183,44 @@ impl NameIndex {
             diagnostics,
         )
     }
-    pub fn player(&mut self, id: u32) -> Result<EntityText, CbhError> {
-        if let Some(Cached::Player(v)) = self.cache.get((0, id)) {
+    fn fields(&self, kind: usize, id: u32) -> Result<Option<Vec<u8>>, CbhError> {
+        self.lists.as_ref().map(|l| l.record(kind, id)).transpose()
+    }
+    /// Player names: last name, then first name.
+    fn person(&mut self, key: u8, id: u32) -> Result<EntityText, CbhError> {
+        if let Some(Cached::Name(v)) = self.cache.get((key, id)) {
             return Ok(v);
         }
-        let Some(lists) = &self.lists else {
+        let Some(bytes) = self.fields(PLAYERS, id)? else {
             return Ok(missing());
         };
-        let bytes = lists.record(PLAYERS, id)?;
         let mut fields = Fields {
             bytes: &bytes,
             at: 0,
         };
         let last = fields.text()?;
-        let first = fields.text()?;
-        let mut diagnostics = last.diagnostics;
-        diagnostics.extend(first.diagnostics);
-        let text = match (last.text, first.text) {
-            (Some(a), Some(b)) => Some(format!("{a}, {b}")),
-            (a, None) => a,
-            (None, b) => b,
-        };
-        let v = EntityText { text, diagnostics };
-        self.cache.put((0, id), Cached::Player(v.clone()));
+        let v = join_names(last, fields.text()?);
+        self.cache.put((key, id), Cached::Name(v.clone()));
         Ok(v)
     }
+    pub fn player(&mut self, id: u32) -> Result<EntityText, CbhError> {
+        self.person(PLAYER, id)
+    }
+    /// 2CBH annotator ids refer to the player list: every annotated Mega game
+    /// names the same person here as the classic CBC annotator.
+    pub fn annotator(&mut self, id: u32) -> Result<EntityText, CbhError> {
+        self.person(ANNOTATOR, id)
+    }
     pub fn tournament(&mut self, id: u32) -> Result<TournamentText, CbhError> {
-        if let Some(Cached::Tournament(v)) = self.cache.get((1, id)) {
+        if let Some(Cached::Tournament(v)) = self.cache.get((TOURNAMENT, id)) {
             return Ok(v);
         }
-        let Some(lists) = &self.lists else {
+        let Some(bytes) = self.fields(TOURNAMENTS, id)? else {
             return Ok(TournamentText {
                 event: missing(),
                 site: missing(),
             });
         };
-        let bytes = lists.record(TOURNAMENTS, id)?;
         let mut fields = Fields {
             bytes: &bytes,
             at: 0,
@@ -209,7 +228,53 @@ impl NameIndex {
         let site = fields.text()?;
         let event = fields.text()?;
         let v = TournamentText { event, site };
-        self.cache.put((1, id), Cached::Tournament(v.clone()));
+        self.cache
+            .put((TOURNAMENT, id), Cached::Tournament(v.clone()));
+        Ok(v)
+    }
+    /// Sources: title, publisher, then LE32 publication and version dates
+    /// packed as in CBH; the remaining four bytes are not interpreted.
+    pub fn source(&mut self, id: u32) -> Result<SourceText, CbhError> {
+        if let Some(Cached::Source(v)) = self.cache.get((SOURCE, id)) {
+            return Ok(v);
+        }
+        let Some(bytes) = self.fields(SOURCES, id)? else {
+            return Ok(SourceText {
+                title: missing(),
+                publisher: missing(),
+                date: None,
+            });
+        };
+        let mut fields = Fields {
+            bytes: &bytes,
+            at: 0,
+        };
+        let title = fields.text()?;
+        let publisher = fields.text()?;
+        let date = crate::header::date(fields.le32()?);
+        let v = SourceText {
+            title,
+            publisher,
+            date,
+        };
+        self.cache.put((SOURCE, id), Cached::Source(v.clone()));
+        Ok(v)
+    }
+    /// Teams: the name, then five bytes that hold the year (LE16 at +2) and
+    /// nation (+4) as in CBE; they are not interpreted.
+    pub fn team(&mut self, id: u32) -> Result<EntityText, CbhError> {
+        if let Some(Cached::Name(v)) = self.cache.get((TEAM, id)) {
+            return Ok(v);
+        }
+        let Some(bytes) = self.fields(TEAMS, id)? else {
+            return Ok(missing());
+        };
+        let v = Fields {
+            bytes: &bytes,
+            at: 0,
+        }
+        .text()?;
+        self.cache.put((TEAM, id), Cached::Name(v.clone()));
         Ok(v)
     }
     pub fn verify_unchanged(&self) -> Result<(), CbhError> {

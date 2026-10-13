@@ -10,6 +10,19 @@ pub struct TournamentText {
     pub event: EntityText,
     pub site: EntityText,
 }
+/// A source: title, publisher and publication date (`YYYY.MM.DD`).
+#[derive(Clone, Debug)]
+pub struct SourceText {
+    pub title: EntityText,
+    pub publisher: EntityText,
+    pub date: Option<String>,
+}
+/// Name-cache key kinds.
+pub(crate) const PLAYER: u8 = 0;
+pub(crate) const TOURNAMENT: u8 = 1;
+pub(crate) const ANNOTATOR: u8 = 2;
+pub(crate) const SOURCE: u8 = 3;
+pub(crate) const TEAM: u8 = 4;
 struct Table {
     file: SourceFile,
     start: u64,
@@ -89,8 +102,10 @@ pub(crate) fn missing() -> EntityText {
 }
 #[derive(Clone)]
 pub(crate) enum Cached {
-    Player(EntityText),
+    /// A single name: player, annotator or team.
+    Name(EntityText),
     Tournament(TournamentText),
+    Source(SourceText),
 }
 impl Cached {
     fn cost(&self) -> usize {
@@ -104,8 +119,9 @@ impl Cached {
                     .sum::<usize>()
         };
         512 + match self {
-            Self::Player(v) => size(v),
+            Self::Name(v) => size(v),
             Self::Tournament(v) => size(&v.event) + size(&v.site),
+            Self::Source(v) => size(&v.title) + size(&v.publisher),
         }
     }
 }
@@ -149,62 +165,89 @@ impl NameCache {
         self.order.push_back(key);
     }
 }
+/// Classic name tables: CBP players, CBT tournaments, CBC annotators,
+/// CBS sources and CBE teams. Each record starts with a nine-byte tree prefix
+/// (left, right, balance) and ends with the game count and first game.
 pub struct EntityTables {
     players: Option<Table>,
     tournaments: Option<Table>,
+    annotators: Option<Table>,
+    sources: Option<Table>,
+    teams: Option<Table>,
     cache: NameCache,
 }
+/// Table extension and record stride, in field order.
+const TABLES: [(&str, usize); 5] = [
+    ("cbp", 67),
+    ("cbt", 99),
+    ("cbc", 62),
+    ("cbs", 68),
+    ("cbe", 72),
+];
 impl EntityTables {
+    fn from_tables(mut t: Vec<Option<Table>>, budget: usize) -> Self {
+        let mut next = || t.remove(0);
+        Self {
+            players: next(),
+            tournaments: next(),
+            annotators: next(),
+            sources: next(),
+            teams: next(),
+            cache: NameCache::new(budget),
+        }
+    }
     pub fn open_partial(companions: &CompanionSet, budget: usize) -> (Self, Vec<Diagnostic>) {
         let mut diagnostics = vec![];
-        let mut open = |ext, stride| {
-            companions
-                .get(ext)
-                .and_then(|path| match Table::open(path, stride) {
-                    Ok(table) => Some(table),
-                    Err(error) => {
-                        diagnostics.push(Diagnostic::new(
-                            "unavailableNameTable",
-                            format!("{ext}: {error}"),
-                        ));
-                        None
-                    }
-                })
-        };
-        let players = open("cbp", 67);
-        let tournaments = open("cbt", 99);
-        (
-            Self {
-                players,
-                tournaments,
-                cache: NameCache::new(budget),
-            },
-            diagnostics,
-        )
+        let tables = TABLES
+            .iter()
+            .map(|&(ext, stride)| {
+                companions
+                    .get(ext)
+                    .and_then(|path| match Table::open(path, stride) {
+                        Ok(table) => Some(table),
+                        Err(error) => {
+                            diagnostics.push(Diagnostic::new(
+                                "unavailableNameTable",
+                                format!("{ext}: {error}"),
+                            ));
+                            None
+                        }
+                    })
+            })
+            .collect();
+        (Self::from_tables(tables, budget), diagnostics)
+    }
+    fn all(&self) -> impl Iterator<Item = &Table> {
+        [
+            &self.players,
+            &self.tournaments,
+            &self.annotators,
+            &self.sources,
+            &self.teams,
+        ]
+        .into_iter()
+        .flatten()
     }
     pub fn verify_unchanged(&self) -> Result<(), CbhError> {
-        for table in [&self.players, &self.tournaments].into_iter().flatten() {
+        for table in self.all() {
             table.file.verify_unchanged()?;
         }
         Ok(())
     }
     pub fn open(companions: &CompanionSet, budget: usize) -> Result<Self, CbhError> {
-        let players = companions
-            .get("cbp")
-            .map(|p| Table::open(p, 67))
-            .transpose()?;
-        let tournaments = companions
-            .get("cbt")
-            .map(|p| Table::open(p, 99))
-            .transpose()?;
-        Ok(Self {
-            players,
-            tournaments,
-            cache: NameCache::new(budget),
-        })
+        let tables = TABLES
+            .iter()
+            .map(|&(ext, stride)| {
+                companions
+                    .get(ext)
+                    .map(|p| Table::open(p, stride))
+                    .transpose()
+            })
+            .collect::<Result<_, _>>()?;
+        Ok(Self::from_tables(tables, budget))
     }
     pub fn player(&mut self, id: u32) -> Result<EntityText, CbhError> {
-        if let Some(Cached::Player(v)) = self.cache.get((0, id)) {
+        if let Some(Cached::Name(v)) = self.cache.get((PLAYER, id)) {
             return Ok(v);
         }
         let Some(table) = &self.players else {
@@ -213,19 +256,12 @@ impl EntityTables {
         let row = table.record(id)?;
         let last = field(&row[9..39]);
         let first = field(&row[39..59]);
-        let mut diagnostics = last.diagnostics;
-        diagnostics.extend(first.diagnostics);
-        let text = match (last.text, first.text) {
-            (Some(a), Some(b)) => Some(format!("{a}, {b}")),
-            (a, None) => a,
-            (None, b) => b,
-        };
-        let v = EntityText { text, diagnostics };
-        self.cache.put((0, id), Cached::Player(v.clone()));
+        let v = join_names(last, first);
+        self.cache.put((PLAYER, id), Cached::Name(v.clone()));
         Ok(v)
     }
     pub fn tournament(&mut self, id: u32) -> Result<TournamentText, CbhError> {
-        if let Some(Cached::Tournament(v)) = self.cache.get((1, id)) {
+        if let Some(Cached::Tournament(v)) = self.cache.get((TOURNAMENT, id)) {
             return Ok(v);
         }
         let Some(table) = &self.tournaments else {
@@ -239,14 +275,72 @@ impl EntityTables {
             event: field(&row[9..49]),
             site: field(&row[49..79]),
         };
-        self.cache.put((1, id), Cached::Tournament(v.clone()));
+        self.cache
+            .put((TOURNAMENT, id), Cached::Tournament(v.clone()));
+        Ok(v)
+    }
+    /// CBC: one 45-byte name, stored as ChessBase shows it ("Last,First").
+    pub fn annotator(&mut self, id: u32) -> Result<EntityText, CbhError> {
+        self.single(ANNOTATOR, id)
+    }
+    /// CBE: a 45-byte name, then team number, season flag, year and nation,
+    /// which are not interpreted.
+    pub fn team(&mut self, id: u32) -> Result<EntityText, CbhError> {
+        self.single(TEAM, id)
+    }
+    fn single(&mut self, kind: u8, id: u32) -> Result<EntityText, CbhError> {
+        if let Some(Cached::Name(v)) = self.cache.get((kind, id)) {
+            return Ok(v);
+        }
+        let table = if kind == ANNOTATOR {
+            &self.annotators
+        } else {
+            &self.teams
+        };
+        let Some(table) = table else {
+            return Ok(missing());
+        };
+        let v = field(&table.record(id)?[9..54]);
+        self.cache.put((kind, id), Cached::Name(v.clone()));
+        Ok(v)
+    }
+    /// CBS: 25-byte title, 16-byte publisher, LE32 publication and version
+    /// dates, version and quality bytes.
+    pub fn source(&mut self, id: u32) -> Result<SourceText, CbhError> {
+        if let Some(Cached::Source(v)) = self.cache.get((SOURCE, id)) {
+            return Ok(v);
+        }
+        let Some(table) = &self.sources else {
+            return Ok(SourceText {
+                title: missing(),
+                publisher: missing(),
+                date: None,
+            });
+        };
+        let row = table.record(id)?;
+        let v = SourceText {
+            title: field(&row[9..34]),
+            publisher: field(&row[34..50]),
+            date: crate::header::date(u32::from_le_bytes(row[50..54].try_into().unwrap())),
+        };
+        self.cache.put((SOURCE, id), Cached::Source(v.clone()));
         Ok(v)
     }
     pub fn cached_bytes(&self) -> usize {
         self.cache.used
     }
     pub fn bytes_read(&self) -> u64 {
-        self.players.as_ref().map_or(0, |t| t.file.bytes_read())
-            + self.tournaments.as_ref().map_or(0, |t| t.file.bytes_read())
+        self.all().map(|t| t.file.bytes_read()).sum()
     }
+}
+/// "Last, First" from the two player name fields.
+pub(crate) fn join_names(last: EntityText, first: EntityText) -> EntityText {
+    let mut diagnostics = last.diagnostics;
+    diagnostics.extend(first.diagnostics);
+    let text = match (last.text, first.text) {
+        (Some(a), Some(b)) => Some(format!("{a}, {b}")),
+        (a, None) => a,
+        (None, b) => b,
+    };
+    EntityText { text, diagnostics }
 }

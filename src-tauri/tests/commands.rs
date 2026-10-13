@@ -115,3 +115,15 @@ fn registry_budgets_reject_excess_handles() {
         "limitExceeded"
     );
 }
+#[test]
+fn startup_arguments_name_a_database_and_entry() {
+    use chess_workbench::Startup;
+    let parse = |args: &[&str]| Startup::parse(args.iter().map(|s| s.to_string()));
+    let s = parse(&["-psn_0_123", "/data/My Games.2cbh", "--entry", "42"]);
+    assert_eq!(s.path.as_deref(), Some("/data/My Games.2cbh"));
+    assert_eq!(s.entry.as_deref(), Some("42"));
+    assert_eq!(parse(&["x.cbh", "--entry", "0"]).entry, None);
+    assert_eq!(parse(&["x.cbh", "--entry", "abc"]).entry, None);
+    assert_eq!(parse(&[]), Startup::default());
+    assert_eq!(parse(&["a.cbh", "b.cbh"]).path.as_deref(), Some("a.cbh"));
+}

@@ -77,10 +77,32 @@ fn text_record_does_not_expose_game_fields() {
     assert!(r.moves_offset.is_none());
 }
 #[test]
+fn forfeits_and_lines_use_chessbase_result_strings() {
+    use cbh_reader::header::pgn_result;
+    for (code, evaluation, shown, pgn) in [
+        (0, 0, "0-1", "0-1"),
+        (2, 0, "1-0", "1-0"),
+        (3, 0, "Line", "*"),
+        (3, 16, "±", "*"),
+        (4, 0, "-:+", "0-1"),
+        (5, 0, "=:=", "1/2-1/2"),
+        (6, 0, "+:-", "1-0"),
+        (7, 0, "0-0", "*"),
+    ] {
+        let mut r = [0; 46];
+        r[0] = 1;
+        r[27] = code;
+        r[28] = evaluation;
+        let r = parse_record(&r, 1).unwrap();
+        assert_eq!(r.result.as_deref(), Some(shown));
+        assert_eq!(pgn_result(code), Some(pgn));
+    }
+}
+#[test]
 fn unknown_result_and_invalid_date_remain_unknown() {
     let mut r = [0; 46];
     r[0] = 1;
-    r[27] = 7;
+    r[27] = 8;
     let date = (2025u32 << 9) | (4 << 5) | 31;
     r[24..27].copy_from_slice(&date.to_be_bytes()[1..]);
     let r = parse_record(&r, 1).unwrap();

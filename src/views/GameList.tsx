@@ -44,6 +44,8 @@ const columns: {
     value: (e) => e.round ?? "",
   },
   { key: "date", label: "Date", value: (e) => e.date ?? "" },
+  { key: "annotator", label: "Annotator", value: (e) => e.annotator ?? "" },
+  { key: "source", label: "Source", value: (e) => e.source ?? "" },
 ];
 
 export function matchesFilter(e: EntrySummary, filter: string) {
@@ -58,6 +60,10 @@ export function matchesFilter(e: EntrySummary, filter: string) {
     e.result,
     e.date,
     e.round,
+    e.annotator,
+    e.source,
+    e.whiteTeam,
+    e.blackTeam,
   ]
     .filter(Boolean)
     .join(" ")

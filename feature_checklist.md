@@ -29,10 +29,10 @@ Names in backticks are ChessBase command ids, for traceability.
 
 - [x] P1 🟢 Read classic CBH header records, players (CBP) and tournaments (CBT)
 - [x] P1 🟢 Decode classic CBG move streams with variations and setup positions
-- [ ] P1 🟢 Decode CBG Chess960, special and unencoded game records
+- [ ] P1 🟢 Decode CBG Chess960, special and unencoded game records *(counted: 893 Chess960 and 11 special games in Mega, no unencoded ones; needs Chess960 castling in chess-core)*
 - [x] P1 🟢 Read the newer 2CBH/2CBG format *(records, blocks, standard and set-up move trees, 2LID players and tournaments; all 24,759 Mega games cross-checked against the classic file)*
 - [x] P1 🟢 Decode CBA annotations: text, symbols, arrows, coloured squares and training *(classic CBA and 2CBA; training, quotations and other kinds are reported, not shown)*
-- [ ] P1 🟢 Decode annotators (CBC), sources (CBS), teams (CBE) and other companions
+- [x] P1 🟢 Decode annotators (CBC), sources (CBS), teams (CBE) and other companions *(and the 2LID source and team lists; result codes 3–7; titles and remaining CBJ fields not read)*
 - [ ] P1 🟢 Write databases: save new games, replace games, mark deleted (`SAVEGAME`, `REPLACEGAME`, `DBLISTSAVEGAMECMD`)
 - [ ] P1 🟢 Create a new database (`NEWDATABASE`)
 - [x] P1 🟢 Read and write PGN *(import is bounded to 2,000 games)*

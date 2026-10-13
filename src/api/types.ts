@@ -26,6 +26,11 @@ export interface EntrySummary {
   whiteElo?: number;
   blackElo?: number;
   eco?: string;
+  annotator?: string;
+  /** Source title. */
+  source?: string;
+  whiteTeam?: string;
+  blackTeam?: string;
   diagnostics: Diagnostic[];
 }
 export interface GameNode {
@@ -161,4 +166,10 @@ export function annotationsIncomplete(status: Status | undefined): boolean {
     status === "corrupt" ||
     status === "unsupported"
   );
+}
+/** A database (and optionally an entry) named on the command line. */
+export interface StartupRequest {
+  path?: string;
+  entry?: string;
+  node?: number;
 }

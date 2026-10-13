@@ -79,6 +79,25 @@ export function App({
     }
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+  // A database named on the command line opens at start, optionally at an entry.
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const startup = await api.startupRequest().catch(() => null);
+      if (!live || !startup?.path) return;
+      await w.openDatabase(startup.path);
+      if (startup.entry) {
+        await w.loadEntry(startup.entry);
+        setOrdinal(startup.entry);
+        setView("game");
+        if (startup.node !== undefined) await w.selectNode(startup.node);
+      }
+      await api.startupShown().catch(() => {});
+    })();
+    return () => {
+      live = false;
+    };
+  }, [api]);
   // Closing the game returns to the list.
   useEffect(() => {
     if (!game && view === "game") setView("database");

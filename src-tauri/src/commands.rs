@@ -79,6 +79,14 @@ pub struct EntryDto {
     pub black_elo: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub eco: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub annotator: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub white_team: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub black_team: Option<String>,
     pub diagnostics: Vec<DiagnosticDto>,
 }
 impl From<cbh_reader::EntrySummary> for EntryDto {
@@ -102,6 +110,10 @@ impl From<cbh_reader::EntrySummary> for EntryDto {
             white_elo: e.white_elo,
             black_elo: e.black_elo,
             eco: e.eco,
+            annotator: e.annotator,
+            source: e.source,
+            white_team: e.white_team,
+            black_team: e.black_team,
             diagnostics: e.diagnostics.into_iter().map(Into::into).collect(),
         }
     }
@@ -355,4 +367,25 @@ pub async fn save_document(
 pub fn finish_close(app: tauri::AppHandle, state: tauri::State<'_, crate::ExitPolicy>) {
     state.0.store(true, std::sync::atomic::Ordering::Release);
     app.exit(0);
+}
+#[tauri::command]
+pub fn startup_request(state: tauri::State<'_, crate::StartupRequest>) -> Option<crate::Startup> {
+    state.0.lock().ok()?.take()
+}
+/// The frontend has shown the startup request. In macOS debug builds this
+/// takes the `--snapshot` picture after a short settling delay.
+#[tauri::command]
+pub async fn startup_shown(
+    window: tauri::WebviewWindow,
+    state: tauri::State<'_, crate::StartupRequest>,
+) -> Result<(), AppError> {
+    let destination = state.1.lock().ok().and_then(|mut s| s.take());
+    #[cfg(all(debug_assertions, target_os = "macos"))]
+    if let Some(destination) = destination {
+        std::thread::sleep(std::time::Duration::from_millis(800));
+        crate::snapshot::take(&window, destination).map_err(|e| AppError::new("snapshot", e))?;
+    }
+    #[cfg(not(all(debug_assertions, target_os = "macos")))]
+    let _ = (window, destination);
+    Ok(())
 }

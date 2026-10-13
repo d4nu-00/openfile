@@ -141,7 +141,7 @@ fn block(kind: u16, payload: &[u8]) -> Vec<u8> {
 }
 
 fn lid(records: &[(usize, u32, Vec<u8>)]) -> Vec<u8> {
-    let slots = [64u32, 96, 32, 32, 32, 32];
+    let slots = [64u32, 96, 64, 32, 32, 32];
     let mut h = vec![];
     for v in [184u32, 6] {
         h.extend(v.to_be_bytes());
@@ -208,7 +208,16 @@ fn family() -> tempfile::TempDir {
         r[2..4].copy_from_slice(&0x0101u16.to_le_bytes());
         r[8..16].copy_from_slice(&game_at.to_le_bytes());
         r[16..24].copy_from_slice(&12u64.to_le_bytes());
-        for (at, id) in [(24, white), (32, 0), (40, 1), (48, u64::MAX), (56, 0)] {
+        let ids = [
+            (24, white),
+            (32, 0),
+            (40, 1),
+            (48, 0),
+            (56, 0),
+            (64, 0),
+            (72, 1),
+        ];
+        for (at, id) in ids {
             r[at..at + 8].copy_from_slice(&id.to_le_bytes());
         }
         r[88] = 1;
@@ -232,6 +241,16 @@ fn family() -> tempfile::TempDir {
             (0, 0, strings(&["Zeta", "Ana"])),
             (0, 1, strings(&["Müller", "Jörg"])),
             (1, 1, strings(&["Göteborg", "Open"])),
+            (2, 0, {
+                let mut b = strings(&["EXT 2021", "ChessBase"]);
+                b.truncate(b.len() - 8);
+                b.extend(((2020u32 << 9) | (10 << 5) | 23).to_le_bytes());
+                b.extend(((2020u32 << 9) | (10 << 5) | 23).to_le_bytes());
+                b.extend([1, 0, 1, 0]);
+                b
+            }),
+            (4, 0, strings(&["North"])),
+            (4, 1, strings(&["South"])),
         ]),
     )
     .unwrap();
@@ -256,7 +275,14 @@ fn new_family_pages_and_loads() {
     assert_eq!(e.round.as_deref(), Some("3.2"));
     assert_eq!(e.white_elo, Some(2700));
     assert_eq!(e.eco.as_deref(), Some("B01"));
-    assert_eq!(e.annotator_id, None);
+    // 2CBH annotator ids index the player list.
+    assert_eq!(e.annotator_id, Some(0));
+    assert_eq!(e.annotator.as_deref(), Some("Zeta, Ana"));
+    assert_eq!(e.source.as_deref(), Some("EXT 2021"));
+    assert_eq!(e.source_publisher.as_deref(), Some("ChessBase"));
+    assert_eq!(e.source_date.as_deref(), Some("2020.10.23"));
+    assert_eq!(e.white_team.as_deref(), Some("North"));
+    assert_eq!(e.black_team.as_deref(), Some("South"));
     assert!(!e.deleted);
     assert!(page.entries[1].deleted);
     assert_eq!(page.entries[1].white, None);
@@ -269,6 +295,9 @@ fn new_family_pages_and_loads() {
     assert_eq!(game.nodes.len(), SAMPLE.len() + 1);
     assert_eq!(game.tags["White"], "Müller, Jörg");
     assert_eq!(game.tags["ECO"], "B01");
+    assert_eq!(game.tags["Annotator"], "Zeta, Ana");
+    assert_eq!(game.tags["WhiteTeam"], "North");
+    assert_eq!(game.tags["SourceTitle"], "EXT 2021");
     assert_eq!(game.nodes[2].comments, ["Solid"]);
     assert_eq!(db.load(3).unwrap().moves_status, DataStatus::Unsupported);
     let lid = db

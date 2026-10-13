@@ -50,11 +50,12 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     },
     [api],
   );
-  async function openDatabase() {
+  /** Opens `chosen`, or asks for a database when none is given. */
+  async function openDatabase(chosen?: string) {
     const request = gates.database.begin();
     let candidate: string | undefined;
     try {
-      const path = await api.chooseDatabase();
+      const path = chosen ?? (await api.chooseDatabase());
       if (typeof path !== "string" || !gates.database.accept(request)) return;
       setStatus("Opening database…");
       const database = await api.openDatabase(path, request);

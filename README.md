@@ -35,6 +35,12 @@ the workspace target directory. macOS bundles appear at
 development builds. Windows needs WebView2; Linux needs its GTK/WebKit runtime.
 Signing, notarization and packaged Windows/Linux installers remain outstanding.
 
+A database named on the command line opens at start, optionally at an entry:
+`chess-workbench "My Games.2cbh" --entry 42`. With `tauri dev`, put the
+arguments after `-- --`. Debug builds also accept `--node N` to select a move,
+and on macOS `--snapshot out.png` to save a picture of the window once it is
+shown; this needs no screen-recording permission.
+
 ## Use
 
 The window follows ChessBase 18: a ribbon with its tab and group names, its
