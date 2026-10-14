@@ -29,7 +29,7 @@ Names in backticks are ChessBase command ids, for traceability.
 
 - [x] P1 🟢 Read classic CBH header records, players (CBP) and tournaments (CBT)
 - [x] P1 🟢 Decode classic CBG move streams with variations and setup positions
-- [ ] P1 🟢 Decode CBG Chess960, special and unencoded game records *(counted: 893 Chess960 and 11 special games in Mega, no unencoded ones; needs Chess960 castling in chess-core)*
+- [x] P1 🟢 Decode CBG Chess960, special and unencoded game records *(the encoding kinds were traced in CBase18 (`0x1401fb8f0`, `0x1401fc8b0`). All 892 Chess960 games with a set-up and all 11 special records of the classic Mega decode. Chess960 castling is in chess-core; PGN carries `Variant "Chess960"`; engines get `UCI_Chess960`. Saving Chess960 to 2CBH is refused (2CBG encoding not traced). The Chess960 record without a start position, and two-byte records with variations, are refused. The Mega has no unencoded records. See [formats](docs/formats.md#classic-cbg-encoding-kinds-and-chess960))*
 - [x] P1 🟢 Read the newer 2CBH/2CBG format *(records, blocks, standard and set-up move trees, 2LID players and tournaments; all 24,759 Mega games cross-checked against the classic file)*
 - [x] P1 🟢 Decode CBA annotations: text, symbols, arrows, coloured squares and training *(classic CBA and 2CBA; training, quotations and other kinds are reported, not shown)*
 - [x] P1 🟢 Decode annotators (CBC), sources (CBS), teams (CBE) and other companions *(and the 2LID source and team lists; result codes 3–7; titles and remaining CBJ fields not read)*
@@ -223,7 +223,7 @@ Names in backticks are ChessBase command ids, for traceability.
 
 ## 14. Variants and play
 
-- [ ] P3 🟢 Chess960 and Shuffle Chess games and analysis (`CHESS960`, `SHUFFLECHESS`)
+- [ ] P3 🟢 Chess960 and Shuffle Chess games and analysis (`CHESS960`, `SHUFFLECHESS`) *(partial: Chess960 games read, replay, edit, export to PGN and analyse with engines offering `UCI_Chess960`; no new-game dialog for Chess960 start positions yet)*
 - [ ] P3 🟢 Other variants: Giveaway, Twin, Pawn chess, Makruk, Ouk Chatrang (`GIVEAWAYCHESS`, `TWINCHESS`, `MAKRUK`)
 - [ ] P3 🟢 Play against an engine with a clock, blitz or long games (`NEWGAMEBLITZ`, `NEWGAMETOURNAMENT`, `TOGGLECLOCKPANE`)
 

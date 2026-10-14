@@ -81,6 +81,9 @@ impl Game {
             tags.insert("SetUp".into(), "1".into());
             tags.insert("FEN".into(), start_fen.clone());
         }
+        if pos.castles().mode() == CastlingMode::Chess960 {
+            tags.insert("Variant".into(), CHESS960.into());
+        }
         Ok(Self {
             tags,
             start_fen,
@@ -96,6 +99,15 @@ impl Game {
                 arrows: vec![],
             }],
         })
+    }
+    /// A Chess960 game: its `Variant` tag says so, or its start position
+    /// needs Chess960 castling.
+    pub fn is_chess960(&self) -> bool {
+        self.tags
+            .get("Variant")
+            .is_some_and(|v| is_chess960_variant(v))
+            || parse_position(&self.start_fen)
+                .is_ok_and(|p| p.castles().mode() == CastlingMode::Chess960)
     }
     pub fn path_to(&self, id: NodeId) -> Result<Vec<NodeId>, CoreError> {
         let mut path = Vec::new();
@@ -160,7 +172,7 @@ impl Game {
             let m = m
                 .to_move(&pos)
                 .map_err(|_| CoreError::IllegalMove(uci.into()))?;
-            UciMove::from_standard(m).to_string()
+            uci_of(&pos, m)
         };
         if reuse_existing {
             for &child in &self.nodes[parent as usize].children {
@@ -201,11 +213,7 @@ impl Game {
                 "black"
             }
             .into(),
-            legal_uci: pos
-                .legal_moves()
-                .iter()
-                .map(|&m| UciMove::from_standard(m).to_string())
-                .collect(),
+            legal_uci: pos.legal_moves().iter().map(|&m| uci_of(&pos, m)).collect(),
         })
     }
     pub fn san_at(&self, id: NodeId) -> Result<Option<String>, CoreError> {
@@ -233,12 +241,36 @@ impl Game {
     }
 }
 
+/// Reads a FEN. Positions whose castling rights standard chess cannot hold
+/// (a king or castling rook off its standard square) are read as Chess960,
+/// with X-FEN or Shredder-FEN castling letters.
 pub fn parse_position(fen: &str) -> Result<Chess, CoreError> {
     let fen: Fen = fen
         .parse()
         .map_err(|e: shakmaty::fen::ParseFenError| CoreError::InvalidFen(e.to_string()))?;
-    fen.into_position(CastlingMode::Standard)
-        .map_err(|e| CoreError::InvalidFen(e.to_string()))
+    match fen.clone().into_position(CastlingMode::Standard) {
+        Ok(pos) => Ok(pos),
+        Err(standard) => fen
+            .into_position(CastlingMode::Chess960)
+            .map_err(|_| CoreError::InvalidFen(standard.to_string())),
+    }
+}
+/// A move in UCI as this position plays it: castling is king to rook in
+/// Chess960 positions and king two squares otherwise.
+pub fn uci_of(pos: &Chess, m: shakmaty::Move) -> String {
+    UciMove::from_move(m, pos.castles().mode()).to_string()
+}
+/// The `Variant` tag value of Chess960 games.
+pub const CHESS960: &str = "Chess960";
+/// Whether a `Variant` tag names Chess960 (also "Fischerandom" and
+/// "chess 960", as PGN sources write it).
+pub fn is_chess960_variant(variant: &str) -> bool {
+    let v: String = variant
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .collect::<String>()
+        .to_ascii_lowercase();
+    v == "chess960" || v == "fischerandom" || v == "fischerrandom" || v == "960"
 }
 pub fn apply_uci(mut pos: Chess, uci: &str) -> Result<Chess, CoreError> {
     if uci == "0000" {

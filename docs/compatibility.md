@@ -10,11 +10,28 @@ games in either family.
   starts) and 2LID player, tournament, source and team names. Annotators are
   player entries. See [formats](formats.md).
 
-CBG records with no flags or only `0x40000000` (28-byte setup) are supported.
-Unencoded (`0x80000000`), special (`0x04000000`), Chess960 (`0x0a000000`), and
-all other flag combinations return an unsupported status without a partial game.
-In the classic Mega these are 893 Chess960 games (892 with a set-up) and 11
-with flags `0x01`, `0x04` or `0x05`; none is unencoded.
+CBG records with no flags or only `0x40000000` (28-byte setup) are
+supported. So are:
+* Chess960 records (`0x0a000000`, with a set-up);
+* the special encodings `0x04000000`, `0x01000000` and `0x05000000`
+  (single lines);
+
+see [formats](formats.md#classic-cbg-encoding-kinds-and-chess960).
+
+In the classic Mega, all 892 Chess960 games with a set-up decode (77,149
+moves, variations included), and so do all 11 special records. The one
+Chess960 record without a start position is refused. The following return
+an unsupported status without a partial game:
+* unencoded records (`0x80000000`);
+* other encoding kinds;
+* two-byte-word records with variations.
+
+Chess960 games read and write PGN with `[Variant "Chess960"]` and a FEN whose
+castling letters name the rooks. Castling is stored king to rook, as UCI
+writes it for Chess960. They cannot be saved to 2CBH yet: 2CBG's encoding of
+Chess960 was not traced, and the 2CBH sample has no Chess960 game to check
+it against. Saving one is refused, and Paste leaves them out and counts
+them.
 Setup control byte 0 must be 0 or 1. Every Mega Database 2025 setup stores 1,
 and cbh2pgn and libcbh both skip the byte. Byte 1's upper three bits and byte
 2's upper four bits must be zero; other values return `unsupportedSetup`. The turn bit is `0x10`,
@@ -105,8 +122,9 @@ imports are bounded to 20 MiB/2,000 games/100,000 aggregate nodes by default.
 Missing companions, corrupt records and unsupported records are reported
 separately; an unsupported game is not silently flattened into a partial game.
 
-Local UCI engine analysis is available for standard chess only. Advertised
-Chess960/variant rules cannot be enabled. Engines and private databases are
+Local UCI engine analysis covers standard chess and Chess960. A Chess960
+position is sent with `UCI_Chess960` set to true, and only to engines that
+offer that option. Other variant rules cannot be enabled. Engines and private databases are
 separate user-provided files. The first workbench does not yet implement
 ChessBase's full search/indexing, its own opening book files (.ctg and trees),
 training, multimedia, cloud services or lossless writing of every ChessBase

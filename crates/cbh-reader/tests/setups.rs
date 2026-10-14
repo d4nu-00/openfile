@@ -156,7 +156,8 @@ fn terminators_and_limits_are_checked() {
 }
 #[test]
 fn unsupported_flags_are_not_empty_games() {
-    for flag in [0x04, 0x80, 0x02, 0x0a, 0x41] {
+    // Unencoded, unknown kinds, Chess960 without a set-up position.
+    for flag in [0x80, 0x02, 0x03, 0x08, 0x0a, 0x10, 0x20] {
         assert_eq!(
             decode_classic(&[flag, 0, 0, 5, 0x0c], &ReadLimits::default())
                 .unwrap_err()
@@ -179,4 +180,140 @@ fn setup_byte_zero_one_and_impossible_en_passant_are_accepted() {
     )
     .unwrap();
     assert_eq!(g.start_fen, "4k3/8/8/8/8/8/8/4K3 w - - 0 1");
+}
+
+mod kinds {
+    use cbh_reader::{
+        ReadLimits,
+        moves::{decode_classic, tables},
+    };
+
+    /// The byte a record in `order` holds for standard byte `std` after
+    /// `count` moves.
+    fn remap(order: &[u8; 256], std: u8, count: u8) -> u8 {
+        let index = tables::STANDARD_ORDER
+            .iter()
+            .position(|&b| b == std)
+            .unwrap() as u8;
+        order[index.wrapping_add(count) as usize]
+    }
+    fn record(flags: u8, body: Vec<u8>) -> Vec<u8> {
+        let mut r = ((body.len() + 4) as u32).to_be_bytes().to_vec();
+        r[0] = flags;
+        r.extend(body);
+        r
+    }
+    /// A two-byte move in a remapped record: 0x29, then the two
+    /// deobfuscation-table bytes of the word.
+    fn coordinate(order: &[u8; 256], out: &mut Vec<u8>, count: &mut u8, word: u16) {
+        let enc = |b: u8| tables::DEOBFUSCATE.iter().position(|&d| d == b).unwrap() as u8;
+        let [hi, lo] = word.to_be_bytes();
+        out.push(remap(order, 0x29, *count));
+        out.push(remap(order, enc(hi), *count));
+        out.push(remap(order, enc(lo), *count));
+        *count += 1;
+    }
+    const G1: u16 = 6 * 8;
+    const E7: u16 = 4 * 8 + 6;
+    const E5: u16 = 4 * 8 + 4;
+
+    #[test]
+    fn chess960_records_castle_with_their_rooks() {
+        // White: K b1, R a1, R h1, P b2; Black: k b8, r a8, r h8, p e7.
+        let mut r = super::setup(
+            0,
+            0x0f,
+            1,
+            &[
+                (8, 1),
+                (0, 5),
+                (56, 5),
+                (9, 6),
+                (15, 9),
+                (7, 13),
+                (63, 13),
+                (38, 14),
+            ],
+            &[],
+        );
+        r.truncate(32);
+        r[0] = 0x4a;
+        // Kings b1, b8; rooks h1, a1, h8, a8; position number 0x0123.
+        r.extend([8, 15, 56, 0, 63, 7, 0x01, 0x23]);
+        let mut count = 0;
+        // O-O as the king's castling square g1 twice, then 1...e5.
+        coordinate(&tables::CHESS960_ORDER, &mut r, &mut count, G1 | G1 << 6);
+        coordinate(&tables::CHESS960_ORDER, &mut r, &mut count, E7 | E5 << 6);
+        r.push(remap(&tables::CHESS960_ORDER, 0x0c, count));
+        let len = r.len() as u32;
+        r[1..4].copy_from_slice(&len.to_be_bytes()[1..]);
+        let g = decode_classic(&r, &ReadLimits::default()).unwrap();
+        assert_eq!(g.tags.get("Variant").map(String::as_str), Some("Chess960"));
+        assert_eq!(g.start_fen, "rk5r/4p3/8/8/8/8/1P6/RK5R w KQkq - 0 1");
+        assert_eq!(g.nodes[1].uci.as_deref(), Some("b1h1"));
+        assert_eq!(g.san_at(1).unwrap().as_deref(), Some("O-O"));
+        assert_eq!(
+            g.position_at(2).unwrap().fen.split(' ').next(),
+            Some("rk5r/8/8/4p3/8/8/1P6/R4RK1")
+        );
+        // Castling squares that do not hold the rooks are refused.
+        let mut bad = r.clone();
+        bad[34] = 48;
+        assert!(decode_classic(&bad, &ReadLimits::default()).is_err());
+    }
+
+    #[test]
+    fn kind4_records_use_their_byte_order() {
+        // 1.e4 e5: the pawn tokens 0xff in standard bytes.
+        let body = vec![
+            remap(&tables::KIND4_ORDER, 0xff, 0),
+            remap(&tables::KIND4_ORDER, 0xff, 1),
+            remap(&tables::KIND4_ORDER, 0x0c, 2),
+        ];
+        let g = decode_classic(&record(0x04, body), &ReadLimits::default()).unwrap();
+        let ucis: Vec<_> = g.nodes[1..]
+            .iter()
+            .map(|n| n.uci.clone().unwrap())
+            .collect();
+        assert_eq!(ucis, ["e2e4", "e7e5"]);
+    }
+
+    #[test]
+    fn two_byte_word_records() {
+        let e2e4: u16 = (4 * 8 + 1) | (4 * 8 + 3) << 6;
+        let e7e5: u16 = E7 | E5 << 6;
+        let words = [e2e4, e7e5 | 0x4000];
+        // Kind 5: the byte at (value + counter) in its order.
+        let mut body = vec![];
+        for (count, w) in words.iter().enumerate() {
+            for b in w.to_be_bytes() {
+                body.push(tables::KIND5_ORDER[b.wrapping_add(count as u8) as usize]);
+            }
+        }
+        let g = decode_classic(&record(0x05, body.clone()), &ReadLimits::default()).unwrap();
+        assert_eq!(g.nodes.len(), 3);
+        assert_eq!(g.nodes[2].uci.as_deref(), Some("e7e5"));
+        // A word with variations is refused rather than guessed.
+        let mut with = body.clone();
+        with[0] = tables::KIND5_ORDER[(e2e4.to_be_bytes()[0] | 0x80) as usize];
+        assert_eq!(
+            decode_classic(&record(0x05, with), &ReadLimits::default())
+                .unwrap_err()
+                .code(),
+            "unsupportedEncoding"
+        );
+        // Kind 1: the order's byte at the value, plus the counter; its
+        // upper bits are not read.
+        let mut body = vec![];
+        for (count, w) in [e2e4 | 0x2000, e7e5].iter().enumerate() {
+            for b in w.to_be_bytes() {
+                body.push(tables::KIND1_ORDER[b as usize].wrapping_add(count as u8));
+            }
+        }
+        let g = decode_classic(&record(0x01, body), &ReadLimits::default()).unwrap();
+        assert_eq!(g.nodes[1].uci.as_deref(), Some("e2e4"));
+        // A record of just the header is a game without moves.
+        let empty = decode_classic(&[0x01, 0, 0, 4], &ReadLimits::default()).unwrap();
+        assert_eq!(empty.nodes.len(), 1);
+    }
 }

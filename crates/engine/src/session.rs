@@ -576,10 +576,33 @@ impl EngineSession {
         if self.closed {
             return Err(EngineError::Exited);
         }
+        // Chess960 positions (castling rooks off their standard squares) need
+        // the engine's UCI_Chess960; other positions are sent as standard
+        // chess, which plays the same.
+        use shakmaty::Position;
+        let chess960 = chess_core::model::parse_position(&request.start_fen)
+            .is_ok_and(|p| p.castles().mode() == shakmaty::CastlingMode::Chess960);
+        let option = self
+            .options
+            .iter()
+            .find(|o| o.name.eq_ignore_ascii_case("UCI_Chess960"))
+            .map(|o| o.name.clone());
+        if chess960 && option.is_none() {
+            return Err(EngineError::Option(
+                "This engine does not play Chess960 (it has no UCI_Chess960 option)".into(),
+            ));
+        }
         self.stop()?;
         // Drain unsolicited idle output before assigning a new request ID.
         while let Some(raw) = self.queue.pop(Duration::ZERO)? {
             self.consume(raw)?;
+        }
+        if let Some(name) = option {
+            let wanted = if chess960 { "true" } else { "false" };
+            let current = self.cached.get(&name).map_or("false", String::as_str);
+            if current != wanted {
+                self.set_option(&name, wanted)?;
+            }
         }
         self.ready(self.handshake_timeout)?;
         self.send(&position)?;

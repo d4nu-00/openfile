@@ -3,7 +3,7 @@
 //! the next capture or pawn move) and of each legal move.
 use crate::commands::AppError;
 use serde::Serialize;
-use shakmaty::{Chess, Position, san::SanPlus, uci::UciMove};
+use shakmaty::{Chess, Position, san::SanPlus};
 use shakmaty_syzygy::{AmbiguousWdl, MaybeRounded, SyzygyError, Tablebase};
 use std::{
     path::{Path, PathBuf},
@@ -215,7 +215,7 @@ impl Tablebases {
         for m in pos.legal_moves() {
             let san = SanPlus::from_move(pos.clone(), m).to_string();
             let zeroing = m.is_zeroing();
-            let uci = UciMove::from_standard(m).to_string();
+            let uci = chess_core::model::uci_of(&pos, m);
             let mut after = pos.clone();
             after.play_unchecked(m);
             let ends = if after.is_checkmate() {

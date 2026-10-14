@@ -463,6 +463,9 @@ export function App({
         result.incomplete !== "0"
           ? `${result.incomplete} without some annotations`
           : "",
+        result.chess960 && result.chess960 !== "0"
+          ? `${result.chess960} Chess960 games left out: 2CBH cannot hold them yet`
+          : "",
         result.treeStale ? "the opening tree needs rebuilding" : "",
       ].filter(Boolean);
       w.setStatus(

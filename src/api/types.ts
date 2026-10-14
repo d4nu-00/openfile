@@ -581,4 +581,6 @@ export interface PasteResponse {
   entryCount: string;
   /** The opening tree no longer covers the database. */
   treeStale: boolean;
+  /** Chess960 games left out: 2CBH cannot hold them yet. */
+  chess960?: string;
 }

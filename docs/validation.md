@@ -542,6 +542,40 @@ The measurements are in [search](search.md#measurements-classic-mega-2026-10-14)
   boards), and progress with Cancel in the status bar.
 * **Demo app.** The tab was driven in the browser pane on demo data.
 
+## Chess960 and special CBG records (2026-10-14)
+
+A census of the classic Mega's CBG headers counted:
+* 892 Chess960 records with a set-up (`0x4a`) and one without (`0x0a`);
+* 5 records with flag `0x04`, 4 with `0x05` and 2 with `0x01`.
+
+`cbh-reader/examples/entries.rs` loaded each listed entry:
+
+* **Chess960.** All 892 games load (77,149 nodes), and every move is legal.
+  The two games checked by hand match their own comments. Bytes 38–39 read
+  748 and 811, as do their "Chess 960-Position" comments. Both play the
+  castles the scores show (Leko–Adams, 11...O-O-O and 12.O-O-O). The record
+  without a set-up is refused.
+* **Special records.** All 11 load (800 nodes): the five kind-4 games, the
+  four kind-5 games and the kind-1 game each decode every byte as legal
+  moves, and the empty kind-1 record gives a game without moves.
+* **How the encodings were found.**
+  * Byte statistics showed the move stream of Chess960 records starts at
+    byte 40: byte 39 takes 149 values, byte 40 only 18.
+  * Trying each 256-byte table of `0x1401fb8f0` gave legal openings only
+    for `0x141975610` (Chess960) and `0x141974a10` (kind 4).
+  * The two-byte-word layout was read from `0x1401fc8b0`.
+* **Tests.**
+  * Reader tests encode Chess960, kind-4, kind-5 and kind-1 records with the
+    tables, and check that wrong castling squares and words with variations
+    are refused.
+  * chess-core tests: Chess960 castling, SAN, `Variant` and a PGN round
+    trip.
+  * An engine test checks that `UCI_Chess960` is switched on before a
+    Chess960 position and off after it, and that an engine without the
+    option is refused.
+* **Real app.** A debug snapshot showed Leko–Adams replayed from the
+  classic Mega.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

@@ -79,6 +79,16 @@ default. Options changed in a kibitzer of an installed engine are kept and
 applied the next time it starts. At most 32 engines are kept; paths must be
 absolute.
 
+## Chess960
+
+A position whose castling rooks stand off their standard squares is a
+Chess960 position. Before analysing it, a session sets `UCI_Chess960` to
+true, and sets it back to false for the next standard position. Castling
+moves go to the engine king to rook. An engine without the option is refused
+with a message. Chess960 games whose castling matches the standard squares
+are sent as standard chess, which plays the same. Users cannot set
+`UCI_Chess960` themselves.
+
 ## Syzygy tablebases
 
 ChessBase has "Use Tablebases" (message 737) and a "Tablebases" page (2554);
