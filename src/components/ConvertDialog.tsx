@@ -2,8 +2,13 @@ import type { ConvertEstimate } from "../api/types";
 
 export type ConvertScope = "all" | "selection";
 
-const gb = (bytes?: string | null) =>
-  bytes == null ? "unknown" : `${(Number(bytes) / 1e9).toFixed(2)} GB`;
+const gb = (bytes?: string | null) => {
+  if (bytes == null) return "unknown";
+  const n = Number(bytes);
+  return n < 1e9
+    ? `${Math.max(1, Math.round(n / 1e6))} MB`
+    : `${(n / 1e9).toFixed(2)} GB`;
+};
 
 /**
  * Convert to 2CBH (ChessBase's "Convert to free 2CBH format"): writes the

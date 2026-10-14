@@ -121,7 +121,7 @@ describe("convert to 2CBH", () => {
     );
     expect(
       await within(dialog).findByText(
-        "About 0.00 GB needed; 5.00 GB free on that disk.",
+        "About 1 MB needed; 5.00 GB free on that disk.",
       ),
     ).toBeVisible();
     await ui.user.click(

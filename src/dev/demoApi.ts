@@ -406,7 +406,7 @@ export function demoApi(): WorkbenchApi {
       treeStale: false,
     }),
     cancelPaste: async () => {},
-    chooseConvertTarget: async () => null,
+    chooseConvertTarget: async (name: string) => `/demo/${name} (2CBH).2cbh`,
     convertEstimate: async () => ({
       games: "2400",
       bytes: "4800000",
