@@ -51,6 +51,9 @@ fn main() {
                     "option name Playing Style type combo default Normal Play var Normal Play var Very Solid",
                 );
                 emit("option name Book File type string default <empty>");
+                if mode == "chess960" {
+                    emit("option name UCI_Chess960 type check default false");
+                }
                 emit("uciok");
             }
             "isready" => {

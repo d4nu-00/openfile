@@ -216,3 +216,44 @@ fn helper_alive(pid: u32) -> bool {
     }
     alive
 }
+
+#[test]
+fn chess960_positions_switch_uci_chess960_and_need_the_option() {
+    use engine::AnalysisRequest;
+    let d = tempfile::tempdir().unwrap();
+    let log = d.path().join("commands.log");
+    let mut spec = support::spec("chess960");
+    spec.arguments.push(log.as_os_str().into());
+    let mut s = EngineSession::spawn(spec, Duration::from_secs(1)).unwrap();
+    // The king on b1 castles with the h1 rook: Chess960 only.
+    let fen = "rk5r/pppppppp/8/8/8/8/PPPPPPPP/RK5R w KQkq - 0 1";
+    let request = |id: &str, start_fen: &str, history: Vec<String>, turn: &str| AnalysisRequest {
+        request_id: id.into(),
+        start_fen: start_fen.into(),
+        history,
+        root_turn: turn.into(),
+    };
+    s.analyse(request("c960", fen, vec!["b1h1".into()], "black"))
+        .unwrap();
+    s.stop().unwrap();
+    s.analyse(support::request("std", "e2e4")).unwrap();
+    s.stop().unwrap();
+    s.shutdown().unwrap();
+    let text = fs::read_to_string(&log).unwrap();
+    let on = text.find("setoption name UCI_Chess960 value true").unwrap();
+    let position = text
+        .find(&format!("position fen {fen} moves b1h1"))
+        .unwrap();
+    let off = text
+        .find("setoption name UCI_Chess960 value false")
+        .unwrap();
+    assert!(on < position && position < off, "{text}");
+
+    // An engine without the option is refused for Chess960 positions.
+    let mut plain = support::mock_session("normal");
+    let err = plain
+        .analyse(request("c960", fen, vec![], "white"))
+        .unwrap_err();
+    assert!(err.to_string().contains("Chess960"), "{err}");
+    plain.shutdown().unwrap();
+}
