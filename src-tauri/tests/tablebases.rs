@@ -69,3 +69,39 @@ fn real_tables_rank_moves() {
         .unwrap();
     assert_eq!(start.status, TablebaseStatus::TooManyPieces);
 }
+
+#[test]
+fn annotating_a_game_marks_moves_that_give_away_the_result() {
+    let game = |moves: &[&str]| {
+        let mut g = chess_core::Game::from_fen("8/8/8/4k3/8/8/8/4K2Q w - - 0 1").unwrap();
+        let mut id = 0;
+        for m in moves {
+            id = g
+                .append_uci(id, m, &chess_core::GameLimits::default())
+                .unwrap();
+        }
+        g
+    };
+    // Without tables nothing is added.
+    let none = Tablebases::default().annotate(&game(&["h1e4"])).unwrap();
+    assert_eq!(none.status, TablebaseStatus::NoTables);
+    assert!(none.items.is_empty());
+    let Some(t) = tables() else {
+        eprintln!("SYZYGY_DIR is not set: real tablebase annotation skipped");
+        return;
+    };
+    // 1.Qe4+?? Kxe4 throws the win away; 1.Qh5+ keeps it.
+    let a = t.annotate(&game(&["h1e4", "e5e4"])).unwrap();
+    assert_eq!(a.status, TablebaseStatus::Found);
+    assert_eq!(a.probed, 3);
+    assert_eq!(a.mistakes, 1);
+    let item = &a.items[0];
+    assert_eq!(item.node, 1);
+    assert_eq!(item.nag, Some(2));
+    assert_eq!(item.comment.as_deref(), Some("Tablebase: draw"));
+    assert_eq!(item.line.len(), 1);
+    assert_eq!(item.line_comment.as_deref(), Some("Tablebase: White wins"));
+    let good = t.annotate(&game(&["h1h5", "e5e4"])).unwrap();
+    assert_eq!(good.mistakes, 0);
+    assert!(good.items.is_empty());
+}

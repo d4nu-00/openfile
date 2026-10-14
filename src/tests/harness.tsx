@@ -280,6 +280,22 @@ export function mockApi(firstDatabase = 1) {
       ),
     cancelBlunderCheck: vi.fn().mockResolvedValue(undefined),
     chooseTablebaseFolder: vi.fn().mockResolvedValue("/synthetic/syzygy"),
+    tablebaseAnnotation: vi.fn().mockResolvedValue({
+      revision: "0",
+      items: [
+        {
+          node: 1,
+          nag: 2,
+          comment: "Tablebase: draw",
+          line: ["d2d4"],
+          lineComment: "Tablebase: White wins",
+        },
+      ],
+      probed: 2,
+      entered: 1,
+      mistakes: 1,
+      status: "found",
+    }),
     probeTablebase: vi
       .fn()
       .mockImplementation(async (_fen: string, requestId: string) => ({

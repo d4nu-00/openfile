@@ -280,6 +280,13 @@ export function demoApi(): WorkbenchApi {
       revision: "0",
     }),
     cancelBlunderCheck: async () => {},
+    tablebaseAnnotation: async () => ({
+      revision: "0",
+      items: [],
+      probed: 0,
+      mistakes: 0,
+      status: "noTables",
+    }),
     probeTablebase: async (_fen, requestId) => ({
       requestId,
       status: "noTables" as const,

@@ -32,6 +32,9 @@ pub struct Startup {
     /// Debug builds: a list column to sort by first, e.g. `white` or
     /// `date:desc`.
     pub sort: Option<String>,
+    /// Debug builds: a new game from this position, e.g. for snapshots of
+    /// tablebase or Chess960 positions.
+    pub fen: Option<String>,
     /// Debug builds on macOS: write a PNG of the window once this is shown.
     #[serde(skip)]
     pub snapshot: Option<std::path::PathBuf>,
@@ -55,6 +58,7 @@ impl Startup {
                 }
                 "--command" if cfg!(debug_assertions) => startup.command = args.next(),
                 "--sort" if cfg!(debug_assertions) => startup.sort = args.next(),
+                "--fen" if cfg!(debug_assertions) => startup.fen = args.next(),
                 // Platform launchers may add their own flags (e.g. -psn_ on macOS).
                 flag if flag.starts_with('-') => {}
                 path if startup.path.is_none() => startup.path = Some(path.into()),
@@ -193,6 +197,7 @@ pub fn run() {
             commands::startup_shown,
             engine_commands::probe_engine,
             tablebases::probe_tablebase,
+            tablebases::tablebase_annotation,
             blunder_check::blunder_check,
             blunder_check::cancel_blunder_check,
             settings::get_settings,

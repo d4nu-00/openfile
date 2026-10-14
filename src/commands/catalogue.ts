@@ -734,6 +734,13 @@ const list: CommandMeta[] = [
     views: game,
   },
   {
+    id: "tablebase-annotation",
+    label: "Tablebase Annotation",
+    tip: "Mark moves that give away a win or a draw, from the endgame tablebases (workbench)",
+    icon: Gauge,
+    views: game,
+  },
+  {
     id: "training-annotation",
     label: "Training Annotation",
     tip: "Insert a training question",
@@ -1113,7 +1120,10 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
       label: "Analysis",
       groups: [
         { label: "Deep Analysis", items: [L("deep-analysis")] },
-        { label: "Tactical Analysis", items: [L("tactical-analysis")] },
+        {
+          label: "Tactical Analysis",
+          items: [L("tactical-analysis"), S("tablebase-annotation")],
+        },
         {
           label: "Engine lines",
           items: [

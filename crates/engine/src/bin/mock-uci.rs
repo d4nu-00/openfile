@@ -54,6 +54,9 @@ fn main() {
                 if mode == "chess960" {
                     emit("option name UCI_Chess960 type check default false");
                 }
+                if mode == "syzygy" {
+                    emit("option name SyzygyPath type string default <empty>");
+                }
                 emit("uciok");
             }
             "isready" => {

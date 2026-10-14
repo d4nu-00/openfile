@@ -205,6 +205,7 @@ impl EngineManager {
                 standard_option(&option.name, value)?;
             }
         }
+        crate::tablebases::configure_engine(&mut session);
         let id = format!("engine-{ticket}");
         let response = EngineResponse {
             engine_id: id.clone(),

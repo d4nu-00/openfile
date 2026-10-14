@@ -109,6 +109,39 @@ its own access goes through `TBAccess.dll`, which was not studied.
 * Positions with castling rights, or with more pieces than the largest
   table, are reported as such.
 
+### What ChessBase does with tablebases
+
+Evidence: CBase18.exe 18.1.
+* Its Options keep Syzygy and Nalimov folders (`TablebaseOptions`,
+  settings key `V_TABLEBASES`; strings "Syzygy (GUI)" and "Syzygy (Engine)").
+* It hands the Syzygy folder to engines with `setoption name SyzygyPath
+  value …`, and a Nalimov path the same way.
+* "Use Tablebases" (737) is used by two functions (`0x140066670`,
+  `0x140075690`) that were not followed.
+* The search mask's Material tab (dialog 328) has a "Tablebase" checkbox
+  (1090).
+
+No ChessBase command annotates a game from the tables, and how ChessBase
+shows tablebase results in the notation was not traced.
+
+### Engines and the notation (workbench)
+
+* **SyzygyPath.** Each engine that offers `SyzygyPath` is pointed at the
+  chosen folder when it starts. That covers kibitzers and Tactical
+  Analysis, as in ChessBase. Engines without the option are left as they
+  are.
+* **Tablebase Annotation** (Analysis ribbon, a workbench command) reads the
+  main line, at most 1,000 moves:
+  * the move that brings the game into the tables gets the result, e.g.
+    "Tablebase: White wins";
+  * a move that gives away a win or a draw for its side gets "?", or "??"
+    from a win to a loss, and the result after it, e.g. "Tablebase: draw";
+  * the tables' best move becomes a variation, with its result.
+
+  Wins drawn by the 50-move rule count as draws. It is one edit, so Undo
+  removes it, and it adds nothing if the game changed meanwhile. The
+  symbols and texts are the workbench's own.
+
 ## Tactical Analysis (Blunder Check)
 
 ### What ChessBase does

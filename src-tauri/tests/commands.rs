@@ -127,4 +127,11 @@ fn startup_arguments_name_a_database_and_entry() {
     assert_eq!(parse(&["x.cbh", "--entry", "abc"]).entry, None);
     assert_eq!(parse(&[]), Startup::default());
     assert_eq!(parse(&["a.cbh", "b.cbh"]).path.as_deref(), Some("a.cbh"));
+    // Debug builds open a position as a new game.
+    let fen = "8/8/8/4k3/8/8/8/4K2Q w - - 0 1";
+    let s = parse(&["--fen", fen]);
+    if cfg!(debug_assertions) {
+        assert_eq!(s.fen.as_deref(), Some(fen));
+    }
+    assert_eq!(s.path, None);
 }

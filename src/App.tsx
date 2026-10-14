@@ -221,8 +221,8 @@ export function App({
     let live = true;
     void (async () => {
       const startup = await api.startupRequest().catch(() => null);
-      if (!live || !startup?.path) return;
-      await w.openDatabase(startup.path);
+      if (!live || !startup || (!startup.path && !startup.fen)) return;
+      if (startup.path) await w.openDatabase(startup.path);
       if (startup.sort) {
         const [column, order] = startup.sort.split(":");
         await w.sortBy(column as SortColumn, order === "desc");
@@ -233,6 +233,7 @@ export function App({
         await e.openPreview();
         if (startup.node != null) await w.selectNode(startup.node);
       }
+      if (startup.fen) await e.newGame(startup.fen);
       if (startup.command) setStartupCommand(startup.command);
       else await api.startupShown().catch(() => {});
     })();
@@ -291,6 +292,41 @@ export function App({
     });
     // The pasted move is played; after a pasted line the board stays.
     if (!whole && typeof last === "number") await w.selectNode(last);
+  }
+  /** Annotates the game's main line from the tablebases, as one edit. */
+  async function runTablebaseAnnotation() {
+    const doc = state.document;
+    if (!doc?.documentId) return;
+    const documentId = doc.documentId;
+    try {
+      const a = await api.tablebaseAnnotation(documentId);
+      if (a.status === "noTables") {
+        w.setStatus(
+          "Tablebase Annotation: choose a tablebase folder in Options",
+        );
+        return;
+      }
+      if (!a.probed) {
+        w.setStatus(
+          "Tablebase Annotation: no position of the game is in the tables",
+        );
+        return;
+      }
+      const now = w.current.current.document;
+      if (now?.documentId !== documentId || now.revision !== a.revision) {
+        w.setStatus("Tablebase Annotation: the game changed; run it again");
+        return;
+      }
+      if (a.items.length) {
+        const result = await e.edit({ kind: "addAnalysis", items: a.items });
+        if (result === null) return;
+      }
+      w.setStatus(
+        `Tablebase Annotation: ${a.probed} positions in the tables, ${a.mistakes} ${a.mistakes === 1 ? "move gives" : "moves give"} away the result`,
+      );
+    } catch (err) {
+      w.setDiagnostics([{ code: "tablebase", message: explain(err) }]);
+    }
   }
   /** Runs Tactical Analysis and adds its findings as one edit. */
   async function runBlunderCheck(
@@ -1022,6 +1058,10 @@ export function App({
     "theme-gray": { run: () => setTheme("gray"), pressed: theme === "gray" },
     "theme-black": { run: () => setTheme("black"), pressed: theme === "black" },
     "command-search": { run: () => setPalette(true) },
+    "tablebase-annotation": {
+      run: () => runTablebaseAnnotation(),
+      enabled: !!game && !busy,
+    },
     "stop-process": {
       run: () =>
         w.searching
