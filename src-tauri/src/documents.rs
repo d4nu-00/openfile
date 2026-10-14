@@ -1,6 +1,6 @@
 use crate::{
     commands::{AppError, GameView},
-    registry::{Registry, decimal},
+    registry::{MAX_DOCUMENTS, Registry, decimal},
     save,
 };
 use std::{
@@ -77,6 +77,13 @@ pub enum Edit {
         arrows: Vec<chess_core::ArrowMark>,
     },
     ClearMarks,
+    /// Moves from `parent` (an engine line), with a comment after the last.
+    AppendLine {
+        parent: u32,
+        moves: Vec<String>,
+        #[serde(default)]
+        comment: Option<String>,
+    },
     Undo,
     Redo,
 }
@@ -173,7 +180,7 @@ impl Registry {
             .clone();
         let view = GameView::from_game(&game)?;
         let mut state = self.lock()?;
-        if state.documents.len() >= 10 {
+        if state.documents.len() >= MAX_DOCUMENTS {
             return Err(AppError::new("limitExceeded", "Document budget exhausted"));
         }
         let document_id = state.id("doc")?;
@@ -236,7 +243,7 @@ impl Registry {
     ) -> Result<DocumentResponse, AppError> {
         let view = GameView::from_game(&game)?;
         let mut state = self.lock()?;
-        if state.documents.len() >= 10 {
+        if state.documents.len() >= MAX_DOCUMENTS {
             return Err(AppError::new("limitExceeded", "Document budget exhausted"));
         }
         let document_id = state.id("doc")?;
@@ -312,6 +319,26 @@ impl Registry {
                 arrows,
             } => d.game.set_marks(node, squares, arrows)?,
             Edit::ClearMarks => d.game.clear_marks(),
+            Edit::AppendLine {
+                parent,
+                moves,
+                comment,
+            } => {
+                let last =
+                    d.game
+                        .append_line(parent, &moves, &chess_core::GameLimits::default())?;
+                if let Some(text) = comment.filter(|t| !t.trim().is_empty()) {
+                    let mut comments = d.game.nodes[last as usize].comments.clone();
+                    if !comments.contains(&text) {
+                        comments.push(text);
+                        if let Err(e) = d.game.set_comments(last, comments) {
+                            d.game = before.clone();
+                            return Err(e.into());
+                        }
+                    }
+                }
+                selected = Some(last);
+            }
             Edit::Undo | Edit::Redo => {
                 let undo = matches!(edit, Edit::Undo);
                 let d = &mut *d;

@@ -3,11 +3,11 @@ import { act } from "@testing-library/react";
 import { renderWorkbench, database } from "./harness";
 
 describe("working copies", () => {
-  it("keeps an edited game when replacement is cancelled", async () => {
+  it("keeps an edited game when closing is cancelled", async () => {
     const ui = renderWorkbench({ dirty: true });
-    await ui.user.click(ui.getByRole("button", { name: "Open PGN" }));
+    await ui.user.click(ui.getByRole("button", { name: "Close game" }));
     await ui.user.click(ui.getByRole("button", { name: "Cancel" }));
-    expect(ui.api.choosePgn).not.toHaveBeenCalled();
+    expect(ui.api.closeDocument).not.toHaveBeenCalled();
     expect(ui.getByText("Unsaved changes")).toBeVisible();
     expect(ui.getByRole("button", { name: "e2 White pawn" })).toBeVisible();
   });

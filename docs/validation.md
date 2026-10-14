@@ -381,6 +381,50 @@ Position without a search booster, the reference pane's old fallback, took
 Drawing was not driven in the real app: its debug snapshots cannot press
 mouse buttons.
 
+## Game tabs (2026-10-13)
+
+**Tests.**
+* App tests cover the settings file: ChessBase's default of 8 tabs, checks
+  of the values, a round trip, and a damaged file read as the defaults
+  without being overwritten. The document budget test now allows 16.
+* Frontend tests cover:
+  * two games opened from the list in two tabs, each keeping its game and
+    unsaved state;
+  * closing a tab with unsaved changes (Cancel, then Discard), and showing
+    the last used tab after it;
+  * at a maximum of 2 tabs set in Options, the least recently used clean
+    tab reused, and a game with a tab shown in it;
+  * quitting with two edited tabs: Cancel on the second keeps the app open,
+    and discarding both quits;
+  * New Game opening a second tab;
+  * the tab state functions.
+
+A debug build on the classic Mega opened entry 27878 at start, then ran
+Board Window: the snapshot shows both game tabs beside the database tab.
+
+## Engines (2026-10-13)
+
+**Tests.**
+* App tests start 4 kibitzers of the engine crate's mock UCI engine at once,
+  refuse a fifth, close one and then all, and probe the engine's name. They
+  paste an engine line as one edit (a variation beside the game's move, the
+  comment on its last move), undo it, and refuse an illegal line without a
+  change. Core tests cover following existing moves and the unchanged game
+  after an illegal move.
+* Frontend tests cover:
+  * + and − setting MultiPV, stopping and restarting the analysis;
+  * Ctrl+Space pasting the best line with `+0.35/22`, and Shift+Space its
+    first move;
+  * two kibitzers, Remove Kibitzer taking the last one used, and Remove All;
+  * installing an engine (named from its handshake, made the default) and
+    Alt+F2 starting and removing it;
+  * the earlier engine tests, now with kibitzers that start at once.
+
+A debug build on the classic Mega ran Default Kibitzer with Stockfish 17
+installed in a temporary settings file with `MultiPV` 3: the snapshot shows
+the pane analysing node 30 with its lines. The settings file was deleted
+afterwards.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

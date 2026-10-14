@@ -8,13 +8,25 @@ import {
   type PgnCollectionResponse,
   type GameResponse,
 } from "../api/types";
-import type { useWorkbench } from "./workbench";
+import {
+  addTab,
+  promotePreview,
+  removeTab,
+  tabGames,
+  type GameSlot,
+  type useWorkbench,
+} from "./workbench";
 type Workbench = ReturnType<typeof useWorkbench>;
 export interface Question {
   kind: "unsaved" | "compatibility" | "database";
   resolve: (answer: string) => void;
 }
-export function useEditing(w: Workbench, api: WorkbenchApi) {
+export function useEditing(
+  w: Workbench,
+  api: WorkbenchApi,
+  /** The most game tabs open at once (ChessBase's Maximum Board Windows). */
+  maxTabs: () => number = () => 8,
+) {
   const [question, setQuestion] = useState<Question>();
   const pending = useRef<Question | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -194,8 +206,11 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
       return (await saveDefault()) && !w.current.current.dirty;
     return value === "discard";
   }
-  async function run(action: () => Promise<void>) {
-    if (!(await guard())) return;
+  /** Runs `action`, which replaces the game shown, after asking about its
+   * unsaved changes; `guarded` false for actions that open a new tab. */
+  async function run(action: () => Promise<void>, guarded = true) {
+    if (guarded ? !(await guard()) : editBusy.current || saveBusy.current)
+      return;
     const ticket = ++sequence.current;
     transition.current = true;
     setBusy(true);
@@ -242,6 +257,8 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
         await w.selectNode(id);
         return id;
       }
+      // A pasted line: its last move, for the caller to select or not.
+      if (value.kind === "appendLine") return result.selected;
       const id =
         value.kind === "appendMove"
           ? result.game.nodes[value.parent].children.find(
@@ -261,7 +278,94 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
       setBusy(transition.current);
     }
   }
-  /** Shows a new game in the game tab: empty, set up, or pasted. */
+  /**
+   * Makes room for one more tab. At the most tabs, the least recently used
+   * tab without unsaved changes is closed; when every tab has them, the
+   * oldest is shown and the user is asked first. False when cancelled.
+   */
+  async function makeRoom(): Promise<boolean> {
+    const s = w.current.current;
+    const tabs = tabGames(s);
+    if (tabs.length < Math.max(1, maxTabs())) return true;
+    const byAge = [...tabs].sort((a, b) => a.used - b.used);
+    const clean = byAge.find((t) => !t.dirty);
+    const victim = clean ?? byAge[0];
+    const back = s.focus;
+    if (!clean) {
+      w.focusGame(victim.id);
+      if (!(await guard())) return false;
+    }
+    void api.closeDocument(victim.document?.documentId ?? "").catch(() => {});
+    w.setState((s) => removeTab(s, victim.id));
+    if (!clean && back !== victim.id) w.focusGame(back);
+    return true;
+  }
+  /** Shows `slot` in a new tab, after making room for it. */
+  async function openTab(slot: GameSlot): Promise<boolean> {
+    if (!(await makeRoom())) {
+      void api.closeDocument(slot.document?.documentId ?? "").catch(() => {});
+      return false;
+    }
+    w.setState((s) => addTab(s, slot));
+    return true;
+  }
+  /** Moves the preview's game into a tab of its own (ChessBase opens each
+   * game in a new board window). */
+  async function openPreview(): Promise<boolean> {
+    const s = w.current.current;
+    if (s.focus !== undefined || !s.document?.game) return false;
+    // A game already open in a tab is shown there.
+    const open =
+      s.origin &&
+      tabGames(s).find(
+        (t) =>
+          t.origin?.databaseId === s.origin?.databaseId &&
+          t.origin?.ordinal === s.origin?.ordinal,
+      );
+    if (open) {
+      w.focusGame(open.id);
+      return true;
+    }
+    if (!(await makeRoom())) return false;
+    // Making room may have shown a tab to ask about it.
+    w.focusGame(undefined);
+    w.setState(promotePreview);
+    return true;
+  }
+  /** Opens entry `ordinal` of the active database in a tab, at `node`;
+   * a game already open in a tab is shown there. */
+  async function openEntry(ordinal: string, node = 0) {
+    const s = w.current.current;
+    const db = s.database?.databaseId;
+    const open = tabGames(s).find(
+      (t) => t.origin?.databaseId === db && t.origin?.ordinal === ordinal,
+    );
+    if (open) {
+      w.focusGame(open.id);
+      if (node) await w.selectNode(node);
+      return;
+    }
+    await w.loadEntry(ordinal, node, openTab);
+  }
+  /** Shows tab `id`. */
+  function showTab(id: string) {
+    w.focusGame(id);
+  }
+  /** Closes tab `id` after asking about its unsaved changes. */
+  async function closeTab(id: string) {
+    if (editBusy.current || saveBusy.current) return;
+    const back = w.current.current.focus;
+    w.focusGame(id);
+    if (!(await guard())) {
+      w.focusGame(back);
+      return;
+    }
+    const documentId = w.current.current.document?.documentId;
+    if (documentId) void api.closeDocument(documentId).catch(() => {});
+    w.setState((s) => removeTab(s, id));
+    if (back !== id && back !== undefined) w.focusGame(back);
+  }
+  /** Shows a new game in a new tab: empty, set up, or pasted. */
   async function openDocument(
     make: (request: string) => Promise<DocumentResponse>,
     status: string,
@@ -276,7 +380,6 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
         void api.closeDocument(candidate).catch(() => {});
         return;
       }
-      const old = w.current.current.document?.documentId;
       const doc: GameResponse = {
         ...made,
         requestId: request,
@@ -286,14 +389,15 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
         annotationsStatus: "available",
         diagnostics: [],
       };
-      w.setState((s) => ({
-        ...s,
-        document: doc,
-        position,
-        dirty: false,
-        origin: undefined,
-      }));
-      if (old && old !== candidate) void api.closeDocument(old).catch(() => {});
+      if (
+        !(await openTab({
+          document: doc,
+          position,
+          dirty: false,
+          origin: undefined,
+        }))
+      )
+        return;
       w.setDiagnostics([]);
       w.setStatus(status);
     } catch (e) {
@@ -324,7 +428,13 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
   const closeCollection = (id?: string) => {
     if (id) void api.closePgn(id).catch(() => {});
   };
-  async function loadPgn(index: number, c = collectionRef.current) {
+  /** Shows game `index` of a PGN file: in a new tab, or in place of the
+   * game shown. */
+  async function loadPgn(
+    index: number,
+    c = collectionRef.current,
+    newTab = false,
+  ) {
     if (!c) return;
     const request = gate.begin();
     let candidate: string | undefined;
@@ -351,14 +461,27 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
         annotationsStatus: "available",
         diagnostics: [],
       };
-      w.setState((s) => ({
-        ...s,
-        document: doc,
-        position,
-        dirty: false,
-        origin: undefined,
-      }));
-      if (old && old !== candidate) void api.closeDocument(old).catch(() => {});
+      if (newTab) {
+        if (
+          !(await openTab({
+            document: doc,
+            position,
+            dirty: false,
+            origin: undefined,
+          }))
+        )
+          return;
+      } else {
+        w.setState((s) => ({
+          ...s,
+          document: doc,
+          position,
+          dirty: false,
+          origin: undefined,
+        }));
+        if (old && old !== candidate)
+          void api.closeDocument(old).catch(() => {});
+      }
       closeCollection(
         collectionRef.current?.collectionId === c.collectionId
           ? undefined
@@ -390,7 +513,7 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
         closeCollection(candidate.collectionId);
         throw { message: "PGN contains no games" };
       }
-      await loadPgn(0, candidate);
+      await loadPgn(0, candidate, true);
     } catch (e) {
       if (
         candidate &&
@@ -400,23 +523,36 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
       report(e);
     }
   }
+  /** Closes the game shown: its tab, or the preview. Callers ask about
+   * unsaved changes first. */
   async function closeDocument() {
     gate.begin();
     const id = w.current.current.document?.documentId;
     if (id) await api.closeDocument(id);
-    w.setState((s) => ({
-      ...s,
-      document: undefined,
-      position: undefined,
-      origin: undefined,
-      dirty: false,
-    }));
+    const focus = w.current.current.focus;
+    w.setState((s) =>
+      focus !== undefined
+        ? removeTab(s, focus)
+        : {
+            ...s,
+            document: undefined,
+            position: undefined,
+            origin: undefined,
+            dirty: false,
+          },
+    );
   }
   const closeHandler = useRef(() => {});
   closeHandler.current = () => {
-    void run(async () => {
+    void (async () => {
+      if (editBusy.current || saveBusy.current || pending.current) return;
+      // Quitting asks about every tab with unsaved changes, one at a time.
+      for (const t of tabGames(w.current.current).filter((t) => t.dirty)) {
+        w.focusGame(t.id);
+        if (!(await guard())) return;
+      }
       await api.finishClose();
-    });
+    })();
   };
   useEffect(() => {
     let disposed = false;
@@ -455,6 +591,10 @@ export function useEditing(w: Workbench, api: WorkbenchApi) {
     openPgn,
     loadPgn,
     closeDocument,
+    openPreview,
+    openEntry,
+    showTab,
+    closeTab,
     newGame,
     pasteGame,
     copyGame,

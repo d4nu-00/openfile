@@ -143,9 +143,9 @@ Names in backticks are ChessBase command ids, for traceability.
 
 - [x] P1 🟢 Local UCI engine: choose, configure options, start/stop analysis (`ADDKIBITZER`, `CREATEUCIENGINE`, Alt+F2)
 - [x] P1 🟢 MultiPV lines with depth, nodes, score and SAN principal variation
-- [ ] P1 🟢 Increase and decrease the number of lines (`INCREASENLINES`, `DECREASENLINES`) *(command shown, not wired)*
-- [ ] P1 🟢 Paste engine move or variation into the notation (`PASTEENGINEMOVE`, `PASTEENGINEVARIATIONS`, Ctrl+Space)
-- [ ] P1 🟢 Engine management: installed engine list, defaults, several kibitzers (`ENGINEMANAGEMENT`, `CLOSEALLKIBITZERS`, `TOGGLEDEFAULTKIBITZER`)
+- [x] P1 🟢 Increase and decrease the number of lines (`INCREASENLINES`, `DECREASENLINES`) *(+ and −: MultiPV, restarting the analysis; see [engines](docs/engines.md))*
+- [x] P1 🟢 Paste engine move or variation into the notation (`PASTEENGINEMOVE`, `PASTEENGINEVARIATIONS`, Ctrl+Space) *(Shift+Space for the move; one undoable edit; the score and depth as a text comment because ChessBase's evaluation annotation is not decoded)*
+- [x] P1 🟢 Engine management: installed engine list, defaults, several kibitzers (`ENGINEMANAGEMENT`, `CLOSEALLKIBITZERS`, `TOGGLEDEFAULTKIBITZER`) *(up to 4 kibitzers; installed engines, default and kept options in the app's settings; Default Kibitzer Alt+F2)*
 - [ ] P1 🟢 Endgame tablebases (Syzygy) for analysis and the notation
 - [ ] P1 🟢 Tactical analysis or blunder check that annotates a game (`TACTICAL_ANALYSIS`, `BlunderCheck`)
 - [ ] P2 🟢 Deep analysis: tree-building position analysis (`DEEP_ANALYSIS`)
@@ -244,9 +244,9 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 White, Blue, Gray and Black themes
 - [x] P1 🟢 Command search across all commands *(workbench addition)*
 - [x] P1 🟢 Resizable panes with layout presets (`LAYOUTSTANDARD`, `LAYOUTBIGBOARD`, `LAYOUTBIGENGINE`)
-- [ ] P1 🟢 Multiple game tabs at once, plus a "new board" window (`NEWBOARDWINDOW`)
+- [x] P1 🟢 Multiple game tabs at once, plus a "new board" window (`NEWBOARDWINDOW`) *(each opened game gets a tab, up to Options › Maximum game tabs, 1–8, default 8 as ChessBase's `MaxGameWins`; per-tab undo, dirty state and origin; quitting asks per tab; see [game window](docs/game-window.md))*
 - [ ] P2 🟢 Save and load layouts (`SAVELAYOUT`, `LOADLAYOUT`)
-- [ ] P2 🟢 Options dialog (`SETOPTIONS`) and customisable shortcuts (`CUSTOMIZE`)
+- [ ] P2 🟢 Options dialog (`SETOPTIONS`) and customisable shortcuts (`CUSTOMIZE`) *(partial: Options (Ctrl+Alt+O) has the Limits page, kept in the app's config folder)*
 - [ ] P2 🟢 Navigation history back/forward (`HISTORYBACK`, `HISTORYFORWARD`)
 - [ ] P3 🟢 Minimise ribbon and quick-access toolbar *(minimise done; no quick-access toolbar)*
 - [ ] P3 🟢 Full screen and window arrangements (`VIEWFULLSCREEN`, `WINDOWTOP2VERTICAL`)

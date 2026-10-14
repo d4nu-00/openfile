@@ -22,6 +22,7 @@ import type {
   TreeResponse,
   TreeProgress,
   ReferenceResponse,
+  AppSettings,
   SortColumn,
   SortProgress,
   SortResponse,
@@ -34,6 +35,9 @@ import type {
 export const backend = {
   pickEngine: () =>
     open({ multiple: false, title: "Choose a local UCI engine executable" }),
+  /** An engine's UCI name and author; the engine is stopped again. */
+  probeEngine: (path: string) =>
+    invoke<Record<string, string>>("probe_engine", { path }),
   chooseEngine: (path: string) =>
     invoke<EngineResponse>("choose_engine", { path }),
   setEngineOption: (engineId: string, name: string, value: string) =>
@@ -341,5 +345,8 @@ export const backend = {
     invoke<void>("close_database", { databaseId }),
   closeDocument: (documentId: string) =>
     invoke<void>("close_document", { documentId }),
+  getSettings: () => invoke<AppSettings>("get_settings"),
+  setSettings: (settings: AppSettings) =>
+    invoke<AppSettings>("set_settings", { settings }),
 };
 export type WorkbenchApi = typeof backend;

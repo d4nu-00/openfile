@@ -26,17 +26,17 @@ it("shows root scores from White’s perspective and inverts bounds", () => {
 it("keeps engine selection cancellation and executable errors separate from the game", async () => {
   const ui = renderWorkbench();
   ui.api.pickEngine.mockResolvedValue(null);
-  await ui.user.click(ui.getByRole("button", { name: "Choose engine" }));
+  await ui.user.click(ui.getByRole("button", { name: "Add kibitzer" }));
   expect(ui.api.chooseEngine).not.toHaveBeenCalled();
   ui.api.pickEngine.mockResolvedValue("/missing/engine");
   ui.api.chooseEngine.mockRejectedValue({ message: "Executable missing" });
-  await ui.user.click(ui.getByRole("button", { name: "Choose engine" }));
+  await ui.user.click(ui.getByRole("button", { name: "Add kibitzer" }));
   expect(await ui.findByText("Executable missing")).toBeVisible();
   expect(ui.getByRole("heading", { name: "Alpha — Beta" })).toBeVisible();
 });
 it("validates engine options before sending and supports spaced combo values", async () => {
   const ui = renderWorkbench();
-  await ui.user.click(ui.getByRole("button", { name: "Choose engine" }));
+  await ui.user.click(ui.getByRole("button", { name: "Add kibitzer" }));
   await ui.user.click(await ui.findByText("Engine options"));
   const threads = await ui.findByRole("spinbutton", { name: "Threads" });
   await ui.user.clear(threads);
@@ -63,11 +63,9 @@ it("validates engine options before sending and supports spaced combo values", a
     "Very Solid",
   );
 });
+// A kibitzer starts analysing as soon as it is added.
 async function start(ui: ReturnType<typeof renderWorkbench>) {
-  await ui.user.click(ui.getByRole("button", { name: "Choose engine" }));
-  await ui.user.click(
-    await ui.findByRole("button", { name: "Start analysis" }),
-  );
+  await ui.user.click(ui.getByRole("button", { name: "Add kibitzer" }));
   await waitFor(() => expect(ui.api.startAnalysis).toHaveBeenCalled());
 }
 function emit(
@@ -151,10 +149,7 @@ it("shows mate and invalid PV diagnostics and recovers after process failure", a
     options: [],
     status: "ready",
   });
-  await ui.user.click(ui.getByRole("button", { name: "Choose engine" }));
-  await ui.user.click(
-    await ui.findByRole("button", { name: "Start analysis" }),
-  );
+  await ui.user.click(ui.getByRole("button", { name: "Add kibitzer" }));
   await waitFor(() =>
     expect(ui.api.startAnalysis).toHaveBeenLastCalledWith(
       "engine-2",
@@ -277,4 +272,160 @@ it("merges partial engine fields and clears an explicitly supplied invalid PV", 
   expect(await ui.findByText("Invalid supplied PV")).toBeVisible();
   expect(table.queryByText("e5")).toBeNull();
   expect(ui.getByText("-0.31")).toBeVisible();
+});
+
+/** Engines with MultiPV, each with its own id. */
+function multipvEngines(ui: ReturnType<typeof renderWorkbench>) {
+  let n = 0;
+  ui.api.chooseEngine.mockImplementation(async () => ({
+    engineId: `engine-${++n}`,
+    identity: { name: `Engine ${n}` },
+    options: [
+      {
+        name: "MultiPV",
+        kind: "spin",
+        default: "1",
+        min: 1,
+        max: 500,
+        vars: [],
+      },
+    ],
+    status: "ready",
+  }));
+}
+it("changes the number of lines and restarts the analysis", async () => {
+  const ui = renderWorkbench();
+  multipvEngines(ui);
+  await start(ui);
+  await ui.user.keyboard("+");
+  await waitFor(() =>
+    expect(ui.api.setEngineOption).toHaveBeenCalledWith(
+      "engine-1",
+      "MultiPV",
+      "2",
+    ),
+  );
+  expect(ui.api.stopAnalysis).toHaveBeenCalledWith("engine-1");
+  await waitFor(() => expect(ui.api.startAnalysis).toHaveBeenCalledTimes(2));
+  expect(ui.getByLabelText("Lines")).toHaveTextContent("2");
+  await ui.user.keyboard("-");
+  await waitFor(() =>
+    expect(ui.api.setEngineOption).toHaveBeenLastCalledWith(
+      "engine-1",
+      "MultiPV",
+      "1",
+    ),
+  );
+});
+it("pastes the engine's line and move into the notation", async () => {
+  const ui = renderWorkbench();
+  await start(ui);
+  const args = ui.api.startAnalysis.mock.calls[0];
+  act(() =>
+    args[4]({
+      engineId: args[0],
+      requestId: args[3],
+      payload: {
+        kind: "info",
+        multipv: 1,
+        depth: 22,
+        rootTurn: "white",
+        score: { kind: "cp", value: 35 },
+        pv: ["d4", "d5"],
+        rawPv: ["d2d4", "d7d5"],
+        diagnostics: [],
+      },
+    }),
+  );
+  await ui.findByText("d4 d5");
+  await ui.user.keyboard("{Control>} {/Control}");
+  await waitFor(() =>
+    expect(ui.api.editDocument).toHaveBeenCalledWith(
+      "doc-1",
+      {
+        kind: "appendLine",
+        parent: 0,
+        moves: ["d2d4", "d7d5"],
+        comment: "+0.35/22",
+      },
+      "0",
+    ),
+  );
+  await ui.user.keyboard("{Shift>} {/Shift}");
+  await waitFor(() =>
+    expect(ui.api.editDocument).toHaveBeenLastCalledWith(
+      "doc-1",
+      { kind: "appendLine", parent: 0, moves: ["d2d4"] },
+      expect.any(String),
+    ),
+  );
+});
+it("runs several kibitzers and removes them one by one or all", async () => {
+  const ui = renderWorkbench();
+  multipvEngines(ui);
+  await start(ui);
+  await ui.user.click(ui.getByRole("button", { name: "Add kibitzer" }));
+  await waitFor(() =>
+    expect(ui.api.startAnalysis).toHaveBeenLastCalledWith(
+      "engine-2",
+      "doc-1",
+      0,
+      expect.any(String),
+      expect.any(Function),
+    ),
+  );
+  expect(ui.getByRole("region", { name: "Kibitzer Engine 1" })).toBeVisible();
+  expect(ui.getByRole("region", { name: "Kibitzer Engine 2" })).toBeVisible();
+  // Remove Kibitzer takes the last one used (the last added).
+  await ui.user.keyboard("{Control>}{Shift>}k{/Shift}{/Control}");
+  expect(ui.api.closeEngine).toHaveBeenCalledWith("engine-2");
+  expect(ui.queryByRole("region", { name: "Kibitzer Engine 2" })).toBeNull();
+  await ui.user.click(ui.getByRole("button", { name: "Add kibitzer" }));
+  await ui.findByRole("region", { name: "Kibitzer Engine 3" });
+  await ui.user.click(ui.getByRole("tab", { name: "Home" }));
+  const ribbon = ui.getByRole("button", { name: "Remove All Kibitzers" });
+  await ui.user.click(ribbon);
+  await waitFor(() =>
+    expect(ui.queryByRole("region", { name: /Kibitzer/ })).toBeNull(),
+  );
+  expect(ui.api.closeEngine).toHaveBeenCalledWith("engine-1");
+  expect(ui.api.closeEngine).toHaveBeenCalledWith("engine-3");
+});
+it("installs engines, keeps a default and toggles the default kibitzer", async () => {
+  const ui = renderWorkbench();
+  multipvEngines(ui);
+  await ui.user.click(ui.getByRole("tab", { name: "Home" }));
+  await ui.user.click(ui.getByRole("button", { name: "Engine Management" }));
+  const dialog = await ui.findByRole("dialog", { name: "Engine Management" });
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "Add engine…" }),
+  );
+  expect(ui.api.probeEngine).toHaveBeenCalledWith("/synthetic/mock-engine");
+  // The first engine installed becomes the default.
+  expect(
+    await within(dialog).findByRole("radio", {
+      name: "Default engine Mock engine 1.0",
+    }),
+  ).toBeChecked();
+  expect(ui.api.setSettings).toHaveBeenCalledWith(
+    expect.objectContaining({
+      engines: [
+        expect.objectContaining({
+          name: "Mock engine 1.0",
+          path: "/synthetic/mock-engine",
+        }),
+      ],
+    }),
+  );
+  await ui.user.click(within(dialog).getByRole("button", { name: "Close" }));
+  // Alt+F2 starts the default engine, and stops it again.
+  await ui.user.keyboard("{Alt>}{F2}{/Alt}");
+  await waitFor(() =>
+    expect(ui.api.chooseEngine).toHaveBeenCalledWith("/synthetic/mock-engine"),
+  );
+  await ui.findByRole("region", { name: "Kibitzer Engine 1" });
+  await ui.user.keyboard("{Alt>}{F2}{/Alt}");
+  await waitFor(() =>
+    expect(ui.api.closeEngine).toHaveBeenCalledWith("engine-1"),
+  );
 });

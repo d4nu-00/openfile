@@ -11,6 +11,8 @@ const MAX_TAG_VALUE: usize = 255;
 /// Coloured squares and arrows one position may carry.
 const MAX_SQUARE_MARKS: usize = 64;
 const MAX_ARROW_MARKS: usize = 128;
+/// The longest line pasted at once.
+const MAX_LINE_MOVES: usize = 256;
 
 fn valid_square(s: &str) -> bool {
     let b = s.as_bytes();
@@ -198,6 +200,27 @@ impl Game {
         n.squares = kept_squares;
         n.arrows = kept_arrows;
         Ok(())
+    }
+
+    /// Plays `moves` from `parent`, following moves already there and
+    /// adding the rest (a variation where the position has a continuation).
+    /// Nothing changes unless every move is legal. Returns the last node.
+    pub fn append_line(
+        &mut self,
+        parent: NodeId,
+        moves: &[String],
+        limits: &crate::GameLimits,
+    ) -> Result<NodeId, CoreError> {
+        if moves.is_empty() || moves.len() > MAX_LINE_MOVES {
+            return Err(CoreError::LimitExceeded);
+        }
+        let mut next = self.clone();
+        let mut at = parent;
+        for uci in moves {
+            at = next.append_uci(at, uci, limits)?;
+        }
+        *self = next;
+        Ok(at)
     }
 
     /// Removes every coloured square and arrow from the game (ChessBase

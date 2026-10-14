@@ -42,6 +42,19 @@ export interface ParkedDatabase {
   top: number;
   cursor?: number;
 }
+/** A game: its document, selected move, unsaved flag and origin. */
+export interface GameSlot {
+  document?: GameResponse;
+  position?: PositionResponse;
+  dirty?: boolean;
+  origin?: Origin;
+}
+/** A game tab. The shown tab's fields live in `WorkbenchState` instead. */
+export interface GameTab extends GameSlot {
+  id: string;
+  /** When the tab was last shown, for choosing a tab to reuse. */
+  used: number;
+}
 export interface WorkbenchState {
   /** The active database: its list is shown. */
   database?: OpenDatabaseResponse;
@@ -52,9 +65,108 @@ export interface WorkbenchState {
   sort?: ListSort;
   /** Changes whenever the list's rows change: search, sort or a save. */
   listVersion?: number;
+  /** The game shown: the focused tab's, or the preview's. */
   document?: GameResponse;
   position?: PositionResponse;
   dirty?: boolean;
+  /** Game tabs, in tab order. */
+  tabs?: GameTab[];
+  /** The tab whose game is shown; none while the preview is shown. */
+  focus?: string;
+  /** The preview's game while a tab is shown. */
+  preview?: GameSlot;
+}
+const slotOf = (s: WorkbenchState): GameSlot => ({
+  document: s.document,
+  position: s.position,
+  dirty: s.dirty,
+  origin: s.origin,
+});
+let used = 0;
+/** Shows another game: tab `target`, or the preview. The shown fields go
+ * back to their owner. */
+export function refocus(
+  s: WorkbenchState,
+  target: string | undefined,
+): WorkbenchState {
+  if (s.focus === target) return s;
+  if (target !== undefined && !s.tabs?.some((t) => t.id === target)) return s;
+  let tabs = s.tabs ?? [];
+  let preview = s.preview;
+  if (s.focus === undefined) preview = slotOf(s);
+  else tabs = tabs.map((t) => (t.id === s.focus ? { ...t, ...slotOf(s) } : t));
+  const next =
+    target === undefined ? preview : tabs.find((t) => t.id === target);
+  if (target === undefined) preview = undefined;
+  else tabs = tabs.map((t) => (t.id === target ? { ...t, used: ++used } : t));
+  return {
+    ...s,
+    tabs,
+    preview,
+    focus: target,
+    document: next?.document,
+    position: next?.position,
+    dirty: next?.dirty,
+    origin: next?.origin,
+  };
+}
+/** Each tab with its current game, including the shown tab's. */
+export function tabGames(s: WorkbenchState): GameTab[] {
+  return (s.tabs ?? []).map((t) =>
+    t.id === s.focus ? { ...t, ...slotOf(s) } : t,
+  );
+}
+/** The games of every tab and the preview, shown or not. */
+export function allGames(s: WorkbenchState): GameSlot[] {
+  return [
+    ...tabGames(s),
+    s.focus === undefined ? slotOf(s) : (s.preview ?? {}),
+  ];
+}
+/** Opens a new tab holding `slot` and shows it. */
+export function addTab(s: WorkbenchState, slot: GameSlot): WorkbenchState {
+  const id = `tab-${++used}`;
+  const parked = refocus(s, undefined);
+  // Showing the preview took it out of `preview`; keep it there.
+  const kept = { ...parked, preview: slotOf(parked) };
+  return refocus(
+    { ...kept, tabs: [...(kept.tabs ?? []), { id, used, ...slot }] },
+    id,
+  );
+}
+/** Moves the preview's game into a new tab and shows it. */
+export function promotePreview(s: WorkbenchState): WorkbenchState {
+  if (s.focus !== undefined || !s.document) return s;
+  return addTab(
+    {
+      ...s,
+      document: undefined,
+      position: undefined,
+      dirty: false,
+      origin: undefined,
+    },
+    slotOf(s),
+  );
+}
+/** Removes tab `id`; when it is shown, the last used tab, or else the
+ * preview, is shown instead. */
+export function removeTab(s: WorkbenchState, id: string): WorkbenchState {
+  const rest = (s.tabs ?? []).filter((t) => t.id !== id);
+  if (s.focus !== id) return { ...s, tabs: rest };
+  const next = [...rest].sort((a, b) => b.used - a.used)[0];
+  const cleared = {
+    ...s,
+    tabs: rest,
+    focus: undefined,
+    ...(s.preview ?? {
+      document: undefined,
+      position: undefined,
+      dirty: false,
+      origin: undefined,
+    }),
+    preview: undefined,
+  };
+  return next ? refocus(cleared, next.id) : cleared;
 }
 /** Column names for messages. */
 export const sortLabels: Record<SortColumn, string> = {
@@ -134,7 +246,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
   useEffect(
     () => () => {
       Object.values(gates).forEach((g) => g.begin());
-      closeDoc(current.current.document?.documentId);
+      for (const g of allGames(current.current))
+        closeDoc(g.document?.documentId);
       closeDb(current.current.database?.databaseId);
       for (const p of current.current.parked ?? [])
         closeDb(p.database.databaseId);
@@ -267,6 +380,14 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     const s = current.current;
     closeDb(databaseId);
     const origin = s.origin?.databaseId === databaseId ? undefined : s.origin;
+    // Games from the database stay open, but no longer belong to it.
+    const unlink = <T extends GameSlot>(g: T): T =>
+      g.origin?.databaseId === databaseId ? { ...g, origin: undefined } : g;
+    setState((s) => ({
+      ...s,
+      tabs: s.tabs?.map(unlink),
+      preview: s.preview && unlink(s.preview),
+    }));
     if (s.database?.databaseId !== databaseId) {
       setState((s) => ({
         ...s,
@@ -395,7 +516,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
   async function stepGame(delta: 1 | -1) {
     const db = current.current.database;
     const ordinal = current.current.document?.summary.ordinal;
-    if (!db || !ordinal) return;
+    if (!db || !ordinal || current.current.origin?.databaseId !== db.databaseId)
+      return;
     const row =
       cursorRef.current !== undefined &&
       rows.row(cursorRef.current)?.ordinal === ordinal
@@ -588,11 +710,16 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       s.origin?.ordinal === ordinal
     );
   }
-  /** Loads an entry and selects `node` (a position search's hit) or the start. */
-  function loadEntry(ordinal: string, node = 0) {
+  /** Loads an entry and selects `node` (a position search's hit) or the
+   * start. The game replaces the one shown, or goes to `place` (a new tab). */
+  function loadEntry(
+    ordinal: string,
+    node = 0,
+    place?: (slot: GameSlot) => Promise<boolean>,
+  ) {
     const db = current.current.database;
     if (!db) return Promise.resolve();
-    const done = loadEntryNow(db, ordinal, node);
+    const done = loadEntryNow(db, ordinal, node, place);
     loading.current = { databaseId: db.databaseId, ordinal, done };
     void done.finally(() => {
       if (loading.current?.done === done) loading.current = undefined;
@@ -603,6 +730,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     db: OpenDatabaseResponse,
     ordinal: string,
     node: number,
+    place?: (slot: GameSlot) => Promise<boolean>,
   ) {
     const request = gates.game.begin();
     gates.position.begin();
@@ -644,15 +772,21 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
         closeDoc(candidate);
         return;
       }
-      if (current.current.document?.documentId !== candidate)
-        closeDoc(current.current.document?.documentId);
-      setState((s) => ({
-        ...s,
+      const slot = {
         document,
         position,
         dirty: false,
         origin: { databaseId: db.databaseId, ordinal },
-      }));
+      };
+      if (place) {
+        // The new tab closes the document itself when it is refused.
+        candidate = undefined;
+        if (!(await place(slot))) return;
+      } else {
+        if (current.current.document?.documentId !== document.documentId)
+          closeDoc(current.current.document?.documentId);
+        setState((s) => ({ ...s, ...slot }));
+      }
       setDiagnostics([
         ...document.summary.diagnostics,
         ...document.diagnostics,
@@ -667,6 +801,15 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     } finally {
       if (gates.game.accept(request)) setLoadingEntry(undefined);
     }
+  }
+  /** Shows tab `target`, or the preview. Requests under way for the game
+   * shown before are dropped. */
+  function focusGame(target: string | undefined) {
+    if (current.current.focus === target) return;
+    gates.game.begin();
+    gates.position.begin();
+    setLoadingEntry(undefined);
+    setState((s) => refocus(s, target));
   }
   async function selectNode(nodeId: number) {
     const document = current.current.document;
@@ -729,5 +872,6 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     loadEntry,
     showing,
     selectNode,
+    focusGame,
   };
 }

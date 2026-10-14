@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { Database, LayoutGrid, Search, X } from "lucide-react";
 import { backend, type WorkbenchApi } from "./api/client";
-import { annotationsIncomplete, emptyFilter } from "./api/types";
+import {
+  annotationsIncomplete,
+  defaultSettings,
+  emptyFilter,
+  type AppSettings,
+} from "./api/types";
 import type {
   CrossLayout,
   Crosstable,
@@ -10,9 +15,17 @@ import type {
   NameRow,
   SortColumn,
 } from "./api/types";
-import { useWorkbench, type WorkbenchState } from "./state/workbench";
+import {
+  addTab,
+  tabGames,
+  useWorkbench,
+  type WorkbenchState,
+} from "./state/workbench";
+import { OptionsDialog } from "./components/OptionsDialog";
 import { useEditing } from "./state/editing";
-import { useAnalysis } from "./state/analysis";
+import { formatScore } from "./state/analysis";
+import { useKibitzers } from "./state/kibitzers";
+import { EngineManagement } from "./components/EngineManagement";
 import { CommentEditor } from "./components/CommentEditor";
 import { GameDataDialog } from "./components/GameDataDialog";
 import { PositionSetup } from "./components/PositionSetup";
@@ -73,11 +86,55 @@ export function App({
   initialState?: WorkbenchState;
   initialView?: ViewId;
 }) {
-  const w = useWorkbench(api, initialState);
+  // A game given for the game view starts in a tab of its own.
+  const [start] = useState(() =>
+    initialView === "game" &&
+    initialState?.document &&
+    !initialState.tabs?.length
+      ? addTab(
+          { ...initialState, document: undefined },
+          {
+            document: initialState.document,
+            position: initialState.position,
+            dirty: initialState.dirty,
+            origin: initialState.origin,
+          },
+        )
+      : initialState,
+  );
+  const w = useWorkbench(api, start);
   const { state } = w;
-  const e = useEditing(w, api);
-  const a = useAnalysis(api, state);
-  const [view, setView] = useState<ViewId>(initialView);
+  /** The workbench's settings, from its config folder. */
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  useEffect(() => {
+    void api
+      .getSettings()
+      .then(setSettings)
+      .catch(() => {});
+  }, [api]);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [optionsError, setOptionsError] = useState<string>();
+  const e = useEditing(w, api, () => settingsRef.current.maxGameTabs);
+  /** Saves settings to the config folder and shows them. */
+  async function saveSettings(next: AppSettings) {
+    setSettings(await api.setSettings(next));
+  }
+  const k = useKibitzers(api, state, settings, saveSettings);
+  const [enginesOpen, setEnginesOpen] = useState(false);
+  const [enginesError, setEnginesError] = useState<string>();
+  /** The game view shows a game tab; the database view, the preview. */
+  const view: ViewId = state.focus !== undefined ? "game" : "database";
+  function setView(next: ViewId) {
+    if (next === "database") return w.focusGame(undefined);
+    if (w.current.current.focus !== undefined) return;
+    const last = [...(w.current.current.tabs ?? [])].sort(
+      (x, y) => y.used - x.used,
+    )[0];
+    if (last) w.focusGame(last.id);
+    else void e.openPreview();
+  }
   const [theme, setTheme] = useState<Theme>(storedTheme);
   const [layout, setLayout] = useState<Layout>("standard");
   const [palette, setPalette] = useState(false);
@@ -153,7 +210,7 @@ export function App({
       if (startup.entry) {
         await w.goToEntry(startup.entry);
         setOrdinal(startup.entry);
-        setView("game");
+        await e.openPreview();
         if (startup.node != null) await w.selectNode(startup.node);
       }
       if (startup.command) setStartupCommand(startup.command);
@@ -163,10 +220,6 @@ export function App({
       live = false;
     };
   }, [api]);
-  // Closing the game returns to the list.
-  useEffect(() => {
-    if (!game && view === "game") setView("database");
-  }, [game, view]);
 
   function clickSquare(to: string) {
     if (e.busy || !game) return;
@@ -188,6 +241,36 @@ export function App({
         ? to
         : undefined,
     );
+  }
+  /** The best line of the active kibitzer, for the position shown. */
+  function bestLine() {
+    const lines = k.current?.lines ?? [];
+    const line = lines.find((l) => l.multipv === 1) ?? lines[0];
+    return line?.rawPv?.length && game ? line : undefined;
+  }
+  /**
+   * Paste Engine Variation (Ctrl+Space) and Paste Engine Move (Shift+Space):
+   * the engine's best line, or its first move, from the current move. Moves
+   * already in the notation are followed; the rest become the continuation
+   * or a variation. A pasted line ends with its score and depth as text.
+   */
+  async function pasteEngine(whole: boolean) {
+    const line = bestLine();
+    if (!line?.rawPv) return;
+    const comment =
+      whole && line.score
+        ? `${formatScore(line.score, line.rootTurn, "white")}${
+            line.depth ? `/${line.depth}` : ""
+          }`
+        : undefined;
+    const last = await e.edit({
+      kind: "appendLine",
+      parent: selected,
+      moves: whole ? line.rawPv : line.rawPv.slice(0, 1),
+      comment,
+    });
+    // The pasted move is played; after a pasted line the board stays.
+    if (!whole && typeof last === "number") await w.selectNode(last);
   }
   /** Draws or removes a coloured square or arrow on the current position. */
   function drawMark(mark: DrawnMark) {
@@ -352,7 +435,7 @@ export function App({
     if (!entry) return;
     if (!(await w.showing(entry.ordinal)))
       await e.run(() => w.previewRow(row, entry));
-    setView("game");
+    if (await w.showing(entry.ordinal)) await e.openPreview();
   }
   const step = (delta: 1 | -1) => void e.run(() => w.stepGame(delta));
   function showList(tab: "games" | NameKind) {
@@ -429,8 +512,9 @@ export function App({
     if (existing !== undefined) void w.selectNode(existing);
     else void e.edit({ kind: "appendMove", parent: selected, uci });
   }
+  // Games from the reference list open in a tab of their own.
   const openReference = (ordinal: string, node: number) =>
-    void e.run(() => w.loadEntry(ordinal, node));
+    void e.openEntry(ordinal, node);
   const bookPane = (
     <BookPane
       book={panes.book}
@@ -490,8 +574,7 @@ export function App({
     e.run(async () => {
       if (kind === "game") await e.pasteGame(text);
       else await e.newGame(text.trim());
-      setView("game");
-    });
+    }, false);
 
   const busy = e.busy;
   const bindings: Bindings = {
@@ -532,7 +615,7 @@ export function App({
         (selectedCount(selection) > 1 ||
           state.origin?.databaseId === state.database.databaseId),
     },
-    "open-pgn": { run: () => e.run(e.openPgn) },
+    "open-pgn": { run: () => e.run(e.openPgn, false) },
     "open-board": { run: () => setView("game"), enabled: !!game },
     "database-window": { run: () => setView("database") },
     "filter-games": {
@@ -652,13 +735,49 @@ export function App({
       enabled: !!state.position,
     },
     "flip-board": { run: () => setFlipped((f) => !f), pressed: flipped },
-    "add-kibitzer": { run: () => a.choose(), enabled: !a.busy },
-    "remove-kibitzer": { run: () => a.close(), enabled: !!a.engine && !a.busy },
+    "add-kibitzer": {
+      run: () => (settings.engines.length ? setEnginesOpen(true) : k.choose()),
+      enabled: !k.adding,
+    },
+    "remove-kibitzer": {
+      run: () => k.remove(),
+      enabled: !!k.current && !k.current.busy,
+    },
+    "remove-all-kibitzers": {
+      run: () => k.removeAll(),
+      enabled: k.kibitzers.length > 0,
+    },
+    "default-kibitzer": {
+      run: async () => {
+        if (!(await k.toggleDefault())) setEnginesOpen(true);
+      },
+      enabled: !k.adding,
+      pressed: k.kibitzers.some(
+        (v) => v.installed && v.installed.id === settings.defaultEngine,
+      ),
+    },
+    "engine-management": { run: () => setEnginesOpen(true) },
     "toggle-analysis": {
-      run: () => (a.enabled ? a.stop() : a.start()),
-      enabled: !!a.engine && !!state.document?.documentId && !a.busy,
-      pressed: a.enabled,
-      label: a.enabled ? "Stop Analysis" : "Infinite Analysis",
+      run: () => (k.current?.enabled ? k.stop() : k.start()),
+      enabled: !!k.current && !!state.document?.documentId && !k.current.busy,
+      pressed: !!k.current?.enabled,
+      label: k.current?.enabled ? "Stop Analysis" : "Infinite Analysis",
+    },
+    "increase-lines": {
+      run: () => k.lines(1),
+      enabled: !!k.current && !k.current.busy,
+    },
+    "decrease-lines": {
+      run: () => k.lines(-1),
+      enabled: !!k.current && !k.current.busy && k.current.multipv > 1,
+    },
+    "paste-engine-variation": {
+      run: () => pasteEngine(true),
+      enabled: !busy && !!bestLine(),
+    },
+    "paste-engine-move": {
+      run: () => pasteEngine(false),
+      enabled: !busy && !!bestLine(),
     },
     "load-previous-game": {
       run: () => step(-1),
@@ -683,7 +802,9 @@ export function App({
       run: () => focusText("before"),
       enabled: !!game && selected !== 0,
     },
-    "new-game": { run: () => e.run(() => e.newGame()) },
+    "new-game": { run: () => e.run(() => e.newGame(), false) },
+    "new-board-window": { run: () => e.run(() => e.newGame(), false) },
+    options: { run: () => setOptionsOpen(true) },
     "position-setup": {
       run: () => {
         setSetupError(undefined);
@@ -748,8 +869,8 @@ export function App({
     "theme-black": { run: () => setTheme("black"), pressed: theme === "black" },
     "command-search": { run: () => setPalette(true) },
     "stop-process": {
-      run: () => (w.treeBuild ? w.cancelTree() : a.stop()),
-      enabled: a.enabled || !!w.treeBuild,
+      run: () => (w.treeBuild ? w.cancelTree() : k.stopAll()),
+      enabled: k.kibitzers.some((v) => v.enabled) || !!w.treeBuild,
     },
   };
   useEffect(() => {
@@ -796,8 +917,10 @@ export function App({
       Number(a.databaseId.replace(/\D/g, "")) -
       Number(b.databaseId.replace(/\D/g, "")),
   );
-  const engineStatus = a.engine
-    ? `${a.engine.identity.name ?? "UCI engine"} · ${a.enabled ? "analysing" : "idle"}`
+  const engineStatus = k.current
+    ? `${k.current.engine.identity.name ?? "UCI engine"} · ${k.current.enabled ? "analysing" : "idle"}${
+        k.kibitzers.length > 1 ? ` (+${k.kibitzers.length - 1})` : ""
+      }`
     : "No engine";
 
   const pgnSelect = e.collection && (
@@ -894,36 +1017,45 @@ export function App({
               </span>
             );
           })}
-          {game && (
-            <span
-              className="workspace-tab-wrap"
-              data-selected={view === "game"}
-            >
-              <button
-                role="tab"
-                aria-selected={view === "game"}
-                className="workspace-tab"
-                onClick={() => setView("game")}
+          {tabGames(state).map((tab) => {
+            const shown = tab.id === state.focus;
+            const tags = tab.document?.game?.tags;
+            const name = tags
+              ? `${tags.White ?? "?"} — ${tags.Black ?? "?"}`
+              : "Game";
+            return (
+              <span
+                key={tab.id}
+                className="workspace-tab-wrap"
+                data-selected={shown}
               >
-                <LayoutGrid size={14} aria-hidden />
-                <span>{title}</span>
-                {state.dirty && (
-                  <span className="dirty-dot" title="Unsaved changes">
-                    ●
-                  </span>
-                )}
-              </button>
-              <button
-                className="tab-close"
-                aria-label="Close game tab"
-                title="Close game"
-                disabled={busy}
-                onClick={() => void e.run(e.closeDocument)}
-              >
-                <X size={12} />
-              </button>
-            </span>
-          )}
+                <button
+                  role="tab"
+                  aria-selected={shown}
+                  className="workspace-tab"
+                  title={name}
+                  onClick={() => e.showTab(tab.id)}
+                >
+                  <LayoutGrid size={14} aria-hidden />
+                  <span>{name}</span>
+                  {tab.dirty && (
+                    <span className="dirty-dot" title="Unsaved changes">
+                      ●
+                    </span>
+                  )}
+                </button>
+                <button
+                  className="tab-close"
+                  aria-label={`Close game tab ${name}`}
+                  title="Close game"
+                  disabled={busy}
+                  onClick={() => void e.closeTab(tab.id)}
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            );
+          })}
         </nav>
         <button
           className="command-search"
@@ -1257,7 +1389,7 @@ export function App({
               <Group orientation="horizontal" className="split">
                 <Panel id="kibitzer" minSize="20">
                   <section className="pane analysis-pane" aria-label="Engine">
-                    <EnginePanel a={a} state={state} />
+                    <EnginePanel k={k} state={state} />
                   </section>
                 </Panel>
                 {extraBook && (
@@ -1309,6 +1441,65 @@ export function App({
           }
         />
       )}
+      {optionsOpen && (
+        <OptionsDialog
+          settings={settings}
+          error={optionsError}
+          onClose={() => setOptionsOpen(false)}
+          onApply={(next) =>
+            void api
+              .setSettings(next)
+              .then((saved) => {
+                setSettings(saved);
+                setOptionsOpen(false);
+                setOptionsError(undefined);
+              })
+              .catch((err) => setOptionsError(explain(err)))
+          }
+        />
+      )}
+      {enginesOpen && (
+        <EngineManagement
+          settings={settings}
+          error={enginesError}
+          onClose={() => {
+            setEnginesOpen(false);
+            setEnginesError(undefined);
+          }}
+          onSave={(next) =>
+            void saveSettings(next)
+              .then(() => setEnginesError(undefined))
+              .catch((err) => setEnginesError(explain(err)))
+          }
+          onAdd={() =>
+            void (async () => {
+              const path = await api.pickEngine();
+              if (typeof path !== "string") return;
+              try {
+                const identity = await api.probeEngine(path);
+                const name =
+                  identity.name ?? path.split(/[\\/]/).pop() ?? "UCI engine";
+                const id = `engine-${Date.now().toString(36)}`;
+                await saveSettings({
+                  ...settings,
+                  engines: [
+                    ...settings.engines,
+                    { id, name, path, options: {} },
+                  ],
+                  defaultEngine: settings.defaultEngine ?? id,
+                });
+                setEnginesError(undefined);
+              } catch (err) {
+                setEnginesError(explain(err));
+              }
+            })()
+          }
+          onStart={(engine) => {
+            setEnginesOpen(false);
+            void k.add(engine.path, engine);
+          }}
+        />
+      )}
       {setupOpen && (
         <PositionSetup
           boardFen={state.position?.fen}
@@ -1319,13 +1510,12 @@ export function App({
               try {
                 await e.newGame(fen);
                 setSetupOpen(false);
-                setView("game");
               } catch (err) {
                 setSetupError(
                   (err as { message?: string })?.message ?? String(err),
                 );
               }
-            })
+            }, false)
           }
         />
       )}
@@ -1348,9 +1538,7 @@ export function App({
           onOpenGame={(ordinal) => {
             setCross(undefined);
             setListTab("games");
-            void e
-              .run(() => w.goToEntry(String(ordinal)))
-              .then(() => setView("game"));
+            void e.openEntry(String(ordinal));
           }}
           onClose={() => setCross(undefined)}
         />

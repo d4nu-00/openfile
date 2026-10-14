@@ -7,6 +7,7 @@ import type {
   GameResponse,
   PositionResponse,
   EntrySummary,
+  AppSettings,
 } from "../api/types";
 export const startFen =
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -93,6 +94,7 @@ export function mockApi(firstDatabase = 1) {
   let nextDatabase = firstDatabase;
   let game = structuredClone(selected.game!);
   let revision = 0;
+  let settings: AppSettings = { maxGameTabs: 8, engines: [] };
   // The list shows these entries while a search is active.
   let searching = false;
   const api = {
@@ -120,6 +122,7 @@ export function mockApi(firstDatabase = 1) {
       status: "ready",
     }),
     setEngineOption: vi.fn().mockResolvedValue(undefined),
+    probeEngine: vi.fn().mockResolvedValue({ name: "Mock engine 1.0" }),
     startAnalysis: vi.fn().mockResolvedValue(undefined),
     stopAnalysis: vi.fn().mockResolvedValue(undefined),
     closeEngine: vi.fn().mockResolvedValue(undefined),
@@ -247,6 +250,15 @@ export function mockApi(firstDatabase = 1) {
     chooseDatabase: vi.fn().mockResolvedValue("/synthetic/test.cbh"),
     startupRequest: vi.fn().mockResolvedValue(null),
     startupShown: vi.fn().mockResolvedValue(undefined),
+    getSettings: vi
+      .fn()
+      .mockImplementation(async () => structuredClone(settings)),
+    setSettings: vi.fn().mockImplementation(async (next: AppSettings) => {
+      if (next.maxGameTabs < 1 || next.maxGameTabs > 8)
+        throw { message: "The most game tabs must be from 1 to 8" };
+      settings = structuredClone(next);
+      return next;
+    }),
     chooseNewDatabase: vi.fn().mockResolvedValue("/synthetic/new.2cbh"),
     confirmEditing: vi.fn().mockResolvedValue(true),
     createDatabase: vi.fn().mockImplementation(async (_path, requestId) => ({

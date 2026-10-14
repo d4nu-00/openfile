@@ -8,6 +8,7 @@ pub mod names;
 pub mod registry;
 pub mod save;
 pub mod searches;
+pub mod settings;
 #[cfg(all(debug_assertions, target_os = "macos"))]
 pub mod snapshot;
 pub mod trees;
@@ -107,8 +108,12 @@ pub fn run() {
                 app.state::<std::sync::Arc<registry::Registry>>()
                     .set_index_dir(dir.join("search-boosters"));
             }
+            if let Ok(dir) = app.path().app_config_dir() {
+                app.state::<settings::Settings>().set_dir(&dir);
+            }
             Ok(())
         })
+        .manage(settings::Settings::default())
         .manage(ExitPolicy::default())
         .manage(StartupRequest(
             std::sync::Mutex::new(Some(startup.clone())),
@@ -167,6 +172,9 @@ pub fn run() {
             commands::finish_close,
             commands::startup_request,
             commands::startup_shown,
+            engine_commands::probe_engine,
+            settings::get_settings,
+            settings::set_settings,
             engine_commands::choose_engine,
             engine_commands::set_engine_option,
             engine_commands::start_analysis,

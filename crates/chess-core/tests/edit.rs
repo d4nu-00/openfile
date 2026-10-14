@@ -187,3 +187,28 @@ fn marks_are_set_checked_and_written() {
             .all(|n| n.squares.is_empty() && n.arrows.is_empty())
     );
 }
+
+#[test]
+fn engine_lines_follow_existing_moves_and_change_nothing_when_illegal() {
+    let mut g = game(TREE);
+    let line = |m: &[&str]| m.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+    // 1.e4 e5 exists; 2.Bc4 is new beside 2.Nf3, so it becomes a variation.
+    let e5 = find(&g, &["e4", "e5"]);
+    let last = g
+        .append_line(
+            0,
+            &line(&["e2e4", "e7e5", "f1c4", "g8f6"]),
+            &GameLimits::default(),
+        )
+        .unwrap();
+    assert_eq!(g.nodes[e5 as usize].children.len(), 2);
+    assert_eq!(find(&g, &["e4", "e5", "Bc4", "Nf6"]), last);
+    // An illegal move anywhere leaves the game as it was.
+    let before = g.clone();
+    assert!(
+        g.append_line(0, &line(&["d2d4", "e7e5", "e1e8"]), &GameLimits::default())
+            .is_err()
+    );
+    assert_eq!(g, before);
+    assert!(g.append_line(0, &[], &GameLimits::default()).is_err());
+}

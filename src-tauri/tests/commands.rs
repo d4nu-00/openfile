@@ -104,7 +104,8 @@ fn registry_budgets_reject_excess_handles() {
     let db = r
         .open_database(d.path().join("test.cbh"), "r".into())
         .unwrap();
-    for _ in 0..10 {
+    // 16 documents: 8 game tabs, the preview and games being replaced.
+    for _ in 0..16 {
         r.load_entry(db.database_id.clone(), "1".into(), "r".into())
             .unwrap();
     }
