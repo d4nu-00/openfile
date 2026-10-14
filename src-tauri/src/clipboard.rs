@@ -52,6 +52,8 @@ pub struct PasteResponse {
     pub skipped: String,
     /// Games stored without some annotations (not decoded, or not storable).
     pub incomplete: String,
+    /// Chess960 games left out: 2CBH cannot hold them yet.
+    pub chess960: String,
     pub cancelled: bool,
     pub entry_count: String,
     /// The target's opening tree no longer covers it and needs rebuilding.
@@ -159,6 +161,7 @@ impl Registry {
         let mut source = cbh_reader::Database::open(&clip.path, cbh_reader::ReadLimits::default())?;
         let total = clip.ordinals.len() as u64;
         let (mut pasted, mut skipped, mut incomplete) = (0u64, 0u64, 0u64);
+        let mut chess960 = 0u64;
         let mut cancelled = false;
         let mut done = 0u64;
         let result = (|| -> Result<(), AppError> {
@@ -173,6 +176,7 @@ impl Registry {
                 for &o in chunk {
                     let loaded = source.load(o)?;
                     match loaded.game {
+                        Some(game) if game.is_chess960() => chess960 += 1,
                         Some(game) => {
                             partial.push(!matches!(
                                 loaded.annotations_status,
@@ -224,6 +228,7 @@ impl Registry {
             pasted: pasted.to_string(),
             skipped: skipped.to_string(),
             incomplete: incomplete.to_string(),
+            chess960: chess960.to_string(),
             cancelled,
             entry_count: count.to_string(),
             tree_stale: had_tree && !tree_current,
