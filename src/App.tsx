@@ -14,6 +14,7 @@ import type {
   Crosstable,
   NameKind,
   NameRow,
+  DatabaseSymbol,
   PlayerStatistics,
   SortColumn,
 } from "./api/types";
@@ -45,6 +46,7 @@ import { usePositionPanes } from "./state/positionPanes";
 import { Diagnostics } from "./components/Diagnostics";
 import { GameList } from "./views/GameList";
 import { NamesPane } from "./views/NamesPane";
+import { StartScreen, type StartView } from "./views/StartScreen";
 import { CrosstableDialog } from "./components/CrosstableDialog";
 import { PlayerStatisticsDialog } from "./components/PlayerStatisticsDialog";
 import {
@@ -173,6 +175,12 @@ export function App({
     error?: string;
     players?: { id: number; name?: string }[];
   }>();
+  /** The start screen (My Databases): shown when asked, or with no database. */
+  const [startOpen, setStartOpen] = useState(false);
+  const [showFolders, setShowFolders] = useState(true);
+  const [startView, setStartView] = useState<StartView>("symbols");
+  const [startSymbol, setStartSymbol] = useState<DatabaseSymbol>();
+  const [startRefresh, setStartRefresh] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [ordinal, setOrdinal] = useState("1");
   const [square, setSquare] = useState<string>();
@@ -221,7 +229,13 @@ export function App({
     let live = true;
     void (async () => {
       const startup = await api.startupRequest().catch(() => null);
-      if (!live || !startup || (!startup.path && !startup.fen)) return;
+      if (!live || !startup) return;
+      if (!startup.path && !startup.fen) {
+        // Nothing to open: the start screen is what a snapshot shows.
+        if (startup.command) setStartupCommand(startup.command);
+        else await api.startupShown().catch(() => {});
+        return;
+      }
       if (startup.path) await w.openDatabase(startup.path);
       if (startup.sort) {
         const [column, order] = startup.sort.split(":");
@@ -649,6 +663,16 @@ export function App({
     if (whiteId !== undefined) gamePlayers.push({ id: whiteId, name: white });
     if (blackId !== undefined) gamePlayers.push({ id: blackId, name: black });
   }
+  // A database opened from anywhere closes the start screen; its lists
+  // changed.
+  const openedId = state.database?.databaseId;
+  useEffect(() => {
+    if (!openedId) return;
+    setStartOpen(false);
+    setStartRefresh((n) => n + 1);
+  }, [openedId]);
+  /** The start screen takes the database view's place. */
+  const startShown = view === "database" && (startOpen || !state.database);
   /** The player for Player statistic: the chosen one, else the game's. */
   const statsPlayer =
     listTab === "players" && chosenName.players
@@ -871,6 +895,50 @@ export function App({
         if (kind && row) return gamesOf(kind, row);
       },
       enabled: listTab !== "games" && !!chosenName[listTab],
+    },
+    "my-databases": {
+      run: () => {
+        setView("database");
+        setStartOpen((o) => !o || !state.database);
+      },
+      pressed: view === "database" && (startOpen || !state.database),
+    },
+    "toggle-folder-tree": {
+      run: () => setShowFolders((f) => !f),
+      pressed: showFolders,
+      enabled: startShown,
+    },
+    "add-folder-shortcut": {
+      run: () =>
+        void api.chooseFolder().then((path) => {
+          if (typeof path !== "string") return;
+          void api
+            .addFolderShortcut(path)
+            .then(() => setStartRefresh((n) => n + 1))
+            .catch((err: unknown) =>
+              w.setDiagnostics([{ code: "folder", message: explain(err) }]),
+            );
+        }),
+    },
+    "remove-database-symbol": {
+      run: () => {
+        const s = startSymbol;
+        if (s?.favorite)
+          void api
+            .unpinDatabase(s.path)
+            .then(() => setStartRefresh((n) => n + 1));
+      },
+      enabled: startShown && !!startSymbol?.favorite,
+    },
+    "view-symbols": {
+      run: () => setStartView("symbols"),
+      pressed: startView === "symbols",
+      enabled: startShown,
+    },
+    "view-details": {
+      run: () => setStartView("details"),
+      pressed: startView === "details",
+      enabled: startShown,
     },
     statistics: {
       run: () => {
@@ -1269,7 +1337,25 @@ export function App({
       </header>
       <Ribbon view={view} bindings={bindings} />
       <main className="workspace">
-        {view === "database" ? (
+        {startShown ? (
+          <div className="start-wrap">
+            <Diagnostics items={w.diagnostics} />
+            <StartScreen
+              api={api}
+              showFolders={showFolders}
+              view={startView}
+              onView={setStartView}
+              onSelect={setStartSymbol}
+              refresh={startRefresh}
+              onOpen={(path) =>
+                void w.openDatabase(path).then(() => {
+                  setStartOpen(false);
+                  setStartRefresh((n) => n + 1);
+                })
+              }
+            />
+          </div>
+        ) : view === "database" ? (
           <Group
             key={`db-${layout}`}
             orientation="horizontal"

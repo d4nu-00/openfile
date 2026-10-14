@@ -131,6 +131,43 @@ const list: CommandMeta[] = [
     views: db,
   },
   {
+    id: "toggle-folder-tree",
+    label: "Folders",
+    tip: "Hide/Show the database folder tree and drives",
+    icon: FolderOpen,
+    views: db,
+  },
+  {
+    id: "add-folder-shortcut",
+    label: "Add Folder Shortcut",
+    tip: "Add a shortcut to a folder to your favorite databases",
+    icon: FolderOpen,
+    views: db,
+  },
+  {
+    id: "remove-database-symbol",
+    label: "Remove Database Symbol",
+    tip: "Remove the database symbol from your favorites, but keep the database files",
+    icon: X,
+    views: db,
+  },
+  {
+    id: "view-symbols",
+    label: "Symbols",
+    tip: "Databases as Symbols",
+    icon: LayoutGrid,
+    keys: "Ctrl+I",
+    views: db,
+  },
+  {
+    id: "view-details",
+    label: "Details",
+    tip: "List Database Details",
+    icon: List,
+    keys: "Ctrl+D",
+    views: db,
+  },
+  {
     id: "cloud-databases",
     label: "Cloud Databases",
     tip: "Open databases stored in the ChessBase Cloud",
@@ -897,6 +934,7 @@ const viewTab: RibbonTab = {
   label: "View",
   groups: [
     { label: "Layout", items: [L("layout-standard")] },
+    { label: "Databases", items: [S("view-symbols"), S("view-details")] },
     {
       label: "Theme",
       items: [
@@ -937,6 +975,9 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             S("new-database"),
             S("open-database-edit"),
             S("my-databases"),
+            S("toggle-folder-tree"),
+            S("add-folder-shortcut"),
+            S("remove-database-symbol"),
             S("cloud-databases"),
           ],
         },

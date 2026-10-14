@@ -1,6 +1,7 @@
 //! The workbench's own settings, kept as JSON in the app's config folder:
-//! the most game tabs (ChessBase's "Maximum Board Windows") and the engines
-//! the user installed.
+//! the most game tabs (ChessBase's "Maximum Board Windows"), the engines
+//! the user installed, the tablebase folder, and the start screen's lists
+//! (see docs/start-screen.md).
 use crate::commands::AppError;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -10,12 +11,52 @@ use std::{
 };
 
 /// Settings files larger than this are not read.
-const MAX_BYTES: u64 = 64 * 1024;
+const MAX_BYTES: u64 = 256 * 1024;
 /// ChessBase allows 1 to 8 board windows, 8 by default (`MaxGameWins`).
 pub const MAX_GAME_TABS: u8 = 8;
 pub const MAX_ENGINES: usize = 32;
 const MAX_NAME: usize = 128;
 const MAX_ENGINE_OPTIONS: usize = 128;
+pub const MAX_RECENT: usize = 16;
+pub const MAX_FAVORITES: usize = 200;
+pub const MAX_FOLDERS: usize = 50;
+/// ChessBase's database types (messages 50027–50046), as icon names.
+pub const DATABASE_KINDS: [&str; 20] = [
+    "unspecific",
+    "work",
+    "large",
+    "openings",
+    "informant",
+    "classical",
+    "correspondence",
+    "tactics",
+    "analysis",
+    "training",
+    "endings",
+    "studies",
+    "problems",
+    "myGames",
+    "computer",
+    "magazine",
+    "patzer",
+    "match",
+    "recentTournaments",
+    "important",
+];
+
+/// A database symbol in My Databases.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FavoriteDatabase {
+    pub path: PathBuf,
+    /// One of `DATABASE_KINDS`.
+    #[serde(default = "unspecific")]
+    pub kind: String,
+}
+
+fn unspecific() -> String {
+    "unspecific".into()
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -28,6 +69,15 @@ pub struct AppSettings {
     /// The folder of Syzygy tablebase files the user chose.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tablebase_dir: Option<PathBuf>,
+    /// Databases opened lately, latest first.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub recent_databases: Vec<PathBuf>,
+    /// My Databases.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub favorites: Vec<FavoriteDatabase>,
+    /// Folders shown beside My Databases.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub folder_shortcuts: Vec<PathBuf>,
 }
 
 impl Default for AppSettings {
@@ -37,6 +87,9 @@ impl Default for AppSettings {
             engines: vec![],
             default_engine: None,
             tablebase_dir: None,
+            recent_databases: vec![],
+            favorites: vec![],
+            folder_shortcuts: vec![],
         }
     }
 }
@@ -96,6 +149,31 @@ impl AppSettings {
         {
             return invalid("The default engine is not installed");
         }
+        fn paths_ok<'a>(paths: impl Iterator<Item = &'a PathBuf>) -> bool {
+            let mut seen = std::collections::BTreeSet::new();
+            paths
+                .into_iter()
+                .all(|p| p.is_absolute() && p.as_os_str().len() <= 4096 && seen.insert(p))
+        }
+        if self.recent_databases.len() > MAX_RECENT
+            || self.favorites.len() > MAX_FAVORITES
+            || self.folder_shortcuts.len() > MAX_FOLDERS
+        {
+            return invalid("Too many databases or folders in the lists");
+        }
+        if !paths_ok(self.recent_databases.iter())
+            || !paths_ok(self.favorites.iter().map(|f| &f.path))
+            || !paths_ok(self.folder_shortcuts.iter())
+        {
+            return invalid("Database and folder paths must be absolute and listed once");
+        }
+        if self
+            .favorites
+            .iter()
+            .any(|f| !DATABASE_KINDS.contains(&f.kind.as_str()))
+        {
+            return invalid("Unknown database type");
+        }
         Ok(())
     }
 }
@@ -135,6 +213,20 @@ impl Settings {
         };
         read().unwrap_or_default()
     }
+    /// Loads, changes and saves the settings; returns them as saved.
+    pub fn update(
+        &self,
+        change: impl FnOnce(&mut AppSettings) -> Result<(), AppError>,
+    ) -> Result<AppSettings, AppError> {
+        static LOCK: Mutex<()> = Mutex::new(());
+        let _guard = LOCK
+            .lock()
+            .map_err(|_| AppError::new("state", "Settings unavailable"))?;
+        let mut settings = self.load();
+        change(&mut settings)?;
+        self.save(&settings)?;
+        Ok(settings)
+    }
     /// Checks and saves `settings`, replacing the file in one step.
     pub fn save(&self, settings: &AppSettings) -> Result<(), AppError> {
         settings.check()?;
@@ -161,8 +253,13 @@ pub fn get_settings(state: tauri::State<'_, Settings>) -> AppSettings {
 pub fn set_settings(
     state: tauri::State<'_, Settings>,
     tablebases: tauri::State<'_, std::sync::Arc<crate::tablebases::Tablebases>>,
-    settings: AppSettings,
+    mut settings: AppSettings,
 ) -> Result<AppSettings, AppError> {
+    // The start screen's lists change only through their own commands.
+    let kept = state.load();
+    settings.recent_databases = kept.recent_databases;
+    settings.favorites = kept.favorites;
+    settings.folder_shortcuts = kept.folder_shortcuts;
     settings.check()?;
     // A tablebase folder is opened before it is kept.
     tablebases.set_dir(settings.tablebase_dir.as_deref())?;

@@ -4,6 +4,7 @@ pub mod commands;
 pub mod database_writes;
 pub mod documents;
 pub mod engine_commands;
+pub mod library;
 pub mod lists;
 pub mod names;
 pub mod registry;
@@ -201,6 +202,14 @@ pub fn run() {
             blunder_check::blunder_check,
             blunder_check::cancel_blunder_check,
             settings::get_settings,
+            library::start_screen,
+            library::folder_databases,
+            library::pin_database,
+            library::unpin_database,
+            library::set_database_kind,
+            library::forget_recent,
+            library::add_folder_shortcut,
+            library::remove_folder_shortcut,
             settings::set_settings,
             engine_commands::choose_engine,
             engine_commands::set_engine_option,

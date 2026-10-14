@@ -38,6 +38,8 @@ import type {
   PositionQuery,
   StatGroup,
   TablebaseAnnotation,
+  StartScreenData,
+  FolderListing,
 } from "./types";
 
 /** A progress channel; one that drops the messages when nobody listens. */
@@ -424,6 +426,19 @@ export const backend = {
   closeDocument: (documentId: string) =>
     invoke<void>("close_document", { documentId }),
   getSettings: () => invoke<AppSettings>("get_settings"),
+  startScreen: () => invoke<StartScreenData>("start_screen"),
+  folderDatabases: (folder: string) =>
+    invoke<FolderListing>("folder_databases", { folder }),
+  pinDatabase: (path: string) => invoke<void>("pin_database", { path }),
+  unpinDatabase: (path: string) => invoke<void>("unpin_database", { path }),
+  setDatabaseKind: (path: string, kind: string) =>
+    invoke<void>("set_database_kind", { path, kind }),
+  forgetRecent: (path: string) => invoke<void>("forget_recent", { path }),
+  addFolderShortcut: (folder: string) =>
+    invoke<void>("add_folder_shortcut", { folder }),
+  removeFolderShortcut: (folder: string) =>
+    invoke<void>("remove_folder_shortcut", { folder }),
+  chooseFolder: () => open({ directory: true, title: "Add a folder shortcut" }),
   chooseTablebaseFolder: () =>
     open({ directory: true, title: "Choose the folder of Syzygy tablebases" }),
   blunderCheck: (
