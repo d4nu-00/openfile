@@ -145,6 +145,13 @@ annotations that are not decoded or not storable are left out and counted.
 Text entries and Chess960 games are left out too, and deleted marks are
 kept. The source is only read.
 
+Check Integrity reads any database and reports what cannot be read; it
+repairs nothing. In a .2cbh database opened for editing, Find Double Games
+marks doubles deleted, and Remove Deleted Games rewrites the files without
+deleted entries, copying the other entries' data byte for byte. It removes
+ChessBase's `.2lcd`/`.2lgd` indexes for ChessBase to rebuild (see
+[maintenance](maintenance.md)).
+
 Games can be copied from any open database and pasted into a .2cbh database
 opened for editing. Annotations that are not decoded, or that ChessBase
 cannot store, are left out and counted, as when a single game is saved. PGN
