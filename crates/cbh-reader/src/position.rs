@@ -115,11 +115,15 @@ fn counts(board: &Board) -> ([u32; 2], [u32; 2]) {
 
 impl Target {
     pub fn new(pos: &Chess) -> Self {
-        let (pawns, pieces) = counts(pos.board());
+        Self::from_board(pos.board().clone(), pos.turn())
+    }
+    /// A board and side to move, as given; it need not be a legal position.
+    pub fn from_board(board: Board, turn: Color) -> Self {
+        let (pawns, pieces) = counts(&board);
         Self {
-            board: pos.board().clone(),
-            turn: pos.turn(),
-            key: structure_key(pos.board(), pos.turn()),
+            key: structure_key(&board, turn),
+            board,
+            turn,
             pawns,
             pieces,
         }
@@ -127,26 +131,46 @@ impl Target {
     pub fn from_fen(fen: &str) -> Result<Self, CbhError> {
         Ok(Self::new(&chess_core::model::parse_position(fen)?))
     }
+    /// The same board and side to move.
+    pub fn same(&self, other: &Target) -> bool {
+        self.turn == other.turn && self.board == other.board
+    }
+    /// The booster key of the target.
+    pub fn key(&self) -> u64 {
+        self.key
+    }
+    /// Whether a line at `board` can still reach the target: pawns and
+    /// pieces never come back.
+    fn reachable(&self, board: &Board) -> bool {
+        let (pawns, pieces) = counts(board);
+        (0..2).all(|i| {
+            pawns[i] >= self.pawns[i] && pieces[i] + pawns[i] >= self.pieces[i] + self.pawns[i]
+        })
+    }
     /// The first node of `game` (depth first) whose position is the target.
     pub fn find_in(&self, game: &Game) -> Result<Option<NodeId>, CbhError> {
-        let mut found = None;
-        walk(game, |id, pos| {
-            if found.is_some() {
-                return false;
-            }
-            let board = pos.board();
-            if pos.turn() == self.turn && board == &self.board {
-                found = Some(id);
-                return false;
-            }
-            // Pawns and pieces never come back; stop when below the target.
-            let (pawns, pieces) = counts(board);
-            (0..2).all(|i| {
-                pawns[i] >= self.pawns[i] && pieces[i] + pawns[i] >= self.pieces[i] + self.pawns[i]
-            })
-        })?;
-        Ok(found)
+        find_any(std::slice::from_ref(self), game)
     }
+}
+
+/// The first node of `game` (depth first) showing any of `targets`.
+pub fn find_any(targets: &[Target], game: &Game) -> Result<Option<NodeId>, CbhError> {
+    let mut found = None;
+    walk(game, |id, pos| {
+        if found.is_some() {
+            return false;
+        }
+        let board = pos.board();
+        if targets
+            .iter()
+            .any(|t| pos.turn() == t.turn && board == &t.board)
+        {
+            found = Some(id);
+            return false;
+        }
+        targets.iter().any(|t| t.reachable(board))
+    })?;
+    Ok(found)
 }
 
 /// An index file opened for searching.
@@ -314,7 +338,7 @@ impl Database {
     }
 
     /// Finds games that reach `target`, using `index` when given and
-    /// replaying every game otherwise. Workers each read their own range.
+    /// replaying every game otherwise.
     pub fn find_position(
         &mut self,
         target: &Target,
@@ -323,9 +347,31 @@ impl Database {
         cancel: &AtomicBool,
         progress: impl FnMut(u64, u64),
     ) -> Result<PositionResult, CbhError> {
-        let index = index.map(|i| &*i);
+        let query = crate::pattern::Compiled::Exact(vec![target.clone()]);
+        self.find_query(&query, index, max_hits, cancel, progress)
+    }
+
+    /// Finds games matching a position tab query. Exact positions use
+    /// `index` when given; patterns replay every game. Workers each read
+    /// their own range.
+    pub fn find_query(
+        &mut self,
+        query: &crate::pattern::Compiled,
+        index: Option<&mut PositionIndex>,
+        max_hits: usize,
+        cancel: &AtomicBool,
+        progress: impl FnMut(u64, u64),
+    ) -> Result<PositionResult, CbhError> {
+        use crate::pattern::Compiled;
+        let index = match query {
+            Compiled::Exact(_) => index.map(|i| &*i),
+            Compiled::Pattern(_) => None,
+        };
+        let keys: Vec<u64> = match query {
+            Compiled::Exact(targets) => targets.iter().map(Target::key).collect(),
+            Compiled::Pattern(_) => vec![],
+        };
         let replayed = std::sync::atomic::AtomicU64::new(0);
-        let keys = [target.key];
         let found = crate::scan::parallel(
             self,
             crate::scan::default_workers(),
@@ -345,7 +391,11 @@ impl Database {
                         continue;
                     };
                     replayed.fetch_add(1, Ordering::Relaxed);
-                    if let Some(node) = target.find_in(&game)? {
+                    let node = match query {
+                        Compiled::Exact(targets) => find_any(targets, &game)?,
+                        Compiled::Pattern(p) => p.find_in(&game)?,
+                    };
+                    if let Some(node) = node {
                         out.push((ordinal, node));
                     }
                 }

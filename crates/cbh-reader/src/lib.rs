@@ -8,6 +8,7 @@ pub mod header;
 pub mod limits;
 pub mod moves;
 pub mod name_list;
+pub mod pattern;
 pub mod player_stats;
 pub mod position;
 pub mod scan;
