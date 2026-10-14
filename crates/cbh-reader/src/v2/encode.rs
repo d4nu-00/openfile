@@ -129,6 +129,13 @@ fn setup(words: &mut Vec<u16>, game: &Game) -> Result<(), CbhError> {
 
 /// Encodes a game's move tree as a 2CBG payload (LE16 words).
 pub fn encode_moves(game: &Game) -> Result<Vec<u8>, CbhError> {
+    // 2CBG writes Chess960 games in an extended token section that was not
+    // traced (no Chess960 game in the 2CBH sample to check it against).
+    if game.is_chess960() {
+        return Err(CbhError::Unsupported(
+            "Chess960 games cannot be saved to a 2CBH database yet; save them as PGN".into(),
+        ));
+    }
     let mut words = vec![];
     if game.start_fen != Game::initial().start_fen {
         setup(&mut words, game)?;

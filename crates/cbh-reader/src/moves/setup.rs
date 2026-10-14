@@ -124,3 +124,75 @@ pub(crate) fn fen(
         number.max(1)
     )
 }
+
+/// The castling field of a Chess960 set-up. After the 28 set-up bytes a
+/// Chess960 record holds six squares (file-major, `8 * file + rank`): the
+/// white and black kings, then the rooks White castles with on the king's
+/// and the queen's side, then Black's. They name the rook files of the
+/// castling rights (control bits 2/K, 1/Q, 8/k, 4/q), written as
+/// Shredder-FEN letters. Observed in every Chess960 game of Mega Database
+/// 2025; a square that does not hold the king or rook it names is refused.
+pub fn chess960_castling(fen: &str, rights: u8, squares: &[u8]) -> Result<String, CbhError> {
+    if squares.len() != 6 || squares.iter().any(|&s| s > 63) {
+        return Err(CbhError::Decode("Invalid Chess960 squares".into()));
+    }
+    let placement = fen.split(' ').next().unwrap_or("");
+    let mut board = [' '; 64];
+    for (i, row) in placement.split('/').enumerate() {
+        let rank = 7 - i;
+        let mut file = 0;
+        for c in row.chars() {
+            match c.to_digit(10) {
+                Some(n) => file += n as usize,
+                None => {
+                    if file < 8 && rank < 8 {
+                        board[rank * 8 + file] = c;
+                    }
+                    file += 1;
+                }
+            }
+        }
+    }
+    // File-major square to (file, piece on it).
+    let at = |sq: u8| {
+        let (file, rank) = ((sq / 8) as usize, (sq % 8) as usize);
+        (file, board[rank * 8 + file])
+    };
+    let (_, wk) = at(squares[0]);
+    let (_, bk) = at(squares[1]);
+    if wk != 'K' || bk != 'k' {
+        return Err(CbhError::Decode(
+            "Chess960 king squares do not match".into(),
+        ));
+    }
+    let mut field = String::new();
+    for (bit, sq, rook, upper) in [
+        (2, squares[2], 'R', true),
+        (1, squares[3], 'R', true),
+        (8, squares[4], 'r', false),
+        (4, squares[5], 'r', false),
+    ] {
+        if rights & bit == 0 {
+            continue;
+        }
+        let (file, piece) = at(sq);
+        if piece != rook {
+            return Err(CbhError::Decode("Chess960 castling rook is missing".into()));
+        }
+        let letter = char::from(b'a' + file as u8);
+        field.push(if upper {
+            letter.to_ascii_uppercase()
+        } else {
+            letter
+        });
+    }
+    if field.is_empty() {
+        field.push('-');
+    }
+    let mut parts: Vec<&str> = fen.split(' ').collect();
+    if parts.len() < 3 {
+        return Err(CbhError::Decode("Invalid set-up FEN".into()));
+    }
+    parts[2] = &field;
+    Ok(parts.join(" "))
+}
