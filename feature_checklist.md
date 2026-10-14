@@ -37,7 +37,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Create a new database (`NEWDATABASE`) *(2CBH)*
 - [x] P1 🟢 Read and write PGN *(import is bounded to 2,000 games)*
 - [ ] P2 🟢 Append games, append EPD, export a selection as text (`APPENDGAMES`, `APPENDEPD`, `CREATETEXTFILE`)
-- [ ] P2 🟢 Convert between CBH and 2CBH (`CONVERT_TO_FREE_2CBH`, `CONVERTTOCBG`)
+- [x] P2 🟢 Convert between CBH and 2CBH (`CONVERT_TO_FREE_2CBH`, `CONVERTTOCBG`) *(CBH or 2CBH → a new 2CBH: the whole database or up to 2,000,000 selected games. Progress and Stop; checks the target disk's free space against a measured estimate before and while writing. Written to a temporary family and renamed; deleted marks kept; Chess960 games and text entries left out and counted; the source is never touched. 0.4 ms per game on the classic Mega. Writing classic CBH is not ported. See [conversion](docs/conversion.md))*
 - [ ] P3 🟢 Read CTG/CBOne/old ChessBase formats (seen in format labels)
 - [ ] P3 🟢 Encrypted, password-protected archives (Archive DB dialog) (`DBTOOLSARCHIVE`)
 
