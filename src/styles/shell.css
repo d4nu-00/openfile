@@ -1301,3 +1301,120 @@ kbd {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Player statistic: score by colour and year, then opponents, tournaments
+   and openings side by side, as in ChessBase's dialog 846. */
+.modal.player-statistics {
+  width: min(1200px, 96vw);
+  max-width: min(1200px, 96vw);
+  height: min(760px, 90vh);
+  flex-direction: column;
+  flex-wrap: nowrap;
+  cursor: default;
+}
+.player-statistics .stat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  flex: 1;
+}
+.player-statistics .stat-top {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.player-statistics .stat-years {
+  max-height: 120px;
+  flex: 1;
+  min-width: 260px;
+}
+.player-statistics .stat-lists {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr 1fr;
+  gap: 10px;
+  min-height: 0;
+  flex: 1;
+}
+.player-statistics section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--pane-border);
+}
+.player-statistics .stat-scroll {
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+}
+.stat-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  width: 100%;
+}
+.stat-table th,
+.stat-table td {
+  padding: 2px 6px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--grid-line);
+}
+.stat-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--pane-header-bg);
+  color: var(--text-muted);
+  font-weight: 400;
+  text-align: left;
+}
+.stat-table th[scope="row"] {
+  text-align: left;
+  font-weight: 400;
+}
+.stat-table .num,
+.stat-table thead th.num {
+  text-align: right;
+}
+.stat-table .strong {
+  font-weight: 600;
+}
+.stat-table tbody tr {
+  cursor: default;
+}
+.stat-table tbody tr:hover {
+  background: var(--row-hover);
+}
+.stat-table tbody tr[aria-selected="true"] {
+  background: var(--row-selected-bg);
+  color: var(--row-selected-fg);
+}
+.stat-table td:first-child {
+  max-width: 16em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stat-sort {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-top: 1px solid var(--pane-border);
+}
+.stat-sort button {
+  font-size: 12px;
+  padding: 2px 8px;
+}
+.stat-sort button[aria-pressed="true"] {
+  background: var(--row-selected-bg);
+  color: var(--row-selected-fg);
+}
+.player-statistics .modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+@media (max-width: 760px) {
+  .player-statistics .stat-lists {
+    grid-template-columns: 1fr;
+  }
+}

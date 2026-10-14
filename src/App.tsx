@@ -14,6 +14,7 @@ import type {
   Crosstable,
   NameKind,
   NameRow,
+  PlayerStatistics,
   SortColumn,
 } from "./api/types";
 import {
@@ -45,6 +46,7 @@ import { Diagnostics } from "./components/Diagnostics";
 import { GameList } from "./views/GameList";
 import { NamesPane } from "./views/NamesPane";
 import { CrosstableDialog } from "./components/CrosstableDialog";
+import { PlayerStatisticsDialog } from "./components/PlayerStatisticsDialog";
 import {
   chooseRow,
   isSelected,
@@ -161,6 +163,15 @@ export function App({
     table?: Crosstable;
     loading?: boolean;
     error?: string;
+  }>();
+  /** The player statistics shown, and the players to switch between. */
+  const [stats, setStats] = useState<{
+    databaseId: string;
+    playerId: number;
+    data?: PlayerStatistics;
+    progress?: string;
+    error?: string;
+    players?: { id: number; name?: string }[];
   }>();
   const [flipped, setFlipped] = useState(false);
   const [ordinal, setOrdinal] = useState("1");
@@ -546,6 +557,64 @@ export function App({
       );
     }
   }
+  /** Shows the statistics of a player of the active database. */
+  async function openStatistics(
+    playerId: number,
+    players?: { id: number; name?: string }[],
+  ) {
+    const db = state.database;
+    if (!db) return;
+    const databaseId = db.databaseId;
+    const live = (c?: { databaseId: string; playerId: number }) =>
+      c?.databaseId === databaseId && c.playerId === playerId;
+    setStats((c) => ({
+      databaseId,
+      playerId,
+      progress: "Reading the games…",
+      players: players ?? c?.players,
+    }));
+    try {
+      const data = await api.playerStatistics(databaseId, playerId, (p) => {
+        const pct = Number((BigInt(p.done) * 100n) / BigInt(p.total || "1"));
+        setStats((c) =>
+          live(c) ? { ...c!, progress: `Reading the games, ${pct}%` } : c,
+        );
+      });
+      setStats((c) =>
+        live(c)
+          ? data
+            ? { ...c!, data, progress: undefined }
+            : { ...c!, progress: undefined, error: "Statistics cancelled" }
+          : c,
+      );
+    } catch (e) {
+      setStats((c) =>
+        live(c)
+          ? {
+              ...c!,
+              progress: undefined,
+              error: (e as { message?: string })?.message ?? String(e),
+            }
+          : c,
+      );
+    }
+  }
+  /** The players of the shown game, when it comes from the active database. */
+  const gamePlayers: { id: number; name?: string }[] = [];
+  if (
+    state.document &&
+    state.database &&
+    state.origin?.databaseId === state.database.databaseId
+  ) {
+    const { whiteId, blackId, white, black } = state.document.summary;
+    if (whiteId !== undefined) gamePlayers.push({ id: whiteId, name: white });
+    if (blackId !== undefined) gamePlayers.push({ id: blackId, name: black });
+  }
+  /** The player for Player statistic: the chosen one, else the game's. */
+  const statsPlayer =
+    listTab === "players" && chosenName.players
+      ? chosenName.players.id
+      : gamePlayers[0]?.id;
   /** The tournament for Cross Table: the chosen one, else the game's. */
   const crossTournament =
     listTab === "tournaments" && chosenName.tournaments
@@ -763,6 +832,21 @@ export function App({
         if (kind && row) return gamesOf(kind, row);
       },
       enabled: listTab !== "games" && !!chosenName[listTab],
+    },
+    statistics: {
+      run: () => {
+        const row = chosenName.players;
+        if (listTab === "players" && row) return openStatistics(row.id);
+      },
+      enabled: listTab === "players" && !!chosenName.players,
+    },
+    "player-statistic": {
+      run: () => {
+        if (statsPlayer === undefined) return;
+        const fromList = listTab === "players" && !!chosenName.players;
+        return openStatistics(statsPlayer, fromList ? undefined : gamePlayers);
+      },
+      enabled: !!state.database && statsPlayer !== undefined,
     },
     "cross-table": {
       run: () =>
@@ -1617,6 +1701,28 @@ export function App({
           onPaste={(text) => {
             setPasting(undefined);
             void pasteText(pasting, text);
+          }}
+        />
+      )}
+      {stats && (
+        <PlayerStatisticsDialog
+          stats={stats.data}
+          progress={stats.progress}
+          error={stats.error}
+          players={stats.players}
+          onPlayer={(id) => void openStatistics(id)}
+          onCancel={() => void api.cancelPlayerStatistics(stats.databaseId)}
+          onOpenGames={(group, label) => {
+            const playerId = stats.playerId;
+            setStats(undefined);
+            showList("games");
+            void w.statisticsGames(playerId, group, label);
+          }}
+          onCrosstable={(id) => void openCrosstable(id)}
+          onClose={() => {
+            if (stats.progress)
+              void api.cancelPlayerStatistics(stats.databaseId);
+            setStats(undefined);
           }}
         />
       )}

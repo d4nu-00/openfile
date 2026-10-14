@@ -17,6 +17,8 @@ export const summary: EntrySummary = {
   deleted: false,
   white: "Alpha",
   black: "Beta",
+  whiteId: 11,
+  blackId: 12,
   event: "Synthetic",
   result: "*",
   diagnostics: [],
@@ -545,6 +547,94 @@ export function mockApi(firstDatabase = 1) {
         }),
       ),
     findName: vi.fn().mockResolvedValue("120"),
+    playerStatistics: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          playerId: number,
+          onProgress: (p: { done: string; total: string }) => void,
+        ) => {
+          onProgress({ done: "50", total: "100" });
+          const score = (games: number, wins: number, draws: number) => ({
+            games,
+            wins,
+            draws,
+            losses: games - wins - draws,
+            points: wins + draws / 2,
+            percent: Math.round(((wins + draws / 2) * 100) / games),
+            averageElo: 2500,
+            performance: 2600,
+          });
+          return {
+            playerId,
+            name: `Player ${playerId}, A`,
+            total: score(3, 2, 1),
+            white: score(2, 2, 0),
+            black: score(1, 0, 1),
+            found: 3,
+            deleted: 0,
+            unscored: 0,
+            firstYear: 2019,
+            lastYear: 2020,
+            openings: [
+              { eco: "B90", white: score(2, 2, 0), black: score(0, 0, 0) },
+              { eco: "C42", white: score(0, 0, 0), black: score(1, 0, 1) },
+            ],
+            opponents: [
+              {
+                id: 5,
+                name: "Bravo, B",
+                elo: 2450,
+                score: score(2, 1, 1),
+                lastYear: 2020,
+              },
+              {
+                id: 6,
+                name: "Alpha, C",
+                elo: 2550,
+                score: score(1, 1, 0),
+                lastYear: 2019,
+              },
+            ],
+            tournaments: [
+              {
+                id: 9,
+                name: "Open 9",
+                site: "Oslo",
+                year: 2020,
+                score: score(2, 1, 1),
+              },
+              {
+                id: 8,
+                name: "Club",
+                site: "Bergen",
+                year: 2019,
+                score: score(1, 1, 0),
+              },
+            ],
+            years: [
+              { year: 2019, score: score(1, 1, 0), elo: 2400 },
+              { year: 2020, score: score(2, 1, 1), elo: 2450 },
+            ],
+            truncated: false,
+            moreOpponents: 0,
+            moreTournaments: 0,
+          };
+        },
+      ),
+    cancelPlayerStatistics: vi.fn().mockResolvedValue(undefined),
+    statisticsGames: vi
+      .fn()
+      .mockImplementation(
+        async (_db: string, _p: number, _g: unknown, requestId: string) => ({
+          requestId,
+          hits: "2",
+          scanned: "2",
+          truncated: false,
+          cancelled: false,
+        }),
+      ),
     crosstable: vi
       .fn()
       .mockImplementation(
