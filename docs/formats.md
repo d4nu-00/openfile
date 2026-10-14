@@ -110,7 +110,8 @@ the table builder `0x140203bb0`.
   * the four standard castling moves.
 
   The reader builds the primary 45,356 entries. Extended sections such as
-  Chess960 moves are refused as unsupported.
+  Chess960 moves are refused as unsupported (classic CBG Chess960 records are
+  read; see below).
 * `0xfffd` after a move opens a variation on it. Once `0xffff` ends the line,
   the variations follow in reverse order and start from the position before
   their parent move. `0xfffa` is a null move.
@@ -173,6 +174,71 @@ none. The rest of the record is not interpreted.
 * A stored move number of 0 is read as 1.
 * An en-passant file that is impossible on the board is dropped, as ChessBase's
   own 2CBG copy does for entry 13409.
+
+## Classic CBG encoding kinds and Chess960
+
+Evidence: CBase18.exe 18.1 (x64). `0x1401fb8f0` switches on a six-bit
+encoding kind and picks a 256-byte table for it. The kind is the record
+header's top byte without the set-up bit `0x40`:
+
+| Kind | CBG flags | Table (`.data`) | Moves |
+|---|---|---|---|
+| 0 | none / `0x40` | `0x141974010` | one-byte tokens (the standard decoder) |
+| 4 | `0x04` | `0x141974a10` | one-byte tokens in another byte order |
+| 0x0a | `0x0a` / `0x4a` | `0x141975610` | Chess960, one-byte tokens in another byte order |
+| 1 | `0x01` | `0x141974210` | a two-byte word per move |
+| 5 | `0x05` | `0x141974c10` | a two-byte word per move |
+
+Kinds 8–0x15 select further tables (`0x141975210`–`0x141976410`), probably
+for other variants. They were not studied, since the Mega holds none.
+
+**Byte orders (kinds 4 and 0x0a).** `0x141974010` lists the standard byte
+of each move kind, in ChessBase's order. It equals cbh2pgn's encoder
+permutation. A record of kind 4 or 0x0a holds, for move kind *i* after *n*
+moves, the byte at *i + n* of its own table. The reader therefore finds a
+byte's index in that table, subtracts the move counter, and reads the
+standard byte at the result; that byte is then decoded as usual. The two
+bytes of a two-byte move (token 0x29) are mapped the same way.
+
+**Chess960 records.** After the 28-byte set-up come six squares, file-major
+(`8 × file + rank`):
+1. the white king;
+2. the black king;
+3. White's king-side castling rook;
+4. White's queen-side castling rook;
+5. Black's king-side castling rook;
+6. Black's queen-side castling rook.
+
+Then two bytes hold a number from 0 to 959: the start position's number,
+which ChessBase's own "Chess 960-Position *n*" comments match (748 for
+Adams–Leko, 811 for Leko–Adams). The moves start at byte 40.
+* Castling is a two-byte move whose source and target are both the king's
+  castling square: g1 or c1 (g8, c8 for Black). It castles with that side's
+  rook, wherever the king stands.
+* The castling squares give the rook files of the set-up's castling rights.
+  The workbench writes them as X-FEN or Shredder-FEN letters, and refuses a
+  square that does not hold its king or rook.
+* The one Chess960 record without a set-up (entry 489,834) holds only a
+  terminator. With no start position it cannot be shown, so it is refused.
+
+**Two-byte words (kinds 1 and 5).** `0x1401fc8b0` writes each move as a
+16-bit word:
+* bits 0–5: the source square; bits 6–11: the target square (file-major);
+* bits 12–14: the promotion piece;
+* 0x4000: the line's last move;
+* 0x8000: a move with variations, or a line followed by another;
+* 0x1000: a flag that was not traced.
+
+Variations follow the main line, in reverse order and recursively. How the
+bytes are read:
+* kind 1: the position of *byte − counter* in its table;
+* kind 5: the position of *byte* in its table, less the counter.
+
+The reader reads single lines only and refuses a word with 0x8000, because
+that bit's two meanings were not separated. In the one kind-1 record of the
+Mega, the upper four bits follow no pattern, so they are not read; all of
+its 77 moves are legal as one line. A record of just the four header bytes
+holds a game without moves.
 
 ## Annotations (CBA and 2CBA)
 
