@@ -177,7 +177,42 @@ const CLASSIC_COMPANIONS: &[&str] = &[
     "cbh", "cbg", "cbp", "cbt", "cba", "cbc", "cbe", "cbs", "cbj", "cbl",
 ];
 const NEW_COMPANIONS: &[&str] = &["2cbh", "2cbg", "2cba", "2lid", "2lcd", "2lgd"];
+/// A database's format and size, read from its header record alone.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DatabasePeek {
+    pub format: DatabaseFormat,
+    pub entry_count: u64,
+}
 impl Database {
+    /// The format and entry count of the database at `path` (`.cbh` or
+    /// `.2cbh`), reading only its first record (46 or 192 bytes).
+    pub fn peek(path: &Path) -> Result<DatabasePeek, CbhError> {
+        use std::io::Read;
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(str::to_ascii_lowercase);
+        let (format, size) = match ext.as_deref() {
+            Some("cbh") => (DatabaseFormat::Classic, 46),
+            Some("2cbh") => (DatabaseFormat::New, crate::v2::record::RECORD),
+            _ => return Err(CbhError::Unsupported("Not a .cbh or .2cbh file".into())),
+        };
+        let mut file = std::fs::File::open(path)?;
+        let length = file.metadata()?.len();
+        let mut head = vec![0u8; size];
+        file.read_exact(&mut head)?;
+        let entry_count = match format {
+            DatabaseFormat::Classic => {
+                crate::header::ClassicHeader::parse(&head, length)?.entry_count
+            }
+            DatabaseFormat::New => crate::v2::record::NewHeader::parse(&head, length)?.entry_count,
+        };
+        Ok(DatabasePeek {
+            format,
+            entry_count,
+        })
+    }
     pub fn open(path: &Path, limits: ReadLimits) -> Result<Self, CbhError> {
         use crate::{companions::CompanionSet, source::SourceFile};
         let files = CompanionSet::discover(path)?;
