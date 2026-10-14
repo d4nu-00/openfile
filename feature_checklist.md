@@ -44,8 +44,8 @@ Names in backticks are ChessBase command ids, for traceability.
 ## 2. Database window and maintenance
 
 - [x] P1 🟢 Open a database with its companion files and diagnostics
-- [ ] P1 🟢 Database start screen: icons, folders, My Databases, recent files (`DBFavorites`, `TOGGLE_FOLDERTREE`, `ADDFOLDERSHORTCUT`)
-- [ ] P2 🟢 Database views: Tile, Details, Symbols and Small Symbols (`VIEW_TILE`, `VIEWREPORTEXPL`, `VIEWSYMBOLSEXPL`)
+- [x] P1 🟢 Database start screen: icons, folders, My Databases, recent files (`DBFavorites`, `TOGGLE_FOLDERTREE`, `ADDFOLDERSHORTCUT`) *(My Databases, Recent Databases (16) and folder shortcuts, kept in the app's settings file. Symbols carry ChessBase's 20 database types as the workbench's own icons; opening a database adds its symbol, as in ChessBase. Remove Database Symbol, Folders, Add Folder Shortcut; Symbols and Details views (Ctrl+I, Ctrl+D). Sizes come from header records only. See [start screen](docs/start-screen.md))*
+- [ ] P2 🟢 Database views: Tile, Details, Symbols and Small Symbols (`VIEW_TILE`, `VIEWREPORTEXPL`, `VIEWSYMBOLSEXPL`) *(partial: Symbols and Details on the start screen)*
 - [ ] P2 🟢 Database properties: icon, type, description (`EDITDBPROPERTIES`, `Properties`)
 - [x] P2 🟢 Several databases open at once *(up to four, a tab each; each keeps its own search, sort and scroll position)*
 - [x] P1 🟢 Search Booster: create and delete the fast position index (`DBTOOLSCREATESEARCHBOOSTER`, `DBTOOLSDELETESEARCHBOOSTER`) *(the workbench's own index in its data folder; built by 8 workers, 128 s for the classic Mega; ChessBase's .cit/.cib files are not read)*

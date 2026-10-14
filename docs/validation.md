@@ -590,6 +590,29 @@ A census of the classic Mega's CBG headers counted:
   removed afterwards. It showed 2.Qd5+? with "Tablebase: draw" and the
   variation 2.Qb5 "Tablebase: White wins".
 
+## Database start screen (2026-10-14)
+
+* **App tests.**
+  * Opening records Recent (latest first, at most 16) and My Databases (once).
+  * Remove Database Symbol keeps the files; pins and types work, and an
+    unknown type is refused.
+  * Folder shortcuts list only `.cbh`/`.2cbh` files, by name; missing files
+    show as missing.
+  * The lists are only in the settings file.
+  * Relative paths, duplicates and over-long lists are refused.
+* **Frontend tests.**
+  * The screen shows with no database open, opens a symbol on double-click
+    and is brought back by My Databases.
+  * Missing databases do not open.
+  * Type, Remove, Pin, folder listing, Add/Remove Folder Shortcut, Details
+    and Folders work.
+* **Real app.** A debug snapshot used a temporary settings file holding both
+  Mega families, a missing database and the Mega's folder, and the file was
+  deleted afterwards. The screen showed 11,151,119 entries (CBH) and 24,783
+  (2CBH), read from the header records alone. The first attempt was taken
+  before the cold first header reads had finished, so the screen now says
+  "Reading the lists…" until they arrive.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

@@ -36,6 +36,7 @@ const documents = new Set([
   "engines.md",
   "player-statistics.md",
   "position-search.md",
+  "start-screen.md",
 ]);
 export function allowedSourcePath(candidate) {
   if (
