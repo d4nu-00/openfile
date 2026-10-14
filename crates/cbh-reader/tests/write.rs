@@ -180,6 +180,18 @@ fn unstorable_annotations_are_reported() {
 }
 
 #[test]
+fn one_symbol_per_slot_is_storable() {
+    // Move, position and prefix symbols: only move, unclear, better is.
+    let mut g = pgn("1. e4 e5 *");
+    g.nodes[1].nags = vec![8, 13, 142];
+    assert!(encode::encode_annotations(&g).1.notes.is_empty());
+    // Zugzwang is a move symbol, as in ChessBase's "!" popup; beside an
+    // evaluation and a prefix it still fits.
+    g.nodes[1].nags = vec![22, 13, 142];
+    assert!(encode::encode_annotations(&g).1.notes.is_empty());
+}
+
+#[test]
 fn forfeits_and_double_zero_keep_their_code_while_the_result_agrees() {
     let d = tempfile::tempdir().unwrap();
     let path = d.path().join("Results.2cbh");

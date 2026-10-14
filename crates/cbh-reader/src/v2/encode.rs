@@ -208,10 +208,11 @@ fn square_code(name: &str) -> Option<u8> {
         .then(|| (b[0] - b'a') * 8 + (b[1] - b'1') + 1)
 }
 
-/// Symbol slot of a NAG: 0 move (1-9), 2 prefix (140-145), 1 position.
+/// Symbol slot of a NAG: 0 move (1-9, and zugzwang 22, which ChessBase
+/// offers among the move symbols), 2 prefix (140-145), 1 position.
 fn nag_slot(nag: u16) -> usize {
     match nag {
-        1..=9 => 0,
+        1..=9 | 22 => 0,
         140..=145 => 2,
         _ => 1,
     }
