@@ -1,5 +1,20 @@
+import { useRef, useState, type PointerEvent } from "react";
 import { pieceImages } from "../board/pieces";
 import type { ArrowMark, SquareMark } from "../api/types";
+
+/** A square (`from` = `to`) or an arrow drawn with the mouse. */
+export interface DrawnMark {
+  from: string;
+  to: string;
+  color: string;
+}
+/**
+ * ChessBase's colours for graphical commentary: green, Shift for red and
+ * Ctrl for yellow. The right button or Alt with the left button draws.
+ */
+export function drawColor(e: { shiftKey: boolean; ctrlKey: boolean }) {
+  return e.shiftKey ? "R" : e.ctrlKey ? "Y" : "G";
+}
 
 /** Mark colour letters as used by PGN [%csl]/[%cal]. */
 const markColors: Record<string, string> = {
@@ -26,6 +41,7 @@ export function Board({
   selectedSquare,
   compact,
   marks,
+  onMark,
 }: {
   fen: string;
   flipped: boolean;
@@ -34,7 +50,13 @@ export function Board({
   selectedSquare?: string;
   compact?: boolean;
   marks?: { squares?: SquareMark[]; arrows?: ArrowMark[] };
+  /** A square or arrow drawn with the right button or Alt+left. */
+  onMark?: (mark: DrawnMark) => void;
 }) {
+  const [drawing, setDrawing] = useState<DrawnMark>();
+  const drawingRef = useRef<DrawnMark | undefined>(undefined);
+  /** The left click that ends an Alt+drag selects no square. */
+  const swallowClick = useRef(false);
   const marked: Record<string, string> = {};
   for (const m of marks?.squares ?? []) marked[m.square] = markColors[m.color];
   const squares: Record<string, string> = {};
@@ -50,12 +72,54 @@ export function Board({
     });
   const files = flipped ? "hgfedcba" : "abcdefgh";
   const ranks = flipped ? "12345678" : "87654321";
+  /** The square under the pointer, from the board's own rectangle. */
+  const squareAt = (e: PointerEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const col = Math.floor(((e.clientX - r.left) / r.width) * 8);
+    const row = Math.floor(((e.clientY - r.top) / r.height) * 8);
+    if (!(col >= 0 && col <= 7 && row >= 0 && row <= 7)) return undefined;
+    return files[col] + ranks[row];
+  };
+  const track = (mark?: DrawnMark) => {
+    drawingRef.current = mark;
+    setDrawing(mark);
+  };
+  const handlers = onMark && {
+    onPointerDown: (e: PointerEvent<HTMLDivElement>) => {
+      if (!(e.button === 2 || (e.button === 0 && e.altKey))) return;
+      const from =
+        (e.target as HTMLElement).closest<HTMLElement>("[data-square]")?.dataset
+          .square ?? squareAt(e);
+      if (!from) return;
+      e.preventDefault();
+      swallowClick.current = e.button === 0;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      track({ from, to: from, color: drawColor(e) });
+    },
+    onPointerMove: (e: PointerEvent<HTMLDivElement>) => {
+      const d = drawingRef.current;
+      const to = d && squareAt(e);
+      if (d && to && to !== d.to) track({ ...d, to });
+    },
+    onPointerUp: () => {
+      const d = drawingRef.current;
+      track(undefined);
+      if (d) onMark(d);
+    },
+    onPointerCancel: () => track(undefined),
+    onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
+  };
+  const arrows = [
+    ...(marks?.arrows ?? []),
+    ...(drawing && drawing.from !== drawing.to ? [drawing] : []),
+  ];
   return (
     <div
       role="grid"
       aria-label="Chess board"
       data-flipped={flipped}
       className={compact ? "board compact" : "board"}
+      {...handlers}
     >
       {[...ranks].map((r) => (
         <div role="row" className="board-rank" key={r}>
@@ -77,8 +141,19 @@ export function Board({
                   aria-label={`${square} ${label}`}
                   aria-pressed={square === selectedSquare}
                   className={`square ${(files.indexOf(f) + ranks.indexOf(r)) % 2 ? "dark" : "light"} ${selectedSquare === square ? "selected" : ""}`}
-                  data-mark={marked[square]}
-                  onClick={() => onSquare?.(square)}
+                  data-mark={
+                    drawing?.from === square && drawing.to === square
+                      ? markColors[drawing.color]
+                      : marked[square]
+                  }
+                  data-square={square}
+                  onClick={() => {
+                    if (swallowClick.current) {
+                      swallowClick.current = false;
+                      return;
+                    }
+                    onSquare?.(square);
+                  }}
                   data-legal={legalUci.some(
                     (m) =>
                       m.slice(0, 2) === selectedSquare &&
@@ -101,14 +176,14 @@ export function Board({
           })}
         </div>
       ))}
-      {!!marks?.arrows?.length && (
+      {!!arrows.length && (
         <svg
           className="board-arrows"
           viewBox="0 0 8 8"
           aria-label="Board arrows"
           role="img"
         >
-          {marks.arrows.map((a, i) => {
+          {arrows.map((a, i) => {
             const at = (s: string) => [
               files.indexOf(s[0]) + 0.5,
               ranks.indexOf(s[1]) + 0.5,
@@ -120,7 +195,10 @@ export function Board({
             const [ux, uy] = [(x2 - x1) / length, (y2 - y1) / length];
             const color = markColors[a.color] ?? "green";
             return (
-              <g key={i} className={`arrow ${color}`}>
+              <g
+                key={i}
+                className={`arrow ${color}${a === drawing ? " drawing" : ""}`}
+              >
                 <title>{`${a.from}–${a.to}`}</title>
                 <line
                   x1={x1}

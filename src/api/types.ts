@@ -153,6 +153,13 @@ export type Edit =
   | { kind: "deleteRemaining"; node: NodeId }
   | { kind: "deletePrevious"; node: NodeId }
   | { kind: "setTags"; tags: Record<string, string> }
+  | {
+      kind: "setMarks";
+      node: NodeId;
+      squares: SquareMark[];
+      arrows: ArrowMark[];
+    }
+  | { kind: "clearMarks" }
   | { kind: "undo" }
   | { kind: "redo" };
 /** Edits that change the tree's shape; the selection is re-read after them. */
@@ -385,7 +392,9 @@ export interface ReferenceResponse {
   hits: string;
   truncated: boolean;
   cancelled: boolean;
-  source: "tree" | "line" | "search";
+  /** `notSearched`: the tree cannot answer and Find Position would read
+   * every game of a large database without a search booster. */
+  source: "tree" | "line" | "search" | "notSearched";
   /** A fallback search used the search booster. */
   indexed: boolean;
 }

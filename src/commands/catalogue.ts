@@ -605,6 +605,14 @@ const list: CommandMeta[] = [
     views: game,
   },
   {
+    id: "delete-colour-commentary",
+    label: "Delete Colour Commentary",
+    tip: "Delete all coloured squares and arrows of the game",
+    icon: Trash2,
+    keys: "Ctrl+Alt+Y",
+    views: game,
+  },
+  {
     id: "annotation-palette",
     label: "Annotation Palette",
     tip: "Open a palette with annotation symbols",
@@ -1018,6 +1026,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             S("promote-variation"),
             S("delete-remaining-moves"),
             S("delete-previous-moves"),
+            S("delete-colour-commentary"),
           ],
         },
       ],

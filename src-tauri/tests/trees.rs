@@ -123,6 +123,30 @@ fn tree_answers_and_follows_saves() {
         (search.hits.as_str(), search.source),
         ("0", ReferenceSource::Search)
     );
+    // On a large database without a search booster, that fallback would
+    // read every game, so it runs only when asked for.
+    r.set_reference_auto_limit(5);
+    let off_tree = Line {
+        start_fen: "8/8/8/4k3/8/8/8/4K3 w - - 0 1".into(),
+        moves: vec![],
+    };
+    let skipped = r
+        .reference_search(id.clone(), off_tree.clone(), "r".into())
+        .unwrap();
+    assert_eq!(
+        (skipped.hits.as_str(), skipped.source),
+        ("0", ReferenceSource::NotSearched)
+    );
+    let asked = r
+        .reference_search_with(id.clone(), off_tree, "r".into(), true)
+        .unwrap();
+    assert_eq!(asked.source, ReferenceSource::Search);
+    // The tree still answers by itself.
+    let tree = r
+        .reference_search(id.clone(), line(&["e2e4"]), "r".into())
+        .unwrap();
+    assert_eq!(tree.source, ReferenceSource::Tree);
+    r.set_reference_auto_limit(0);
 
     // A save is recorded in the tree's journal: no rebuild needed.
     save_all(&r, &d, &id, "[Result \"1-0\"]\n\n1. e4 c5 2. Nc3 1-0\n\n");

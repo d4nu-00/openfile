@@ -1,6 +1,6 @@
 //! Editing a game tree: deleting and promoting variations, cutting moves
 //! before or after a node, text before moves and the game data (tags).
-use crate::{CoreError, Game, NodeId};
+use crate::{ArrowMark, CoreError, Game, MARK_COLORS, NodeId, SquareMark};
 use shakmaty::{EnPassantMode, fen::Fen};
 use std::collections::BTreeMap;
 
@@ -8,6 +8,14 @@ use std::collections::BTreeMap;
 const DERIVED_TAGS: [&str; 2] = ["SetUp", "FEN"];
 const MAX_TAGS: usize = 64;
 const MAX_TAG_VALUE: usize = 255;
+/// Coloured squares and arrows one position may carry.
+const MAX_SQUARE_MARKS: usize = 64;
+const MAX_ARROW_MARKS: usize = 128;
+
+fn valid_square(s: &str) -> bool {
+    let b = s.as_bytes();
+    b.len() == 2 && (b'a'..=b'h').contains(&b[0]) && (b'1'..=b'8').contains(&b[1])
+}
 
 impl Game {
     fn node_parent(&self, node: NodeId) -> Result<Option<NodeId>, CoreError> {
@@ -149,6 +157,56 @@ impl Game {
             .ok_or(CoreError::InvalidNode)?
             .pre_comments = comments;
         Ok(())
+    }
+
+    /// Replaces the coloured squares and arrows shown on the position after
+    /// `node` (the start position for node 0). A square keeps its last mark
+    /// and an arrow its last colour.
+    pub fn set_marks(
+        &mut self,
+        node: NodeId,
+        squares: Vec<SquareMark>,
+        arrows: Vec<ArrowMark>,
+    ) -> Result<(), CoreError> {
+        let color = |c: char| MARK_COLORS.contains(c);
+        if squares.len() > MAX_SQUARE_MARKS || arrows.len() > MAX_ARROW_MARKS {
+            return Err(CoreError::LimitExceeded);
+        }
+        if squares
+            .iter()
+            .any(|m| !color(m.color) || !valid_square(&m.square))
+            || arrows.iter().any(|a| {
+                !color(a.color) || !valid_square(&a.from) || !valid_square(&a.to) || a.from == a.to
+            })
+        {
+            return Err(CoreError::InvalidPgn("Invalid square or arrow mark".into()));
+        }
+        let mut kept_squares: Vec<SquareMark> = vec![];
+        for m in squares {
+            kept_squares.retain(|k| k.square != m.square);
+            kept_squares.push(m);
+        }
+        let mut kept_arrows: Vec<ArrowMark> = vec![];
+        for a in arrows {
+            kept_arrows.retain(|k| (&k.from, &k.to) != (&a.from, &a.to));
+            kept_arrows.push(a);
+        }
+        let n = self
+            .nodes
+            .get_mut(node as usize)
+            .ok_or(CoreError::InvalidNode)?;
+        n.squares = kept_squares;
+        n.arrows = kept_arrows;
+        Ok(())
+    }
+
+    /// Removes every coloured square and arrow from the game (ChessBase
+    /// "Delete Colour Commentary").
+    pub fn clear_marks(&mut self) {
+        for n in &mut self.nodes {
+            n.squares.clear();
+            n.arrows.clear();
+        }
     }
 
     /// Replaces the game data. Tag names are PGN symbols; values are one

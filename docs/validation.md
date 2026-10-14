@@ -353,6 +353,34 @@ move-tree nodes. The first run found a "0-0" game stored back as a line. The
 The paste was not driven in the real app: the app's debug startup options
 open only one database.
 
+## Opening games and drawing (2026-10-13)
+
+`src-tauri/examples/open_timing.rs` timed opening games of the classic Mega
+in a release build: `load_entry` takes 0.3–0.8 ms on average, the book at
+most 4 ms and a tree-answered reference search at most 22 ms. A Find
+Position without a search booster, the reference pane's old fallback, took
+1,357 s. The details and the fixes are in [game window](game-window.md).
+
+**Tests.**
+* App tests cover:
+  * a reference search on a "large" database (the limit lowered in the test)
+    that reports `notSearched` and searches when asked, while the tree
+    still answers;
+  * a game loaded, replaced and loaded again through the game handle;
+  * drawn marks: edit, undo, redo, PGN `[%csl]`/`[%cal]`, saving into a 2CBH
+    database and loading back, and Delete Colour Commentary.
+* Core tests cover mark validation, deduplication and marks on the start
+  position.
+* Frontend tests cover:
+  * right-click squares with Shift, an Alt+Ctrl drag arrow, and the swallowed
+    click;
+  * adding, recolouring and removing marks;
+  * a double-click that loads its game once;
+  * the reference pane's Search all games.
+
+Drawing was not driven in the real app: its debug snapshots cannot press
+mouse buttons.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

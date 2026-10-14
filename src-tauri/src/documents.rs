@@ -71,6 +71,12 @@ pub enum Edit {
     SetTags {
         tags: std::collections::BTreeMap<String, String>,
     },
+    SetMarks {
+        node: u32,
+        squares: Vec<chess_core::SquareMark>,
+        arrows: Vec<chess_core::ArrowMark>,
+    },
+    ClearMarks,
     Undo,
     Redo,
 }
@@ -300,6 +306,12 @@ impl Registry {
             Edit::DeleteRemaining { node } => selected = Some(d.game.delete_remaining(node)?),
             Edit::DeletePrevious { node } => selected = Some(d.game.delete_previous(node)?),
             Edit::SetTags { tags } => d.game.set_tags(tags)?,
+            Edit::SetMarks {
+                node,
+                squares,
+                arrows,
+            } => d.game.set_marks(node, squares, arrows)?,
+            Edit::ClearMarks => d.game.clear_marks(),
             Edit::Undo | Edit::Redo => {
                 let undo = matches!(edit, Edit::Undo);
                 let d = &mut *d;

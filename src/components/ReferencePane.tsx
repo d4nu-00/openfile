@@ -6,6 +6,7 @@ const sources = {
   tree: "from the opening tree",
   line: "followed from the opening tree",
   search: "by position search",
+  notSearched: "",
 };
 
 /**
@@ -18,11 +19,16 @@ export function ReferencePane({
   hasDatabase,
   hasLine,
   onOpen,
+  onSearch,
+  onCancel,
 }: {
   reference: ReferenceState;
   hasDatabase: boolean;
   hasLine: boolean;
   onOpen: (ordinal: string, node: number) => void;
+  /** Runs Find Position when the tree cannot answer. */
+  onSearch?: () => void;
+  onCancel?: () => void;
 }) {
   const [cursor, setCursor] = useState<number>();
   const [top, setTop] = useState(0);
@@ -38,11 +44,12 @@ export function ReferencePane({
   if (!hasDatabase) message = "Open a database to search it.";
   else if (!hasLine) message = "Select a game to search its positions.";
   else if (reference.error) message = reference.error;
+  const notSearched = !message && response?.source === "notSearched";
   return (
     <div className="reference-pane" aria-label="Reference search">
       <div className="pane-header">
         <strong>Reference</strong>
-        {response && (
+        {response && !notSearched && (
           <span className="hint">
             {response.hits} games {sources[response.source]}
             {response.source === "search" && !response.indexed
@@ -54,9 +61,31 @@ export function ReferencePane({
               : ""}
           </span>
         )}
-        {reference.loading && <span className="hint">Searching…</span>}
+        {reference.loading && (
+          <span className="hint">
+            Searching…{" "}
+            {onCancel && (
+              <button type="button" className="link-button" onClick={onCancel}>
+                Stop
+              </button>
+            )}
+          </span>
+        )}
       </div>
-      {message ? (
+      {notSearched && !reference.loading ? (
+        <div className="empty-state">
+          <p>
+            This position is not in the opening tree. Without a search booster,
+            Find Position reads every game of this database, which takes
+            minutes.
+          </p>
+          {onSearch && (
+            <button type="button" onClick={onSearch}>
+              Search all games
+            </button>
+          )}
+        </div>
+      ) : message ? (
         <div className="empty-state">{message}</div>
       ) : (
         <GameList

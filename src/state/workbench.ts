@@ -568,10 +568,42 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     setCursor(undefined);
     setStatus(`${db.entryCount} entries`);
   }
+  /** The entry being loaded, so a second click on it does not load it again. */
+  const loading = useRef<{
+    databaseId: string;
+    ordinal: string;
+    done: Promise<void>;
+  }>(undefined);
+  /** Whether entry `ordinal` of the active database is the game shown, once
+   * a load of it that is under way has finished. */
+  async function showing(ordinal: string) {
+    const db = current.current.database?.databaseId;
+    const l = loading.current;
+    if (l && l.databaseId === db && l.ordinal === ordinal) await l.done;
+    const s = current.current;
+    return (
+      !!s.document &&
+      s.database?.databaseId === db &&
+      s.origin?.databaseId === db &&
+      s.origin?.ordinal === ordinal
+    );
+  }
   /** Loads an entry and selects `node` (a position search's hit) or the start. */
-  async function loadEntry(ordinal: string, node = 0) {
+  function loadEntry(ordinal: string, node = 0) {
     const db = current.current.database;
-    if (!db) return;
+    if (!db) return Promise.resolve();
+    const done = loadEntryNow(db, ordinal, node);
+    loading.current = { databaseId: db.databaseId, ordinal, done };
+    void done.finally(() => {
+      if (loading.current?.done === done) loading.current = undefined;
+    });
+    return done;
+  }
+  async function loadEntryNow(
+    db: OpenDatabaseResponse,
+    ordinal: string,
+    node: number,
+  ) {
     const request = gates.game.begin();
     gates.position.begin();
     setLoadingEntry(ordinal);
@@ -695,6 +727,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     openDatabaseForEditing,
     createDatabase,
     loadEntry,
+    showing,
     selectNode,
   };
 }

@@ -107,8 +107,11 @@ leading to the current node.
    also how the pane follows a single game deep into the middlegame.
 3. If no position of the line is stored, for example from a set-up start, or
    too many games would need replaying, the reference search falls back to
-   Find Position (with the search booster when there is one). The book pane
-   says the position is not in the tree.
+   Find Position (with the search booster when there is one). Without a
+   booster, a database of more than 200,000 entries is not scanned until
+   the user asks (**Search all games**): on the classic Mega such a scan takes
+   23 minutes (see [game window](game-window.md)). The book pane says the
+   position is not in the tree.
 
 **Known gap.** A game that reaches an unstored position by another move order
 is not found in step 2. Checked against a full scan of every main line, 2,965

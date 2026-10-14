@@ -11,12 +11,18 @@ pub struct Registry {
     pub(crate) index_dir: Mutex<Option<PathBuf>>,
     // Persistence is serialized without holding registry/document state locks.
     pub(crate) save_lock: Mutex<()>,
+    /// Overrides the size up to which the reference search runs Find
+    /// Position without a search booster by itself (tests); 0 is the default.
+    pub(crate) reference_auto_limit: std::sync::atomic::AtomicU64,
 }
 #[derive(Default)]
 pub(crate) struct State {
     next: u64,
     pub collections: HashMap<String, Arc<Vec<chess_core::Game>>>,
     pub(crate) databases: HashMap<String, Arc<Mutex<cbh_reader::Database>>>,
+    /// A second read handle per database for loading games, so a game opens
+    /// without waiting behind list pages, which share the first handle.
+    pub(crate) game_readers: HashMap<String, Arc<Mutex<cbh_reader::Database>>>,
     /// Writers of databases opened for editing, by database id.
     pub(crate) writers: HashMap<String, Arc<Mutex<cbh_reader::v2::write::Writer>>>,
     /// The path each database was opened from.
@@ -171,16 +177,20 @@ impl Registry {
     ) -> Result<GameResponse, AppError> {
         let ordinal = decimal(&ordinal)?;
         let id_for_origin = id.clone();
-        let db = self.database(&id)?;
-        let loaded = db
-            .lock()
-            .map_err(|_| AppError::new("state", "Database unavailable"))?
-            .load(ordinal)?;
-        let source_paths = db
-            .lock()
-            .map_err(|_| AppError::new("state", "Database unavailable"))?
-            .source_paths()
-            .to_vec();
+        let read = || -> Result<_, AppError> {
+            let db = self.game_reader(&id)?;
+            let mut db = db
+                .lock()
+                .map_err(|_| AppError::new("state", "Database unavailable"))?;
+            Ok((db.load(ordinal), db.source_paths().to_vec()))
+        };
+        let (mut loaded, mut source_paths) = read()?;
+        // A save may have changed the files since the handle was opened.
+        if matches!(loaded, Err(cbh_reader::CbhError::SourceChanged)) {
+            self.lock()?.game_readers.remove(&id);
+            (loaded, source_paths) = read()?;
+        }
+        let loaded = loaded?;
         let (document_id, game) = if let Some(game) = loaded.game {
             let view = GameView::from_game(&game)?;
             let mut state = self.lock()?;
@@ -226,6 +236,46 @@ impl Registry {
             annotations_status: loaded.annotations_status,
             diagnostics: loaded.diagnostics.into_iter().map(Into::into).collect(),
         })
+    }
+    /// The database's handle for loading games, opened on first use.
+    pub(crate) fn game_reader(
+        &self,
+        id: &str,
+    ) -> Result<Arc<Mutex<cbh_reader::Database>>, AppError> {
+        if let Some(reader) = self.lock()?.game_readers.get(id) {
+            return Ok(reader.clone());
+        }
+        let reader = Arc::new(Mutex::new(self.own_handle(id)?));
+        let mut state = self.lock()?;
+        if !state.databases.contains_key(id) {
+            return Err(AppError::new(
+                "invalidHandle",
+                "Database is closed or unknown",
+            ));
+        }
+        Ok(state
+            .game_readers
+            .entry(id.to_string())
+            .or_insert(reader)
+            .clone())
+    }
+    /// Reads the first game of a newly opened database in the background.
+    /// A database's files are slow to read the first time after a while
+    /// (seconds on a large database); this moves that wait off the first
+    /// game the user opens.
+    pub fn warm_up(&self, id: &str) {
+        let Ok(reader) = self.game_reader(id) else {
+            return;
+        };
+        let Ok(mut db) = reader.lock() else {
+            return;
+        };
+        let count = db.info().entry_count.min(16);
+        for ordinal in 1..=count {
+            if db.load(ordinal).is_ok_and(|g| g.game.is_some()) {
+                break;
+            }
+        }
     }
     pub fn position_at(
         &self,
@@ -286,6 +336,7 @@ impl Registry {
             .remove(&id)
             .ok_or_else(|| AppError::new("invalidHandle", "Database is closed or unknown"))?;
         state.writers.remove(&id);
+        state.game_readers.remove(&id);
         state.paths.remove(&id);
         let state = &mut *state;
         state.searches.remove(&id);

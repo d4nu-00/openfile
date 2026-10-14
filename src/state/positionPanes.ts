@@ -70,6 +70,9 @@ export function usePositionPanes(
   const [reference, setReference] = useState<ReferenceState>({
     loading: false,
   });
+  /** The position whose Find Position the user asked for. */
+  const [searchKey, setSearchKey] = useState<string>();
+  const searchAnyway = key !== "" && searchKey === key;
 
   useEffect(() => {
     if (!active.book || !db || !line) return;
@@ -99,6 +102,7 @@ export function usePositionPanes(
           db.databaseId,
           line,
           request,
+          searchAnyway,
         );
         if (!gates.reference.accept(response.requestId)) return;
         if (response.cancelled) return;
@@ -116,7 +120,7 @@ export function usePositionPanes(
     return () => {
       clearTimeout(timer);
     };
-  }, [active.reference, db, key]);
+  }, [active.reference, db, key, searchAnyway]);
 
   // Leaving the position or closing the pane stops a running search.
   useEffect(() => {
@@ -127,5 +131,17 @@ export function usePositionPanes(
     };
   }, [active.reference, db?.databaseId]);
 
-  return { line, book, reference };
+  return {
+    line,
+    book,
+    reference,
+    /** Runs Find Position for the current position, however long it takes. */
+    searchReference: () => setSearchKey(key),
+    cancelReference: () => {
+      gates.reference.begin();
+      setSearchKey(undefined);
+      setReference((r) => ({ ...r, loading: false }));
+      if (db) void api.cancelReference(db.databaseId).catch(() => {});
+    },
+  };
 }

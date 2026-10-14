@@ -32,6 +32,7 @@ const documents = new Set([
   "search.md",
   "opening-tree.md",
   "game-list.md",
+  "game-window.md",
 ]);
 export function allowedSourcePath(candidate) {
   if (
@@ -61,7 +62,7 @@ export function allowedSourcePath(candidate) {
   )
     return true;
   if (/^src\/[a-zA-Z0-9_./-]+\.(?:ts|tsx|css)$/.test(candidate)) return true;
-  if (/^src-tauri\/(?:src|tests)\/[a-zA-Z0-9_/-]+\.rs$/.test(candidate))
+  if (/^src-tauri\/(?:src|tests|examples)\/[a-zA-Z0-9_/-]+\.rs$/.test(candidate))
     return true;
   if (
     [

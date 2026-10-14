@@ -143,3 +143,47 @@ fn text_before_moves() {
     assert!(g.set_pre_comments(0, vec!["x".into()]).is_err());
     assert_eq!(g.nodes[e4 as usize].pre_comments, ["The king's pawn"]);
 }
+
+#[test]
+fn marks_are_set_checked_and_written() {
+    use chess_core::{ArrowMark, SquareMark};
+    let mut g = game("1. e4 e5 *\n");
+    let sq = |c, s: &str| SquareMark {
+        color: c,
+        square: s.into(),
+    };
+    let ar = |c, f: &str, t: &str| ArrowMark {
+        color: c,
+        from: f.into(),
+        to: t.into(),
+    };
+    // A square or an arrow given twice keeps its last colour.
+    g.set_marks(
+        1,
+        vec![sq('G', "e4"), sq('R', "d5"), sq('Y', "e4")],
+        vec![ar('G', "g1", "f3"), ar('R', "g1", "f3")],
+    )
+    .unwrap();
+    assert_eq!(g.nodes[1].squares, [sq('R', "d5"), sq('Y', "e4")]);
+    assert_eq!(g.nodes[1].arrows, [ar('R', "g1", "f3")]);
+    assert!(moves(&g).contains("[%csl Rd5,Ye4]"));
+    assert!(moves(&g).contains("[%cal Rg1f3]"));
+    // The start position can be marked too.
+    g.set_marks(0, vec![sq('B', "a1")], vec![]).unwrap();
+    assert_eq!(g.nodes[0].squares, [sq('B', "a1")]);
+    // Unknown colours, squares and zero-length arrows are refused.
+    for (squares, arrows) in [
+        (vec![sq('X', "e4")], vec![]),
+        (vec![sq('G', "i9")], vec![]),
+        (vec![], vec![ar('G', "e2", "e2")]),
+    ] {
+        assert!(g.set_marks(2, squares, arrows).is_err());
+    }
+    assert!(g.set_marks(9, vec![], vec![]).is_err());
+    g.clear_marks();
+    assert!(
+        g.nodes
+            .iter()
+            .all(|n| n.squares.is_empty() && n.arrows.is_empty())
+    );
+}

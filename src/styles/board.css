@@ -126,6 +126,9 @@
 .board-arrows .arrow {
   opacity: 0.8;
 }
+.board-arrows .arrow.drawing {
+  opacity: 0.55;
+}
 .board-arrows .arrow line {
   stroke-linecap: round;
 }
