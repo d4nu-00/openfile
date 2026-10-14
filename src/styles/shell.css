@@ -1325,6 +1325,28 @@ kbd {
 /* Options, Engine Management and Tactical Analysis: one row per setting. */
 .modal.options,
 .modal.engine-management,
+/* Check Integrity, Find Double Games, Remove Deleted Games */
+.modal.maintenance {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: min(560px, calc(100vw - 32px));
+  max-height: 90vh;
+}
+.modal.maintenance .mask-row {
+  flex-wrap: wrap;
+}
+.maintenance-options {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.maintenance-result {
+  margin: 0;
+  padding-left: 18px;
+  overflow-y: auto;
+  max-height: 50vh;
+}
 /* Convert to 2CBH */
 .modal.convert {
   flex-direction: column;

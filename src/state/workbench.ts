@@ -726,6 +726,42 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     if (db) void api.cancelSearch(db.databaseId).catch(() => {});
   }
   /** Shows the whole database again. */
+  /**
+   * After Remove Deleted Games: games from `databaseId` follow their new
+   * entry numbers ("0" for a removed entry), and the list shows the whole
+   * database again.
+   */
+  function renumber(
+    databaseId: string,
+    moved: [string, string][],
+    entryCount: string,
+  ) {
+    const map = new Map(moved);
+    const follow = <T extends GameSlot>(g: T): T => {
+      const next =
+        g.origin?.databaseId === databaseId
+          ? map.get(g.origin.ordinal)
+          : undefined;
+      if (next === undefined) return g;
+      return {
+        ...g,
+        origin: next === "0" ? undefined : { databaseId, ordinal: next },
+      };
+    };
+    setState((s) => ({
+      ...follow(s),
+      tabs: s.tabs?.map(follow),
+      preview: s.preview && follow(s.preview),
+      search: s.database?.databaseId === databaseId ? undefined : s.search,
+      database:
+        s.database?.databaseId === databaseId
+          ? { ...s.database, entryCount }
+          : s.database,
+      listVersion: (s.listVersion ?? 0) + 1,
+    }));
+    setListTop(0);
+    setCursor(undefined);
+  }
   async function clearSearch() {
     const db = current.current.database;
     if (!db || !current.current.search) return;
@@ -921,6 +957,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     clearSearch,
     openDatabaseForEditing,
     openWritten,
+    renumber,
     createDatabase,
     loadEntry,
     showing,

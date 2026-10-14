@@ -631,6 +631,55 @@ export function mockApi(firstDatabase = 1) {
         };
       }),
     cancelConvert: vi.fn().mockResolvedValue(undefined),
+    checkIntegrity: vi
+      .fn()
+      .mockImplementation(async (_db: string, onProgress) => {
+        onProgress({ done: "404", total: "404" });
+        return {
+          checked: 404,
+          games: 400,
+          texts: 4,
+          deleted: 1,
+          counts: { damagedMoves: 1 },
+          problems: [
+            { ordinal: 7, code: "damagedMoves", message: "Block checksum" },
+          ],
+          cancelled: false,
+        };
+      }),
+    findDoubleGames: vi
+      .fn()
+      .mockImplementation(async (_db: string, _options, onProgress) => {
+        onProgress({ done: "404", total: "404" });
+        return {
+          checked: "404",
+          marked: "2",
+          keptBoth: "1",
+          pairs: [
+            ["3", "2"],
+            ["9", "8"],
+          ],
+          cancelled: false,
+          treeStale: false,
+        };
+      }),
+    removeDeletedGames: vi
+      .fn()
+      .mockImplementation(async (_db: string, onProgress) => {
+        onProgress({ done: "404", total: "404" });
+        return {
+          kept: "400",
+          removed: "4",
+          bytesBefore: "900000",
+          bytesAfter: "800000",
+          cancelled: false,
+          entryCount: "400",
+          moved: [],
+          treeDeleted: false,
+        };
+      }),
+    cancelMaintenance: vi.fn().mockResolvedValue(undefined),
+    confirmRemoveDeleted: vi.fn().mockResolvedValue(true),
     deleteRows: vi
       .fn()
       .mockImplementation(

@@ -296,15 +296,22 @@ const list: CommandMeta[] = [
   {
     id: "check-integrity",
     label: "Check Integrity",
-    tip: "Check the database for errors",
+    tip: "Check the technical integrity of all database files.",
     icon: Wrench,
     views: db,
   },
   {
     id: "find-double-games",
     label: "Find Double Games",
-    tip: "Mark duplicate games",
+    tip: "Detect double games and mark one of each pair as deleted",
     icon: Copy,
+    views: db,
+  },
+  {
+    id: "remove-deleted-games",
+    label: "Remove Deleted Games",
+    tip: "Remove all games marked as deleted to regain space",
+    icon: Trash2,
     views: db,
   },
   {
@@ -1070,6 +1077,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
           items: [
             S("check-integrity"),
             S("find-double-games"),
+            S("remove-deleted-games"),
             S("sort-database"),
           ],
         },
