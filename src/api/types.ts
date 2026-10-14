@@ -576,6 +576,28 @@ export interface ReferenceResponse {
   /** A fallback search used the search booster. */
   indexed: boolean;
 }
+/** The space Convert to 2CBH needs, against the target disk's free space. */
+export interface ConvertEstimate {
+  games: string;
+  bytes: string;
+  free?: string | null;
+  fits: boolean;
+}
+export interface ConvertResponse {
+  /** Entries looked at, games written and kept deleted. */
+  done: number;
+  written: number;
+  deleted: number;
+  /** Games written without some annotations. */
+  incomplete: number;
+  /** Entries left out: texts, Chess960 games, unreadable moves. */
+  texts: number;
+  chess960: number;
+  unreadable: number;
+  cancelled: boolean;
+  /** The new database, when it was written. */
+  path?: string | null;
+}
 export interface PasteResponse {
   pasted: string;
   /** Entries that are not games, or whose moves could not be read. */

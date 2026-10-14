@@ -294,6 +294,13 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       return api.openDatabase(path, request, true);
     });
   }
+  /** Opens a .2cbh database the workbench just wrote, for editing. */
+  function openWritten(path: string) {
+    return openWith(async (request) => {
+      setStatus("Opening database…");
+      return api.openDatabase(path, request, true);
+    });
+  }
   /** Creates a new, empty .2cbh database and opens it for editing. */
   function createDatabase() {
     return openWith(async (request) => {
@@ -913,6 +920,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     cancelSearch,
     clearSearch,
     openDatabaseForEditing,
+    openWritten,
     createDatabase,
     loadEntry,
     showing,

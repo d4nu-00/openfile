@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { renderWorkbench } from "./harness";
 import {
@@ -94,5 +94,92 @@ describe("copy, paste and delete games", () => {
     expect(await screen.findByText("401 games changed")).toBeVisible();
     // The list is read again after the change.
     await waitFor(() => expect(screen.queryByText("401 selected")).toBeNull());
+  });
+});
+
+describe("convert to 2CBH", () => {
+  it("estimates, converts the selection and opens the new database for editing", async () => {
+    const ui = renderWorkbench({ initialView: "database" });
+    await ui.user.click(
+      await screen.findByRole("button", { name: "Load entry 1" }),
+    );
+    await ui.user.keyboard("{Shift>}");
+    await ui.user.click(screen.getByRole("button", { name: "Load entry 3" }));
+    await ui.user.keyboard("{/Shift}");
+    await ui.user.click(screen.getByRole("tab", { name: "Maintenance" }));
+    await ui.user.click(
+      screen.getByRole("button", { name: "Convert to 2CBH" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Convert to 2CBH",
+    });
+    // The selection is offered first; the estimate is checked against it.
+    expect(ui.api.convertEstimate).toHaveBeenCalledWith(
+      "db-1",
+      [{ start: "1", end: "4" }],
+      "/dbs/Converted.2cbh",
+    );
+    expect(
+      await within(dialog).findByText(
+        "About 0.00 GB needed; 5.00 GB free on that disk.",
+      ),
+    ).toBeVisible();
+    await ui.user.click(
+      within(dialog).getByRole("radio", { name: /Whole database/ }),
+    );
+    await waitFor(() =>
+      expect(ui.api.convertEstimate).toHaveBeenLastCalledWith(
+        "db-1",
+        null,
+        "/dbs/Converted.2cbh",
+      ),
+    );
+    await ui.user.click(
+      await within(dialog).findByRole("button", { name: "Convert" }),
+    );
+    expect(ui.api.convertDatabase).toHaveBeenCalledWith(
+      "db-1",
+      null,
+      "/dbs/Converted.2cbh",
+      expect.any(Function),
+    );
+    expect(
+      await screen.findByText(
+        "400 games converted (2 marked deleted, 3 without some annotations, 4 text entries left out)",
+      ),
+    ).toBeVisible();
+    expect(ui.api.openDatabase).toHaveBeenLastCalledWith(
+      "/dbs/Converted.2cbh",
+      expect.any(String),
+      true,
+    );
+    expect(
+      screen.queryByRole("dialog", { name: "Convert to 2CBH" }),
+    ).toBeNull();
+  });
+
+  it("refuses to start when the estimate does not fit the disk", async () => {
+    const ui = renderWorkbench({ initialView: "database" });
+    ui.api.convertEstimate.mockResolvedValue({
+      games: "404",
+      bytes: "9000000000",
+      free: "4000000000",
+      fits: false,
+    });
+    await screen.findByRole("button", { name: "Load entry 1" });
+    await ui.user.click(screen.getByRole("tab", { name: "Maintenance" }));
+    await ui.user.click(
+      screen.getByRole("button", { name: "Convert to 2CBH" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Convert to 2CBH",
+    });
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Not enough disk space",
+    );
+    expect(
+      within(dialog).getByRole("button", { name: "Convert" }),
+    ).toBeDisabled();
+    expect(ui.api.convertDatabase).not.toHaveBeenCalled();
   });
 });

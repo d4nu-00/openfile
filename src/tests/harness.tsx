@@ -607,6 +607,30 @@ export function mockApi(firstDatabase = 1) {
       };
     }),
     cancelPaste: vi.fn().mockResolvedValue(undefined),
+    chooseConvertTarget: vi.fn().mockResolvedValue("/dbs/Converted.2cbh"),
+    convertEstimate: vi.fn().mockResolvedValue({
+      games: "404",
+      bytes: "800000",
+      free: "5000000000",
+      fits: true,
+    }),
+    convertDatabase: vi
+      .fn()
+      .mockImplementation(async (_db: string, _ranges, _target, onProgress) => {
+        onProgress({ done: "404", total: "404" });
+        return {
+          done: 404,
+          written: 400,
+          deleted: 2,
+          incomplete: 3,
+          texts: 4,
+          chess960: 0,
+          unreadable: 0,
+          cancelled: false,
+          path: "/dbs/Converted.2cbh",
+        };
+      }),
+    cancelConvert: vi.fn().mockResolvedValue(undefined),
     deleteRows: vi
       .fn()
       .mockImplementation(

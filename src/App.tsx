@@ -14,6 +14,7 @@ import type {
   Crosstable,
   NameKind,
   NameRow,
+  ConvertEstimate,
   DatabaseSymbol,
   Edit,
   PlayerStatistics,
@@ -38,6 +39,7 @@ import { PositionSetup } from "./components/PositionSetup";
 import { PasteDialog } from "./components/PasteDialog";
 import { AnnotationPalette } from "./components/AnnotationPalette";
 import { SymbolMenu } from "./components/SymbolMenu";
+import { ConvertDialog, type ConvertScope } from "./components/ConvertDialog";
 import type { SymbolSlot } from "./state/symbols";
 import { UnsavedDialog } from "./components/UnsavedDialog";
 import { SearchMask } from "./components/SearchMask";
@@ -478,6 +480,19 @@ export function App({
   /** Games copied and waiting to be pasted, and a running paste. */
   const [clipGames, setClipGames] = useState(0);
   const [pastingGames, setPastingGames] = useState<string>();
+  /** Convert to 2CBH: its dialog, while open. */
+  const [converting, setConverting] = useState<{
+    databaseId: string;
+    name: string;
+    entries: string;
+    selected: number;
+    ranges: { start: string; end: string }[];
+    scope: ConvertScope;
+    target: string;
+    estimate?: ConvertEstimate;
+    running?: string;
+    error?: string;
+  }>();
   const explain = (err: unknown) =>
     (err as { message?: string })?.message ?? String(err);
   /** The selection, or the chosen row when nothing is selected. */
@@ -487,6 +502,96 @@ export function App({
       : w.cursor !== undefined
         ? rowRanges({ ranges: [[w.cursor, w.cursor + 1]] })
         : [];
+  /** Convert to 2CBH: asks for the new database, then shows the estimate. */
+  async function startConvert() {
+    const db = state.database;
+    if (!db) return;
+    const target = await api.chooseConvertTarget(db.name ?? "Converted");
+    if (typeof target !== "string") return;
+    const selected = selectedCount(selection);
+    const next = {
+      databaseId: db.databaseId,
+      name: db.name ?? "Database",
+      entries: db.entryCount,
+      selected,
+      ranges: selected > 1 ? rowRanges(selection) : [],
+      scope: (selected > 1 ? "selection" : "all") as ConvertScope,
+      target,
+    };
+    setConverting(next);
+    await estimateConvert(next);
+  }
+  async function estimateConvert(c: {
+    databaseId: string;
+    ranges: { start: string; end: string }[];
+    scope: ConvertScope;
+    target: string;
+  }) {
+    try {
+      const estimate = await api.convertEstimate(
+        c.databaseId,
+        c.scope === "selection" ? c.ranges : null,
+        c.target,
+      );
+      // An estimate for an earlier choice is dropped.
+      setConverting((s) =>
+        s && s.scope === c.scope && s.target === c.target
+          ? { ...s, estimate, error: undefined }
+          : s,
+      );
+    } catch (err) {
+      setConverting((s) => s && { ...s, error: explain(err) });
+    }
+  }
+  async function runConvert() {
+    const c = converting;
+    if (!c?.estimate?.fits || c.running) return;
+    setConverting({ ...c, running: "starting…", error: undefined });
+    try {
+      const result = await api.convertDatabase(
+        c.databaseId,
+        c.scope === "selection" ? c.ranges : null,
+        c.target,
+        (p) =>
+          setConverting(
+            (s) => s && { ...s, running: `${p.done} of ${p.total} entries` },
+          ),
+      );
+      if (result.cancelled || !result.path) {
+        setConverting(
+          (s) =>
+            s && {
+              ...s,
+              running: undefined,
+              error: "Stopped; nothing was written.",
+            },
+        );
+        return;
+      }
+      setConverting(undefined);
+      const notes = [
+        result.deleted ? `${result.deleted} marked deleted` : "",
+        result.incomplete
+          ? `${result.incomplete} without some annotations`
+          : "",
+        result.texts ? `${result.texts} text entries left out` : "",
+        result.chess960
+          ? `${result.chess960} Chess960 games left out: 2CBH cannot hold them yet`
+          : "",
+        result.unreadable
+          ? `${result.unreadable} unreadable entries left out`
+          : "",
+      ].filter(Boolean);
+      await w.openWritten(result.path);
+      w.setStatus(
+        `${result.written} games converted${notes.length ? ` (${notes.join(", ")})` : ""}`,
+      );
+    } catch (err) {
+      setConverting(
+        (s) => s && { ...s, running: undefined, error: explain(err) },
+      );
+    }
+  }
   async function copyGames() {
     const db = state.database;
     const ranges = chosenRanges();
@@ -808,6 +913,10 @@ export function App({
     "db-paste": {
       run: () => pasteGames(),
       enabled: !!state.database?.writable && clipGames > 0 && !pastingGames,
+    },
+    "convert-to-2cbh": {
+      run: () => startConvert(),
+      enabled: !!state.database && !converting,
     },
     "db-select-all": {
       run: () => setSelection(selectAll(w.rowCount)),
@@ -1803,6 +1912,36 @@ export function App({
               })
               .catch((err) => setOptionsError(explain(err)))
           }
+        />
+      )}
+      {converting && (
+        <ConvertDialog
+          name={converting.name}
+          entries={converting.entries}
+          selected={converting.selected}
+          scope={converting.scope}
+          target={converting.target}
+          estimate={converting.estimate}
+          running={converting.running}
+          error={converting.error}
+          onScope={(scope) => {
+            const next = { ...converting, scope, estimate: undefined };
+            setConverting(next);
+            void estimateConvert(next);
+          }}
+          onTarget={() =>
+            void api.chooseConvertTarget(converting.name).then((target) => {
+              if (typeof target !== "string") return;
+              const next = { ...converting, target, estimate: undefined };
+              setConverting(next);
+              void estimateConvert(next);
+            })
+          }
+          onStart={() => void runConvert()}
+          onCancel={() =>
+            void api.cancelConvert(converting.databaseId).catch(() => {})
+          }
+          onClose={() => setConverting(undefined)}
         />
       )}
       {blunder && (
