@@ -57,6 +57,8 @@ fn moves_losing_the_threshold_are_found_and_annotated_in_one_edit() {
     let f = &report.findings[0];
     assert_eq!((f.node, f.loss), (1, 34));
     assert_eq!((f.best.as_str(), f.played.as_str()), ("+0.17", "-0.17"));
+    // Every position is "=" for ChessBase's symbols, so none changes.
+    assert!(report.evaluations.is_empty());
     // A larger threshold, or only Black's moves, finds nothing.
     let none = r
         .blunder_check(
@@ -123,6 +125,26 @@ fn moves_losing_the_threshold_are_found_and_annotated_in_one_edit() {
         .is_err()
     );
     assert!(r.document_pgn(doc).unwrap().contains("e5 *"));
+}
+
+#[test]
+fn evaluation_symbols_replace_evaluations_but_not_other_position_symbols() {
+    let d = tempfile::tempdir().unwrap();
+    let r = Registry::default();
+    // 1.e4 has "!" and "=", 1...e5 "with attack" ($40).
+    let doc = document(&r, &d, "1. e4 $1 $11 e5 $40 *\n");
+    let edited = r
+        .edit_document(
+            doc.clone(),
+            serde_json::from_str(
+                r#"{"kind":"addAnalysis","items":[{"node":1,"evaluation":14},{"node":2,"evaluation":15}]}"#,
+            )
+            .unwrap(),
+            "0".into(),
+        )
+        .unwrap();
+    assert_eq!(edited.game.nodes[1].nags, vec![1, 14]);
+    assert_eq!(edited.game.nodes[2].nags, vec![40]);
 }
 
 /// With a real engine (`UCI_ENGINE`), the blunder of the Scholar's mate is
