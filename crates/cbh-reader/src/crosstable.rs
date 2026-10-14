@@ -105,7 +105,7 @@ fn round_of(r: &RawEntry) -> (u16, u16) {
     (main, sub)
 }
 
-fn performance(opponents: u64, count: u32, half_points: u32) -> Option<u32> {
+pub(crate) fn performance(opponents: u64, count: u32, half_points: u32) -> Option<u32> {
     if count == 0 {
         return None;
     }

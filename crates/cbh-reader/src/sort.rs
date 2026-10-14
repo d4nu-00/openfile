@@ -107,18 +107,21 @@ impl Default for SortOptions {
 #[derive(Clone, Copy, Default, Debug)]
 pub(crate) struct Fields {
     pub game: bool,
+    pub deleted: bool,
     pub white: Option<u32>,
     pub black: Option<u32>,
     pub tournament: Option<u32>,
     annotator: Option<u32>,
     source: Option<u32>,
     pub date: u32,
-    result: u8,
+    pub result: u8,
     round: u16,
     subround: u16,
-    white_elo: u16,
-    black_elo: u16,
-    eco: u16,
+    /// 0 when unrated.
+    pub white_elo: u16,
+    pub black_elo: u16,
+    /// Packed ECO: bits 7–15 hold 1..=500 for A00..E99, 0 for none.
+    pub eco: u16,
     moves: u8,
 }
 
@@ -139,6 +142,7 @@ pub(crate) fn fields(format: DatabaseFormat, b: &[u8]) -> Fields {
             }
             Fields {
                 game: true,
+                deleted: b[0] & 0x80 != 0,
                 white: Some(be24(&b[9..12])),
                 black: Some(be24(&b[12..15])),
                 tournament: Some(be24(&b[15..18])),
@@ -164,6 +168,7 @@ pub(crate) fn fields(format: DatabaseFormat, b: &[u8]) -> Fields {
             };
             Fields {
                 game: true,
+                deleted: le16(b, 0) & 0x80 != 0,
                 white: id(24),
                 black: id(32),
                 tournament: id(40),
