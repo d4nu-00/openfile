@@ -576,6 +576,20 @@ A census of the classic Mega's CBG headers counted:
 * **Real app.** A debug snapshot showed Leko–Adams replayed from the
   classic Mega.
 
+## Tablebases in the notation (2026-10-14)
+
+* **Tests with real tables** (`SYZYGY_DIR` set to a local folder of 96
+  files, 3–6 pieces): from K+Q v K, 1.Qe4+?? Kxe4 gets "?", "Tablebase:
+  draw" and a winning variation, while 1.Qh5+ Kd4 gets nothing. Without
+  tables nothing is added.
+* **App test.** It checks that a mock engine offering `SyzygyPath`
+  receives the chosen folder, and that one without the option does not.
+* **Frontend test.** The command applies the items as one edit.
+* **Real app.** A debug snapshot used a scratch 2CBH game (1.Qh5+ Kd4
+  2.Qd5+ Kxd5) and a temporary settings file naming the folder; both were
+  removed afterwards. It showed 2.Qd5+? with "Tablebase: draw" and the
+  variation 2.Qb5 "Tablebase: White wins".
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

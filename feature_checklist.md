@@ -22,7 +22,7 @@ Names in backticks are ChessBase command ids, for traceability.
 3. Opening tree built from the user's databases, and the reference search (§8).
 4. Complete notation editing: variation operations, game data, symbols (§6). *(P1 items done except keyboard symbol shortcuts)*
 5. Multiple game tabs, the clipboard database and save/replace into a database (§2, §3). *(game tabs done)*
-6. Engine tools: blunder check, deep analysis, analysis jobs, tablebases (§7). *(kibitzers, lines, paste, Engine Management, Tactical Analysis and a tablebase tab done; deep analysis and analysis jobs remain)*
+6. Engine tools: blunder check, deep analysis, analysis jobs, tablebases (§7). *(kibitzers, lines, paste, Engine Management, Tactical Analysis, tablebase tab and annotation done; deep analysis and analysis jobs remain)*
 7. Reports, preparation and training (§9–§11), then publishing (§12). *(player statistics done)*
 
 ## 1. Database formats and storage
@@ -146,7 +146,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Increase and decrease the number of lines (`INCREASENLINES`, `DECREASENLINES`) *(+ and −: MultiPV, restarting the analysis; see [engines](docs/engines.md))*
 - [x] P1 🟢 Paste engine move or variation into the notation (`PASTEENGINEMOVE`, `PASTEENGINEVARIATIONS`, Ctrl+Space) *(Shift+Space for the move; one undoable edit; the score and depth as a text comment because ChessBase's evaluation annotation is not decoded)*
 - [x] P1 🟢 Engine management: installed engine list, defaults, several kibitzers (`ENGINEMANAGEMENT`, `CLOSEALLKIBITZERS`, `TOGGLEDEFAULTKIBITZER`) *(up to 4 kibitzers; installed engines, default and kept options in the app's settings; Default Kibitzer Alt+F2)*
-- [ ] P1 🟢 Endgame tablebases (Syzygy) for analysis and the notation *(partial: a Tablebase tab shows the position's result and DTZ and every move's, from a Syzygy folder chosen in Options, via the GPL `shakmaty-syzygy`; the notation is not annotated from the tables yet; see [engines](docs/engines.md))*
+- [x] P1 🟢 Endgame tablebases (Syzygy) for analysis and the notation *(Tablebase tab with the result and DTZ of the position and every move; engines get the chosen folder through `SyzygyPath`, as ChessBase does; Tablebase Annotation marks main-line moves that give away a win or draw, with the tables' best move, as one undoable edit (the workbench's own symbols and texts, since ChessBase's notation display was not traced); see [engines](docs/engines.md))*
 - [x] P1 🟢 Tactical analysis or blunder check that annotates a game (`TACTICAL_ANALYSIS`, `BlunderCheck`) *(Ctrl+Alt+Shift+U: ChessBase's Time and Fine/Medium/Coarse thresholds (35/55/150 cp), cancellable with progress, one undoable edit; see [engines](docs/engines.md))*
 - [ ] P2 🟢 Deep analysis: tree-building position analysis (`DEEP_ANALYSIS`)
 - [ ] P2 🟢 Centipawn and achievement analysis (`CENTIPAWN`, `ACHIEVEMENT_ANALYSIS`)
