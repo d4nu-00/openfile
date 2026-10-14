@@ -37,6 +37,7 @@ describe("players and tournaments", () => {
       "db-1",
       expect.objectContaining({ playerId: 120 }),
       expect.any(String),
+      expect.any(Function),
     );
     expect(
       await screen.findByText("Games of Player 120, A: 2 games"),

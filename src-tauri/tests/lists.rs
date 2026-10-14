@@ -72,7 +72,9 @@ fn rows_follow_the_search_and_the_sort() {
 
     // A search is shown in the sort's order.
     let filter = serde_json::from_str(r#"{"results":["1-0"]}"#).unwrap();
-    let found = r.search_games(db.clone(), filter, "s".into()).unwrap();
+    let found = r
+        .search_games(db.clone(), filter, "s".into(), |_, _| {})
+        .unwrap();
     assert_eq!(found.hits, "3");
     assert_eq!(rows(&r, &db, "1", 200), ["5", "3", "1"]);
     assert_eq!(

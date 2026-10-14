@@ -1020,8 +1020,14 @@ export function App({
     "theme-black": { run: () => setTheme("black"), pressed: theme === "black" },
     "command-search": { run: () => setPalette(true) },
     "stop-process": {
-      run: () => (w.treeBuild ? w.cancelTree() : k.stopAll()),
-      enabled: k.kibitzers.some((v) => v.enabled) || !!w.treeBuild,
+      run: () =>
+        w.searching
+          ? w.cancelSearch()
+          : w.treeBuild
+            ? w.cancelTree()
+            : k.stopAll(),
+      enabled:
+        k.kibitzers.some((v) => v.enabled) || !!w.treeBuild || !!w.searching,
     },
   };
   useEffect(() => {
@@ -1577,7 +1583,18 @@ export function App({
         )}
       </main>
       <footer className="status-bar">
-        <span className="app-status">{w.status}</span>
+        <span className="app-status">
+          {w.status}
+          {w.searching && (
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => w.cancelSearch()}
+            >
+              Cancel
+            </button>
+          )}
+        </span>
         <span>{game ? `${title} · move ${selected}` : ""}</span>
         <span>{engineStatus}</span>
       </footer>
@@ -1743,11 +1760,12 @@ export function App({
       {maskOpen && (
         <SearchMask
           initial={state.search?.filter}
+          initialPosition={state.search?.position}
           boardFen={state.position?.fen}
-          onFindPosition={(fen) => {
+          onSearchPosition={(query) => {
             setMaskOpen(false);
             setView("database");
-            void w.findPosition(fen);
+            void w.positionSearch(query);
           }}
           onClose={() => setMaskOpen(false)}
           onSearch={(filter) => {

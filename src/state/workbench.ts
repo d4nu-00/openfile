@@ -7,6 +7,7 @@ import type {
   PositionResponse,
   Diagnostic,
   EntrySummary,
+  PositionQuery,
   SortColumn,
   StatGroup,
 } from "../api/types";
@@ -24,6 +25,8 @@ export interface ActiveSearch {
   filter?: GameFilter;
   /** The board behind a position search. */
   fen?: string;
+  /** The position tab behind a position search. */
+  position?: PositionQuery;
   /** What the list shows, e.g. "Games of Carlsen, Magnus". */
   label?: string;
   hits: string;
@@ -197,6 +200,11 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
   };
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [status, setStatus] = useState("Open a CBH database to begin.");
+  /** A search running on the active database: its database and progress. */
+  const [searching, setSearching] = useState<{
+    databaseId: string;
+    percent?: number;
+  }>();
   const [loadingEntry, setLoadingEntry] = useState<string>();
   /** The first row shown, and the row of the game last chosen from the list. */
   const [listTop, setListTopState] = useState(0);
@@ -539,8 +547,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
   }
   /** Searches the whole database and shows the hits in the list. */
   function search(filter: GameFilter, label?: string) {
-    return runSearch({ filter, label }, (db, request) =>
-      api.searchGames(db, filter, request),
+    return runSearch({ filter, label }, (db, request, progress) =>
+      api.searchGames(db, filter, request, progress),
     );
   }
   /** Lists the games of a player statistics row. */
@@ -551,20 +559,44 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
   }
   /** Finds games that reach the position `fen`. */
   function findPosition(fen: string) {
-    return runSearch({ fen }, (db, request) =>
-      api.findPosition(db, fen, request),
+    return runSearch({ fen }, (db, request, progress) =>
+      api.findPosition(db, fen, request, progress),
+    );
+  }
+  /** Runs the search mask's position tab. */
+  function positionSearch(position: PositionQuery) {
+    return runSearch({ position }, (db, request, progress) =>
+      api.searchPosition(db, position, request, progress),
     );
   }
   async function runSearch(
-    what: { filter?: GameFilter; fen?: string; label?: string },
-    run: (databaseId: string, request: string) => Promise<SearchResponse>,
+    what: {
+      filter?: GameFilter;
+      fen?: string;
+      position?: PositionQuery;
+      label?: string;
+    },
+    run: (
+      databaseId: string,
+      request: string,
+      progress: (p: { done: string; total: string }) => void,
+    ) => Promise<SearchResponse>,
   ) {
     const db = current.current.database;
     if (!db) return;
     const request = gates.page.begin();
-    setStatus(what.fen ? "Searching position…" : "Searching…");
+    const byPosition = !!(what.fen || what.position);
+    const verb = byPosition ? "Searching position" : "Searching";
+    setStatus(`${verb}…`);
+    setSearching({ databaseId: db.databaseId });
+    const progress = (p: { done: string; total: string }) => {
+      if (!gates.page.accept(request)) return;
+      const percent = Number((BigInt(p.done) * 100n) / BigInt(p.total || "1"));
+      setSearching({ databaseId: db.databaseId, percent });
+      setStatus(`${verb}… ${percent}%`);
+    };
     try {
-      const found = await run(db.databaseId, request);
+      const found = await run(db.databaseId, request, progress);
       if (
         !gates.page.accept(found.requestId) ||
         current.current.database?.databaseId !== db.databaseId
@@ -581,9 +613,10 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       }));
       setListTop(0);
       setCursor(undefined);
+      const exact = what.fen || what.position?.exact;
       setStatus(
         `${found.hits} games found${found.truncated ? " (stopped at the limit)" : ""}${
-          what.fen && !found.indexed ? " · no search booster" : ""
+          exact && !found.indexed ? " · no search booster" : ""
         }`,
       );
     } catch (e) {
@@ -591,6 +624,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
         setDiagnostics([{ code: "search", message: explain(e) }]);
         setStatus("Search failed");
       }
+    } finally {
+      if (gates.page.accept(request)) setSearching(undefined);
     }
   }
   /** Builds the search booster for fast position search. */
@@ -867,6 +902,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     search,
     statisticsGames,
     findPosition,
+    positionSearch,
+    searching,
     createBooster,
     deleteBooster,
     treeBuild,

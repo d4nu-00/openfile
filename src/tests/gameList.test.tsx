@@ -155,6 +155,7 @@ describe("list and search", () => {
       "db-1",
       expect.objectContaining({ text: "Kasparov 1985" }),
       expect.any(String),
+      expect.any(Function),
     );
     expect(await screen.findByText("2 of 401 entries found")).toBeVisible();
   });

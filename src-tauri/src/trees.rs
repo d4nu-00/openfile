@@ -405,7 +405,12 @@ impl Registry {
             return Ok((hits, false, ReferenceSource::NotSearched, false));
         }
         let target = cbh_reader::position::Target::new(&pos);
-        let result = self.position_search(database_id, &target, cancel)?;
+        let result = self.position_search(
+            database_id,
+            &cbh_reader::pattern::Compiled::Exact(vec![target]),
+            cancel,
+            |_, _| {},
+        )?;
         let (ordinals, nodes) = result.hits.into_iter().unzip();
         let hits = Hits {
             ordinals,

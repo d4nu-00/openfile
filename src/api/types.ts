@@ -293,6 +293,32 @@ export interface GameFilter {
   playerId?: number;
   /** Games of one tournament (tournaments pane). */
   tournamentId?: number;
+  /** The main line ends in mate, stalemate or check; any of those set. */
+  mate?: boolean;
+  stalemate?: boolean;
+  check?: boolean;
+  /** Text in the game's text annotations; with `fullTextNot`, games
+   * without it. */
+  fullText?: string;
+  fullTextNot?: boolean;
+}
+/** The search mask's position tab (see docs/position-search.md). Pieces
+ * are [square, letter]: KQRBNP White, kqrbnp Black, X/x any piece. */
+export interface PositionQuery {
+  lookFor: [string, string][];
+  or: [string, string][];
+  exclude: [string, string][];
+  /** The 'Look for' board is a whole position. */
+  exact: boolean;
+  /** Side to move; absent for either (patterns). */
+  whiteToMove?: boolean;
+  horizontal: boolean;
+  vertical: boolean;
+  first?: number;
+  last?: number;
+  length?: number;
+  /** Patterns: search variations too. */
+  lines: boolean;
 }
 export type NameKind = "players" | "tournaments";
 export interface NameRow {

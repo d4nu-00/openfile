@@ -18,7 +18,7 @@ Names in backticks are ChessBase command ids, for traceability.
 ## Suggested order
 
 1. Read the newer 2CBH format, decode CBA annotations and write databases (§1).
-2. Search mask and position search with a local index (§4).
+2. Search mask and position search with a local index (§4). *(P1 items done)*
 3. Opening tree built from the user's databases, and the reference search (§8).
 4. Complete notation editing: variation operations, game data, symbols (§6). *(P1 items done except keyboard symbol shortcuts)*
 5. Multiple game tabs, the clipboard database and save/replace into a database (§2, §3). *(game tabs done)*
@@ -48,7 +48,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [ ] P2 🟢 Database views: Tile, Details, Symbols and Small Symbols (`VIEW_TILE`, `VIEWREPORTEXPL`, `VIEWSYMBOLSEXPL`)
 - [ ] P2 🟢 Database properties: icon, type, description (`EDITDBPROPERTIES`, `Properties`)
 - [x] P2 🟢 Several databases open at once *(up to four, a tab each; each keeps its own search, sort and scroll position)*
-- [x] P1 🟢 Search Booster: create and delete the fast position index (`DBTOOLSCREATESEARCHBOOSTER`, `DBTOOLSDELETESEARCHBOOSTER`) *(the workbench's own index in its data folder; ChessBase's .cit/.cib files are not read)*
+- [x] P1 🟢 Search Booster: create and delete the fast position index (`DBTOOLSCREATESEARCHBOOSTER`, `DBTOOLSDELETESEARCHBOOSTER`) *(the workbench's own index in its data folder; built by 8 workers, 128 s for the classic Mega; ChessBase's .cit/.cib files are not read)*
 - [ ] P2 🟢 Remove deleted games, i.e. compact the database (`DBTOOLSPHYSICALDELETIONS`, `REMOVEDELETEDGAMES`)
 - [ ] P2 🟢 Check integrity (`CHECKINTEGRITY`)
 - [ ] P2 🟢 Find and mark double games, with keep-better and annotation options (`REMOVEDOUBLESCMD`, `DeleteDubs`)
@@ -84,8 +84,8 @@ Names in backticks are ChessBase command ids, for traceability.
 
 ## 4. Search
 
-- [ ] P1 🟢 Search mask, game data: players, colour, event, site, year, Elo, ECO, result, moves, annotator, source (`OPEN_SEARCHMASK`) *(partial: players with Wins Only and Ignore colours, tournament/site, annotator, Elo modes, Elo difference, year, ECO, moves and result search whole databases; mate/stalemate/check (needs final positions), text, repertoire and time controls are not yet searchable; the game data tab, dialog 1031, has no source field)*
-- [ ] P1 🟢 Position search: exact position, with OR/NOT boards and mirrored search *(partial: exact board and side to move, in main lines and variations, from the board or the search mask's Position tab as FEN; no board editor, OR/NOT boards or mirroring yet)*
+- [x] P1 🟢 Search mask, game data: players, colour, event, site, year, Elo, ECO, result, moves, annotator, source (`OPEN_SEARCHMASK`) *(players with Wins Only and Ignore colours, tournament/site, annotator, Elo modes, Elo difference, year, ECO, moves, result, Mate/Stalemate/Check of the final position and Full Text with NOT; parallel, with progress and Cancel; the game data tab, dialog 311, has no source field; In Repertoire, Time Controls and Text/Good/Beautiful are not ported; see [search](docs/search.md))*
+- [x] P1 🟢 Position search: exact position, with OR/NOT boards and mirrored search *(the Position tab, dialog 314, traced in CBase18: 'Look for', 'Or' and 'Exclude' boards with any-piece and several pieces per square, Horizontal/Vertical mirroring, First/Length/Last, side to move, Include lines; Exact position uses the search booster with mirrored targets; patterns replay games; Sacrifice not ported; on the classic Mega a full replay takes 2 min on 8 workers, a boosted search seconds; see [position search](docs/position-search.md))*
 - [x] P1 🟢 Find the current board position in a database (`FINDINDBBOARD`, `FINDPOSITION`) *(games open at the position found)*
 - [ ] P2 🟢 Material search (endgame type, material balance)
 - [ ] P2 🟢 Annotation and text search: symbols, commentary text, medals (`GENERALSEARCH`)

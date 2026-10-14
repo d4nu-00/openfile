@@ -74,7 +74,9 @@ fn panes_list_names_find_them_and_build_a_crosstable() {
     // Games of a player through the search.
     let filter = serde_json::from_str(&format!(r#"{{"playerId":{}}}"#, page.rows[2].id)).unwrap();
     assert_eq!(
-        r.search_games(db.clone(), filter, "s".into()).unwrap().hits,
+        r.search_games(db.clone(), filter, "s".into(), |_, _| {})
+            .unwrap()
+            .hits,
         "1"
     );
 

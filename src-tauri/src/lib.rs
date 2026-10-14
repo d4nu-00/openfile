@@ -148,6 +148,7 @@ pub fn run() {
             commands::clear_search,
             commands::read_search_page,
             commands::find_position,
+            commands::search_position,
             commands::create_search_booster,
             commands::delete_search_booster,
             commands::create_opening_tree,

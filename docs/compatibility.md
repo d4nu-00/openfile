@@ -54,6 +54,10 @@ pieces in ChessBase's figurine fonts, show as ♔ ♕ ♘ ♗ ♖ (see
 [validation](validation.md#names-with-figurines-2026-10-13)).
 Multimedia and proprietary cloud services are not supported.
 
+Sources are checked by path (identity, size and time) when an operation
+starts and at most every 200 ms while it reads. A file changed in place in
+between is noticed by the next check (see [search](search.md)).
+
 In the newer family, the following are refused or not read:
 * 2CBG text blocks and extended (for example Chess960) move tokens;
 * set-up controls other than those observed;

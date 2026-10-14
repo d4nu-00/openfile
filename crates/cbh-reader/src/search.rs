@@ -2,10 +2,7 @@
 //! tab). See docs/search.md. Name fields are resolved to id sets first; the
 //! entry index is then scanned in chunks without decoding any game.
 use crate::{CbhError, Database, DatabaseFormat, EntryKind, header::RawEntry};
-use std::{
-    collections::HashSet,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use std::{collections::HashSet, sync::atomic::AtomicBool};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -65,6 +62,44 @@ pub struct GameFilter {
     pub player_id: Option<u32>,
     /// Games of this tournament id (the tournaments pane).
     pub tournament_id: Option<u32>,
+    /// The main line ends in mate, stalemate or check (not mate); when any
+    /// is set, the final position must be one of those set.
+    pub mate: bool,
+    pub stalemate: bool,
+    pub check: bool,
+    /// Case-insensitive text in any text annotation, in any language.
+    pub full_text: String,
+    /// Games whose annotations do not hold `full_text`.
+    pub full_text_not: bool,
+}
+
+/// How a game's main line ends.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Ending {
+    Mate,
+    Stalemate,
+    /// Check that is not mate.
+    Check,
+    Other,
+}
+
+/// How the main line of `game` ends.
+pub fn ending(game: &chess_core::Game) -> Result<Ending, CbhError> {
+    use shakmaty::Position;
+    let mut id = 0;
+    while let Some(&next) = game.nodes[id as usize].children.first() {
+        id = next;
+    }
+    let pos = game.chess_position(id)?;
+    Ok(if pos.is_checkmate() {
+        Ending::Mate
+    } else if pos.is_stalemate() {
+        Ending::Stalemate
+    } else if pos.is_check() {
+        Ending::Check
+    } else {
+        Ending::Other
+    })
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -255,6 +290,45 @@ impl GameFilter {
     }
 }
 
+impl GameFilter {
+    fn wants_ending(&self) -> bool {
+        self.mate || self.stalemate || self.check
+    }
+    /// The filter needs more than the entry index.
+    fn reads_games(&self) -> bool {
+        self.wants_ending() || !self.full_text.trim().is_empty()
+    }
+    /// The parts of the filter that read the game: its final position and
+    /// its text annotations. Games that cannot be read do not match.
+    fn matches_game(&self, db: &Database, r: &RawEntry) -> Result<bool, CbhError> {
+        let needle = fold(&self.full_text);
+        if !needle.is_empty() {
+            let Some(texts) = db.annotation_texts(r)? else {
+                return Ok(false);
+            };
+            let found = texts.iter().any(|t| t.to_lowercase().contains(&needle));
+            if found == self.full_text_not {
+                return Ok(false);
+            }
+        }
+        if self.wants_ending() {
+            let Some(game) = db.moves_of(r)? else {
+                return Ok(false);
+            };
+            let ok = match ending(&game)? {
+                Ending::Mate => self.mate,
+                Ending::Stalemate => self.stalemate,
+                Ending::Check => self.check,
+                Ending::Other => false,
+            };
+            if !ok {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+}
+
 impl Database {
     fn players(&self, q: &PlayerQuery) -> Result<Option<HashSet<u32>>, CbhError> {
         if q.is_empty() {
@@ -384,35 +458,34 @@ impl Database {
             eco,
             words: self.words(&filter.text)?,
         };
-        let count = self.info().entry_count;
-        let mut result = SearchResult {
-            ordinals: vec![],
-            scanned: 0,
-            truncated: false,
-            cancelled: false,
-        };
-        const CHUNK: u64 = 8192;
-        let mut start = 1;
-        while start <= count {
-            if cancel.load(Ordering::Relaxed) {
-                result.cancelled = true;
-                break;
-            }
-            let n = CHUNK.min(count + 1 - start);
-            for raw in self.raw_chunk(start, n)? {
-                result.scanned += 1;
-                if filter.matches(&compiled, &raw) {
-                    if result.ordinals.len() == max_hits {
-                        result.truncated = true;
-                        return Ok(result);
+        // Header fields are compared first; games are read only for what
+        // passes them.
+        let step = if filter.reads_games() { 256 } else { 8192 };
+        let found = crate::scan::parallel(
+            self,
+            crate::scan::default_workers(),
+            step,
+            max_hits,
+            cancel,
+            |done, _| progress(done),
+            |_| Ok(()),
+            |db, _, start, n, out| {
+                for raw in db.raw_chunk(start, n)? {
+                    if filter.matches(&compiled, &raw)
+                        && (!filter.reads_games() || filter.matches_game(db, &raw)?)
+                    {
+                        out.push((raw.ordinal, ()));
                     }
-                    result.ordinals.push(raw.ordinal);
                 }
-            }
-            progress(result.scanned);
-            start += n;
-        }
-        Ok(result)
+                Ok(())
+            },
+        )?;
+        Ok(SearchResult {
+            ordinals: found.hits.into_iter().map(|h| h.0).collect(),
+            scanned: found.scanned,
+            truncated: found.truncated,
+            cancelled: found.cancelled,
+        })
     }
 }
 

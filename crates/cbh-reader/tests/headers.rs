@@ -121,6 +121,9 @@ fn range_reads_are_bounded_and_truncation_is_detected() {
     assert!(f.read_exact_range(u64::MAX, 2).is_err());
     assert!(f.read_exact_range(0, 7).is_err());
     std::fs::write(&path, b"ab").unwrap();
+    // A full check sees the change at once; reads see it within 200 ms.
+    assert!(f.verify_unchanged().is_err());
+    std::thread::sleep(std::time::Duration::from_millis(250));
     assert!(f.read_exact_range(0, 2).is_err());
 }
 #[test]
