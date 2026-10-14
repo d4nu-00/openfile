@@ -1,7 +1,7 @@
 //! Builds a position index and finds a position, printing timings.
 //!
 //! Usage: position --path <db> [--index <file>] [--build] [--fen <FEN>]
-//!        [--max N]
+//!        [--pattern '<PositionQuery JSON>'] [--max N]
 use cbh_reader::{
     Database, ReadLimits,
     position::{PositionIndex, Target},
@@ -37,6 +37,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             out.display(),
             started.elapsed().as_secs_f64(),
             std::fs::metadata(out)?.len()
+        );
+    }
+    if let Some(json) = value("--pattern") {
+        let query: cbh_reader::pattern::PositionQuery = serde_json::from_str(json)?;
+        let mut index = match &index_path {
+            Some(p) => PositionIndex::open(p, &db)?,
+            None => None,
+        };
+        let started = Instant::now();
+        let r = db.find_query(
+            &query.compile()?,
+            index.as_mut(),
+            100_000,
+            &cancel,
+            |_, _| {},
+        )?;
+        println!(
+            "{} hits{}, {} replayed, indexed {}, {:.2} s, first {:?}",
+            r.hits.len(),
+            if r.truncated {
+                " (stopped at limit)"
+            } else {
+                ""
+            },
+            r.replayed,
+            r.indexed,
+            started.elapsed().as_secs_f64(),
+            &r.hits[..r.hits.len().min(5)]
         );
     }
     if let Some(fen) = value("--fen") {

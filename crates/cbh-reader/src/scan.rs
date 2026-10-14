@@ -44,6 +44,9 @@ pub(crate) fn parallel<S, T: Send>(
         .collect::<Result<Vec<_>, _>>()?;
     let per = count.div_ceil(workers).max(1);
     let done = AtomicU64::new(0);
+    // Hits found by each worker so far: a worker whose earlier ranges
+    // already hold `max_hits` would only find hits that are dropped.
+    let found: Vec<AtomicU64> = (0..workers).map(|_| AtomicU64::new(0)).collect();
     struct Part<T> {
         hits: Vec<(u64, T)>,
         scanned: u64,
@@ -59,7 +62,7 @@ pub(crate) fn parallel<S, T: Send>(
             }
             let last = (first + per - 1).min(count);
             let handle = if i == 0 { db } else { &handles[i as usize - 1] };
-            let (done, init, chunk) = (&done, &init, &chunk);
+            let (done, init, chunk, found) = (&done, &init, &chunk, &found);
             running.push(scope.spawn(move || -> Result<Part<T>, CbhError> {
                 let mut state = init(handle)?;
                 let mut part = Part {
@@ -74,8 +77,17 @@ pub(crate) fn parallel<S, T: Send>(
                         part.cancelled = true;
                         break;
                     }
+                    let before: u64 = found[..i as usize]
+                        .iter()
+                        .map(|f| f.load(Ordering::Relaxed))
+                        .sum();
+                    if before >= max_hits as u64 {
+                        part.full = true;
+                        break;
+                    }
                     let n = step.min(last + 1 - at);
                     chunk(handle, &mut state, at, n, &mut part.hits)?;
+                    found[i as usize].store(part.hits.len() as u64, Ordering::Relaxed);
                     part.scanned += n;
                     done.fetch_add(n, Ordering::Relaxed);
                     at += n;
