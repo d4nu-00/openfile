@@ -73,7 +73,7 @@ impl Visitor for Importer<'_> {
                     .san
                     .to_move(&pos)
                     .map_err(|_| CoreError::IllegalMove(san.to_string()))?;
-                UciMove::from_standard(m).to_string()
+                crate::model::uci_of(&pos, m)
             };
             s.current = s.game.append_uci(s.current, &uci)?;
             s.variation_start = false;
