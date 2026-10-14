@@ -6,6 +6,7 @@ pub mod entities;
 pub mod error;
 pub mod header;
 pub mod limits;
+pub mod maintain;
 pub mod moves;
 pub mod name_list;
 pub mod pattern;
