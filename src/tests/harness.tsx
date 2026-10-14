@@ -275,6 +275,10 @@ export function mockApi(firstDatabase = 1) {
                 line: ["d2d4", "d7d5"],
               },
             ],
+            evaluations: [
+              { node: 1, nag: 17 },
+              { node: 2, nag: 11 },
+            ],
           };
         },
       ),

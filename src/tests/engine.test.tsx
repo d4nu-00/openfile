@@ -468,10 +468,13 @@ it("runs Tactical Analysis and adds its findings as one edit", async () => {
           {
             node: 1,
             nag: 4,
+            evaluation: 17,
             comment: "-1.50",
             line: ["d2d4", "d7d5"],
             lineComment: "+0.30/20",
           },
+          // An evaluation symbol alone, where the evaluation changed.
+          { node: 2, evaluation: 11, line: [] },
         ],
       },
       "0",
@@ -488,6 +491,7 @@ it("adds nothing when Tactical Analysis is stopped", async () => {
     cancelled: true,
     checked: 1,
     findings: [],
+    evaluations: [],
     revision: "0",
   });
   await ui.user.keyboard("{Control>}{Alt>}{Shift>}u{/Shift}{/Alt}{/Control}");

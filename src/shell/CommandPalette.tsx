@@ -93,7 +93,11 @@ export function CommandPalette({
                 <span className="palette-where">
                   {r.available ? where[r.c.id] : "Not yet available"}
                 </span>
-                {r.c.keys && <kbd>{format(r.c.keys)}</kbd>}
+                {r.c.keys && (
+                  <kbd>
+                    {[r.c.keys, ...(r.c.alsoKeys ?? [])].map(format).join(" ")}
+                  </kbd>
+                )}
               </li>
             );
           })}

@@ -168,6 +168,7 @@ export type Edit =
       items: {
         node: NodeId;
         nag?: number;
+        evaluation?: number;
         comment?: string;
         line: string[];
         lineComment?: string;
@@ -542,6 +543,8 @@ export interface BlunderReport {
   cancelled: boolean;
   checked: number;
   findings: BlunderFinding[];
+  /** ChessBase's evaluation symbols where the evaluation changes. */
+  evaluations: { node: number; nag: number }[];
   revision: string;
 }
 /** An engine in Engine Management. */
