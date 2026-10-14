@@ -271,13 +271,17 @@ async fn blocking<T: Send + 'static>(
 #[tauri::command]
 pub async fn open_database(
     state: tauri::State<'_, Arc<Registry>>,
+    settings: tauri::State<'_, crate::settings::Settings>,
     path: PathBuf,
     request_id: String,
     writable: Option<bool>,
 ) -> Result<OpenDatabaseResponse, AppError> {
     let s = state.inner().clone();
+    let opened_path = path.clone();
     let opened =
         blocking(move || s.open_database_with(path, request_id, writable.unwrap_or(false))).await?;
+    // The start screen's lists; a settings problem does not stop the open.
+    let _ = settings.record_opened(&opened_path);
     let s = state.inner().clone();
     let id = opened.database_id.clone();
     tauri::async_runtime::spawn_blocking(move || s.warm_up(&id));
@@ -286,11 +290,15 @@ pub async fn open_database(
 #[tauri::command]
 pub async fn create_database(
     state: tauri::State<'_, Arc<Registry>>,
+    settings: tauri::State<'_, crate::settings::Settings>,
     path: PathBuf,
     request_id: String,
 ) -> Result<OpenDatabaseResponse, AppError> {
     let s = state.inner().clone();
-    blocking(move || s.create_database(path, request_id)).await
+    let created_path = path.clone();
+    let created = blocking(move || s.create_database(path, request_id)).await?;
+    let _ = settings.record_opened(&created_path);
+    Ok(created)
 }
 #[tauri::command]
 pub async fn save_game(

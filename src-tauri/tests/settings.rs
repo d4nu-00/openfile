@@ -20,6 +20,7 @@ fn settings_default_check_and_round_trip() {
         engines: vec![engine.clone()],
         default_engine: Some("e1".into()),
         tablebase_dir: Some(d.path().join("syzygy")),
+        ..AppSettings::default()
     };
     s.save(&wanted).unwrap();
     assert_eq!(s.load(), wanted);
