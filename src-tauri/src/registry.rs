@@ -50,6 +50,10 @@ pub(crate) struct State {
     >,
     pub(crate) name_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     pub(crate) crosstable_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    /// The games behind each database's last player statistics, and
+    /// running statistics.
+    pub(crate) player_games: HashMap<String, Arc<crate::statistics::KeptGames>>,
+    pub(crate) statistics_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     /// Games copied in a database window, and running pastes.
     pub(crate) clip: Option<Arc<crate::clipboard::Clip>>,
     pub(crate) paste_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
@@ -347,10 +351,12 @@ impl Registry {
         state.references.remove(&id);
         state.sorts.remove(&id);
         state.name_lists.retain(|(db, _), _| *db != id);
+        state.player_games.remove(&id);
         for cancels in [
             &mut state.sort_cancels,
             &mut state.name_cancels,
             &mut state.crosstable_cancels,
+            &mut state.statistics_cancels,
             &mut state.paste_cancels,
             &mut state.search_cancels,
             &mut state.tree_cancels,

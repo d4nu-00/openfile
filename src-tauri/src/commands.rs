@@ -101,6 +101,11 @@ pub struct EntryDto {
     /// For the crosstable of the game's tournament.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tournament_id: Option<u32>,
+    /// For the statistics of the game's players.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub white_id: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub black_id: Option<u32>,
     pub diagnostics: Vec<DiagnosticDto>,
 }
 impl From<cbh_reader::EntrySummary> for EntryDto {
@@ -130,6 +135,8 @@ impl From<cbh_reader::EntrySummary> for EntryDto {
             black_team: e.black_team,
             found_node: None,
             tournament_id: e.tournament_id,
+            white_id: e.white_id,
+            black_id: e.black_id,
             diagnostics: e.diagnostics.into_iter().map(Into::into).collect(),
         }
     }
@@ -744,6 +751,46 @@ pub async fn find_name(
 ) -> Result<String, AppError> {
     let s = state.inner().clone();
     blocking(move || s.find_name(database_id, kind, prefix)).await
+}
+#[tauri::command]
+pub async fn player_statistics(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    player_id: u32,
+    events: tauri::ipc::Channel<crate::statistics::StatisticsProgress>,
+) -> Result<Option<cbh_reader::player_stats::PlayerStatistics>, AppError> {
+    let s = state.inner().clone();
+    blocking(move || {
+        let mut last = std::time::Instant::now();
+        s.player_statistics(database_id, player_id, |done, total| {
+            if last.elapsed().as_millis() >= 250 || done == total {
+                last = std::time::Instant::now();
+                let _ = events.send(crate::statistics::StatisticsProgress {
+                    done: done.to_string(),
+                    total: total.to_string(),
+                });
+            }
+        })
+    })
+    .await
+}
+#[tauri::command]
+pub fn cancel_player_statistics(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_player_statistics(database_id)
+}
+#[tauri::command]
+pub async fn statistics_games(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    player_id: u32,
+    group: cbh_reader::player_stats::Group,
+    request_id: String,
+) -> Result<crate::searches::SearchResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.statistics_games(database_id, player_id, group, request_id)).await
 }
 #[tauri::command]
 pub async fn crosstable(

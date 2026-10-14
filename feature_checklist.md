@@ -23,7 +23,7 @@ Names in backticks are ChessBase command ids, for traceability.
 4. Complete notation editing: variation operations, game data, symbols (§6). *(P1 items done except keyboard symbol shortcuts)*
 5. Multiple game tabs, the clipboard database and save/replace into a database (§2, §3). *(game tabs done)*
 6. Engine tools: blunder check, deep analysis, analysis jobs, tablebases (§7). *(kibitzers, lines, paste, Engine Management, Tactical Analysis and a tablebase tab done; deep analysis and analysis jobs remain)*
-7. Reports, preparation and training (§9–§11), then publishing (§12).
+7. Reports, preparation and training (§9–§11), then publishing (§12). *(player statistics done)*
 
 ## 1. Database formats and storage
 
@@ -176,7 +176,7 @@ Names in backticks are ChessBase command ids, for traceability.
 
 ## 9. Reports and statistics
 
-- [ ] P1 🟢 Player statistics: score by colour, opening and year (`STATISTICS`, `PLAYERSTATISTIC`)
+- [x] P1 🟢 Player statistics: score by colour, opening and year (`STATISTICS`, `PLAYERSTATISTIC`) *(ChessBase's Player statistic layout, dialog 846: score by colour and year, then opponents, tournaments and openings by ECO with its sort buttons and Table; performance and average Elo; one cancellable parallel scan, 0.06 s for Carlsen's 6,925 games on the classic Mega warm; rows open their games; the graphical Statistics dialog and opening keys are not ported; see [player statistics](docs/player-statistics.md))*
 - [ ] P2 🟢 Player dossier (`PLAYERDOSSIER`)
 - [ ] P2 🟢 Tournament crosstable and report (`DBTOOLSCROSSTABLE`, `TournamentReport`) *(crosstable done, §3; no report)*
 - [ ] P2 🟢 Error report: blunder statistics and estimated rating (`BLUNDER_REPORT`)

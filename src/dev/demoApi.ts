@@ -9,6 +9,8 @@ import type {
   NameRow,
   SortColumn,
   AppSettings,
+  PlayerStatistics,
+  StatScore,
 } from "../api/types";
 import { demoFens, demoLegal, demoNodes } from "./demoGame";
 
@@ -152,6 +154,93 @@ function demoNames(kind: NameKind): NameRow[] {
     firstYear: 1851,
     lastYear: 2002,
   }));
+}
+
+/** Statistics of a demo player, scored from the sample entries. */
+function demoStatistics(playerId: number): PlayerStatistics {
+  const name = demoNames("players")[playerId]?.name;
+  const games = entries.filter(
+    (e) =>
+      e.kind === "game" && !e.deleted && (e.white === name || e.black === name),
+  );
+  const empty = (): StatScore => ({
+    games: 0,
+    wins: 0,
+    draws: 0,
+    losses: 0,
+    points: 0,
+  });
+  const add = (s: StatScore, e: EntrySummary) => {
+    const white = e.white === name;
+    const half =
+      e.result === "1/2-1/2" ? 1 : (e.result === "1-0") === white ? 2 : 0;
+    s.games++;
+    s.points += half / 2;
+    if (half === 2) s.wins++;
+    else if (half === 1) s.draws++;
+    else s.losses++;
+    s.percent = Math.round((s.points * 100) / s.games);
+  };
+  const total = empty();
+  const white = empty();
+  const black = empty();
+  const openings = new Map<string, { white: StatScore; black: StatScore }>();
+  const opponents = new Map<string, StatScore>();
+  const events = new Map<string, StatScore>();
+  const years = new Map<number, StatScore>();
+  for (const e of games) {
+    const w = e.white === name;
+    add(total, e);
+    add(w ? white : black, e);
+    const o = openings.get(e.eco ?? "") ?? { white: empty(), black: empty() };
+    add(w ? o.white : o.black, e);
+    openings.set(e.eco ?? "", o);
+    const opp = (w ? e.black : e.white) ?? "?";
+    const os = opponents.get(opp) ?? empty();
+    add(os, e);
+    opponents.set(opp, os);
+    const es = events.get(e.event ?? "?") ?? empty();
+    add(es, e);
+    events.set(e.event ?? "?", es);
+    const year = Number(e.date?.slice(0, 4)) || 0;
+    const ys = years.get(year) ?? empty();
+    add(ys, e);
+    years.set(year, ys);
+  }
+  const playerIds = demoNames("players");
+  const eventIds = demoNames("tournaments");
+  return {
+    playerId,
+    name,
+    total,
+    white,
+    black,
+    found: games.length,
+    deleted: 0,
+    unscored: 0,
+    firstYear: Math.min(...years.keys()),
+    lastYear: Math.max(...years.keys()),
+    openings: [...openings].map(([eco, o]) => ({
+      eco: eco || undefined,
+      ...o,
+    })),
+    opponents: [...opponents].map(([n, score]) => ({
+      id: playerIds.findIndex((p) => p.name === n),
+      name: n,
+      score,
+      lastYear: 2000,
+    })),
+    tournaments: [...events].map(([n, score]) => ({
+      id: eventIds.findIndex((t) => t.name === n),
+      name: n,
+      year: 2000,
+      score,
+    })),
+    years: [...years].map(([year, score]) => ({ year, score })),
+    truncated: false,
+    moreOpponents: 0,
+    moreTournaments: 0,
+  };
 }
 
 export function demoApi(): WorkbenchApi {
@@ -313,6 +402,26 @@ export function demoApi(): WorkbenchApi {
           buchholz: 0,
           cells: names.map(() => []),
         })),
+      };
+    },
+    playerStatistics: async (_db, playerId, onProgress) => {
+      onProgress({ done: String(demoCount), total: String(demoCount) });
+      return demoStatistics(playerId);
+    },
+    cancelPlayerStatistics: async () => {},
+    statisticsGames: async (_db, playerId, _group, requestId) => {
+      const name = demoNames("players")[playerId]?.name;
+      hits = all().filter((n) => {
+        const e = demoEntry(n);
+        return e.white === name || e.black === name;
+      });
+      return {
+        requestId,
+        hits: String(hits.length),
+        scanned: String(hits.length),
+        truncated: false,
+        cancelled: false,
+        indexed: false,
       };
     },
     createSearchBooster: async (_db, onProgress) => {

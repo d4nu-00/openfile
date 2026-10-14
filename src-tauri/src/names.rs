@@ -132,6 +132,7 @@ impl Registry {
     pub(crate) fn drop_name_lists(&self, database_id: &str) {
         if let Ok(mut state) = self.lock() {
             state.name_lists.retain(|(id, _), _| id != database_id);
+            state.player_games.remove(database_id);
         }
     }
 

@@ -8,6 +8,7 @@ import type {
   Diagnostic,
   EntrySummary,
   SortColumn,
+  StatGroup,
 } from "../api/types";
 import type { WorkbenchApi } from "../api/client";
 import { SelectionGate } from "./selection";
@@ -542,6 +543,12 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       api.searchGames(db, filter, request),
     );
   }
+  /** Lists the games of a player statistics row. */
+  function statisticsGames(playerId: number, group: StatGroup, label: string) {
+    return runSearch({ label }, (db, request) =>
+      api.statisticsGames(db, playerId, group, request),
+    );
+  }
   /** Finds games that reach the position `fen`. */
   function findPosition(fen: string) {
     return runSearch({ fen }, (db, request) =>
@@ -858,6 +865,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     previewRow,
     openDatabase,
     search,
+    statisticsGames,
     findPosition,
     createBooster,
     deleteBooster,

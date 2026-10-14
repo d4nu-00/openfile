@@ -35,6 +35,9 @@ export interface EntrySummary {
   foundNode?: number;
   /** For the crosstable of the game's tournament. */
   tournamentId?: number;
+  /** For the statistics of the game's players. */
+  whiteId?: number;
+  blackId?: number;
   diagnostics: Diagnostic[];
 }
 export interface GameNode {
@@ -339,6 +342,69 @@ export interface Crosstable {
   averageElo?: number;
   category?: number;
 }
+/** A player's score in a group of games (see docs/player-statistics.md). */
+export interface StatScore {
+  /** Games with a result. */
+  games: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  points: number;
+  percent?: number;
+  averageElo?: number;
+  performance?: number;
+}
+export interface OpeningStat {
+  eco?: string;
+  white: StatScore;
+  black: StatScore;
+}
+export interface OpponentStat {
+  id: number;
+  name?: string;
+  elo?: number;
+  score: StatScore;
+  lastYear: number;
+}
+export interface TournamentStat {
+  id: number;
+  name?: string;
+  site?: string;
+  year: number;
+  score: StatScore;
+}
+export interface YearStat {
+  year: number;
+  score: StatScore;
+  elo?: number;
+}
+export interface PlayerStatistics {
+  playerId: number;
+  name?: string;
+  total: StatScore;
+  white: StatScore;
+  black: StatScore;
+  found: number;
+  deleted: number;
+  unscored: number;
+  firstYear: number;
+  lastYear: number;
+  openings: OpeningStat[];
+  opponents: OpponentStat[];
+  tournaments: TournamentStat[];
+  years: YearStat[];
+  truncated: boolean;
+  moreOpponents: number;
+  moreTournaments: number;
+}
+/** The games of a statistics row. */
+export type StatGroup =
+  | { kind: "all" }
+  | { kind: "color"; white: boolean }
+  | { kind: "opening"; eco: number; white?: boolean }
+  | { kind: "opponent"; id: number }
+  | { kind: "tournament"; id: number }
+  | { kind: "year"; year: number };
 export const emptyFilter = (): GameFilter => ({
   white: { last: "", first: "" },
   black: { last: "", first: "" },

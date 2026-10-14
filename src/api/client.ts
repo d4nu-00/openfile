@@ -34,6 +34,8 @@ import type {
   Crosstable,
   CrossLayout,
   PasteResponse,
+  PlayerStatistics,
+  StatGroup,
 } from "./types";
 export const backend = {
   pickEngine: () =>
@@ -340,6 +342,37 @@ export const backend = {
     tournamentId: number,
     layout: CrossLayout | null,
   ) => invoke<Crosstable>("crosstable", { databaseId, tournamentId, layout }),
+  /** Player statistics; undefined when cancelled. */
+  playerStatistics: async (
+    databaseId: string,
+    playerId: number,
+    onProgress: (p: { done: string; total: string }) => void,
+  ) => {
+    const events = new Channel<{ done: string; total: string }>();
+    events.onmessage = onProgress;
+    return (
+      (await invoke<PlayerStatistics | null>("player_statistics", {
+        databaseId,
+        playerId,
+        events,
+      })) ?? undefined
+    );
+  },
+  cancelPlayerStatistics: (databaseId: string) =>
+    invoke<void>("cancel_player_statistics", { databaseId }),
+  /** Shows the games of a statistics row as the list's search result. */
+  statisticsGames: (
+    databaseId: string,
+    playerId: number,
+    group: StatGroup,
+    requestId: string,
+  ) =>
+    invoke<SearchResponse>("statistics_games", {
+      databaseId,
+      playerId,
+      group,
+      requestId,
+    }),
   loadEntry: (databaseId: string, ordinal: string, requestId: string) =>
     invoke<GameResponse>("load_entry", { databaseId, ordinal, requestId }),
   positionAt: (documentId: string, nodeId: number, requestId: string) =>
