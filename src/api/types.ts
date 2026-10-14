@@ -601,3 +601,31 @@ export interface TablebaseAnnotation {
   mistakes: number;
   status: string;
 }
+/** A database symbol on the start screen (see docs/start-screen.md). */
+export interface DatabaseSymbol {
+  path: string;
+  name: string;
+  folder: string;
+  /** One of ChessBase's 20 database types. */
+  kind: string;
+  favorite: boolean;
+  exists: boolean;
+  format?: "classic" | "new";
+  entries?: number;
+  problem?: string;
+}
+export interface FolderShortcut {
+  path: string;
+  name: string;
+  exists: boolean;
+}
+export interface StartScreenData {
+  favorites: DatabaseSymbol[];
+  recent: DatabaseSymbol[];
+  folders: FolderShortcut[];
+  kinds: string[];
+}
+export interface FolderListing {
+  symbols: DatabaseSymbol[];
+  truncated: boolean;
+}
