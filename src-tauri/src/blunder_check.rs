@@ -243,6 +243,7 @@ impl Registry {
             Duration::from_secs(5),
         )
         .map_err(|e| AppError::new("engine", e.to_string()))?;
+        crate::tablebases::configure_engine(&mut session);
         let result = (|| {
             for (name, value) in &params.options {
                 crate::engine_commands::standard_option(name, value)?;
