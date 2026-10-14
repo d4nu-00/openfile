@@ -29,7 +29,7 @@ fn searches_page_through_hits_and_clear() {
     }
     let filter = serde_json::from_str(r#"{"white":{"last":"even"}}"#).unwrap();
     let found = r
-        .search_games(db.database_id.clone(), filter, "s".into())
+        .search_games(db.database_id.clone(), filter, "s".into(), |_, _| {})
         .unwrap();
     assert_eq!((found.hits.as_str(), found.scanned.as_str()), ("3", "5"));
     let page = r
@@ -78,7 +78,7 @@ fn position_search_uses_the_booster_and_reports_nodes() {
     }
     let fen = "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
     let plain = r
-        .find_position(db.database_id.clone(), fen.into(), "f".into())
+        .find_position(db.database_id.clone(), fen.into(), "f".into(), |_, _| {})
         .unwrap();
     assert!(!plain.indexed);
     assert_eq!(plain.hits, "2");
@@ -91,7 +91,7 @@ fn position_search_uses_the_booster_and_reports_nodes() {
     assert_eq!(seen.last(), Some(&(3, 3)));
     assert!(r.has_booster(&db.database_id).unwrap());
     let fast = r
-        .find_position(db.database_id.clone(), fen.into(), "f".into())
+        .find_position(db.database_id.clone(), fen.into(), "f".into(), |_, _| {})
         .unwrap();
     assert!(fast.indexed);
     assert_eq!(fast.hits, "2");
@@ -104,6 +104,35 @@ fn position_search_uses_the_booster_and_reports_nodes() {
         .map(|e| (e.ordinal.as_str(), e.found_node))
         .collect();
     assert_eq!(found, [("1", Some(3)), ("3", Some(3))]);
+    // A pattern from the position tab: a white knight on f3 and a black
+    // pawn on e5, in either colour (mirrored). It does not use the booster.
+    let query: cbh_reader::pattern::PositionQuery =
+        serde_json::from_str(r#"{"lookFor":[["f3","N"],["e5","p"]],"horizontal":true}"#).unwrap();
+    let mut progress = vec![];
+    let pattern = r
+        .search_position(db.database_id.clone(), query, "q".into(), |d, t| {
+            progress.push((d, t))
+        })
+        .unwrap();
+    assert!(!pattern.indexed);
+    assert_eq!(pattern.hits, "2");
+    assert_eq!(progress.last(), Some(&(3, 3)));
+    let page = r
+        .read_search_page(db.database_id.clone(), "1".into(), 10, "p".into())
+        .unwrap();
+    let found: Vec<_> = page
+        .entries
+        .iter()
+        .map(|e| (e.ordinal.as_str(), e.found_node))
+        .collect();
+    assert_eq!(found, [("1", Some(3)), ("3", Some(2))]);
+    let empty: cbh_reader::pattern::PositionQuery = serde_json::from_str("{}").unwrap();
+    assert_eq!(
+        r.search_position(db.database_id.clone(), empty, "q".into(), |_, _| {})
+            .unwrap_err()
+            .code,
+        "invalidQuery"
+    );
     r.delete_search_booster(db.database_id.clone()).unwrap();
     assert!(!r.has_booster(&db.database_id).unwrap());
 }

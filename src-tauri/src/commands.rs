@@ -472,9 +472,10 @@ pub async fn search_games(
     database_id: String,
     filter: cbh_reader::search::GameFilter,
     request_id: String,
+    events: tauri::ipc::Channel<crate::searches::BoosterProgress>,
 ) -> Result<crate::searches::SearchResponse, AppError> {
     let s = state.inner().clone();
-    blocking(move || s.search_games(database_id, filter, request_id)).await
+    blocking(move || s.search_games(database_id, filter, request_id, progress_to(events))).await
 }
 #[tauri::command]
 pub fn cancel_search(
@@ -507,9 +508,36 @@ pub async fn find_position(
     database_id: String,
     fen: String,
     request_id: String,
+    events: tauri::ipc::Channel<crate::searches::BoosterProgress>,
 ) -> Result<crate::searches::SearchResponse, AppError> {
     let s = state.inner().clone();
-    blocking(move || s.find_position(database_id, fen, request_id)).await
+    blocking(move || s.find_position(database_id, fen, request_id, progress_to(events))).await
+}
+#[tauri::command]
+pub async fn search_position(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    query: cbh_reader::pattern::PositionQuery,
+    request_id: String,
+    events: tauri::ipc::Channel<crate::searches::BoosterProgress>,
+) -> Result<crate::searches::SearchResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.search_position(database_id, query, request_id, progress_to(events))).await
+}
+/// Sends (done, total) to the frontend at most four times a second.
+fn progress_to(
+    events: tauri::ipc::Channel<crate::searches::BoosterProgress>,
+) -> impl FnMut(u64, u64) {
+    let mut last = std::time::Instant::now();
+    move |done, total| {
+        if last.elapsed().as_millis() >= 250 || done == total {
+            last = std::time::Instant::now();
+            let _ = events.send(crate::searches::BoosterProgress {
+                done: done.to_string(),
+                total: total.to_string(),
+            });
+        }
+    }
 }
 #[tauri::command]
 pub async fn create_search_booster(

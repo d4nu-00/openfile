@@ -54,8 +54,14 @@ impl Registry {
         database_id: String,
         filter: cbh_reader::search::GameFilter,
         request_id: String,
+        mut progress: impl FnMut(u64, u64),
     ) -> Result<SearchResponse, AppError> {
         let db = self.database(&database_id)?;
+        let total = db
+            .lock()
+            .map_err(|_| AppError::new("state", "Database unavailable"))?
+            .info()
+            .entry_count;
         let cancel = Arc::new(AtomicBool::new(false));
         // A new search cancels the previous one on this database.
         if let Some(old) = self
@@ -68,7 +74,7 @@ impl Registry {
         let result = db
             .lock()
             .map_err(|_| AppError::new("state", "Database unavailable"))?
-            .search(&filter, MAX_HITS, &cancel, |_| {})?;
+            .search(&filter, MAX_HITS, &cancel, |done| progress(done, total))?;
         let mut state = self.lock()?;
         if state
             .search_cancels
@@ -203,9 +209,35 @@ impl Registry {
         database_id: String,
         fen: String,
         request_id: String,
+        progress: impl FnMut(u64, u64),
     ) -> Result<SearchResponse, AppError> {
         let target = cbh_reader::position::Target::from_fen(&fen)?;
-        let db = self.database(&database_id)?;
+        let query = cbh_reader::pattern::Compiled::Exact(vec![target]);
+        self.run_position_search(database_id, &query, request_id, progress)
+    }
+
+    /// Runs the search mask's position tab: an exact position or a pattern.
+    pub fn search_position(
+        &self,
+        database_id: String,
+        query: cbh_reader::pattern::PositionQuery,
+        request_id: String,
+        progress: impl FnMut(u64, u64),
+    ) -> Result<SearchResponse, AppError> {
+        let query = query
+            .compile()
+            .map_err(|e| AppError::new("invalidQuery", e.to_string()))?;
+        self.run_position_search(database_id, &query, request_id, progress)
+    }
+
+    fn run_position_search(
+        &self,
+        database_id: String,
+        query: &cbh_reader::pattern::Compiled,
+        request_id: String,
+        progress: impl FnMut(u64, u64),
+    ) -> Result<SearchResponse, AppError> {
+        self.database(&database_id)?;
         let cancel = Arc::new(AtomicBool::new(false));
         if let Some(old) = self
             .lock()?
@@ -214,8 +246,7 @@ impl Registry {
         {
             old.store(true, Ordering::Relaxed);
         }
-        drop(db);
-        let result = self.position_search(&database_id, &target, &cancel)?;
+        let result = self.position_search(&database_id, query, &cancel, progress);
         let mut state = self.lock()?;
         if state
             .search_cancels
@@ -224,6 +255,7 @@ impl Registry {
         {
             state.search_cancels.remove(&database_id);
         }
+        let result = result?;
         let response = SearchResponse {
             request_id,
             hits: result.hits.len().to_string(),
@@ -246,13 +278,14 @@ impl Registry {
         Ok(response)
     }
 
-    /// Finds games reaching `target` through a separate read handle, with
-    /// the search booster when it is current.
+    /// Finds games matching `query` through a separate read handle, with
+    /// the search booster when it is current and the query is exact.
     pub(crate) fn position_search(
         &self,
         database_id: &str,
-        target: &cbh_reader::position::Target,
+        query: &cbh_reader::pattern::Compiled,
         cancel: &AtomicBool,
+        progress: impl FnMut(u64, u64),
     ) -> Result<cbh_reader::position::PositionResult, AppError> {
         let booster = self.booster_path(database_id).ok();
         let mut db = self.own_handle(database_id)?;
@@ -260,7 +293,7 @@ impl Registry {
             Some(path) => cbh_reader::position::PositionIndex::open(path, &db)?,
             None => None,
         };
-        Ok(db.find_position(target, index.as_mut(), MAX_POSITION_HITS, cancel, |_, _| {})?)
+        Ok(db.find_query(query, index.as_mut(), MAX_POSITION_HITS, cancel, progress)?)
     }
 
     pub fn cancel_search(&self, database_id: String) -> Result<(), AppError> {
