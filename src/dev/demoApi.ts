@@ -314,6 +314,17 @@ export function demoApi(): WorkbenchApi {
         indexed: false,
       };
     },
+    searchPosition: async (_db, query, requestId) => {
+      hits = all().filter((n) => n % 7 === 1);
+      return {
+        requestId,
+        hits: String(hits.length),
+        scanned: "2400",
+        truncated: false,
+        cancelled: false,
+        indexed: false && query.exact,
+      };
+    },
     readRows: async (_db, start, limit, requestId) => ({
       requestId,
       entries: list()

@@ -35,8 +35,16 @@ import type {
   CrossLayout,
   PasteResponse,
   PlayerStatistics,
+  PositionQuery,
   StatGroup,
 } from "./types";
+
+/** A progress channel; one that drops the messages when nobody listens. */
+function channel<T>(onMessage?: (message: T) => void) {
+  const events = new Channel<T>();
+  if (onMessage) events.onmessage = onMessage;
+  return events;
+}
 export const backend = {
   pickEngine: () =>
     open({ multiple: false, title: "Choose a local UCI engine executable" }),
@@ -181,10 +189,43 @@ export const backend = {
     }),
   setDeleted: (databaseId: string, ordinal: string, deleted: boolean) =>
     invoke<void>("set_deleted", { databaseId, ordinal, deleted }),
-  searchGames: (databaseId: string, filter: GameFilter, requestId: string) =>
-    invoke<SearchResponse>("search_games", { databaseId, filter, requestId }),
-  findPosition: (databaseId: string, fen: string, requestId: string) =>
-    invoke<SearchResponse>("find_position", { databaseId, fen, requestId }),
+  searchGames: (
+    databaseId: string,
+    filter: GameFilter,
+    requestId: string,
+    onProgress?: (p: BoosterProgress) => void,
+  ) =>
+    invoke<SearchResponse>("search_games", {
+      databaseId,
+      filter,
+      requestId,
+      events: channel(onProgress),
+    }),
+  findPosition: (
+    databaseId: string,
+    fen: string,
+    requestId: string,
+    onProgress?: (p: BoosterProgress) => void,
+  ) =>
+    invoke<SearchResponse>("find_position", {
+      databaseId,
+      fen,
+      requestId,
+      events: channel(onProgress),
+    }),
+  /** The search mask's position tab: a pattern or an exact position. */
+  searchPosition: (
+    databaseId: string,
+    query: PositionQuery,
+    requestId: string,
+    onProgress?: (p: BoosterProgress) => void,
+  ) =>
+    invoke<SearchResponse>("search_position", {
+      databaseId,
+      query,
+      requestId,
+      events: channel(onProgress),
+    }),
   createSearchBooster: async (
     databaseId: string,
     onProgress: (p: BoosterProgress) => void,

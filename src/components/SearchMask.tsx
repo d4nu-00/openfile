@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { emptyFilter, type EloMode, type GameFilter } from "../api/types";
+import {
+  emptyFilter,
+  type EloMode,
+  type GameFilter,
+  type PositionQuery,
+} from "../api/types";
+import { PositionMask } from "./PositionMask";
 
 /** Number input value: empty means "no bound". */
 const num = (v: string) => (v.trim() === "" ? undefined : Number(v));
@@ -14,25 +20,35 @@ const RESULTS: [string, string][] = [
 
 /**
  * ChessBase's search mask. The game data tab has players, tournament,
- * annotator, Elo, year, ECO, moves and result; the position tab finds a board
- * and side to move. Searching filters the game list.
+ * annotator, Elo, year, ECO, moves, result, final position and text; the
+ * position tab finds a pattern or a whole position. Searching filters the
+ * game list.
  */
 export function SearchMask({
   initial,
+  initialPosition,
   boardFen,
   onSearch,
-  onFindPosition,
+  onSearchPosition,
   onClose,
 }: {
   initial?: GameFilter;
+  /** The position tab of the current search. */
+  initialPosition?: PositionQuery;
   /** The current board, offered on the position tab. */
   boardFen?: string;
   onSearch: (filter: GameFilter) => void;
-  onFindPosition: (fen: string) => void;
+  onSearchPosition: (query: PositionQuery) => void;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<"game" | "position">("game");
-  const [fen, setFen] = useState(boardFen ?? "");
+  const [tab, setTab] = useState<"game" | "position">(
+    initialPosition ? "position" : "game",
+  );
+  const [position, setPosition] = useState<{
+    query?: PositionQuery;
+    valid: boolean;
+  }>({ valid: false });
+  const [positionKey, setPositionKey] = useState(0);
   const [f, setF] = useState<GameFilter>(initial ?? emptyFilter());
   const set = (patch: Partial<GameFilter>) => setF((v) => ({ ...v, ...patch }));
   const player = (side: "white" | "black", label: string) => (
@@ -97,11 +113,13 @@ export function SearchMask({
         role="dialog"
         aria-modal="true"
         aria-label="Search mask"
-        className="modal search-mask"
+        className={`modal search-mask${tab === "position" ? " wide" : ""}`}
         onSubmit={(e) => {
           e.preventDefault();
-          if (tab === "position") onFindPosition(fen.trim());
-          else onSearch(f);
+          if (tab === "position") {
+            if (position.query && position.valid)
+              onSearchPosition(position.query);
+          } else onSearch(f);
         }}
         onKeyDown={(e) => e.key === "Escape" && onClose()}
       >
@@ -125,32 +143,12 @@ export function SearchMask({
           ))}
         </div>
         {tab === "position" && (
-          <>
-            <div className="mask-row">
-              <span className="mask-label">Position</span>
-              <input
-                aria-label="Position (FEN)"
-                className="mask-fen"
-                value={fen}
-                onChange={(e) => setFen(e.target.value)}
-              />
-            </div>
-            <div className="mask-row">
-              <span className="mask-label" />
-              <button
-                type="button"
-                disabled={!boardFen}
-                onClick={() => boardFen && setFen(boardFen)}
-              >
-                Current board
-              </button>
-            </div>
-            <p className="hint">
-              Finds the board and side to move in every game, variations
-              included. Castling rights, en passant and move numbers are
-              ignored.
-            </p>
-          </>
+          <PositionMask
+            key={positionKey}
+            initial={positionKey ? undefined : initialPosition}
+            boardFen={boardFen}
+            onChange={(query, valid) => setPosition({ query, valid })}
+          />
         )}
         {tab === "game" && (
           <>
@@ -246,6 +244,47 @@ export function SearchMask({
                 </label>
               ))}
             </fieldset>
+            <fieldset className="mask-row">
+              <legend className="mask-label">Final position</legend>
+              {(
+                [
+                  ["mate", "Mate"],
+                  ["stalemate", "Stalem."],
+                  ["check", "Check"],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="mask-check">
+                  <input
+                    type="checkbox"
+                    checked={!!f[key]}
+                    onChange={(e) => set({ [key]: e.target.checked })}
+                  />
+                  {label}
+                </label>
+              ))}
+            </fieldset>
+            <div className="mask-row">
+              <span className="mask-label">Full Text</span>
+              <input
+                aria-label="Full Text"
+                value={f.fullText ?? ""}
+                onChange={(e) => set({ fullText: e.target.value })}
+              />
+              <label className="mask-check">
+                <input
+                  type="checkbox"
+                  checked={!!f.fullTextNot}
+                  onChange={(e) => set({ fullTextNot: e.target.checked })}
+                />
+                NOT
+              </label>
+            </div>
+            {(f.mate || f.stalemate || f.check || f.fullText?.trim()) && (
+              <p className="hint">
+                Final positions and text are read from each game that matches
+                the other fields, so this search is slower.
+              </p>
+            )}
             <label className="mask-check">
               <input
                 type="checkbox"
@@ -257,14 +296,21 @@ export function SearchMask({
           </>
         )}
         <div className="mask-buttons">
-          <button type="submit" autoFocus>
+          <button
+            type="submit"
+            autoFocus
+            disabled={tab === "position" && !position.valid}
+          >
             Search
           </button>
           <button
             type="button"
-            onClick={() => (tab === "game" ? setF(emptyFilter()) : setFen(""))}
+            onClick={() => {
+              setF(emptyFilter());
+              setPositionKey((k) => k + 1);
+            }}
           >
-            Reset
+            Reset all
           </button>
           <button type="button" onClick={onClose}>
             Cancel

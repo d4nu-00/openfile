@@ -345,6 +345,20 @@ export function mockApi(firstDatabase = 1) {
         indexed: true,
       };
     }),
+    searchPosition: vi
+      .fn()
+      .mockImplementation(async (_db, query, requestId, onProgress) => {
+        onProgress?.({ done: "200", total: "401" });
+        searching = true;
+        return {
+          requestId,
+          hits: "2",
+          scanned: "401",
+          truncated: false,
+          cancelled: false,
+          indexed: !!query.exact,
+        };
+      }),
     createSearchBooster: vi.fn().mockImplementation(async (_db, onProgress) => {
       onProgress({ done: "401", total: "401" });
       return true;

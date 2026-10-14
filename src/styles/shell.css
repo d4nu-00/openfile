@@ -1418,3 +1418,75 @@ kbd {
     grid-template-columns: 1fr;
   }
 }
+
+/* Search mask position tab: three pattern boards, as ChessBase's dialog 314. */
+.position-mask {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.search-mask.wide {
+  width: min(760px, calc(100vw - 32px));
+}
+.pattern-board-wrap {
+  width: 340px;
+  max-width: 100%;
+  flex: none;
+}
+.position-mask .setup-side {
+  flex: 1;
+  min-width: 300px;
+}
+.pattern-board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  aspect-ratio: 1;
+  border: 3px solid var(--board-frame);
+  user-select: none;
+}
+.pattern-board .square {
+  aspect-ratio: 1;
+  min-width: 0;
+}
+.pattern-board .square img,
+.pattern-board .square .any-piece {
+  width: 88%;
+  height: 88%;
+}
+.pattern-board .square.several {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  place-items: center;
+}
+.pattern-board .square.several img,
+.pattern-board .square.several .any-piece {
+  width: 90%;
+  height: 90%;
+}
+.any-piece {
+  display: inline-block;
+  width: 70%;
+  height: 70%;
+  border-radius: 50%;
+  border: 2px solid #000;
+  box-sizing: border-box;
+}
+.any-piece.white {
+  background: #fff;
+}
+.any-piece.black {
+  background: #000;
+  border-color: #888;
+}
+.mask-column {
+  display: flex;
+  flex-direction: column;
+}
+.mask-row input.mask-number {
+  width: 3.5em;
+  margin-left: 4px;
+}
+.app-status .link-button {
+  margin-left: 8px;
+}
