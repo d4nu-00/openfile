@@ -509,6 +509,39 @@ database and lists a row's games. A debug snapshot of the real app showed
 the dialog for Carlsen. It also exposed duplicate "no ECO" rows from codes
 above E99, which now count as none.
 
+## Search mask and position search (2026-10-14)
+
+The measurements are in [search](search.md#measurements-classic-mega-2026-10-14).
+
+* **Parallel scans.** On the classic Mega the parallel game-data search, Find
+  Position and booster build returned the same results as before. The
+  Ruy Lopez search found the same first hits (entries 231, 410, 412, 476,
+  730, each at node 5). The Opera Game position gave the same 1,035 hits
+  with and without the booster.
+* **Source reads.** The first parallel Find Position took 651 s for the
+  Ruy Lopez. `time` showed more system time than user time, and on the 2CBH
+  Mega one worker spent 2.0 s in the kernel against 0.7 s of chess work.
+  Positional reads and a path check at most every 200 ms brought it to
+  108 s. A per-read `fstat` was also tried: it cost 1.7× on eight workers
+  and was dropped.
+* **Booster.** It was built into a scratch folder in 128 s (1.43 GB),
+  measured, and deleted.
+* **Reader tests.**
+  * final positions (mate, stalemate, check that is not mate), full text in
+    comments and variations, NOT, and hit limits keeping the first hits in
+    entry order;
+  * patterns: 'Look for', 'Or' and 'Exclude' boards, any piece, several
+    pieces on a square, both mirrors, First/Last/Length, side to move,
+    variations;
+  * exact positions with mirrors, with and without the booster;
+  * refused queries.
+* **App test.** A pattern from JSON, its progress and found nodes, and an
+  empty query refused.
+* **Frontend tests.** The Position tab (exact from the board, then a
+  pattern with the Exclude board and mirroring, reopened with the same
+  boards), and progress with Cancel in the status bar.
+* **Demo app.** The tab was driven in the browser pane on demo data.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private
