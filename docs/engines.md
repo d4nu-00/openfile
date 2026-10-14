@@ -161,11 +161,57 @@ and small tactics in the game") keeps its settings in
 | Replace (database only) | `V_REPLACE` | 69 | on |
 
 When the dialog closes (`0x14042bf80`), the time becomes `Time × 500` ms,
-and the threshold **Fine 35, Medium 55, Coarse 150** centipawns, raised by
-half when the time is under a third of the recommended one. How the search
-then uses them, and which symbols and texts ChessBase writes, were not
-traced; "No blunders or combinations detected." (3860) is its message for a
-clean game.
+and the threshold **Fine 35, Medium 55, Coarse 150** centipawns. The
+threshold is raised by half when the time is under a third of the
+recommended one. With no time set, a position gets 300 ms, or 800 ms or
+1,200 ms on slower engines. "No blunders or combinations detected." (3860)
+is its message for a clean game.
+
+**What it writes.** This was traced in part, through an REA session
+(`analysis/ta-symbols/`).
+* **The job.** Tactical Analysis (`0x140a09920`) copies the settings into
+  a job object (`0x1403f4fd0`, 0x208 bytes). Its run (`0x140414e20`) has
+  phases: main-line analysis, evaluation symbols, verbal comments, threats,
+  attack, initiative, pieces, and a game summary.
+* **Evaluation symbols.** A main-line move gets an evaluation symbol when
+  the symbol of the position after it differs from the one before it
+  (`0x14041a460`, `0x14041dff0`). The move keeps its move symbol.
+
+  The symbol comes from the score, from White's side (`0x140b560c0`):
+
+  | Score (centipawns) | Symbol | NAG |
+  |---|---|---|
+  | above 160 | +− | 18 |
+  | above 70 | ± | 16 |
+  | above 30 | ⩲ | 14 |
+  | −30 to 30 | = | 11 |
+  | below −30 | ⩱ | 15 |
+  | below −70 | ∓ | 17 |
+  | below −160 | −+ | 19 |
+
+  Mate scores get none. A later pass (`0x14041c580`) removes an evaluation
+  symbol that repeats the previous one on the line.
+* **Without a change of symbol** and without a verbal comment, the job sets
+  the prefix symbol 142 ("better is") through `0x1403f9590`. Which node it
+  lands on was not established.
+* **Store evaluations** stores ChessBase's own evaluation annotation
+  (`0x1401a7b10`), not text.
+* **Erase old annotations** also sets the annotator to "Tactical Analysis
+  6.4 (Ns)" (format `"%s %s (%ds)"`, with the time in seconds).
+* **Refuted alternatives** (`0x140413650`) get "?" when the score after
+  them is below −150 and the loss is more than half the best score's size.
+  They get "?!" when the score stays between −29 and 199 and the loss is
+  81–149. The texts come from pools of messages 110070–110103 ("loses.",
+  "Weaker is", "Don't play" and others).
+* **Only moves** (`0x140408b80`, using the "!" literal) need the best
+  line's lead to exceed the threshold and 30 % of the score.
+* **Verbal comments** are drawn from the Analysis messages 110001–110695.
+  One example is "was the only good move." The choice is partly random
+  (`0x140ea40d0`).
+
+How ChessBase marks a played main-line move "?" or "??" was not found. No
+"??" literal is used by the job's code, so the symbols are probably set as
+numbers through a path not followed.
 
 ### Workbench
 
@@ -181,12 +227,26 @@ clean game.
   it scores at least the threshold more, for the mover, than the position
   after it, and the engine's first move is another one. Mates count as
   30,000 centipawns less the distance.
-* Each mistake gets **?**, or **??** from three times the threshold, unless
-  it already has a move symbol; the engine's line (up to 16 moves) as a
-  variation ending with its score and depth (`+0.30/20`); and with Store
-  evaluations, the score after the move as text. All of it is one edit, so
-  Undo removes it. If the game changed while the check ran, nothing is
-  added.
-* The symbol rule is the workbench's own. Erase old annotations, Training,
+* Each mistake gets:
+  * **?**, or **??** from three times the threshold, unless it already has
+    a move symbol;
+  * the engine's line, up to 16 moves, as a variation ending with its score
+    and depth (`+0.30/20`);
+  * with Store evaluations, the score after the move as text.
+* **Evaluation symbols follow ChessBase.** A checked move gets the symbol of
+  the position after it when that differs from the symbol before it, using
+  the table above. A symbol that repeats the previous one on the line is
+  left out.
+  * The new symbol replaces an evaluation the move already has (NAG 10, 11
+    or 14–19).
+  * It does not replace another position symbol, such as "with attack". A
+    move with one is left as it is.
+  * Unlike ChessBase, existing repeated symbols are not removed.
+* All of it is one edit, so Undo removes it. If the game changed while the
+  check ran, nothing is added.
+* **The workbench's own parts.** The ?/?? rule is the workbench's own, since
+  ChessBase's was not traced. So are the score as text, which stands in for
+  ChessBase's evaluation annotation, and the variation's score comment.
+  Verbal comments, the "better is" prefix, Erase old annotations, Training,
   Blunder categories, the engine benchmark and the database mode are not
   ported.

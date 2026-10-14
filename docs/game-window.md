@@ -115,6 +115,60 @@ convention, not a traced one.
 The preview board in the database window does not draw: it shows a game
 that is not open for editing.
 
+## Annotation symbols from the keyboard
+
+### What ChessBase does
+
+ChessBase 18 has no command per symbol. Its command table has no symbol
+commands, and Ctrl+1 to Ctrl+9 select layouts. Instead, the game window's
+key handler (`GameWin`, vtable slot 32, `0x1409e41a0`) looks at the typed
+character of a key event (byte 8 of the event) and opens a popup menu of
+100×300 pixels:
+
+| Typed | Popup | Builder | Entries, in order |
+|---|---|---|---|
+| `!` or `?` | Move symbols | `0x140a65f60` | (none), !, ?, !?, ?!, !!, ??, Zugzwang (message 715), Only move (42) |
+| `=` | Evaluations | `0x140a65aa0` | (none), +−, ±, ⩲, =, ⩱, ∓, −+, Unclear (45), Compensation (44), With attack (40), Initiative (46), Counterplay (43), Zeitnot (714), Development adv. (41), Novelty (294) |
+| `$` | Prefix symbols | `0x140a66690` | (none), RR, better is (376), worse is (373), equivalent is (374), with the idea (377), aimed against (375) |
+
+The symbol strings are UTF-16 literals in `.rdata` (`0x141269e48` onwards).
+The handler only opens a popup when bit 6 of the window's state word
+(`+0x4f0`) is set; its meaning was not traced. The workbench requires a
+selected move.
+
+**How the symbols are stored.** ChessBase stores three symbol slots per move,
+for move, position and prefix symbols (see [formats](formats.md)). The NAG
+numbers come from the Mega's 2CBA file: all 24,759 annotation blocks were
+read once.
+
+| Slot | NAGs found (count) |
+|---|---|
+| Move | 1 (4,049), 2 (2,665), 3 (163), 4 (424), 5 (411), 6 (584), 8 (19) |
+| Position | 8 (15), 10 (137), 11 (904), 13 (164), 14–19 (495–1,516 each), 32 (4), 36 (32), 40 (89), 44 (47), 132 (29), 138 (9), 146 (32) |
+| Prefix | 140 (10), 142 (778), 143 (17), 144 (2), 145 (40) |
+
+So "Only move" is NAG 8, not 7, and "=" is mostly 11. No game has Zugzwang
+(22) or "aimed against" (141). Zugzwang's slot is inferred from its place
+among the move symbols.
+
+### Workbench
+
+* Typing **!** or **?**, **=** or **$** in a game tab opens the matching
+  popup at the top of the notation. It lists ChessBase's entries in
+  ChessBase's order, starting on the move's current symbol.
+* **Up**, **Down**, **Home** and **End** move through the list. **Enter**
+  (or a click) chooses, and **Escape** closes the popup.
+* A choice replaces the move's symbol in that slot. **(none)** removes it.
+  Each choice is one edit (`setNags`), so Undo takes it back.
+* The keys are listed in command search as Move Symbol, Evaluation Symbol
+  and Prefix Symbol. These are workbench names, since ChessBase has no
+  command for them.
+* They do not clash with other keys. **+** and **−** stay with the
+  engine's lines, and the keys are ignored in text fields.
+* The Annotation Palette (Ctrl+Alt+S) now uses the same three groups. A
+  click replaces the symbol in that group, so every combination can be
+  stored in 2CBH. Only move is now NAG 8, and Equal is NAG 11.
+
 ## Game tabs
 
 ### What ChessBase does
