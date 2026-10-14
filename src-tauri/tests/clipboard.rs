@@ -134,3 +134,54 @@ fn delete_marks_the_selection_and_undeletes_it_when_all_are_deleted() {
         "bounds"
     );
 }
+
+#[test]
+fn a_paste_keeps_the_target_opening_tree_current() {
+    use chess_workbench::trees::{Line, TreeStatus};
+    let d = tempfile::tempdir().unwrap();
+    let r = Registry::default();
+    r.set_index_dir(d.path().join("data/search-boosters"));
+    let a = source(&r, d.path());
+    // The target: six games of 1.d4 d5 with a tree.
+    let b = r
+        .create_database(d.path().join("B.2cbh"), "c".into())
+        .unwrap()
+        .database_id;
+    let pgn = d.path().join("d4.pgn");
+    std::fs::write(
+        &pgn,
+        "[Result \"1/2-1/2\"]\n\n1. d4 d5 1/2-1/2\n\n".repeat(6),
+    )
+    .unwrap();
+    let c = r.open_pgn(pgn, "o".into()).unwrap();
+    for i in 0..6 {
+        let doc = r
+            .load_pgn_game(c.collection_id.clone(), i, "l".into())
+            .unwrap()
+            .document_id;
+        r.save_game(doc, b.clone(), "0".into(), false).unwrap();
+    }
+    assert!(r.create_opening_tree(b.clone(), |_, _, _| {}).unwrap());
+    let start = || {
+        r.opening_tree(
+            b.clone(),
+            Line {
+                start_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".into(),
+                moves: vec![],
+            },
+            "t".into(),
+        )
+        .unwrap()
+    };
+    assert_eq!(start().games, 6);
+    // Paste the source's four 1.e4 games: the tree counts them at once.
+    r.copy_rows(a, vec![range(1, 5)]).unwrap();
+    let pasted = r.paste_games(b.clone(), |_, _| {}).unwrap();
+    assert_eq!(pasted.pasted, "4");
+    assert!(!pasted.tree_stale);
+    let after = start();
+    assert_eq!(after.status, TreeStatus::Tree);
+    assert_eq!(after.games, 10);
+    let e4 = after.moves.iter().find(|m| m.san == "e4").unwrap();
+    assert_eq!(e4.games, 4);
+}

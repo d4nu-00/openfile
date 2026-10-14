@@ -187,3 +187,60 @@ describe("tab state", () => {
     expect(tabGames(s)).toEqual([]);
   });
 });
+
+describe("tablebases", () => {
+  it("shows the tablebase result and plays a move from it", async () => {
+    const ui = renderWorkbench();
+    ui.api.probeTablebase.mockImplementation(
+      async (_fen: string, requestId: string) => ({
+        requestId,
+        status: "found",
+        pieces: 3,
+        maxPieces: 5,
+        outcome: "win",
+        dtz: 19,
+        rounded: false,
+        moves: [
+          {
+            uci: "e2e4",
+            san: "e4",
+            outcome: "win",
+            dtz: -18,
+            rounded: false,
+            zeroing: true,
+          },
+          {
+            uci: "d2d4",
+            san: "d4",
+            outcome: "draw",
+            rounded: false,
+            zeroing: true,
+          },
+        ],
+      }),
+    );
+    await ui.user.click(screen.getByRole("tab", { name: "Tablebase" }));
+    const pane = await screen.findByLabelText("Tablebase");
+    expect(await within(pane).findByText("White wins · DTZ 19")).toBeVisible();
+    expect(within(pane).getByText("Draw")).toBeVisible();
+    await ui.user.click(within(pane).getByRole("button", { name: "Play e4" }));
+    // e4 is already in the game: it is selected, not added again.
+    expect(ui.api.editDocument).not.toHaveBeenCalled();
+  });
+
+  it("keeps the tablebase folder chosen in Options", async () => {
+    const ui = renderWorkbench();
+    await ui.user.keyboard("{Control>}{Alt>}o{/Alt}{/Control}");
+    const options = await screen.findByRole("dialog", { name: "Options" });
+    await ui.user.click(
+      within(options).getByRole("button", { name: "Choose folder…" }),
+    );
+    expect(await within(options).findByText("/synthetic/syzygy")).toBeVisible();
+    await ui.user.click(within(options).getByRole("button", { name: "OK" }));
+    expect(ui.api.setSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ tablebaseDir: "/synthetic/syzygy" }),
+    );
+    await ui.user.click(screen.getByRole("tab", { name: "Tablebase" }));
+    expect(await screen.findByText(/No tablebases/)).toBeVisible();
+  });
+});

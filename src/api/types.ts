@@ -160,6 +160,16 @@ export type Edit =
       arrows: ArrowMark[];
     }
   | { kind: "clearMarks" }
+  | {
+      kind: "addAnalysis";
+      items: {
+        node: NodeId;
+        nag?: number;
+        comment?: string;
+        line: string[];
+        lineComment?: string;
+      }[];
+    }
   | { kind: "appendLine"; parent: NodeId; moves: string[]; comment?: string }
   | { kind: "undo" }
   | { kind: "redo" };
@@ -388,6 +398,58 @@ export interface TreeProgress {
   done: string;
   total: string;
 }
+export type TablebaseOutcome =
+  | "win"
+  | "maybeWin"
+  | "cursedWin"
+  | "draw"
+  | "blessedLoss"
+  | "maybeLoss"
+  | "loss";
+/** Syzygy tablebases for a position, from the side to move. */
+export interface TablebaseResponse {
+  requestId: string;
+  status:
+    "noTables" | "tooManyPieces" | "castling" | "missing" | "failed" | "found";
+  message?: string;
+  pieces: number;
+  maxPieces: number;
+  outcome?: TablebaseOutcome;
+  dtz?: number;
+  rounded: boolean;
+  /** Best first; each outcome is for the side that plays the move. */
+  moves: {
+    uci: string;
+    san: string;
+    outcome: TablebaseOutcome;
+    dtz?: number;
+    rounded: boolean;
+    zeroing: boolean;
+    ends?: "mate" | "stalemate";
+  }[];
+}
+export interface BlunderParams {
+  engine: string;
+  options: Record<string, string>;
+  millisPerMove: number;
+  /** The smallest loss that counts, in centipawns. */
+  threshold: number;
+  side: "white" | "black" | "both";
+}
+export interface BlunderFinding {
+  node: NodeId;
+  loss: number;
+  best: string;
+  played: string;
+  depth?: number | null;
+  line: string[];
+}
+export interface BlunderReport {
+  cancelled: boolean;
+  checked: number;
+  findings: BlunderFinding[];
+  revision: string;
+}
 /** An engine in Engine Management. */
 export interface InstalledEngine {
   id: string;
@@ -402,6 +464,8 @@ export interface AppSettings {
   maxGameTabs: number;
   engines: InstalledEngine[];
   defaultEngine?: string;
+  /** The folder of Syzygy tablebase files. */
+  tablebaseDir?: string;
 }
 export const defaultSettings: AppSettings = { maxGameTabs: 8, engines: [] };
 export interface ReferenceResponse {

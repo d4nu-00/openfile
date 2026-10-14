@@ -47,6 +47,11 @@ language (see [formats](formats.md)). A malformed annotation record leaves the
 moves loaded and reports the annotations as `corrupt`.
 
 PGN import and export carry text before moves and `[%csl]`/`[%cal]` marks.
+
+Classic name tables (players, tournaments, annotators, sources, teams) are
+read as UTF-8 when valid, otherwise as Windows-1252; the bytes 0xA2–0xA6,
+pieces in ChessBase's figurine fonts, show as ♔ ♕ ♘ ♗ ♖ (see
+[validation](validation.md#names-with-figurines-2026-10-13)).
 Multimedia and proprietary cloud services are not supported.
 
 In the newer family, the following are refused or not read:

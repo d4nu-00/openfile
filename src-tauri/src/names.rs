@@ -213,7 +213,21 @@ impl Registry {
         {
             old.store(true, Ordering::Relaxed);
         }
-        let table = reader.crosstable(tournament_id, layout, &cancel);
+        // A current sort order by tournament finds the games without reading
+        // the whole entry index.
+        let mut order = self
+            .data_file(&database_id, Some("sort-orders"), "tournament.cwsort")
+            .ok()
+            .and_then(|path| {
+                cbh_reader::sort::SortOrder::open(
+                    &path,
+                    &reader,
+                    cbh_reader::sort::SortColumn::Tournament,
+                )
+                .ok()
+                .flatten()
+            });
+        let table = reader.crosstable_with(tournament_id, layout, order.as_mut(), &cancel);
         let mut state = self.lock()?;
         if state
             .crosstable_cancels

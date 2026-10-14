@@ -154,6 +154,8 @@ impl Registry {
             old.store(true, Ordering::Relaxed);
         }
         let had_tree = self.has_tree(&database_id).unwrap_or(false);
+        // The tree records the pasted games in its journal.
+        let tree = self.tree_before_change(&database_id, None);
         let mut source = cbh_reader::Database::open(&clip.path, cbh_reader::ReadLimits::default())?;
         let total = clip.ordinals.len() as u64;
         let (mut pasted, mut skipped, mut incomplete) = (0u64, 0u64, 0u64);
@@ -216,9 +218,7 @@ impl Registry {
                 .info()
                 .entry_count
         };
-        if pasted > 0 {
-            self.tree_after_change(&database_id, None, None);
-        }
+        let tree_current = pasted == 0 || self.tree_after_append(&database_id, tree);
         result?;
         Ok(PasteResponse {
             pasted: pasted.to_string(),
@@ -226,7 +226,7 @@ impl Registry {
             incomplete: incomplete.to_string(),
             cancelled,
             entry_count: count.to_string(),
-            tree_stale: had_tree && pasted > 0,
+            tree_stale: had_tree && !tree_current,
         })
     }
 

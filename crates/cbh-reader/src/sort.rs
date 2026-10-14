@@ -14,7 +14,8 @@ const MAGIC: &[u8; 8] = b"CWSORT01";
 /// Magic, column and version, entry count, database fingerprint.
 const HEADER: u64 = 8 + 8 + 8 + 32;
 /// Version of the keys; files with another version are rebuilt.
-const KEY_VERSION: u32 = 1;
+/// 2: classic names decoded as Windows-1252 with figurines, not lossy UTF-8.
+const KEY_VERSION: u32 = 2;
 
 /// A game list column the list can be sorted by.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]

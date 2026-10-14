@@ -425,6 +425,70 @@ installed in a temporary settings file with `MultiPV` 3: the snapshot shows
 the pane analysing node 30 with its lines. The settings file was deleted
 afterwards.
 
+## Tablebases (2026-10-13)
+
+`src-tauri/tests/tablebases.rs` probes real Syzygy files when `SYZYGY_DIR`
+names a folder of them; none are in the repository. Run against a local
+folder of 3- to 5-piece tables (96 files) outside the repository:
+* K+Q v K with White to move is a win with a positive DTZ; winning moves
+  come first, ordered by DTZ, and Qe4+, which loses the queen, is a draw
+  and comes last;
+* K+P v K with the black king in front of the pawn is a draw;
+* the start position has too many pieces.
+
+Without `SYZYGY_DIR` the test of real tables reports that it was skipped;
+the no-tables, missing-folder and invalid-position cases always run.
+Frontend tests cover the Tablebase tab's result and moves, playing a move
+from it, and the folder chosen in Options. The real app was not shown a
+tablebase position: its debug startup cannot set up a position.
+
+## Tactical Analysis (2026-10-13)
+
+`src-tauri/tests/blunder_check.rs` runs Blunder Check with the engine
+crate's mock engine, which gives every position +0.17 and the line e7e5: on
+1.e4 e5 it finds 1.e4 (a loss of 34) at a threshold of 30, and nothing at 35
+or for Black only; a cancelled check reports nothing; bad parameters are
+refused. The findings applied as one edit give
+`1. e4 $2 {+0.17} (1. d4 d5 {+0.17/12}) 1... e5`, and an item that does not
+apply changes nothing.
+
+With a real engine (`UCI_ENGINE`; run with Stockfish 17 at 300 ms per
+position, threshold 1.00, Black's moves), the Scholar's mate game
+`1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7#` gives exactly one finding:
+3...Nf6, after which White mates in one (`+M1`), with another move in the
+engine's line. Frontend tests cover the dialog's parameters (Time × 500 ms,
+Fine = 35), the "??" rule, the one edit, and a stopped check adding nothing.
+
+## Names with figurines (2026-10-13)
+
+Of the classic Mega's 463,262 players, 362 name fields are not ASCII and
+some were not valid UTF-8; their bytes were 0xA4 (323), 0xA5 (289), 0xA3
+(111), 0xA6 (43), 0xA2 (10), 0xA0 (3) and 0xAA (1). The 0xA2–0xA6 names are
+opening lines ("1.b3 e5 2.?b2 ?c6 3.e3", "10...?b8"), where the bytes are
+the pieces K, Q, N, B, R of ChessBase's figurine fonts: "?b2" after b3 e5 is
+Bb2, "?c6" Nc6, "ed5 ?d5" Qd5, "?fd8" Rfd8, "?b1" Kb1. 0xA0 occurs in real
+names ("Rodrigo Pereira") as Windows-1252's no-break space. Classic names are
+now read as UTF-8 when valid, otherwise as Windows-1252 with 0xA2–0xA6 shown
+as ♔ ♕ ♘ ♗ ♖; they no longer show "�". The meaning of 0xAA (once, in an
+opening line) is not known; it shows as "ª".
+
+## Crosstables through a sort order (2026-10-14)
+
+`cbh-reader/examples/crosstable.rs` timed crosstables of the classic Mega
+both ways (release, warm): the tournament of entry 27878 (18 players) took
+3.45–3.55 s by scanning the entry index and 4–9 ms through a sort order by
+Tournament; that of entry 5,000,000 (174 players) 3.46 s and 46 ms. The
+tables were equal. Building the order took 0.69 s; it was written to a
+scratch folder and deleted. A reader test compares both ways for every
+tournament of its database.
+
+## Opening tree after a paste (2026-10-14)
+
+An app test builds a tree for six games of 1.d4 d5, pastes four 1.e4 games
+from another database and asks the book for the start position: 10 games
+from the tree, 4 of them with e4, and the paste does not report the tree as
+stale.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

@@ -96,20 +96,32 @@ fn field(bytes: &[u8]) -> EntityText {
             "Name fills its fixed-width field without a terminator",
         ));
     }
-    let text = match std::str::from_utf8(&bytes[..end]) {
-        Ok(s) => s.to_string(),
-        Err(_) => {
-            diagnostics.push(Diagnostic::new(
-                "unresolvedNameEncoding",
-                "Name bytes are not valid UTF-8; replacements are displayed",
-            ));
-            String::from_utf8_lossy(&bytes[..end]).into_owned()
-        }
-    };
+    let text = decode_name(&bytes[..end]);
     EntityText {
         text: if text.is_empty() { None } else { Some(text) },
         diagnostics,
     }
+}
+/// Classic names, like annotation text, are UTF-8 when they are valid UTF-8,
+/// and Windows-1252 otherwise (the Mega has no-break spaces, 0xA0, in
+/// names). Bytes 0xA2 to 0xA6 are pieces in ChessBase's figurine fonts; names
+/// that are opening lines use them ("1.b3 e5 2.\xa5b2 \xa4c6"), so they are
+/// shown as figurines: ♔ ♕ ♘ ♗ ♖.
+pub fn decode_name(bytes: &[u8]) -> String {
+    if bytes.is_ascii() || std::str::from_utf8(bytes).is_ok() {
+        return crate::annotations::decode_text(bytes);
+    }
+    bytes
+        .iter()
+        .map(|&b| match b {
+            0xa2 => '♔',
+            0xa3 => '♕',
+            0xa4 => '♘',
+            0xa5 => '♗',
+            0xa6 => '♖',
+            _ => crate::annotations::cp1252(b),
+        })
+        .collect()
 }
 pub(crate) fn missing() -> EntityText {
     EntityText {

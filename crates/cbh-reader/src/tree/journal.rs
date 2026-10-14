@@ -310,4 +310,37 @@ impl PendingChange {
         journal.save(&journal_file)?;
         Ok(true)
     }
+
+    /// Call after games were appended (a paste), with `db` re-opened: every
+    /// new entry is recorded. Returns false when the tree could not be kept
+    /// current, e.g. when the journal would exceed its size.
+    pub fn commit_appended(self, db: &Database) -> Result<bool, CbhError> {
+        let journal_file = journal_path(&self.path);
+        let Some((base, _)) = tree_stamp(&self.path)? else {
+            return Ok(false);
+        };
+        let mut journal = match Journal::load(&journal_file)? {
+            Some(j) if j.base == base => j,
+            _ => Journal {
+                base,
+                current: base,
+                changes: BTreeMap::new(),
+            },
+        };
+        let (from, to) = (self.before.0 + 1, db.info().entry_count);
+        let added = to.saturating_sub(from - 1) as usize;
+        if journal.current != self.before || journal.changes.len() + added > MAX_CHANGES {
+            match std::fs::remove_file(&journal_file) {
+                Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e.into()),
+                _ => return Ok(false),
+            }
+        }
+        for ordinal in from..=to {
+            let new = db.main_line(ordinal, self.plies)?;
+            journal.changes.entry(ordinal).or_insert((None, None)).1 = new;
+        }
+        journal.current = stamp(db);
+        journal.save(&journal_file)?;
+        Ok(true)
+    }
 }

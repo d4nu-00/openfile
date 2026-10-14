@@ -190,6 +190,10 @@ Crosstable (`SHOWCROSSTABLE`, game window) shows the loaded game's.
 
 **Which games count.** The tournament's games are found by a search on its
 tournament id, at most 5,000 games and 500 players. They are ordered by round.
+When the database has a current sort order by Tournament (built by sorting
+the list by that column), the games are found in it instead: the order keeps
+a tournament's games together, so a binary search by the tournament's name
+and site finds them, and only entries of that name are read.
 * Deleted games are left out.
 * Games without a result (lines, "0-0") are counted separately and not
   scored.
@@ -241,6 +245,7 @@ tiebreaks and performance.
 | Tournament list | 105,313 names in 0.13 s, 1.3 MB |
 | Finding a name | under 1 ms |
 | Crosstable of Tata Steel TOP 81st (10 players, 45 games) | 3.5 s, almost all of it the tournament-id search over 11.15 M entries |
+| The same through a sort order by Tournament (`cbh-reader/examples/crosstable.rs`) | 3.5 s → 4–9 ms for an 18-player event, 46 ms for one of 174 players; the same tables |
 
 ## Several databases, selection, copy and paste
 
@@ -275,8 +280,9 @@ database. It works only with a .2cbh database opened for editing.
   storable by ChessBase, are left out. The result counts the games affected.
 * Entries without readable moves are skipped and counted.
 * Pasting into the database the games came from is refused.
-* A pasted database's opening tree is not journalled game by game. It
-  becomes stale, and the status says it needs rebuilding.
+* The target's opening tree records every pasted game in its journal and
+  stays current. Only a paste that would take the journal past 10,000
+  entries makes it stale; the status then says it needs rebuilding.
 
 **Results PGN cannot express.** PGN has no forfeits or "0-0". When a game is
 loaded, a stored result of +:-, =:=, -:+ or 0-0 is kept in a `CBResult` tag.

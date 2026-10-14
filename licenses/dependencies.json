@@ -2,7 +2,7 @@
   "schema": 1,
   "scope": "All locked external Rust crates (including target/build dependencies) and production npm packages; no dependency source or engine binaries bundled.",
   "locks": {
-    "Cargo.lock": "1cebb0a05dcd5d8df7376e103a0005129e53302f3c57a5591d066b1f967d5292",
+    "Cargo.lock": "c136d6444a0db15770ed43a3e97b2b037270dc5207235e09dc69e58513a6150b",
     "package-lock.json": "48efc3e93802d6d58f851e197efb9fd2fa5ecde04f8971f2f587a375a948c7bc"
   },
   "rust": [
@@ -4647,6 +4647,19 @@
       ]
     },
     {
+      "name": "shakmaty-syzygy",
+      "version": "0.28.1",
+      "license": "GPL-3.0-or-later",
+      "repository": "https://github.com/niklasf/shakmaty",
+      "notices": [
+        {
+          "path": "licenses/notices/8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903.txt",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+          "origin": "https://raw.githubusercontent.com/niklasf/shakmaty/4588149aaa94396330eb196151c97551b0a7599b/COPYING"
+        }
+      ]
+    },
+    {
       "name": "shakmaty",
       "version": "0.30.2",
       "license": "GPL-3.0-or-later",
@@ -5686,6 +5699,19 @@
           "path": "licenses/notices/4249c8e6c5ebb85f97c77e6457c6fafc1066406eb8f1ef61e796fbdc5ff18482.txt",
           "sha256": "4249c8e6c5ebb85f97c77e6457c6fafc1066406eb8f1ef61e796fbdc5ff18482",
           "origin": "crate:tower@0.5.3/LICENSE"
+        }
+      ]
+    },
+    {
+      "name": "tracing-attributes",
+      "version": "0.1.31",
+      "license": "MIT",
+      "repository": "https://github.com/tokio-rs/tracing",
+      "notices": [
+        {
+          "path": "licenses/notices/898b1ae9821e98daf8964c8d6c7f61641f5f5aa78ad500020771c0939ee0dea1.txt",
+          "sha256": "898b1ae9821e98daf8964c8d6c7f61641f5f5aa78ad500020771c0939ee0dea1",
+          "origin": "crate:tracing-attributes@0.1.31/LICENSE"
         }
       ]
     },

@@ -86,13 +86,15 @@ pub fn decode_text(bytes: &[u8]) -> String {
     {
         return s.to_string();
     }
-    bytes
-        .iter()
-        .map(|&b| match b {
-            0x80..=0x9f => CP1252[(b - 0x80) as usize],
-            _ => b as char,
-        })
-        .collect()
+    bytes.iter().map(|&b| cp1252(b)).collect()
+}
+
+/// One Windows-1252 byte.
+pub(crate) fn cp1252(b: u8) -> char {
+    match b {
+        0x80..=0x9f => CP1252[(b - 0x80) as usize],
+        _ => b as char,
+    }
 }
 
 fn classic_language(code: u8) -> Option<u16> {

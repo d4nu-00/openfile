@@ -165,3 +165,35 @@ fn round_robin_and_swiss_crosstables_score_and_rank() {
     assert_eq!(first.opponent, 2);
     assert!(a.cells[3].is_empty(), "the unscored game is not shown");
 }
+
+#[test]
+fn a_tournament_sort_order_finds_the_same_crosstable() {
+    use cbh_reader::sort::{SortColumn, SortOptions, SortOrder};
+    let (d, mut db) = db();
+    let path = d.path().join("tournament.cwsort");
+    assert!(
+        SortOrder::build(
+            &db,
+            SortColumn::Tournament,
+            &path,
+            &SortOptions::default(),
+            &AtomicBool::new(false),
+            |_, _, _| {}
+        )
+        .unwrap()
+    );
+    let mut order = SortOrder::open(&path, &db, SortColumn::Tournament)
+        .unwrap()
+        .unwrap();
+    let mut events = list(&db, d.path(), NameKind::Tournaments);
+    for row in events.read(0, 10).unwrap() {
+        let scanned = db
+            .crosstable(row.id, None, &AtomicBool::new(false))
+            .unwrap();
+        let sorted = db
+            .crosstable_with(row.id, None, Some(&mut order), &AtomicBool::new(false))
+            .unwrap();
+        assert_eq!(scanned, sorted);
+        assert!(scanned.unwrap().players.len() >= 2);
+    }
+}

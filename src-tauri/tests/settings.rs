@@ -19,6 +19,7 @@ fn settings_default_check_and_round_trip() {
         max_game_tabs: 1,
         engines: vec![engine.clone()],
         default_engine: Some("e1".into()),
+        tablebase_dir: Some(d.path().join("syzygy")),
     };
     s.save(&wanted).unwrap();
     assert_eq!(s.load(), wanted);
@@ -30,6 +31,10 @@ fn settings_default_check_and_round_trip() {
         },
         AppSettings {
             default_engine: Some("missing".into()),
+            ..AppSettings::default()
+        },
+        AppSettings {
+            tablebase_dir: Some("relative/syzygy".into()),
             ..AppSettings::default()
         },
         AppSettings {

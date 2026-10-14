@@ -1,3 +1,4 @@
+pub mod blunder_check;
 pub mod clipboard;
 pub mod commands;
 pub mod database_writes;
@@ -11,6 +12,7 @@ pub mod searches;
 pub mod settings;
 #[cfg(all(debug_assertions, target_os = "macos"))]
 pub mod snapshot;
+pub mod tablebases;
 pub mod trees;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Emitter, Manager};
@@ -111,9 +113,21 @@ pub fn run() {
             if let Ok(dir) = app.path().app_config_dir() {
                 app.state::<settings::Settings>().set_dir(&dir);
             }
+            // Tablebases open in the background; a missing folder is shown
+            // as no tables, not as an error.
+            let folder = app.state::<settings::Settings>().load().tablebase_dir;
+            let tables = app
+                .state::<std::sync::Arc<tablebases::Tablebases>>()
+                .inner()
+                .clone();
+            std::thread::spawn(move || {
+                let _ = tables.set_dir(folder.as_deref());
+            });
             Ok(())
         })
         .manage(settings::Settings::default())
+        .manage(std::sync::Arc::new(blunder_check::BlunderJobs::default()))
+        .manage(std::sync::Arc::new(tablebases::Tablebases::default()))
         .manage(ExitPolicy::default())
         .manage(StartupRequest(
             std::sync::Mutex::new(Some(startup.clone())),
@@ -173,6 +187,9 @@ pub fn run() {
             commands::startup_request,
             commands::startup_shown,
             engine_commands::probe_engine,
+            tablebases::probe_tablebase,
+            blunder_check::blunder_check,
+            blunder_check::cancel_blunder_check,
             settings::get_settings,
             settings::set_settings,
             engine_commands::choose_engine,

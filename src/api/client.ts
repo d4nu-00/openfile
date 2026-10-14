@@ -23,6 +23,9 @@ import type {
   TreeProgress,
   ReferenceResponse,
   AppSettings,
+  TablebaseResponse,
+  BlunderParams,
+  BlunderReport,
   SortColumn,
   SortProgress,
   SortResponse,
@@ -346,6 +349,25 @@ export const backend = {
   closeDocument: (documentId: string) =>
     invoke<void>("close_document", { documentId }),
   getSettings: () => invoke<AppSettings>("get_settings"),
+  chooseTablebaseFolder: () =>
+    open({ directory: true, title: "Choose the folder of Syzygy tablebases" }),
+  blunderCheck: (
+    documentId: string,
+    params: BlunderParams,
+    onProgress: (p: { done: number; total: number }) => void,
+  ) => {
+    const events = new Channel<{ done: number; total: number }>();
+    events.onmessage = onProgress;
+    return invoke<BlunderReport>("blunder_check", {
+      documentId,
+      params,
+      events,
+    });
+  },
+  cancelBlunderCheck: (documentId: string) =>
+    invoke<void>("cancel_blunder_check", { documentId }),
+  probeTablebase: (fen: string, requestId: string) =>
+    invoke<TablebaseResponse>("probe_tablebase", { fen, requestId }),
   setSettings: (settings: AppSettings) =>
     invoke<AppSettings>("set_settings", { settings }),
 };
