@@ -489,6 +489,26 @@ from another database and asks the book for the start position: 10 games
 from the tree, 4 of them with e4, and the paste does not report the tree as
 stale.
 
+## Player statistics (2026-10-14)
+
+`cbh-reader/examples/player_stats.rs` scored three players of the classic
+Mega (release, warm). Carlsen: 6,925 games found in 0.056–0.066 s by 8
+threads and scored in 0.04–0.06 s. As White he has +2045 =1006 −464 (72 %,
+performance 2788); as Black +1551 =1222 −637 (63 %, 2724). Kasparov: 2,735
+games in 0.063 s; Nakamura: 9,288 in 0.063 s.
+
+A first version also found the games through sort orders by White and by
+Black. On Carlsen, both ways returned the same games, but the sort orders
+took 0.14 s, so they were dropped. The orders were built in a scratch
+folder and deleted.
+
+Reader tests check the scoring (colours, forfeits, unscored lines,
+performance, ECO rows, opponent ratings, years) and that 1, 2, 5 and 16
+workers find the same games in entry order. An app test scores a saved
+database and lists a row's games. A debug snapshot of the real app showed
+the dialog for Carlsen. It also exposed duplicate "no ECO" rows from codes
+above E99, which now count as none.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private
