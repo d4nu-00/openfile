@@ -12,6 +12,7 @@ pub mod searches;
 pub mod settings;
 #[cfg(all(debug_assertions, target_os = "macos"))]
 pub mod snapshot;
+pub mod statistics;
 pub mod tablebases;
 pub mod trees;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -166,6 +167,9 @@ pub fn run() {
             commands::read_names,
             commands::find_name,
             commands::crosstable,
+            commands::player_statistics,
+            commands::cancel_player_statistics,
+            commands::statistics_games,
             commands::copy_rows,
             commands::clip_size,
             commands::paste_games,
