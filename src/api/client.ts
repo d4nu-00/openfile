@@ -37,6 +37,7 @@ import type {
   PlayerStatistics,
   PositionQuery,
   StatGroup,
+  TablebaseAnnotation,
 } from "./types";
 
 /** A progress channel; one that drops the messages when nobody listens. */
@@ -440,6 +441,9 @@ export const backend = {
   },
   cancelBlunderCheck: (documentId: string) =>
     invoke<void>("cancel_blunder_check", { documentId }),
+  /** The game's main line annotated from the tablebases. */
+  tablebaseAnnotation: (documentId: string) =>
+    invoke<TablebaseAnnotation>("tablebase_annotation", { documentId }),
   probeTablebase: (fen: string, requestId: string) =>
     invoke<TablebaseResponse>("probe_tablebase", { fen, requestId }),
   setSettings: (settings: AppSettings) =>

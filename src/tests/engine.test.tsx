@@ -501,3 +501,33 @@ it("adds nothing when Tactical Analysis is stopped", async () => {
   ).toBeVisible();
   expect(ui.api.editDocument).not.toHaveBeenCalled();
 });
+
+it("annotates the game from the tablebases as one edit", async () => {
+  const ui = renderWorkbench();
+  await ui.user.click(ui.getByRole("tab", { name: "Analysis" }));
+  await ui.user.click(ui.getByRole("button", { name: "Tablebase Annotation" }));
+  expect(ui.api.tablebaseAnnotation).toHaveBeenCalledWith("doc-1");
+  await waitFor(() =>
+    expect(ui.api.editDocument).toHaveBeenCalledWith(
+      "doc-1",
+      {
+        kind: "addAnalysis",
+        items: [
+          {
+            node: 1,
+            nag: 2,
+            comment: "Tablebase: draw",
+            line: ["d2d4"],
+            lineComment: "Tablebase: White wins",
+          },
+        ],
+      },
+      "0",
+    ),
+  );
+  expect(
+    await ui.findByText(
+      "Tablebase Annotation: 2 positions in the tables, 1 move gives away the result",
+    ),
+  ).toBeVisible();
+});

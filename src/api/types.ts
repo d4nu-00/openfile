@@ -260,6 +260,8 @@ export interface StartupRequest {
   command?: string;
   /** Debug builds: a column to sort the list by, e.g. "date:desc". */
   sort?: string;
+  /** Debug builds: a new game from this position. */
+  fen?: string;
 }
 /** Search mask, game data tab (see docs/search.md). */
 export interface PlayerQuery {
@@ -583,4 +585,19 @@ export interface PasteResponse {
   treeStale: boolean;
   /** Chess960 games left out: 2CBH cannot hold them yet. */
   chess960?: string;
+}
+/** Tablebase annotations of a game's main line (workbench). */
+export interface TablebaseAnnotation {
+  revision: string;
+  items: {
+    node: number;
+    nag?: number;
+    comment?: string;
+    line: string[];
+    lineComment?: string;
+  }[];
+  probed: number;
+  entered?: number;
+  mistakes: number;
+  status: string;
 }
