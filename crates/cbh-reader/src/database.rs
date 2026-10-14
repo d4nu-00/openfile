@@ -714,6 +714,58 @@ impl Database {
             Err(_) => Ok(None),
         }
     }
+    /// Parses the CBA/2CBA annotation record at `offset`.
+    fn parse_annotations(
+        &self,
+        file: &crate::source::SourceFile,
+        offset: u64,
+        ordinal: u64,
+    ) -> Result<crate::annotations::Parsed, CbhError> {
+        let limit = self.limits.max_game_bytes;
+        match self.format {
+            DatabaseFormat::Classic => {
+                let head = file.read_exact_range(offset, 14)?;
+                let total = u32::from_be_bytes(head[10..14].try_into().unwrap()) as usize;
+                if total > limit {
+                    return Err(CbhError::LimitExceeded);
+                }
+                crate::annotations::parse_classic(&file.read_exact_range(offset, total)?, ordinal)
+            }
+            DatabaseFormat::New => {
+                crate::v2::block::read_block(file, offset, limit).and_then(|b| {
+                    if b.kind != crate::v2::block::TYPE_ANNOTATIONS {
+                        return Err(CbhError::Decode(format!("2CBA block type {:#06x}", b.kind)));
+                    }
+                    crate::annotations::parse_new(&b.payload)
+                })
+            }
+        }
+    }
+    /// The text annotations of a game entry, in every language. Empty for
+    /// games without annotations; `None` when they cannot be read. Only a
+    /// changed source is an error.
+    pub(crate) fn annotation_texts(
+        &self,
+        raw: &crate::header::RawEntry,
+    ) -> Result<Option<Vec<String>>, CbhError> {
+        let (Some(file), Some(offset)) = (&self.annotations, raw.annotation_offset) else {
+            return Ok(Some(vec![]));
+        };
+        match self.parse_annotations(file, offset, raw.ordinal) {
+            Ok(parsed) => Ok(Some(
+                parsed
+                    .entries
+                    .into_iter()
+                    .filter_map(|e| match e.kind {
+                        crate::annotations::Kind::Text { text, .. } => Some(text),
+                        _ => None,
+                    })
+                    .collect(),
+            )),
+            Err(CbhError::SourceChanged) => Err(CbhError::SourceChanged),
+            Err(_) => Ok(None),
+        }
+    }
     /// Decodes this game's CBA/2CBA annotations into `game`. Only a changed
     /// source is an error; anything else becomes a status and diagnostics.
     fn annotate(
@@ -731,25 +783,7 @@ impl Database {
                 )],
             ));
         };
-        let limit = self.limits.max_game_bytes;
-        let parsed = match self.format {
-            DatabaseFormat::Classic => (|| {
-                let head = file.read_exact_range(offset, 14)?;
-                let total = u32::from_be_bytes(head[10..14].try_into().unwrap()) as usize;
-                if total > limit {
-                    return Err(CbhError::LimitExceeded);
-                }
-                crate::annotations::parse_classic(&file.read_exact_range(offset, total)?, ordinal)
-            })(),
-            DatabaseFormat::New => {
-                crate::v2::block::read_block(file, offset, limit).and_then(|b| {
-                    if b.kind != crate::v2::block::TYPE_ANNOTATIONS {
-                        return Err(CbhError::Decode(format!("2CBA block type {:#06x}", b.kind)));
-                    }
-                    crate::annotations::parse_new(&b.payload)
-                })
-            }
-        };
+        let parsed = self.parse_annotations(file, offset, ordinal);
         match parsed {
             Ok(parsed) => Ok(crate::annotations::apply(
                 game,

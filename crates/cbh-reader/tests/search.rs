@@ -213,3 +213,105 @@ fn quick_filter_words_must_each_match_a_field() {
     assert_eq!(hits(&mut db, text("lasker")), [2]);
     assert!(hits(&mut db, text("müller nowhere")).is_empty());
 }
+
+/// Games ending in mate, stalemate, check and quietly, some with comments.
+const ENDINGS: &str = r#"[White "Mate, A"]
+[Black "B"]
+[Result "1-0"]
+
+1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# {Scholar's mate} 1-0
+
+[White "Stale, A"]
+[Black "B"]
+[SetUp "1"]
+[FEN "7k/5Q2/6K1/8/8/8/8/8 w - - 0 1"]
+[Result "1/2-1/2"]
+
+1. Qf6 {A blunder: stalemate? No.} Kg8 2. Qe7 Kh8 3. Qf7 1/2-1/2
+
+[White "Check, A"]
+[Black "B"]
+[Result "*"]
+
+1. e4 f6 2. Qh5+ *
+
+[White "Quiet, A"]
+[Black "B"]
+[Result "*"]
+
+1. d4 {A quiet SCHOLARLY game} (1. e4 {mate in a variation}) d5 *"#;
+
+fn endings() -> (tempfile::TempDir, Database) {
+    let d = tempfile::tempdir().unwrap();
+    let path = d.path().join("Endings.2cbh");
+    let games = parse_pgn(ENDINGS.as_bytes(), &GameLimits::default()).unwrap();
+    let mut w = Writer::create(&path).unwrap();
+    w.append_all(&games).unwrap();
+    drop(w);
+    (d, Database::open(&path, ReadLimits::default()).unwrap())
+}
+
+#[test]
+fn final_positions_and_full_text() {
+    let (_d, mut db) = endings();
+    let f = |patch: fn(&mut GameFilter)| {
+        let mut f = GameFilter::default();
+        patch(&mut f);
+        f
+    };
+    assert_eq!(hits(&mut db, f(|f| f.mate = true)), [1]);
+    assert_eq!(hits(&mut db, f(|f| f.stalemate = true)), [2]);
+    // Check that is not mate.
+    assert_eq!(hits(&mut db, f(|f| f.check = true)), [3]);
+    assert_eq!(
+        hits(
+            &mut db,
+            f(|f| {
+                f.mate = true;
+                f.check = true;
+            })
+        ),
+        [1, 3]
+    );
+    // Combined with header fields.
+    assert!(
+        hits(
+            &mut db,
+            f(|f| {
+                f.mate = true;
+                f.white.last = "Quiet".into();
+            })
+        )
+        .is_empty()
+    );
+    // Text in any comment, variations included, case-insensitively.
+    assert_eq!(hits(&mut db, f(|f| f.full_text = "scholar".into())), [1, 4]);
+    assert_eq!(hits(&mut db, f(|f| f.full_text = "MATE".into())), [1, 2, 4]);
+    assert_eq!(
+        hits(
+            &mut db,
+            f(|f| {
+                f.full_text = "scholar".into();
+                f.full_text_not = true;
+            })
+        ),
+        [2, 3]
+    );
+}
+
+#[test]
+fn hit_limits_keep_the_first_hits_in_entry_order() {
+    let (_d, mut db) = endings();
+    for limit in 1..=4 {
+        let r = db
+            .search(
+                &GameFilter::default(),
+                limit,
+                &AtomicBool::new(false),
+                |_| {},
+            )
+            .unwrap();
+        assert_eq!(r.ordinals, (1..=limit as u64).collect::<Vec<_>>());
+        assert_eq!(r.truncated, limit < 4, "limit {limit}");
+    }
+}

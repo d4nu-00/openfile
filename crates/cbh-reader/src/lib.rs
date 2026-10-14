@@ -10,6 +10,7 @@ pub mod moves;
 pub mod name_list;
 pub mod player_stats;
 pub mod position;
+pub mod scan;
 pub mod search;
 pub mod sort;
 pub mod source;

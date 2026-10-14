@@ -12,7 +12,7 @@ use crate::{CbhError, Database};
 use chess_core::{Game, NodeId};
 use shakmaty::{Board, Chess, Color, Position, Role};
 use std::{
-    io::{Read, Seek, SeekFrom, Write},
+    io::{Read, Seek, SeekFrom},
     path::Path,
     sync::atomic::{AtomicBool, Ordering},
 };
@@ -152,7 +152,28 @@ impl Target {
 /// An index file opened for searching.
 pub struct PositionIndex {
     file: std::fs::File,
+    path: std::path::PathBuf,
     entries: u64,
+}
+
+/// Writes `bytes` at `offset` without moving a shared cursor.
+fn write_at(file: &std::fs::File, bytes: &[u8], offset: u64) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::FileExt::write_all_at(file, bytes, offset)
+    }
+    #[cfg(windows)]
+    {
+        let mut done = 0;
+        while done < bytes.len() {
+            done += std::os::windows::fs::FileExt::seek_write(
+                file,
+                &bytes[done..],
+                offset + done as u64,
+            )?;
+        }
+        Ok(())
+    }
 }
 
 impl PositionIndex {
@@ -180,7 +201,20 @@ impl PositionIndex {
         {
             return Ok(None);
         }
-        Ok(Some(Self { file, entries }))
+        Ok(Some(Self {
+            file,
+            path: path.to_path_buf(),
+            entries,
+        }))
+    }
+
+    /// Another handle on the same index, e.g. for a worker thread.
+    pub fn reopen(&self) -> Result<Self, CbhError> {
+        Ok(Self {
+            file: std::fs::File::open(&self.path)?,
+            path: self.path.clone(),
+            entries: self.entries,
+        })
     }
 
     /// Builds the index for `db` at `path`, replacing any older one. Writes
@@ -197,63 +231,60 @@ impl PositionIndex {
             .filter(|p| !p.as_os_str().is_empty())
             .unwrap_or(Path::new("."));
         std::fs::create_dir_all(dir)?;
-        let mut temp = tempfile::NamedTempFile::new_in(dir)?;
-        let out = temp.as_file_mut();
-        out.write_all(MAGIC)?;
-        out.write_all(&count.to_le_bytes())?;
+        let temp = tempfile::NamedTempFile::new_in(dir)?;
+        let mut head = Vec::with_capacity(HEADER as usize);
+        head.extend_from_slice(MAGIC);
+        head.extend_from_slice(&count.to_le_bytes());
         for v in db.fingerprint() {
-            out.write_all(&v.to_le_bytes())?;
+            head.extend_from_slice(&v.to_le_bytes());
         }
-        let mut writer = std::io::BufWriter::new(out);
-        const CHUNK: u64 = 1024;
-        let mut start = 1;
-        while start <= count {
-            if cancel.load(Ordering::Relaxed) {
-                return Ok(false);
-            }
-            let n = CHUNK.min(count + 1 - start);
-            for raw in db.raw_chunk(start, n)? {
-                let sig = match db.moves_of(&raw)? {
-                    Some(game) => signature(&game)?,
-                    None => [0; SIGNATURE],
-                };
-                writer.write_all(&sig)?;
-            }
-            start += n;
-            progress(start - 1, count);
+        temp.as_file().set_len(HEADER + count * SIGNATURE as u64)?;
+        write_at(temp.as_file(), &head, 0)?;
+        // Each worker writes the signatures of its own range in place.
+        let done = crate::scan::parallel(
+            db,
+            crate::scan::default_workers(),
+            1024,
+            usize::MAX,
+            cancel,
+            &mut progress,
+            |_| Ok(std::fs::OpenOptions::new().write(true).open(temp.path())?),
+            |db, out: &mut std::fs::File, start, n, _: &mut Vec<(u64, ())>| {
+                let mut buf = Vec::with_capacity(n as usize * SIGNATURE);
+                for raw in db.raw_chunk(start, n)? {
+                    let sig = match db.moves_of(&raw)? {
+                        Some(game) => signature(&game)?,
+                        None => [0; SIGNATURE],
+                    };
+                    buf.extend_from_slice(&sig);
+                }
+                write_at(out, &buf, HEADER + (start - 1) * SIGNATURE as u64)?;
+                Ok(())
+            },
+        )?;
+        if done.cancelled || cancel.load(Ordering::Relaxed) {
+            return Ok(false);
         }
-        writer.flush()?;
-        drop(writer);
         temp.as_file().sync_all()?;
         temp.persist(path).map_err(|e| CbhError::Io(e.error))?;
         Ok(true)
     }
 
-    /// Entries whose signature allows the target, from `start` on, at most
-    /// `limit` of them; also returns where the next call should start.
-    fn candidates(
-        &mut self,
-        target: &Target,
-        start: u64,
-        limit: usize,
-    ) -> Result<(Vec<u64>, u64), CbhError> {
-        const CHUNK: u64 = 8192;
-        let mut out = vec![];
-        let mut at = start;
-        while at <= self.entries && out.len() < limit {
-            let n = CHUNK.min(self.entries + 1 - at);
-            let mut buf = vec![0u8; n as usize * SIGNATURE];
-            self.file
-                .seek(SeekFrom::Start(HEADER + (at - 1) * SIGNATURE as u64))?;
-            self.file.read_exact(&mut buf)?;
-            for (i, sig) in buf.as_chunks::<SIGNATURE>().0.iter().enumerate() {
-                if bloom_has(sig, target.key) {
-                    out.push(at + i as u64);
-                }
-            }
-            at += n;
-        }
-        Ok((out, at))
+    /// Entries `start .. start + n` whose signature can hold any of `keys`.
+    fn candidates(&mut self, keys: &[u64], start: u64, n: u64) -> Result<Vec<u64>, CbhError> {
+        let n = n.min((self.entries + 1).saturating_sub(start));
+        let mut buf = vec![0u8; n as usize * SIGNATURE];
+        self.file
+            .seek(SeekFrom::Start(HEADER + (start - 1) * SIGNATURE as u64))?;
+        self.file.read_exact(&mut buf)?;
+        Ok(buf
+            .as_chunks::<SIGNATURE>()
+            .0
+            .iter()
+            .enumerate()
+            .filter(|(_, sig)| keys.iter().any(|&k| bloom_has(&sig[..], k)))
+            .map(|(i, _)| start + i as u64)
+            .collect())
     }
 }
 
@@ -283,53 +314,51 @@ impl Database {
     }
 
     /// Finds games that reach `target`, using `index` when given and
-    /// replaying every game otherwise.
+    /// replaying every game otherwise. Workers each read their own range.
     pub fn find_position(
         &mut self,
         target: &Target,
-        mut index: Option<&mut PositionIndex>,
+        index: Option<&mut PositionIndex>,
         max_hits: usize,
         cancel: &AtomicBool,
-        mut progress: impl FnMut(u64, u64),
+        progress: impl FnMut(u64, u64),
     ) -> Result<PositionResult, CbhError> {
-        self.verify()?;
-        let count = self.info().entry_count;
-        let mut result = PositionResult {
-            indexed: index.is_some(),
-            ..Default::default()
-        };
-        let mut start = 1;
-        while start <= count {
-            if cancel.load(Ordering::Relaxed) {
-                result.cancelled = true;
-                break;
-            }
-            let (batch, next) = match index.as_deref_mut() {
-                Some(index) => index.candidates(target, start, 1024)?,
-                None => {
-                    let n = 1024.min(count + 1 - start);
-                    ((start..start + n).collect(), start + n)
-                }
-            };
-            for ordinal in batch {
-                let raw = self.raw_chunk(ordinal, 1)?.remove(0);
-                let Some(game) = self.moves_of(&raw)? else {
-                    continue;
+        let index = index.map(|i| &*i);
+        let replayed = std::sync::atomic::AtomicU64::new(0);
+        let keys = [target.key];
+        let found = crate::scan::parallel(
+            self,
+            crate::scan::default_workers(),
+            1024,
+            max_hits,
+            cancel,
+            progress,
+            |_| index.map(PositionIndex::reopen).transpose(),
+            |db, index, start, n, out| {
+                let ordinals = match index {
+                    Some(index) => index.candidates(&keys, start, n)?,
+                    None => (start..start + n).collect(),
                 };
-                result.replayed += 1;
-                if let Some(node) = target.find_in(&game)? {
-                    if result.hits.len() == max_hits {
-                        result.truncated = true;
-                        result.scanned = ordinal;
-                        return Ok(result);
+                for ordinal in ordinals {
+                    let raw = db.raw(ordinal)?;
+                    let Some(game) = db.moves_of(&raw)? else {
+                        continue;
+                    };
+                    replayed.fetch_add(1, Ordering::Relaxed);
+                    if let Some(node) = target.find_in(&game)? {
+                        out.push((ordinal, node));
                     }
-                    result.hits.push((ordinal, node));
                 }
-            }
-            result.scanned = next - 1;
-            progress(result.scanned, count);
-            start = next;
-        }
-        Ok(result)
+                Ok(())
+            },
+        )?;
+        Ok(PositionResult {
+            hits: found.hits,
+            replayed: replayed.into_inner(),
+            scanned: found.scanned,
+            truncated: found.truncated,
+            cancelled: found.cancelled,
+            indexed: index.is_some(),
+        })
     }
 }
