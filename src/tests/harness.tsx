@@ -316,6 +316,101 @@ export function mockApi(firstDatabase = 1) {
         },
       ),
     stopDeepAnalysis: vi.fn().mockResolvedValue(undefined),
+    openingReport: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          _line: unknown,
+          onProgress: (p: {
+            stage: string;
+            done: string;
+            total: string;
+          }) => void,
+        ) => {
+          onProgress({
+            stage: "Reading the games' data",
+            done: "5",
+            total: "60",
+          });
+          return {
+            eco: "B20",
+            name: "Sicilian Defense",
+            line: ["e4", "c5"],
+            whiteToMove: true,
+            games: 60,
+            truncated: false,
+            cancelled: false,
+            whiteWins: 30,
+            draws: 20,
+            blackWins: 10,
+            otherResults: 0,
+            listed: [],
+            earliest: {
+              ordinal: "3",
+              white: "Old, O",
+              black: "Older, P",
+              date: "1851.01.01",
+              result: "1-0",
+            },
+            latest: {
+              ordinal: "9",
+              white: "New, N",
+              black: "Newer, M",
+              whiteElo: 2600,
+              date: "2024.05.01",
+              result: "1/2-1/2",
+            },
+            years: [
+              [1851, 1],
+              [2024, 59],
+            ],
+            fashion: [
+              { from: 1850, to: 1854, games: 1, index: 40 },
+              { from: 2020, to: 2024, games: 59, index: 180 },
+            ],
+            strongWhite: [
+              {
+                name: "Strong, S",
+                games: 12,
+                score: 75,
+                bestElo: 2750,
+                averageElo: 2700,
+              },
+            ],
+            strongBlack: [],
+            notable: [
+              { name: "Busy, B", games: 15, score: 40, averageElo: 2300 },
+            ],
+            moves: [
+              {
+                uci: "g1f3",
+                san: "Nf3",
+                games: 40,
+                share: 66.7,
+                score: 55,
+                draws: 30,
+                averageElo: 2400,
+                performance: 2450,
+                lastYear: 2024,
+                playedBy: ["Strong, S"],
+              },
+              {
+                uci: "b1c3",
+                san: "Nc3",
+                games: 20,
+                share: 33.3,
+                score: 45,
+                draws: 25,
+                playedBy: [],
+              },
+            ],
+            movesFromTree: true,
+            read: 60,
+            mainLine: ["Nf3", "d6", "d4"],
+          };
+        },
+      ),
     classifyGame: vi.fn().mockResolvedValue({
       eco: "C20",
       name: "King's Pawn Game",

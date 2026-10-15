@@ -9,6 +9,7 @@ import {
   type AppSettings,
   type BlunderParams,
   type Classification,
+  type OpeningReport,
   type DeepParams,
   type DeepProgress,
   type JobKind,
@@ -43,6 +44,7 @@ import { TablebasePane } from "./components/TablebasePane";
 import { BlunderCheckDialog } from "./components/BlunderCheckDialog";
 import { DeepAnalysisDialog } from "./components/DeepAnalysisDialog";
 import { ClassifyDialog, SetEcoDialog } from "./components/OpeningDialogs";
+import { OpeningReportDialog } from "./components/OpeningReportDialog";
 import {
   AnalysisJobsDialog,
   defaultJobKind,
@@ -63,7 +65,7 @@ import { EnginePanel } from "./components/EnginePanel";
 import { NotationTree } from "./components/NotationTree";
 import { BookPane } from "./components/BookPane";
 import { ReferencePane } from "./components/ReferencePane";
-import { usePositionPanes } from "./state/positionPanes";
+import { lineTo, usePositionPanes } from "./state/positionPanes";
 import { Diagnostics } from "./components/Diagnostics";
 import { GameList } from "./views/GameList";
 import { NamesPane } from "./views/NamesPane";
@@ -677,6 +679,13 @@ export function App({
   /** A maintenance job: Check Integrity, Find Double Games or Remove
    * Deleted Games, with its progress and result. */
   const [classified, setClassified] = useState<Classification>();
+  const [report, setReport] = useState<{
+    databaseId: string;
+    startFen?: string;
+    running?: string;
+    error?: string;
+    result?: OpeningReport;
+  }>();
   const [job, setJob] = useState<{
     kind: "integrity" | "doubles" | "compact" | "eco";
     databaseId: string;
@@ -864,6 +873,42 @@ export function App({
       }
     } catch (err) {
       setJob((j) => j && { ...j, running: undefined, error: explain(err) });
+    }
+  }
+  /** Opening Report of the board position, from the open database. */
+  async function openingReport() {
+    const db = state.database;
+    const line = game && lineTo(game, selected);
+    if (!db || !line) return;
+    setReport({
+      databaseId: db.databaseId,
+      startFen: line.startFen,
+      running: "Starting…",
+    });
+    try {
+      const result = await api.openingReport(db.databaseId, line, (p) =>
+        setReport(
+          (r) =>
+            r && {
+              ...r,
+              running:
+                p.total === "1"
+                  ? p.stage
+                  : `${p.stage}: ${p.done} of ${p.total}`,
+            },
+        ),
+      );
+      setReport(
+        (r) =>
+          r && {
+            ...r,
+            running: undefined,
+            result,
+            error: result.cancelled ? "Stopped." : undefined,
+          },
+      );
+    } catch (err) {
+      setReport((r) => r && { ...r, running: undefined, error: explain(err) });
     }
   }
   async function classifyOpening() {
@@ -1570,6 +1615,10 @@ export function App({
       ),
     },
     "engine-management": { run: () => setEnginesOpen(true) },
+    "opening-report": {
+      run: () => openingReport(),
+      enabled: !!state.database && !!game && !report?.running,
+    },
     "classify-opening": {
       run: () => void classifyOpening(),
       enabled: !!state.document?.documentId,
@@ -2547,6 +2596,18 @@ export function App({
         <SetEcoDialog
           onStart={(onlyMissing) => void runSetEco(onlyMissing)}
           onClose={() => setJob(undefined)}
+        />
+      )}
+      {report && (
+        <OpeningReportDialog
+          report={report.result}
+          startFen={report.startFen}
+          running={report.running}
+          error={report.error}
+          onStop={() =>
+            void api.cancelMaintenance(report.databaseId).catch(() => {})
+          }
+          onClose={() => setReport(undefined)}
         />
       )}
       {classified && (

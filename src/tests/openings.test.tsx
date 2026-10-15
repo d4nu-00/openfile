@@ -63,3 +63,40 @@ describe("opening classification", () => {
     ).toBeVisible();
   });
 });
+
+describe("opening report", () => {
+  it("reports on the board position from the open database", async () => {
+    const ui = renderWorkbench();
+    await ui.user.click(ui.getByRole("tab", { name: "Report" }));
+    await ui.user.click(ui.getByRole("button", { name: "Opening Report" }));
+    const dialog = await ui.findByRole("dialog", { name: "Opening Report" });
+    expect(ui.api.openingReport).toHaveBeenCalledWith(
+      "db-1",
+      { startFen: expect.any(String), moves: [] },
+      expect.any(Function),
+    );
+    expect(
+      await within(dialog).findByRole("heading", {
+        name: "Opening Report: B20 Sicilian Defense",
+      }),
+    ).toBeVisible();
+    expect(within(dialog).getByText("1.e4 c5")).toBeVisible();
+    expect(
+      within(dialog).getByText(
+        "60 games: White wins 50.0%, draws 33.3%, Black wins 16.7%.",
+      ),
+    ).toBeVisible();
+    expect(within(dialog).getByText("Earliest game")).toBeVisible();
+    expect(
+      within(dialog).getByRole("figure", { name: "Games played in years" }),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByText("Strong players who used this line as White"),
+    ).toBeVisible();
+    expect(within(dialog).getByText("Busy, B")).toBeVisible();
+    const nf3 = within(dialog).getByRole("row", { name: /^Nf3 40/ });
+    expect(within(nf3).getByText("Strong, S")).toBeVisible();
+    // The main line continues the numbering after 1.e4 c5.
+    expect(within(dialog).getByText("2.Nf3 d6 3.d4")).toBeVisible();
+  });
+});
