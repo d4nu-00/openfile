@@ -226,7 +226,7 @@ impl Game {
     /// Renumbers the nodes in pre-order (each node before its children,
     /// the main continuation first), so every child has a higher id than
     /// its parent. Returns each old node's new id.
-    fn renumber(&mut self) -> Vec<NodeId> {
+    pub(crate) fn renumber(&mut self) -> Vec<NodeId> {
         let mut order = Vec::with_capacity(self.nodes.len());
         let mut stack = vec![0 as NodeId];
         while let Some(id) = stack.pop() {
