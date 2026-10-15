@@ -1,4 +1,4 @@
-use cbh_reader::{dossier, name_list::NameKind, player_stats::Group};
+use cbh_reader::{name_list::NameKind, player_stats::Group};
 use chess_workbench::registry::Registry;
 
 #[test]
@@ -61,13 +61,10 @@ fn player_dossier_reports_statistics_lines_mates_medals_and_annotations() {
     assert_eq!(dossier.games, 4);
     assert_eq!((dossier.first_year, dossier.last_year), (2019, 2020));
     // With White: a loss, a win and a draw: (2 + 1) × 50 / 3 = 50 %, 5
-    // below 55: "below average".
+    // below 55: band 2.
     assert_eq!(dossier.white.games, 3);
     assert_eq!(dossier.white.score, Some(50));
-    assert_eq!(
-        dossier.white.score_band.map(|b| dossier::SCORE_WORDS[b]),
-        Some("below average")
-    );
+    assert_eq!(dossier.white.score_band, Some(2));
     assert_eq!(dossier.black.score, Some(100));
     assert_eq!(dossier.all.games, 4);
     assert_eq!(dossier.all.quick_draw_percent, Some(25));

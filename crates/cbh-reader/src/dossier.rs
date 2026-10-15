@@ -9,38 +9,16 @@ use crate::{CbhError, Database, player_stats::PlayerGame, prepare::map_games, tr
 use std::sync::atomic::AtomicBool;
 
 /// The score bands (`0x140839cf0`): the player's score less 55 % with White
-/// or 45 % with Black, in percentage points.
+/// or 45 % with Black, in percentage points. Band 0 is the worst, 3 is
+/// about as expected and 6 the best. ChessBase's words for the bands are
+/// its own text and are not used; the dialog words them itself.
 pub const SCORE_BANDS: [i32; 8] = [-100, -20, -8, -2, 2, 8, 20, 100];
-pub const SCORE_WORDS: [&str; 7] = [
-    "miserably",
-    "badly",
-    "below average",
-    "averagely",
-    "above average",
-    "well",
-    "excellently",
-];
-/// Average length in moves (`0x140838f90`).
+/// Average length in moves (`0x140838f90`): band 0 is the shortest, 3
+/// average, 6 the longest.
 pub const LENGTH_BANDS: [i32; 8] = [0, 25, 32, 38, 43, 48, 55, 999];
-pub const LENGTH_WORDS: [&str; 7] = [
-    "very short",
-    "short",
-    "shorter than average",
-    "of average length",
-    "longer than average",
-    "long",
-    "very long",
-];
-/// The share of draws in percent (`0x140838af0`).
+/// The share of draws in percent (`0x140838af0`): band 0 is the lowest, 3
+/// average, 5 the highest.
 pub const DRAW_BANDS: [i32; 7] = [0, 20, 28, 34, 38, 47, 100];
-pub const DRAW_WORDS: [&str; 6] = [
-    "very low",
-    "low",
-    "lower than average",
-    "average",
-    "higher than average",
-    "high",
-];
 /// A draw shorter than this many moves is a quick draw (`0x140838a30`).
 pub const QUICK_DRAW_MOVES: u8 = 20;
 /// Games whose last position is read for mates at most: the latest.
@@ -76,21 +54,21 @@ pub struct ColourStats {
     /// The player's score in percent, rounded as ChessBase does; with one
     /// colour only.
     pub score: Option<u32>,
-    /// Index into [`SCORE_WORDS`].
+    /// Its band in [`SCORE_BANDS`].
     pub score_band: Option<usize>,
     /// The rated opponents' average and the performance against them.
     pub opponents_average: Option<u32>,
     pub performance: Option<u32>,
     /// Average moves of White's wins, the draws and Black's wins, with
-    /// their indexes into [`LENGTH_WORDS`].
+    /// their bands in [`LENGTH_BANDS`].
     pub white_win_moves: Option<u32>,
     pub white_win_band: Option<usize>,
     pub draw_moves: Option<u32>,
     pub draw_band: Option<usize>,
     pub black_win_moves: Option<u32>,
     pub black_win_band: Option<usize>,
-    /// Draws and quick draws in percent of the games, and the draws' index
-    /// into [`DRAW_WORDS`].
+    /// Draws and quick draws in percent of the games, and the draws' band
+    /// in [`DRAW_BANDS`].
     pub draw_percent: Option<u32>,
     pub draw_quote_band: Option<usize>,
     pub quick_draw_percent: Option<u32>,
@@ -304,19 +282,16 @@ mod tests {
         let refs: Vec<&PlayerGame> = games.iter().collect();
         let s = colour_stats(&refs, Some(true));
         assert_eq!((s.games, s.white_wins, s.draws, s.black_wins), (4, 2, 1, 1));
-        // (2 × 2 + 1) × 50 / 4 = 62.5, rounded to 63; 63 − 55 = 8: "well".
+        // (2 × 2 + 1) × 50 / 4 = 62.5, rounded to 63; 63 − 55 = 8: band 5.
         assert_eq!(s.score, Some(63));
-        assert_eq!(s.score_band.map(|b| SCORE_WORDS[b]), Some("well"));
+        assert_eq!(s.score_band, Some(5));
         assert_eq!(s.opponents_average, Some(2567));
         assert_eq!(s.performance, Some(2567 + 95));
         assert_eq!(s.white_win_moves, Some(35));
-        assert_eq!(
-            s.white_win_band.map(|b| LENGTH_WORDS[b]),
-            Some("shorter than average")
-        );
-        assert_eq!(s.black_win_band.map(|b| LENGTH_WORDS[b]), Some("very long"));
+        assert_eq!(s.white_win_band, Some(2));
+        assert_eq!(s.black_win_band, Some(6));
         assert_eq!(s.draw_percent, Some(25));
-        assert_eq!(s.draw_quote_band.map(|b| DRAW_WORDS[b]), Some("low"));
+        assert_eq!(s.draw_quote_band, Some(1));
         assert_eq!(s.quick_draw_percent, Some(25));
         // All games together have no score or verdict.
         let all = colour_stats(&refs, None);
