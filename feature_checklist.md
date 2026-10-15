@@ -20,7 +20,7 @@ Names in backticks are ChessBase command ids, for traceability.
 1. Read the newer 2CBH format, decode CBA annotations and write databases (§1).
 2. Search mask and position search with a local index (§4). *(P1 items done)*
 3. Opening tree built from the user's databases, and the reference search (§8).
-4. Complete notation editing: variation operations, game data, symbols (§6). *(P1 items done except keyboard symbol shortcuts)*
+4. Complete notation editing: variation operations, game data, symbols (§6). *(P1 items done)*
 5. Multiple game tabs, the clipboard database and save/replace into a database (§2, §3). *(game tabs done)*
 6. Engine tools: blunder check, deep analysis, analysis jobs, tablebases (§7). *(kibitzers, lines, paste, Engine Management, Tactical Analysis, tablebase tab and annotation done; deep analysis and analysis jobs remain)*
 7. Reports, preparation and training (§9–§11), then publishing (§12). *(player statistics done)*
@@ -120,7 +120,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Enter legal moves and new variations by clicking
 - [x] P1 🟢 Text after move, and NAGs by number (`ANNOPOSTTEXT`)
 - [x] P1 🟢 Text before move (`ANNOPRETEXT`) *(Ctrl+Shift+A focuses the editor below the notation)*
-- [ ] P1 🟢 Annotation symbol palette and keyboard symbols (`SHOWSYMBOLPALETTE`) *(partial: the palette (Ctrl+Alt+S) sets move marks, evaluations and other symbols as NAGs; ChessBase's per-symbol keyboard shortcuts were not recovered)*
+- [x] P1 🟢 Annotation symbol palette and keyboard symbols (`SHOWSYMBOLPALETTE`) *(the palette (Ctrl+Alt+S) and ChessBase's typed-symbol popups: ! or ? move symbols, = evaluations, $ prefixes, traced to the game window's key handler `0x1409e41a0`. ChessBase has no per-symbol shortcut. One symbol per group, as 2CBH stores it; Only move is NAG 8. See [game window](docs/game-window.md#annotation-symbols-from-the-keyboard))*
 - [x] P1 🟢 Delete and promote variations; delete remaining or previous moves (`DELETEVARIATION`, `PROMOTEVARIATION`, `DELETEREMAININGMOVES`, `DELETEPREVIOUSMOVES`) *(Ctrl+Y, Alt+Up; Delete Previous Moves starts the game from the current position)*
 - [x] P1 🟢 Undo/redo for game edits (`EDIT_UNDO`, `EDIT_REDO`) *(Ctrl+Z, Ctrl+Alt+Shift+Y; the last 100 edits, at most 200,000 stored nodes)*
 - [x] P1 🟢 Edit game data: players, event, result, Elo, ECO (`EDITGAMEHEADER`, F2) *(players, ratings, tournament, site, round, date, result, ECO and annotator as PGN tags, checked before they are kept)*
@@ -147,7 +147,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Paste engine move or variation into the notation (`PASTEENGINEMOVE`, `PASTEENGINEVARIATIONS`, Ctrl+Space) *(Shift+Space for the move; one undoable edit; the score and depth as a text comment because ChessBase's evaluation annotation is not decoded)*
 - [x] P1 🟢 Engine management: installed engine list, defaults, several kibitzers (`ENGINEMANAGEMENT`, `CLOSEALLKIBITZERS`, `TOGGLEDEFAULTKIBITZER`) *(up to 4 kibitzers; installed engines, default and kept options in the app's settings; Default Kibitzer Alt+F2)*
 - [x] P1 🟢 Endgame tablebases (Syzygy) for analysis and the notation *(Tablebase tab with the result and DTZ of the position and every move; engines get the chosen folder through `SyzygyPath`, as ChessBase does; Tablebase Annotation marks main-line moves that give away a win or draw, with the tables' best move, as one undoable edit (the workbench's own symbols and texts, since ChessBase's notation display was not traced); see [engines](docs/engines.md))*
-- [x] P1 🟢 Tactical analysis or blunder check that annotates a game (`TACTICAL_ANALYSIS`, `BlunderCheck`) *(Ctrl+Alt+Shift+U: ChessBase's Time and Fine/Medium/Coarse thresholds (35/55/150 cp), cancellable with progress, one undoable edit; see [engines](docs/engines.md))*
+- [x] P1 🟢 Tactical analysis or blunder check that annotates a game (`TACTICAL_ANALYSIS`, `BlunderCheck`) *(Ctrl+Alt+Shift+U: ChessBase's Time and Fine/Medium/Coarse thresholds (35/55/150 cp), cancellable with progress, one undoable edit. Evaluation symbols follow ChessBase's traced rule (±/⩲/= by score, set where the evaluation changes). The ?/?? rule stays the workbench's own, since ChessBase's was not found; see [engines](docs/engines.md))*
 - [ ] P2 🟢 Deep analysis: tree-building position analysis (`DEEP_ANALYSIS`)
 - [ ] P2 🟢 Centipawn and achievement analysis (`CENTIPAWN`, `ACHIEVEMENT_ANALYSIS`)
 - [ ] P2 🟢 Analyse threat, lock engine, next best / search better (`ANALYSETHREAT`, `LOCKENGINE`, `NEXTBEST`, `SEARCHBETTER`)

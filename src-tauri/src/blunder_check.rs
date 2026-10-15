@@ -49,12 +49,23 @@ pub struct Finding {
     pub line: Vec<String>,
 }
 
+/// An evaluation symbol for a move, as ChessBase's Tactical Analysis sets
+/// them (see docs/engines.md).
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Evaluation {
+    pub node: u32,
+    pub nag: u16,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BlunderReport {
     pub cancelled: bool,
     pub checked: u32,
     pub findings: Vec<Finding>,
+    /// Evaluation symbols where the evaluation changes across a move.
+    pub evaluations: Vec<Evaluation>,
     /// The game's revision the findings belong to.
     pub revision: String,
 }
@@ -104,6 +115,61 @@ pub fn white_text(cp: i32, white_to_move: bool) -> String {
             v.abs() as f64 / 100.0
         )
     }
+}
+
+/// ChessBase's evaluation symbol for a score from White's side
+/// (`0x140b560c0`): +- above 1.60, ± above 0.70, ⩲ above 0.30, and the
+/// same for Black; = otherwise. Mates have none.
+pub fn evaluation_symbol(white_cp: i32) -> Option<u16> {
+    Some(match white_cp {
+        v if v.abs() > MATE - 1_000 => return None,
+        v if v > 160 => 18,
+        v if v > 70 => 16,
+        v if v > 30 => 14,
+        v if v < -160 => 19,
+        v if v < -70 => 17,
+        v if v < -30 => 15,
+        _ => 11,
+    })
+}
+
+/// The NAGs ChessBase's Tactical Analysis writes as evaluations.
+pub const EVALUATION_NAGS: [u16; 8] = [10, 11, 14, 15, 16, 17, 18, 19];
+
+/// Evaluation symbols for the main line: a move gets the symbol of the
+/// position after it when that differs from the symbol before it
+/// (`0x14041a460`, `0x14041dff0`); a symbol equal to the previous one on the
+/// line is left out (`0x14041c580`). `white_cp[i]` is the score of the
+/// position after `i` moves, from White's side; `existing[i]` the evaluation
+/// symbol move `i` already has.
+pub fn evaluation_symbols(
+    nodes: &[u32],
+    white_cp: &[Option<i32>],
+    existing: &[Option<u16>],
+) -> Vec<Evaluation> {
+    let mut out = vec![];
+    let mut previous = None;
+    for i in 1..nodes.len() {
+        let (before, after) = (
+            white_cp[i - 1].and_then(evaluation_symbol),
+            white_cp[i].and_then(evaluation_symbol),
+        );
+        let mut symbol = existing[i];
+        if let (Some(b), Some(a)) = (before, after)
+            && a != b
+            && previous != Some(a)
+        {
+            out.push(Evaluation {
+                node: nodes[i],
+                nag: a,
+            });
+            symbol = Some(a);
+        }
+        if symbol.is_some() {
+            previous = symbol;
+        }
+    }
+    out
 }
 
 struct Eval {
@@ -284,6 +350,7 @@ impl Registry {
                             cancelled: true,
                             checked: done,
                             findings: vec![],
+                            evaluations: vec![],
                             revision: revision.to_string(),
                         });
                     }
@@ -316,10 +383,35 @@ impl Registry {
                     line: before.pv.iter().take(16).cloned().collect(),
                 });
             }
+            let white_cp: Vec<Option<i32>> = (0..positions.len())
+                .map(|i| {
+                    let white = positions[i].turn().is_white();
+                    evals[i].as_ref().map(|e| if white { e.cp } else { -e.cp })
+                })
+                .collect();
+            let existing: Vec<Option<u16>> = nodes
+                .iter()
+                .map(|&n| {
+                    game.nodes[n as usize]
+                        .nags
+                        .iter()
+                        .copied()
+                        .find(|g| EVALUATION_NAGS.contains(g))
+                })
+                .collect();
+            // Only moves of the side checked, as for the findings.
+            let evaluations = evaluation_symbols(&nodes, &white_cp, &existing)
+                .into_iter()
+                .filter(|e| {
+                    let i = nodes.iter().position(|&n| n == e.node).unwrap_or(0);
+                    i > 0 && checked_side(positions[i - 1].turn().is_white())
+                })
+                .collect();
             Ok(BlunderReport {
                 cancelled: false,
                 checked: done,
                 findings,
+                evaluations,
                 revision: revision.to_string(),
             })
         })();
@@ -373,5 +465,51 @@ pub fn cancel_blunder_check(
         && let Some(c) = j.get(&document_id)
     {
         c.store(true, Ordering::Relaxed);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn evaluation_symbols_follow_chessbase() {
+        assert_eq!(evaluation_symbol(0), Some(11));
+        assert_eq!(evaluation_symbol(30), Some(11));
+        assert_eq!(evaluation_symbol(31), Some(14));
+        assert_eq!(evaluation_symbol(71), Some(16));
+        assert_eq!(evaluation_symbol(161), Some(18));
+        assert_eq!(evaluation_symbol(-31), Some(15));
+        assert_eq!(evaluation_symbol(-71), Some(17));
+        assert_eq!(evaluation_symbol(-161), Some(19));
+        assert_eq!(evaluation_symbol(MATE - 3), None);
+    }
+
+    #[test]
+    fn a_symbol_marks_a_change_and_is_not_repeated() {
+        // Scores after 0..=5 moves: =, =, ⩲ (change), =, ⩲ (change), ⩲.
+        let nodes = [0, 1, 2, 3, 4, 5];
+        let cp = [Some(0), Some(10), Some(50), Some(0), Some(40), Some(45)];
+        let none = [None; 6];
+        assert_eq!(
+            evaluation_symbols(&nodes, &cp, &none),
+            vec![
+                Evaluation { node: 2, nag: 14 },
+                Evaluation { node: 3, nag: 11 },
+                Evaluation { node: 4, nag: 14 },
+            ]
+        );
+        // An existing ⩲ on move 1 makes move 2's ⩲ a repetition.
+        let existing = [None, Some(14), None, None, None, None];
+        assert_eq!(
+            evaluation_symbols(&nodes, &cp, &existing),
+            vec![
+                Evaluation { node: 3, nag: 11 },
+                Evaluation { node: 4, nag: 14 },
+            ]
+        );
+        // Unknown scores and mates give nothing.
+        let cp = [Some(0), None, Some(MATE - 2), Some(0), Some(0), Some(0)];
+        assert!(evaluation_symbols(&nodes, &cp, &none).is_empty());
     }
 }

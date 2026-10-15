@@ -613,6 +613,26 @@ A census of the classic Mega's CBG headers counted:
   before the cold first header reads had finished, so the screen now says
   "Reading the lists…" until they arrive.
 
+## Keyboard symbols and Tactical Analysis symbols (2026-10-14)
+
+* **Evidence.** The symbol popups, their order and the score-to-symbol
+  table were read from CBase18 18.1 statically. They are listed in
+  [game window](game-window.md#annotation-symbols-from-the-keyboard) and
+  [engines](engines.md#tactical-analysis-blunder-check).
+* **Mega check.** All 24,759 annotation blocks of the Mega's 2CBA file were
+  read once, with a scratch example that was not kept, to count symbols per
+  slot. "Only move" is NAG 8 (34 games) and "=" mostly 11 (904 games,
+  against 137 for 10). No game has Zugzwang.
+* **Frontend tests.** Typing "?" opens the move symbols on the move's
+  current symbol; Down and Enter replace "!" with "?". "=" adds an
+  evaluation beside the move symbol, Escape closes, and "(none)" clears
+  the group. The palette replaces a symbol within its group. Tactical
+  Analysis adds evaluation symbols in the same edit as its findings.
+* **Rust tests.** The score-to-symbol table, the change and repeat rules,
+  and an evaluation replacing "=" but not "with attack". Move, position
+  and prefix symbols (8, 13, 142, and 22 beside them) are storable in
+  2CBH.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

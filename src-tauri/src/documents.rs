@@ -100,6 +100,10 @@ pub struct AnalysisItem {
     /// A move symbol, added when the move has none.
     #[serde(default)]
     pub nag: Option<u16>,
+    /// An evaluation symbol; it replaces the move's evaluation, but not
+    /// another position symbol such as "with attack".
+    #[serde(default)]
+    pub evaluation: Option<u16>,
     #[serde(default)]
     pub comment: Option<String>,
     #[serde(default)]
@@ -110,7 +114,7 @@ pub struct AnalysisItem {
 
 /// Adds `items` to `game`; nothing changes unless all of them apply.
 fn add_analysis(game: &mut chess_core::Game, items: Vec<AnalysisItem>) -> Result<(), AppError> {
-    if items.len() > 500 {
+    if items.len() > 2_000 {
         return Err(AppError::new(
             "limitExceeded",
             "Too many annotations at once",
@@ -147,6 +151,24 @@ fn add_analysis(game: &mut chess_core::Game, items: Vec<AnalysisItem>) -> Result
             let mut nags = n.nags.clone();
             nags.insert(0, nag);
             next.set_nags(item.node, nags)?;
+        }
+        if let Some(nag) = item.evaluation {
+            let nags = &next.nodes[item.node as usize].nags;
+            let other = nags.iter().any(|g| {
+                !crate::blunder_check::EVALUATION_NAGS.contains(g)
+                    && !(1..=9).contains(g)
+                    && *g != 22
+                    && !(140..=145).contains(g)
+            });
+            if !other {
+                let mut nags: Vec<u16> = nags
+                    .iter()
+                    .copied()
+                    .filter(|g| !crate::blunder_check::EVALUATION_NAGS.contains(g))
+                    .collect();
+                nags.push(nag);
+                next.set_nags(item.node, nags)?;
+            }
         }
         push(&mut next, item.node, item.comment)?;
         if !item.line.is_empty() {

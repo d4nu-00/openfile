@@ -70,6 +70,8 @@ export interface CommandMeta {
   icon: LucideIcon;
   /** Default shortcut in ChessBase notation ("Ctrl" is ⌘ on macOS). */
   keys?: string;
+  /** Further keys that run the command. */
+  alsoKeys?: string[];
   /** Views where the shortcut and palette entry apply. */
   views: ViewId[];
 }
@@ -716,6 +718,33 @@ const list: CommandMeta[] = [
     tip: "Open a palette with annotation symbols",
     icon: Palette,
     keys: "Ctrl+Alt+S",
+    views: game,
+  },
+  // ChessBase opens these popups for typed symbol keys in the game window
+  // (GameWin key handler 0x1409e41a0); they have no M_KC_ command.
+  {
+    id: "symbol-menu-move",
+    label: "Move Symbol",
+    tip: "Choose a move symbol: !, ?, !?, ?!, !!, ??, zugzwang or only move",
+    icon: Palette,
+    keys: "!",
+    alsoKeys: ["?"],
+    views: game,
+  },
+  {
+    id: "symbol-menu-evaluation",
+    label: "Evaluation Symbol",
+    tip: "Choose an evaluation of the position after the move",
+    icon: Palette,
+    keys: "=",
+    views: game,
+  },
+  {
+    id: "symbol-menu-prefix",
+    label: "Prefix Symbol",
+    tip: "Choose a symbol shown before the move, such as 'better is'",
+    icon: Palette,
+    keys: "$",
     views: game,
   },
   {

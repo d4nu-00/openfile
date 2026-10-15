@@ -277,6 +277,7 @@ export function demoApi(): WorkbenchApi {
       cancelled: false,
       checked: 0,
       findings: [],
+      evaluations: [],
       revision: "0",
     }),
     cancelBlunderCheck: async () => {},

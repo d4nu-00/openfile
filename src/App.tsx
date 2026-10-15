@@ -15,6 +15,7 @@ import type {
   NameKind,
   NameRow,
   DatabaseSymbol,
+  Edit,
   PlayerStatistics,
   SortColumn,
 } from "./api/types";
@@ -36,6 +37,8 @@ import { GameDataDialog } from "./components/GameDataDialog";
 import { PositionSetup } from "./components/PositionSetup";
 import { PasteDialog } from "./components/PasteDialog";
 import { AnnotationPalette } from "./components/AnnotationPalette";
+import { SymbolMenu } from "./components/SymbolMenu";
+import type { SymbolSlot } from "./state/symbols";
 import { UnsavedDialog } from "./components/UnsavedDialog";
 import { SearchMask } from "./components/SearchMask";
 import { EnginePanel } from "./components/EnginePanel";
@@ -192,6 +195,8 @@ export function App({
   const [setupError, setSetupError] = useState<string>();
   const [pasting, setPasting] = useState<"game" | "position">();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  /** The symbol popup opened by typing !, ?, = or $. */
+  const [symbolMenu, setSymbolMenu] = useState<SymbolSlot>();
   // Notation tabs, and the book and reference panes outside them.
   const [notationTab, setNotationTab] = useState<
     "notation" | "book" | "reference" | "tablebase"
@@ -368,18 +373,24 @@ export function App({
         });
         return;
       }
-      if (report.findings.length) {
-        const result = await e.edit({
-          kind: "addAnalysis",
-          items: report.findings.map((f) => ({
-            node: f.node,
-            // "??" from three times the threshold, "?" below.
-            nag: f.loss >= 3 * params.threshold ? 4 : 2,
-            comment: storeEvaluations ? f.played : undefined,
-            line: f.line,
-            lineComment: `${f.best}${f.depth ? `/${f.depth}` : ""}`,
-          })),
-        });
+      const evaluation = new Map(
+        report.evaluations.map((v) => [v.node, v.nag]),
+      );
+      const items: Extract<Edit, { kind: "addAnalysis" }>["items"] =
+        report.findings.map((f) => ({
+          node: f.node,
+          // "??" from three times the threshold, "?" below.
+          nag: f.loss >= 3 * params.threshold ? 4 : 2,
+          evaluation: evaluation.get(f.node),
+          comment: storeEvaluations ? f.played : undefined,
+          line: f.line,
+          lineComment: `${f.best}${f.depth ? `/${f.depth}` : ""}`,
+        }));
+      for (const v of report.evaluations)
+        if (!report.findings.some((f) => f.node === v.node))
+          items.push({ node: v.node, evaluation: v.nag, line: [] });
+      if (items.length) {
+        const result = await e.edit({ kind: "addAnalysis", items });
         if (result === null) {
           setBlunder({ error: "The findings could not be added." });
           return;
@@ -1102,6 +1113,18 @@ export function App({
       enabled: !!game,
       pressed: paletteOpen,
     },
+    "symbol-menu-move": {
+      run: () => setSymbolMenu("move"),
+      enabled: !!game && selected !== 0 && !busy,
+    },
+    "symbol-menu-evaluation": {
+      run: () => setSymbolMenu("position"),
+      enabled: !!game && selected !== 0 && !busy,
+    },
+    "symbol-menu-prefix": {
+      run: () => setSymbolMenu("prefix"),
+      enabled: !!game && selected !== 0 && !busy,
+    },
     "copy-game": { run: () => e.copyGame(), enabled: !!game },
     "paste-game": { run: () => paste("game") },
     "paste-position": { run: () => paste("position") },
@@ -1141,6 +1164,8 @@ export function App({
         k.kibitzers.some((v) => v.enabled) || !!w.treeBuild || !!w.searching,
     },
   };
+  // A symbol popup belongs to the move it was opened for.
+  useEffect(() => setSymbolMenu(undefined), [selected, game]);
   useEffect(() => {
     if (!startupCommand) return;
     setStartupCommand(undefined);
@@ -1156,6 +1181,7 @@ export function App({
     bindings,
     !!e.question ||
       palette ||
+      !!symbolMenu ||
       maskOpen ||
       gameDataOpen ||
       setupOpen ||
@@ -1634,6 +1660,21 @@ export function App({
                         <span className="badge">Unsaved changes</span>
                       )}
                     </div>
+                    {symbolMenu && game?.nodes[selected] && selected !== 0 && (
+                      <SymbolMenu
+                        slot={symbolMenu}
+                        node={game.nodes[selected]}
+                        onChoose={(nags) => {
+                          setSymbolMenu(undefined);
+                          void e.edit({
+                            kind: "setNags",
+                            node: selected,
+                            nags,
+                          });
+                        }}
+                        onClose={() => setSymbolMenu(undefined)}
+                      />
+                    )}
                     {paletteOpen && (
                       <AnnotationPalette
                         node={game?.nodes[selected]}

@@ -29,15 +29,15 @@ export function useShortcuts(
       const inField = (event.target as HTMLElement).closest?.(editable);
       for (const command of commandList) {
         if (!command.keys || !command.views.includes(view)) continue;
-        // In text fields only modified shortcuts apply, so typing stays intact.
-        if (inField && !/Ctrl|Alt|^F\d/.test(command.keys)) continue;
-        if (
-          inField &&
-          /^Ctrl\+[A-Z]$/.test(command.keys) &&
-          "ACVXYZ".includes(command.keys.slice(-1))
-        )
-          continue;
-        if (!matches(command.keys, event)) continue;
+        const keys = [command.keys, ...(command.alsoKeys ?? [])].filter(
+          (k) =>
+            // In text fields only modified shortcuts apply, so typing stays
+            // intact.
+            !inField ||
+            (/Ctrl|Alt|^F\d/.test(k) &&
+              !(/^Ctrl\+[A-Z]$/.test(k) && "ACVXYZ".includes(k.slice(-1)))),
+        );
+        if (!keys.some((k) => matches(k, event))) continue;
         const binding = bindings[command.id];
         if (!binding || binding.enabled === false) continue;
         event.preventDefault();

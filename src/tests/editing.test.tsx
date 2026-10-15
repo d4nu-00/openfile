@@ -124,6 +124,48 @@ describe("game data and text", () => {
       "0",
     );
   });
+
+  it("opens ChessBase's symbol popups for typed !, ? and =", async () => {
+    // 1.e4 carries "!" (NAG 1), so the move popup starts on it.
+    const ui = renderWorkbench({ position: at(1) });
+    await ui.user.keyboard("?");
+    const menu = ui.getByRole("listbox", { name: "Move symbol" });
+    expect(
+      within(menu).getByRole("option", { name: "Good move" }),
+    ).toHaveAttribute("aria-selected", "true");
+    // Down to "?" and choose it: it replaces "!".
+    await ui.user.keyboard("{ArrowDown}{Enter}");
+    expect(ui.api.editDocument).toHaveBeenCalledWith(
+      "doc-1",
+      { kind: "setNags", node: 1, nags: [2] },
+      "0",
+    );
+    await waitFor(() =>
+      expect(ui.queryByRole("listbox", { name: "Move symbol" })).toBeNull(),
+    );
+    // "=" offers evaluations; the move symbol is kept.
+    await ui.user.keyboard("=");
+    const evaluation = ui.getByRole("listbox", { name: "Evaluation" });
+    await ui.user.click(
+      within(evaluation).getByRole("option", { name: "Unclear" }),
+    );
+    expect(ui.api.editDocument).toHaveBeenLastCalledWith(
+      "doc-1",
+      { kind: "setNags", node: 1, nags: [2, 13] },
+      "1",
+    );
+    // Escape closes without an edit; "(none)" clears the group.
+    await ui.user.keyboard("$");
+    await ui.user.keyboard("{Escape}");
+    expect(ui.queryByRole("listbox", { name: "Prefix symbol" })).toBeNull();
+    await ui.user.keyboard("!");
+    await ui.user.keyboard("{Home}{Enter}");
+    expect(ui.api.editDocument).toHaveBeenLastCalledWith(
+      "doc-1",
+      { kind: "setNags", node: 1, nags: [13] },
+      "2",
+    );
+  });
 });
 
 describe("new games and the clipboard", () => {
