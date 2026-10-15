@@ -14,7 +14,7 @@ use std::{
 };
 
 /// A mate in `n` counts as this many centipawns, less `n`.
-const MATE: i32 = 30_000;
+pub const MATE: i32 = 30_000;
 /// Moves of the main line checked at most.
 const MAX_PLIES: usize = 1_000;
 
