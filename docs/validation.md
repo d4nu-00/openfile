@@ -659,10 +659,13 @@ A census of the classic Mega's CBG headers counted:
 * **Measurements** (`cbh-reader/examples/maintain.rs`, release, warm):
   * Check Integrity on the 2CBH Mega found no problems (0.18 s).
   * On the classic Mega it took 133.8 s and found 16 problems in
-    11,151,119 entries. 14 are set-ups whose castling rights the board
-    does not allow, which the reader refuses and earlier spot checks had
-    not met. One is the known Chess960 record without a start position,
-    and one is an annotation record that does not parse.
+    11,151,119 entries. 12 are set-ups whose castling rights the board
+    does not allow, which the reader refused and earlier spot checks had
+    not met. Two are damaged move records. One is the known Chess960
+    record without a start position, and one is an annotation record that
+    does not parse. (This first listed 14 castling set-ups: the example
+    prints only the first five problems, and the two damaged move records
+    were counted with them. The 2026-10-15 re-run below lists them all.)
   * Find Double Games marked 4 games of the 2CBH Mega with the defaults.
   * Remove Deleted Games on a scratch copy with every tenth game marked
     removed 2,476 entries in 0.41 s, and Check Integrity afterwards was
@@ -739,3 +742,30 @@ packaged installers and native workflows on those OSs remain outstanding.
 
 See [compatibility](compatibility.md) for annotation types not shown, packed
 ECO, newer-format limits, special encodings and standard-chess-only restrictions.
+
+## Set-ups with impossible castling rights (2026-10-15)
+
+* **Finding.** Twelve classic Mega set-ups store castling rights that the
+  board does not allow (entries 64687, 64740, 68207, 96531, 96535 and seven
+  others): games taken up in the middle, mostly from 1934–1946, with K and k
+  (bits 2 and 8, or 2 and 4) set while the kings stand on g1/g8 or elsewhere.
+  The reader refused them as "invalid castling rights".
+* **Change.** A right whose king or rook is off its standard square is
+  dropped, one right at a time, after the set-up as stored has been tried
+  (`setup_game` in `cbh-reader/src/moves/setup.rs`, shared by classic and
+  2CBG set-ups). Standard records are read as standard chess before
+  Chess960, so a stored right is never taken for a Chess960 one. A
+  temporary counter over the whole classic Mega found no standard record
+  that only the Chess960 reading accepted, so no other game changes.
+* **Result.** All twelve now decode to their last move with plausible
+  play. Check Integrity on the
+  classic Mega, release build, 8 workers, warm: 157.9 s with a Ghidra
+  analysis running beside it, 4 problems instead of 16, namely two damaged
+  move records (3079389, 7168922), the Chess960 record without a start
+  position (489834) and the annotation record (2455498).
+* **Not traced.** How ChessBase itself treats these rights: its 2CBH copies
+  of these games are outside the 24,783-entry 2CBH sample, and its set-up
+  validation was not followed.
+* **Tests.** `setups.rs` builds set-ups with kings on g1/g8 and K, k set
+  (both dropped), and with one possible and one impossible right (the
+  possible one kept, and castling with it decodes).

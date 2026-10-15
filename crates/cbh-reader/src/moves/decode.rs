@@ -81,7 +81,7 @@ pub fn decode_classic(record: &[u8], limits: &ReadLimits) -> Result<Game, CbhErr
     }
     let (game, mut pieces, offset) = if header & 0x40000000 != 0 {
         let bytes = record.get(4..32).ok_or(CbhError::Truncated)?;
-        let (mut fen, pieces) = super::setup::decode_setup(bytes)?;
+        let (mut fen, pieces) = super::setup::decode_setup(bytes, chess960)?;
         let mut offset = 32;
         if chess960 {
             let squares = record.get(32..38).ok_or(CbhError::Truncated)?;
@@ -278,7 +278,7 @@ fn decode_words(
 ) -> Result<Game, CbhError> {
     let (game, offset) = if header & 0x40000000 != 0 {
         let bytes = record.get(4..32).ok_or(CbhError::Truncated)?;
-        let (fen, _) = super::setup::decode_setup(bytes)?;
+        let (fen, _) = super::setup::decode_setup(bytes, false)?;
         (Game::from_fen(&fen)?, 32)
     } else {
         (Game::initial(), 4)
