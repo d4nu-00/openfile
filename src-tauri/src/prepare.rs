@@ -129,6 +129,36 @@ fn move_text(moves: &[String]) -> String {
     out
 }
 
+/// The lines the player keeps playing, as dialog rows.
+pub(crate) fn repertoire_rows(tree: &PlayerTree, white: bool) -> Vec<RepertoireRow> {
+    tree.repertoire(white)
+        .into_iter()
+        .map(|l| {
+            let moves: Vec<String> = l
+                .moves
+                .iter()
+                .filter_map(|c| tree::unpack_uci(*c))
+                .collect();
+            let found = chess_core::eco::classify_uci(moves.iter().map(String::as_str));
+            let s = &l.stats;
+            let decided = s.wins + s.draws + s.losses;
+            // The stats are the mover's; the player's wins are the mover's
+            // losses when the opponent is to move.
+            let player_wins = if l.player_to_move { s.wins } else { s.losses };
+            RepertoireRow {
+                text: move_text(&moves),
+                eco: found.as_ref().map(|c| c.opening.eco.clone()),
+                name: found.map(|c| c.opening.name),
+                games: s.games,
+                score: (decided > 0)
+                    .then(|| (player_wins as f64 + s.draws as f64 / 2.0) * 100.0 / decided as f64),
+                last_year: (s.year_max > 0).then_some(s.year_max),
+                moves,
+            }
+        })
+        .collect()
+}
+
 impl Registry {
     /// Prepares against player `player_id` with White (`white`) or Black:
     /// finds their games, reads the main lines of those with the colour, and
@@ -185,34 +215,7 @@ impl Registry {
         let stats = reader.player_statistics(player_id, &found)?;
         let score = if white { stats.white } else { stats.black };
         let ratings: Vec<u16> = games.iter().map(|g| g.own_elo).collect();
-        let repertoire = tree
-            .repertoire(white)
-            .into_iter()
-            .map(|l| {
-                let moves: Vec<String> = l
-                    .moves
-                    .iter()
-                    .filter_map(|c| tree::unpack_uci(*c))
-                    .collect();
-                let found = chess_core::eco::classify_uci(moves.iter().map(String::as_str));
-                let s = &l.stats;
-                let decided = s.wins + s.draws + s.losses;
-                // The stats are the mover's; the player's wins are the
-                // mover's losses when the opponent is to move.
-                let player_wins = if l.player_to_move { s.wins } else { s.losses };
-                RepertoireRow {
-                    text: move_text(&moves),
-                    eco: found.as_ref().map(|c| c.opening.eco.clone()),
-                    name: found.map(|c| c.opening.name),
-                    games: s.games,
-                    score: (decided > 0).then(|| {
-                        (player_wins as f64 + s.draws as f64 / 2.0) * 100.0 / decided as f64
-                    }),
-                    last_year: (s.year_max > 0).then_some(s.year_max),
-                    moves,
-                }
-            })
-            .collect();
+        let repertoire = repertoire_rows(&tree, white);
         let mut by_eco: HashMap<u16, Vec<&PlayerGame>> = HashMap::new();
         for g in games {
             by_eco.entry(g.eco).or_default().push(g);

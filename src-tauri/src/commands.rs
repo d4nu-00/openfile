@@ -900,6 +900,36 @@ pub async fn preparation_games(
     blocking(move || s.preparation_games(database_id, player_id, white, line, request_id)).await
 }
 #[tauri::command]
+pub async fn player_dossier(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    player_id: u32,
+    events: tauri::ipc::Channel<crate::dossier::DossierProgress>,
+) -> Result<Option<crate::dossier::Dossier>, AppError> {
+    let s = state.inner().clone();
+    blocking(move || {
+        let mut last = std::time::Instant::now();
+        s.player_dossier(database_id, player_id, |stage, done, total| {
+            if last.elapsed().as_millis() >= 250 || done == total {
+                last = std::time::Instant::now();
+                let _ = events.send(crate::dossier::DossierProgress {
+                    stage,
+                    done: done.to_string(),
+                    total: total.to_string(),
+                });
+            }
+        })
+    })
+    .await
+}
+#[tauri::command]
+pub fn cancel_dossier(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_dossier(database_id)
+}
+#[tauri::command]
 pub async fn crosstable(
     state: tauri::State<'_, Arc<Registry>>,
     database_id: String,

@@ -59,6 +59,8 @@ pub(crate) struct State {
     /// Each database's preparation against a player, and running ones.
     pub(crate) preparations: HashMap<String, Arc<crate::prepare::Prepared>>,
     pub(crate) prepare_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    /// Running dossiers.
+    pub(crate) dossier_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     /// Games copied in a database window, and running pastes.
     pub(crate) clip: Option<Arc<crate::clipboard::Clip>>,
     pub(crate) paste_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
@@ -366,6 +368,7 @@ impl Registry {
         state.preparations.remove(&id);
         for cancels in [
             &mut state.prepare_cancels,
+            &mut state.dossier_cancels,
             &mut state.sort_cancels,
             &mut state.name_cancels,
             &mut state.crosstable_cancels,

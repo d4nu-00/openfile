@@ -6,6 +6,7 @@ pub mod convert;
 pub mod database_writes;
 pub mod deep_analysis;
 pub mod documents;
+pub mod dossier;
 pub mod engine_commands;
 pub mod library;
 pub mod lists;
@@ -188,6 +189,8 @@ pub fn run() {
             commands::close_preparation,
             commands::prepared_tree,
             commands::preparation_games,
+            commands::player_dossier,
+            commands::cancel_dossier,
             commands::copy_rows,
             commands::clip_size,
             commands::paste_games,
