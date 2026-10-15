@@ -646,6 +646,24 @@ impl Writer {
         self.header.sync()
     }
 
+    /// Set ECO Codes (`DBTOOLSSETECOCODE`): writes packed ECO words (record
+    /// bytes 128–129, LE16) of several game entries, with one sync. Every
+    /// entry is checked first.
+    pub fn set_eco_many(&mut self, words: &[(u64, u16)]) -> Result<(), CbhError> {
+        self.check()?;
+        for &(ordinal, word) in words {
+            self.existing(ordinal)?;
+            if word >> 7 > 500 {
+                return Err(CbhError::Decode(format!("Invalid ECO word {word:#06x}")));
+            }
+        }
+        for &(ordinal, word) in words {
+            self.header
+                .write_at(ordinal * RECORD as u64 + 128, &word.to_le_bytes())?;
+        }
+        self.header.sync()
+    }
+
     /// Mark Games (`MARKGAME`): toggles the user medal, bit 15 of the medal
     /// word at bytes 130–131 (`0x14013d510`), of each game entry, with one
     /// sync. Returns how many games are marked afterwards.
