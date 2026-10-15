@@ -111,7 +111,7 @@ pub(crate) struct Fields {
     pub white: Option<u32>,
     pub black: Option<u32>,
     pub tournament: Option<u32>,
-    annotator: Option<u32>,
+    pub annotator: Option<u32>,
     source: Option<u32>,
     pub date: u32,
     pub result: u8,
@@ -122,7 +122,10 @@ pub(crate) struct Fields {
     pub black_elo: u16,
     /// Packed ECO: bits 7–15 hold 1..=500 for A00..E99, 0 for none.
     pub eco: u16,
-    moves: u8,
+    /// The number of moves the record stores.
+    pub moves: u8,
+    /// The medal word (see `header::medal_names`).
+    pub medals: u16,
 }
 
 fn be24(b: &[u8]) -> u32 {
@@ -156,6 +159,7 @@ pub(crate) fn fields(format: DatabaseFormat, b: &[u8]) -> Fields {
                 black_elo: u16::from_be_bytes([b[33], b[34]]) & 4095,
                 eco: u16::from_be_bytes([b[35], b[36]]),
                 moves: b[45],
+                medals: u16::from_be_bytes([b[37], b[38]]),
             }
         }
         DatabaseFormat::New => {
@@ -182,6 +186,7 @@ pub(crate) fn fields(format: DatabaseFormat, b: &[u8]) -> Fields {
                 black_elo: le16(b, 112) & 4095,
                 eco: le16(b, 128),
                 moves: b[138],
+                medals: le16(b, 130),
             }
         }
     }

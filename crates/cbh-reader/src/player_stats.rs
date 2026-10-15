@@ -31,6 +31,10 @@ pub struct PlayerGame {
     pub opponent_elo: u16,
     /// ECO index 1..=500 (A00..E99), 0 for none.
     pub eco: u16,
+    /// Moves as the record stores them, the annotator and the medal word.
+    pub moves: u8,
+    pub annotator: Option<u32>,
+    pub medals: u16,
 }
 
 /// What a game is worth to the player: half points, and whether it was a
@@ -281,6 +285,9 @@ fn game_of(
             opponent_elo,
             // Codes outside A00..E99 count as none.
             eco: Some(f.eco >> 7).filter(|e| *e <= 500).unwrap_or(0),
+            moves: f.moves,
+            annotator: f.annotator,
+            medals: f.medals,
         },
         f.deleted,
     ))
