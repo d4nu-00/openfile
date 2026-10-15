@@ -883,7 +883,7 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
 ## Prepare against White or Black (2026-10-15)
 
 * **Measurements** on the classic Mega, read-only: see
-  [preparation](preparation.md#measurements). Carlsen with White: 3,515
+  [preparation](preparation.md#measurements). Player A with White: 3,515
   games, all readable; 14 repertoire lines.
 * **Tests.** Reader tests answer positions from kept main lines, follow the
   repertoire threshold and average the recent rating. An app test prepares

@@ -119,7 +119,7 @@ database changes or closes.
 ## Measurements
 
 Release build, `cbh-reader/examples/prepare.rs`, classic Mega 2025
-(11,151,119 entries), Carlsen, Magnus with White:
+(11,151,119 entries), player A (6,925 games) with White:
 
 | Step | Cold | Warm |
 |---|---|---|
@@ -128,9 +128,9 @@ Release build, `cbh-reader/examples/prepare.rs`, classic Mega 2025
 | Repertoire (14 lines) | 0.002 s | 0.002 s |
 
 Through the app (`src-tauri/examples/prepare_against.rs`, which adds the
-scoring, names and repertoire), warm: Carlsen with White 0.41 s (3,515 games,
-14 lines), with Black 0.33 s (3,410 games, 12 lines); Nakamura with Black
-0.29 s (4,588 games, 13 lines). The first, cold run took 54 s, waiting on
+scoring, names and repertoire), warm: player A with White 0.41 s (3,515
+games, 14 lines), with Black 0.33 s (3,410 games, 12 lines); player B with
+Black 0.29 s (4,588 games, 13 lines). The first, cold run took 54 s, waiting on
 the disk.
 
 A Book answer reads every kept line once: well under a millisecond for a few

@@ -187,7 +187,7 @@ Names in backticks are ChessBase command ids, for traceability.
 
 ## 10. Players and preparation
 
-- [x] P2 🟢 Prepare against White or Black from the database (`PREPARE_WHITE`, `PREPARE_BLACK`, `PREPARE_AGAINST`) *(traced: the player's games of one colour, deleted left out, in a game window with the last game loaded, and the average of the last ten ratings; the workbench shows score, recent rating, repertoire lines with ECO names, openings and latest games, and the player's tree in the Book pane; Carlsen's 3,515 White games read in 0.12 s warm on the classic Mega; the window's tree mode and rating formula use not traced; see [preparation](docs/preparation.md))*
+- [x] P2 🟢 Prepare against White or Black from the database (`PREPARE_WHITE`, `PREPARE_BLACK`, `PREPARE_AGAINST`) *(traced: the player's games of one colour, deleted left out, in a game window with the last game loaded, and the average of the last ten ratings; the workbench shows score, recent rating, repertoire lines with ECO names, openings and latest games, and the player's tree in the Book pane; a player's 3,515 White games read in 0.12 s warm on the classic Mega; the window's tree mode and rating formula use not traced; see [preparation](docs/preparation.md))*
 - [ ] P2 🟡 Player encyclopedia: names, photos, ratings and biography; FIDE rating lists could supply open data (`OPENPLAYERBASE`, `PB_EDITPLAYER`, `SHOWELOLIST`)
 - [ ] P3 🟢 Player photos in the game window (`TOGGLEPHOTOS`)
 - [ ] P3 🟡 Find a player online or match Lichess accounts (`SEARCHPLAYER`, `ComparePlayerOnline`)
