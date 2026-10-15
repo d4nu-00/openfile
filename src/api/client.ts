@@ -26,6 +26,14 @@ import type {
   TablebaseResponse,
   BlunderParams,
   BlunderReport,
+  DeepParams,
+  DeepProgress,
+  DeepReport,
+  JobKind,
+  JobsProgress,
+  JobsView,
+  RunJobsParams,
+  RunJobsReport,
   SortColumn,
   SortProgress,
   SortResponse,
@@ -567,6 +575,46 @@ export const backend = {
   },
   cancelBlunderCheck: (documentId: string) =>
     invoke<void>("cancel_blunder_check", { documentId }),
+  /** Deep Analysis of one position; the tree comes back as lines. */
+  deepAnalysis: (
+    documentId: string,
+    params: DeepParams,
+    onProgress: (p: DeepProgress) => void,
+  ) => {
+    const events = new Channel<DeepProgress>();
+    events.onmessage = onProgress;
+    return invoke<DeepReport>("deep_analysis", { documentId, params, events });
+  },
+  /** Stops Deep Analysis, keeping what it found, or discards it. */
+  stopDeepAnalysis: (documentId: string, discard: boolean) =>
+    invoke<void>("stop_deep_analysis", { documentId, discard }),
+  analysisJobs: () => invoke<JobsView>("analysis_jobs"),
+  /** Create analysis jobs: the final positions of the selected games. */
+  addAnalysisJobs: (
+    databaseId: string,
+    ranges: { start: string; end: string }[],
+    kind: JobKind,
+  ) =>
+    invoke<{ view: JobsView; leftOut: number }>("add_analysis_jobs", {
+      databaseId,
+      ranges,
+      kind,
+    }),
+  /** Add Analysis Job: the board position of the shown game. */
+  addAnalysisJob: (documentId: string, node: number, kind: JobKind) =>
+    invoke<JobsView>("add_analysis_job", { documentId, node, kind }),
+  editAnalysisJob: (id: number, action: "restart" | "skip" | "remove") =>
+    invoke<JobsView>("edit_analysis_job", { id: String(id), action }),
+  clearAnalysisJobs: () => invoke<JobsView>("clear_analysis_jobs"),
+  runAnalysisJobs: (
+    params: RunJobsParams,
+    onProgress: (p: JobsProgress) => void,
+  ) => {
+    const events = new Channel<JobsProgress>();
+    events.onmessage = onProgress;
+    return invoke<RunJobsReport>("run_analysis_jobs", { params, events });
+  },
+  stopAnalysisJobs: () => invoke<void>("stop_analysis_jobs"),
   /** The game's main line annotated from the tablebases. */
   tablebaseAnnotation: (documentId: string) =>
     invoke<TablebaseAnnotation>("tablebase_annotation", { documentId }),

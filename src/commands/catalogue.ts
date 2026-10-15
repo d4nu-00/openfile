@@ -890,6 +890,34 @@ const list: CommandMeta[] = [
     views: game,
   },
   {
+    id: "new-analysis-jobs",
+    label: "New analysis jobs",
+    tip: "Create a new collection of analysis jobs",
+    icon: ListPlus,
+    views: both,
+  },
+  {
+    id: "open-analysis-jobs",
+    label: "Open analysis jobs",
+    tip: "Open an existing collection of analysis jobs",
+    icon: ListChecks,
+    views: both,
+  },
+  {
+    id: "add-analysis-job",
+    label: "Add Analysis Job",
+    tip: "Add another analysis job to the queue of waiting jobs",
+    icon: Plus,
+    views: game,
+  },
+  {
+    id: "create-analysis-jobs",
+    label: "Create analysis jobs",
+    tip: "Create analysis jobs from the final positions of the selected games",
+    icon: ListPlus,
+    views: db,
+  },
+  {
     id: "tactical-analysis",
     label: "Tactical Analysis",
     tip: "Detect Blunders and small tactics in the game",
@@ -1136,6 +1164,14 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
           label: "Players",
           items: [L("prepare-against"), S("player-encyclopedia")],
         },
+        {
+          label: "Analysis jobs",
+          items: [
+            S("create-analysis-jobs"),
+            S("open-analysis-jobs"),
+            S("new-analysis-jobs"),
+          ],
+        },
       ],
     },
     {
@@ -1314,6 +1350,14 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
       label: "Analysis",
       groups: [
         { label: "Deep Analysis", items: [L("deep-analysis")] },
+        {
+          label: "Analysis jobs",
+          items: [
+            S("add-analysis-job"),
+            S("open-analysis-jobs"),
+            S("new-analysis-jobs"),
+          ],
+        },
         {
           label: "Tactical Analysis",
           items: [L("tactical-analysis"), S("tablebase-annotation")],

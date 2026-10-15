@@ -281,6 +281,30 @@ export function demoApi(): WorkbenchApi {
       revision: "0",
     }),
     cancelBlunderCheck: async () => {},
+    deepAnalysis: async (_doc, params) => ({
+      cancelled: false,
+      iterations: 0,
+      positions: 0,
+      limited: false,
+      node: params.node,
+      lines: [],
+      revision: "0",
+      best: [],
+    }),
+    stopDeepAnalysis: async () => {},
+    analysisJobs: async () => ({ jobs: [], running: false }),
+    addAnalysisJobs: async () => {
+      throw { code: "readOnly", message: "The demo database is read-only" };
+    },
+    addAnalysisJob: async () => {
+      throw { code: "readOnly", message: "The demo database is read-only" };
+    },
+    editAnalysisJob: async () => ({ jobs: [], running: false }),
+    clearAnalysisJobs: async () => ({ jobs: [], running: false }),
+    runAnalysisJobs: async () => {
+      throw { code: "noJobs", message: "There are no open positions" };
+    },
+    stopAnalysisJobs: async () => {},
     startScreen: async () => ({
       favorites: [
         {

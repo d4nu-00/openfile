@@ -8,6 +8,11 @@ import {
   emptyFilter,
   type AppSettings,
   type BlunderParams,
+  type DeepParams,
+  type DeepProgress,
+  type JobKind,
+  type JobsView,
+  type RunJobsParams,
 } from "./api/types";
 import type {
   CrossLayout,
@@ -35,6 +40,11 @@ import { useKibitzers } from "./state/kibitzers";
 import { EngineManagement } from "./components/EngineManagement";
 import { TablebasePane } from "./components/TablebasePane";
 import { BlunderCheckDialog } from "./components/BlunderCheckDialog";
+import { DeepAnalysisDialog } from "./components/DeepAnalysisDialog";
+import {
+  AnalysisJobsDialog,
+  defaultJobKind,
+} from "./components/AnalysisJobsDialog";
 import { CommentEditor } from "./components/CommentEditor";
 import { GameDataDialog } from "./components/GameDataDialog";
 import { PositionSetup } from "./components/PositionSetup";
@@ -145,6 +155,17 @@ export function App({
     error?: string;
     documentId?: string;
   }>();
+  const [deep, setDeep] = useState<{
+    running?: DeepProgress | true;
+    error?: string;
+    documentId?: string;
+  }>();
+  const [jobs, setJobs] = useState<{
+    view: JobsView;
+    progress?: string;
+    error?: string;
+  }>();
+  const [jobKind, setJobKind] = useState<JobKind>(defaultJobKind);
   const [enginesError, setEnginesError] = useState<string>();
   /** The game view shows a game tab; the database view, the preview. */
   const view: ViewId = state.focus !== undefined ? "game" : "database";
@@ -436,6 +457,141 @@ export function App({
       );
     } catch (err) {
       setBlunder({ error: explain(err) });
+    }
+  }
+  /** Runs Deep Analysis on the board position and adds its tree. */
+  async function runDeepAnalysis(params: Omit<DeepParams, "node">) {
+    const doc = state.document;
+    if (!doc?.documentId) return;
+    const documentId = doc.documentId;
+    setDeep({ running: true, documentId });
+    try {
+      const report = await api.deepAnalysis(
+        documentId,
+        { ...params, node: selected },
+        (p) => setDeep((d) => d?.running && { ...d, running: p }),
+      );
+      if (report.cancelled) {
+        setDeep({ error: "Cancelled; nothing was added." });
+        return;
+      }
+      const now = w.current.current.document;
+      if (now?.documentId !== documentId || now.revision !== report.revision) {
+        setDeep({
+          error: "The game changed during the analysis; nothing was added.",
+        });
+        return;
+      }
+      if (report.lines.length) {
+        const result = await e.edit({
+          kind: "addLines",
+          parent: report.node,
+          lines: report.lines,
+        });
+        if (result === null) {
+          setDeep({ error: "The analysis could not be added." });
+          return;
+        }
+      }
+      setDeep(undefined);
+      w.setStatus(
+        `Deep Analysis: ${report.iterations} ${report.iterations === 1 ? "iteration" : "iterations"}, ${report.positions} positions, ${report.lines.length} lines added${report.limited ? " (the tree reached its size limit)" : ""}`,
+      );
+    } catch (err) {
+      setDeep({ error: explain(err) });
+    }
+  }
+  /** Shows the analysis jobs; `clear` starts a new collection. */
+  async function openJobs(clear: boolean) {
+    try {
+      const view = clear
+        ? await api.clearAnalysisJobs()
+        : await api.analysisJobs();
+      setJobs({ view });
+    } catch (err) {
+      w.setDiagnostics([{ code: "jobs", message: explain(err) }]);
+    }
+  }
+  /** Create analysis jobs: the final positions of the selected games. */
+  async function createJobs() {
+    const db = state.database;
+    const ranges = chosenRanges();
+    if (!db?.writable || !ranges.length) return;
+    try {
+      const r = await api.addAnalysisJobs(db.databaseId, ranges, jobKind);
+      setJobs({ view: r.view });
+      w.setStatus(
+        `${r.view.jobs.length} analysis jobs${r.leftOut ? `; ${r.leftOut} games could not be read` : ""}`,
+      );
+    } catch (err) {
+      w.setDiagnostics([{ code: "jobs", message: explain(err) }]);
+    }
+  }
+  /** Add Analysis Job: the board position of the shown game. */
+  async function addJob() {
+    const doc = state.document;
+    if (!doc?.documentId) return;
+    try {
+      const view = await api.addAnalysisJob(doc.documentId, selected, jobKind);
+      setJobs((j) => j && { ...j, view });
+      // ChessBase's message 4026.
+      w.setStatus("Analysis job added");
+    } catch (err) {
+      w.setDiagnostics([{ code: "jobs", message: explain(err) }]);
+    }
+  }
+  async function runJobs(params: RunJobsParams) {
+    setJobs(
+      (j) =>
+        j && {
+          ...j,
+          view: { ...j.view, running: true },
+          error: undefined,
+          progress: "Starting…",
+        },
+    );
+    try {
+      const report = await api.runAnalysisJobs(params, (p) =>
+        setJobs(
+          (j) =>
+            j && {
+              ...j,
+              view: { jobs: p.jobs, running: true },
+              progress: `${p.done} of ${p.total} jobs finished`,
+            },
+        ),
+      );
+      const text = `Analysis jobs ${report.stopped ? "stopped" : "finished"}: ${report.done} done, ${report.skipped} skipped, ${report.failed} failed`;
+      setJobs(
+        (j) =>
+          j && {
+            ...j,
+            view: { jobs: report.jobs, running: false },
+            progress: text,
+          },
+      );
+      w.setStatus(text);
+      if (report.done > 0 && state.database) {
+        keepSelection.current = true;
+        await w.refreshList();
+      }
+    } catch (err) {
+      const view = await api.analysisJobs().catch(() => undefined);
+      setJobs(
+        (j) =>
+          j && {
+            view: view ?? { ...j.view, running: false },
+            error: explain(err),
+          },
+      );
+    }
+  }
+  async function editJob(id: number, action: "restart" | "skip" | "remove") {
+    try {
+      const view = await api.editAnalysisJob(id, action);
+      setJobs((j) => j && { ...j, view });
+    } catch (err) {
+      setJobs((j) => j && { ...j, error: explain(err) });
     }
   }
   /** Draws or removes a coloured square or arrow on the current position. */
@@ -1379,6 +1535,24 @@ export function App({
       ),
     },
     "engine-management": { run: () => setEnginesOpen(true) },
+    "deep-analysis": {
+      run: () => setDeep((d) => d ?? {}),
+      enabled: !!state.document?.documentId,
+      pressed: !!deep?.running,
+    },
+    "new-analysis-jobs": {
+      run: () => void openJobs(true),
+      enabled: !jobs?.view.running,
+    },
+    "open-analysis-jobs": { run: () => void openJobs(false) },
+    "add-analysis-job": {
+      run: () => void addJob(),
+      enabled: !!state.document?.documentId,
+    },
+    "create-analysis-jobs": {
+      run: () => void createJobs(),
+      enabled: !!state.database?.writable && w.rowCount > 0,
+    },
     "tactical-analysis": {
       run: () => setBlunder((b) => b ?? {}),
       enabled: !!state.document?.documentId,
@@ -2317,6 +2491,39 @@ export function App({
               void api.cancelBlunderCheck(blunder.documentId).catch(() => {});
           }}
           onClose={() => setBlunder(undefined)}
+        />
+      )}
+      {deep && (
+        <DeepAnalysisDialog
+          engines={settings.engines}
+          defaultEngine={settings.defaultEngine}
+          running={deep.running}
+          error={deep.error}
+          onChooseFile={api.pickEngine}
+          onStart={(params) => void runDeepAnalysis(params)}
+          onStop={(discard) => {
+            if (deep.documentId)
+              void api
+                .stopDeepAnalysis(deep.documentId, discard)
+                .catch(() => {});
+          }}
+          onClose={() => setDeep(undefined)}
+        />
+      )}
+      {jobs && (
+        <AnalysisJobsDialog
+          view={jobs.view}
+          engines={settings.engines}
+          defaultEngine={settings.defaultEngine}
+          kind={jobKind}
+          progress={jobs.progress}
+          error={jobs.error}
+          onKindChange={setJobKind}
+          onChooseFile={api.pickEngine}
+          onRun={(params) => void runJobs(params)}
+          onStop={() => void api.stopAnalysisJobs().catch(() => {})}
+          onEdit={(id, action) => void editJob(id, action)}
+          onClose={() => setJobs(undefined)}
         />
       )}
       {enginesOpen && (

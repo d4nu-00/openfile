@@ -1401,6 +1401,76 @@ kbd {
   text-overflow: ellipsis;
 }
 
+/* Deep Analysis: engine, duration and the growing tree's progress. */
+.modal.deep-analysis {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: min(560px, calc(100vw - 32px));
+}
+.modal.deep-analysis .mask-row {
+  flex-wrap: wrap;
+}
+.modal.deep-analysis select {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.deep-progress .deep-best {
+  overflow-wrap: anywhere;
+}
+
+/* Analysis jobs: the queue as a table, then the settings for new jobs. */
+.modal.analysis-jobs {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: min(820px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+}
+.modal.analysis-jobs .mask-row {
+  flex-wrap: wrap;
+}
+.modal.analysis-jobs select {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jobs-table {
+  border: 1px solid var(--pane-border);
+  max-height: 280px;
+  overflow: auto;
+  font-size: 12px;
+}
+.jobs-row {
+  display: grid;
+  grid-template-columns:
+    36px minmax(140px, 2fr) 80px minmax(120px, 1.5fr)
+    minmax(120px, 2fr);
+  gap: 8px;
+  padding: 3px 6px;
+  cursor: default;
+}
+.jobs-row > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jobs-row.jobs-head {
+  position: sticky;
+  top: 0;
+  background: var(--pane-header-bg);
+  font-weight: 600;
+  border-bottom: 1px solid var(--pane-border);
+}
+.jobs-row:hover {
+  background: var(--row-hover);
+}
+.jobs-row.selected {
+  background: var(--row-selected-bg);
+  color: var(--row-selected-fg);
+}
+
 /* Player statistic: score by colour and year, then opponents, tournaments
    and openings side by side, as in ChessBase's dialog 846. */
 .modal.player-statistics {

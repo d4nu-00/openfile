@@ -183,6 +183,7 @@ export type Edit =
       }[];
     }
   | { kind: "appendLine"; parent: NodeId; moves: string[]; comment?: string }
+  | { kind: "addLines"; parent: NodeId; lines: LineItem[] }
   | { kind: "undo" }
   | { kind: "redo" };
 /** Edits that change the tree's shape; the selection is re-read after them. */
@@ -556,6 +557,78 @@ export interface BlunderReport {
   /** ChessBase's evaluation symbols where the evaluation changes. */
   evaluations: { node: number; nag: number }[];
   revision: string;
+}
+/** One line of an analysis result, from the analysed position. */
+export interface LineItem {
+  moves: string[];
+  /** ChessBase's evaluation symbol for the last move. */
+  evaluation?: number;
+  /** The score and depth as text, e.g. "+0.35/20". */
+  comment?: string;
+}
+export interface DeepParams {
+  engine: string;
+  options: Record<string, string>;
+  node: NodeId;
+  /** 0 runs until stopped. */
+  timeLimitSecs: number;
+}
+export interface DeepProgress {
+  iteration: number;
+  positions: number;
+  nodes: number;
+  elapsedMs: number;
+  /** The best line in SAN and its score from White's side. */
+  best: string[];
+  score?: string;
+}
+export interface DeepReport {
+  cancelled: boolean;
+  iterations: number;
+  positions: number;
+  /** The tree reached its node bound. */
+  limited: boolean;
+  node: NodeId;
+  lines: LineItem[];
+  revision: string;
+  best: string[];
+  score?: string;
+}
+/** ChessBase's job types: Analysis (1) and Deep Analysis (2). */
+export type JobKind =
+  | { type: "analysis"; lines: number; seconds: number }
+  | { type: "deep"; seconds: number };
+export type JobStatus = "waiting" | "running" | "done" | "skipped" | "failed";
+export interface AnalysisJob {
+  id: number;
+  databaseId: string;
+  ordinal: string;
+  label: string;
+  moves: string[];
+  kind: JobKind;
+  status: JobStatus;
+  message?: string;
+}
+export interface JobsView {
+  jobs: AnalysisJob[];
+  running: boolean;
+}
+export interface JobsProgress {
+  job?: number;
+  done: number;
+  total: number;
+  jobs: AnalysisJob[];
+}
+export interface RunJobsParams {
+  engine: string;
+  options: Record<string, string>;
+}
+export interface RunJobsReport {
+  stopped: boolean;
+  done: number;
+  skipped: number;
+  failed: number;
+  jobs: AnalysisJob[];
 }
 /** An engine in Engine Management. */
 export interface InstalledEngine {
