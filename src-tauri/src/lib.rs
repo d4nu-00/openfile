@@ -195,6 +195,7 @@ pub fn run() {
             commands::find_double_games,
             openings::classify_game,
             openings::set_eco_codes,
+            openings::opening_report,
             commands::remove_deleted_games,
             commands::cancel_maintenance,
             commands::delete_rows,

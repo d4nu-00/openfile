@@ -117,7 +117,7 @@ pub struct ReferenceResponse {
 }
 
 /// The line's last position, and the hashes and packed moves leading there.
-fn replay(line: &Line) -> Result<(Chess, Vec<u64>, Vec<u16>), AppError> {
+pub(crate) fn replay(line: &Line) -> Result<(Chess, Vec<u64>, Vec<u16>), AppError> {
     if line.moves.len() > MAX_LINE {
         return Err(AppError::new("bounds", "The line is too long"));
     }
@@ -354,7 +354,7 @@ impl Registry {
         Ok(response)
     }
 
-    fn reference_hits(
+    pub(crate) fn reference_hits(
         &self,
         database_id: &str,
         line: &Line,

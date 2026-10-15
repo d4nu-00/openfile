@@ -62,6 +62,9 @@ pub(crate) struct State {
     /// Running conversions to 2CBH, by source database.
     pub(crate) maintenance_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     pub(crate) convert_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    /// Games per year of each database, for the opening report, with the
+    /// entry count they were counted at.
+    pub(crate) year_counts: HashMap<String, (u64, Arc<std::collections::BTreeMap<u16, u64>>)>,
     pub documents: HashMap<String, Arc<Mutex<Document>>>,
 }
 impl State {
