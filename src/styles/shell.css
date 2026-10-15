@@ -419,6 +419,16 @@ kbd {
   background: var(--row-selected-bg);
   color: var(--row-selected-fg);
 }
+/* Mark Games: ChessBase's user medal is cyan. */
+.game-list .user-medal {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: #00b5d8;
+  vertical-align: middle;
+}
 .game-list tr[data-deleted] td {
   text-decoration: line-through;
   color: var(--text-muted);

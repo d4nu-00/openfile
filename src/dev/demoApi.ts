@@ -453,6 +453,12 @@ export function demoApi(): WorkbenchApi {
       treeDeleted: false,
     }),
     cancelMaintenance: async () => {},
+    markRows: async () => ({ changed: "0", marked: "0", cancelled: false }),
+    setNamesOfRows: async () => ({
+      changed: "0",
+      marked: "0",
+      cancelled: false,
+    }),
     confirmRemoveDeleted: async () => false,
     deleteRows: async () => "0",
     confirmPaste: async () => false,

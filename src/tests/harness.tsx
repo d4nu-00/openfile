@@ -679,6 +679,18 @@ export function mockApi(firstDatabase = 1) {
         };
       }),
     cancelMaintenance: vi.fn().mockResolvedValue(undefined),
+    markRows: vi
+      .fn()
+      .mockImplementation(async (_db: string, _ranges, onProgress) => {
+        onProgress({ done: "3", total: "3" });
+        return { changed: "3", marked: "2", cancelled: false };
+      }),
+    setNamesOfRows: vi
+      .fn()
+      .mockImplementation(async (_db: string, _ranges, _names, onProgress) => {
+        onProgress({ done: "3", total: "3" });
+        return { changed: "3", marked: "0", cancelled: false };
+      }),
     confirmRemoveDeleted: vi.fn().mockResolvedValue(true),
     deleteRows: vi
       .fn()
