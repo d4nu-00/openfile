@@ -250,3 +250,8 @@ numbers through a path not followed.
   Verbal comments, the "better is" prefix, Erase old annotations, Training,
   Blunder categories, the engine benchmark and the database mode are not
   ported.
+
+## Deep Analysis and analysis jobs
+
+See [analysis](analysis.md): ChessBase's Deep Analysis schedule, as traced,
+and the analysis jobs queue.

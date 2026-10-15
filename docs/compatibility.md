@@ -124,7 +124,11 @@ separately; an unsupported game is not silently flattened into a partial game.
 
 Local UCI engine analysis covers standard chess and Chess960. A Chess960
 position is sent with `UCI_Chess960` set to true, and only to engines that
-offer that option. Other variant rules cannot be enabled. Engines and private databases are
+offer that option. Other variant rules cannot be enabled. Deep Analysis
+follows ChessBase's traced schedule with one engine, and the analysis jobs
+queue replaces games of a 2CBH database opened for editing with their
+analysis; ChessBase's jobs files are not read or written (see
+[analysis](analysis.md)). Engines and private databases are
 separate user-provided files. The first workbench does not yet implement
 ChessBase's full search/indexing, its own opening book files (.ctg and trees),
 training, multimedia, cloud services or lossless writing of every ChessBase
