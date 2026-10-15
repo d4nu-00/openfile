@@ -37,7 +37,7 @@ const drawWords = [
   "high",
 ];
 const word = (words: string[], band?: number) =>
-  band === undefined ? undefined : words[band];
+  band == null ? undefined : words[band];
 const points = (p: number) =>
   Number.isInteger(p) ? String(p) : `${Math.floor(p) || ""}½`;
 
@@ -45,9 +45,9 @@ const points = (p: number) =>
 function colourSentences(label: string, s: ColourStats) {
   const out: string[] = [];
   const verdict = word(scoreWords, s.scoreBand);
-  if (s.score !== undefined && verdict)
+  if (s.score != null && verdict)
     out.push(`${label}: the score is ${verdict} (${s.score}%).`);
-  if (s.performance !== undefined && s.opponentsAverage !== undefined) {
+  if (s.performance != null && s.opponentsAverage != null) {
     const d = s.performance - s.opponentsAverage;
     out.push(
       `${label}: performance ${s.performance} against an average opposition of ${s.opponentsAverage} (${d > 0 ? "+" : ""}${d}).`,
@@ -60,14 +60,13 @@ function lengthSentences(s: ColourStats) {
   const out: string[] = [];
   const add = (what: string, moves?: number, band?: number) => {
     const w = word(lengthWords, band);
-    if (moves !== undefined && w)
-      out.push(`${what} are ${w} (${moves} moves).`);
+    if (moves != null && w) out.push(`${what} are ${w} (${moves} moves).`);
   };
   add("White's wins", s.whiteWinMoves, s.whiteWinBand);
   add("Draws", s.drawMoves, s.drawBand);
   add("Black's wins", s.blackWinMoves, s.blackWinBand);
   const d = word(drawWords, s.drawQuoteBand);
-  if (s.drawPercent !== undefined && d)
+  if (s.drawPercent != null && d)
     out.push(
       `The share of draws is ${d} (${s.drawPercent}%), quick draws ${s.quickDrawPercent ?? 0}%.`,
     );
@@ -159,7 +158,7 @@ function Repertoire({ label, rows }: { label: string; rows: RepertoireRow[] }) {
                 <td>{[l.eco, l.name].filter(Boolean).join(" ")}</td>
                 <td className="num">{l.games}</td>
                 <td className="num">
-                  {l.score === undefined ? "" : `${l.score.toFixed(0)}%`}
+                  {l.score == null ? "" : `${l.score.toFixed(0)}%`}
                 </td>
                 <td className="num">{l.lastYear ?? ""}</td>
               </tr>
@@ -275,7 +274,7 @@ export function DossierDialog({
                       <td className="num">{s.draws}</td>
                       <td className="num">{s.blackWins}</td>
                       <td className="num strong">
-                        {s.score === undefined ? "" : `${s.score}%`}
+                        {s.score == null ? "" : `${s.score}%`}
                       </td>
                       <td className="num">{s.opponentsAverage ?? ""}</td>
                       <td className="num">{s.performance ?? ""}</td>
@@ -314,9 +313,7 @@ export function DossierDialog({
                         <td className="num">{y.elo ?? ""}</td>
                         <td className="num">{y.score.games}</td>
                         <td className="num">
-                          {y.score.percent === undefined
-                            ? ""
-                            : `${y.score.percent}%`}
+                          {y.score.percent == null ? "" : `${y.score.percent}%`}
                         </td>
                       </tr>
                     ))}
@@ -325,6 +322,9 @@ export function DossierDialog({
               </section>
               <section aria-label="Score by rating">
                 <h3>Score by the opponent's rating</h3>
+                {data.ratingBands.length === 0 && (
+                  <p className="hint">No opponent is rated.</p>
+                )}
                 <table className="stat-table">
                   <thead>
                     <tr>
@@ -374,9 +374,7 @@ export function DossierDialog({
                         <td className="num">{t.year || ""}</td>
                         <td className="num">{t.score.games}</td>
                         <td className="num">
-                          {t.score.percent === undefined
-                            ? ""
-                            : `${t.score.percent}%`}
+                          {t.score.percent == null ? "" : `${t.score.percent}%`}
                         </td>
                         <td className="num">{t.score.performance ?? ""}</td>
                       </tr>
@@ -413,9 +411,7 @@ export function DossierDialog({
                         <td className="num">{o.elo ?? ""}</td>
                         <td className="num">{o.score.games}</td>
                         <td className="num">
-                          {o.score.percent === undefined
-                            ? ""
-                            : `${o.score.percent}%`}
+                          {o.score.percent == null ? "" : `${o.score.percent}%`}
                         </td>
                       </tr>
                     ))}

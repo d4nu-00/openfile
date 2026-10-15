@@ -33,6 +33,8 @@ describe("player dossier", () => {
         "The share of draws is somewhat low (33%), quick draws 33%.",
       ),
     ).toBeVisible();
+    // Missing values show as nothing, not "null".
+    expect(within(dialog).queryByText(/null/)).toBeNull();
     const medals = within(dialog).getByRole("region", {
       name: "Games with medals",
     });

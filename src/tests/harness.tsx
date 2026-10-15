@@ -1095,15 +1095,17 @@ export function mockApi(firstDatabase = 1) {
           }) => void,
         ) => {
           onProgress({ stage: "mates", done: "1", total: "2" });
+          // Missing values arrive as null, as the backend sends them.
+          const none = null as unknown as undefined;
           const colour = (score?: number, band?: number) => ({
             games: 3,
             whiteWins: 2,
             draws: 1,
             blackWins: 0,
-            score,
-            scoreBand: band,
-            opponentsAverage: score === undefined ? undefined : 2500,
-            performance: score === undefined ? undefined : 2620,
+            score: score ?? none,
+            scoreBand: band ?? none,
+            opponentsAverage: score === undefined ? none : 2500,
+            performance: score === undefined ? none : 2620,
             whiteWinMoves: 30,
             whiteWinBand: 1,
             drawMoves: 15,

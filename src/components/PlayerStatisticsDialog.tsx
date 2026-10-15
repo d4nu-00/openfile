@@ -4,7 +4,7 @@ import type { PlayerStatistics, StatGroup, StatScore } from "../api/types";
 /** ECO index 1..500 of "A00".."E99"; 0 for none. */
 const ecoIndex = (eco?: string) =>
   eco ? (eco.charCodeAt(0) - 65) * 100 + Number(eco.slice(1)) + 1 : 0;
-const pct = (s: StatScore) => (s.percent === undefined ? "" : `${s.percent}%`);
+const pct = (s: StatScore) => (s.percent == null ? "" : `${s.percent}%`);
 const points = (p: number) =>
   Number.isInteger(p) ? String(p) : `${Math.floor(p) || ""}½`;
 
