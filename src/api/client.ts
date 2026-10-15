@@ -34,6 +34,8 @@ import type {
   Crosstable,
   CrossLayout,
   PasteResponse,
+  ConvertEstimate,
+  ConvertResponse,
   PlayerStatistics,
   PositionQuery,
   StatGroup,
@@ -166,6 +168,40 @@ export const backend = {
       "Games you save, replace or delete will change this database's files. ChessBase's own index files (.2lcd, .2lgd) are not updated; ChessBase's Check Integrity rebuilds them. Keep a backup of databases you care about.",
       { title: "Open database for editing", kind: "warning" },
     ),
+  chooseConvertTarget: (name: string) =>
+    save({
+      title: "Convert to 2CBH",
+      defaultPath: `${name}.2cbh`,
+      filters: [{ name: "ChessBase database", extensions: ["2cbh"] }],
+    }),
+  /** The space a conversion needs and the free space at `target`. */
+  convertEstimate: (
+    databaseId: string,
+    ranges: { start: string; end: string }[] | null,
+    target: string,
+  ) =>
+    invoke<ConvertEstimate>("convert_estimate", {
+      databaseId,
+      ranges,
+      target,
+    }),
+  convertDatabase: async (
+    databaseId: string,
+    ranges: { start: string; end: string }[] | null,
+    target: string,
+    onProgress: (p: { done: string; total: string }) => void,
+  ) => {
+    const events = new Channel<{ done: string; total: string }>();
+    events.onmessage = onProgress;
+    return invoke<ConvertResponse>("convert_database", {
+      databaseId,
+      ranges,
+      target,
+      events,
+    });
+  },
+  cancelConvert: (databaseId: string) =>
+    invoke<void>("cancel_convert", { databaseId }),
   createDatabase: (path: string, requestId: string) =>
     invoke<OpenDatabaseResponse>("create_database", { path, requestId }),
   saveGame: (

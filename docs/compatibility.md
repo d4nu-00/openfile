@@ -139,6 +139,12 @@ folded and common accents removed. ChessBase's own collation was not traced.
 Its Fix Sort Order and Sort Database, which rewrite the files, are not
 implemented.
 
+Any database can be converted into a new .2cbh database, whole or a
+selection of its games (see [conversion](conversion.md)). As with Paste,
+annotations that are not decoded or not storable are left out and counted.
+Text entries and Chess960 games are left out too, and deleted marks are
+kept. The source is only read.
+
 Games can be copied from any open database and pasted into a .2cbh database
 opened for editing. Annotations that are not decoded, or that ChessBase
 cannot store, are left out and counted, as when a single game is saved. PGN

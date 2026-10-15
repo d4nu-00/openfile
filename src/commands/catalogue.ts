@@ -287,6 +287,13 @@ const list: CommandMeta[] = [
     views: db,
   },
   {
+    id: "convert-to-2cbh",
+    label: "Convert to 2CBH",
+    tip: "Convert to free 2CBH format",
+    icon: FilePlus,
+    views: db,
+  },
+  {
     id: "check-integrity",
     label: "Check Integrity",
     tip: "Check the database for errors",
@@ -1052,7 +1059,11 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
       groups: [
         {
           label: "Maintenance",
-          items: [L("backup-database"), S("database-properties")],
+          items: [
+            L("backup-database"),
+            S("database-properties"),
+            S("convert-to-2cbh"),
+          ],
         },
         {
           label: "Improve",

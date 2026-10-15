@@ -234,3 +234,53 @@ fn forfeits_and_double_zero_keep_their_code_while_the_result_agrees() {
             .contains_key(cbh_reader::RESULT_TAG)
     );
 }
+
+#[test]
+fn conversion_keeps_deleted_marks_and_stops_when_cancelled() {
+    use cbh_reader::v2::convert;
+    use std::sync::atomic::AtomicBool;
+    let d = tempfile::tempdir().unwrap();
+    let path = d.path().join("Source.2cbh");
+    let mut w = Writer::create(&path).unwrap();
+    let games = [annotated(), pgn("1. d4 d5 *"), pgn("1. c4 *")];
+    w.append_marked(&games, &[false, true, false]).unwrap();
+    drop(w);
+    let mut source = Database::open(&path, ReadLimits::default()).unwrap();
+    assert!(convert::estimate(&source, 3) > 3 * 192);
+
+    let out = d.path().join("Copy.2cbh");
+    let mut writer = Writer::create(&out).unwrap();
+    let mut steps = vec![];
+    let report = convert::convert(
+        &mut source,
+        [3, 2, 1],
+        &mut writer,
+        &AtomicBool::new(false),
+        |r| steps.push(r.done),
+    )
+    .unwrap();
+    drop(writer);
+    assert_eq!((report.written, report.deleted, report.done), (3, 1, 3));
+    assert_eq!(steps, vec![3]);
+    let mut copy = Database::open(&out, ReadLimits::default()).unwrap();
+    let deleted: Vec<bool> = (1..=3)
+        .map(|o| copy.load(o).unwrap().summary.deleted)
+        .collect();
+    assert_eq!(deleted, vec![false, true, false]);
+    assert_eq!(
+        walk(&copy.load(3).unwrap().game.unwrap()),
+        walk(&source.load(1).unwrap().game.unwrap())
+    );
+
+    let mut writer = Writer::create(&d.path().join("None.2cbh")).unwrap();
+    let report = convert::convert(
+        &mut source,
+        1..=3,
+        &mut writer,
+        &AtomicBool::new(true),
+        |_| {},
+    )
+    .unwrap();
+    assert!(report.cancelled);
+    assert_eq!((report.done, report.written), (0, 0));
+}

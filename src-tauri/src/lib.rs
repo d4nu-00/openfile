@@ -1,6 +1,7 @@
 pub mod blunder_check;
 pub mod clipboard;
 pub mod commands;
+pub mod convert;
 pub mod database_writes;
 pub mod documents;
 pub mod engine_commands;
@@ -180,6 +181,9 @@ pub fn run() {
             commands::clip_size,
             commands::paste_games,
             commands::cancel_paste,
+            commands::convert_estimate,
+            commands::convert_database,
+            commands::cancel_convert,
             commands::delete_rows,
             commands::load_entry,
             commands::position_at,

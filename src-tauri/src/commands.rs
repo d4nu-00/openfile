@@ -873,6 +873,46 @@ pub async fn paste_games(
     .await
 }
 #[tauri::command]
+pub async fn convert_estimate(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    ranges: Option<Vec<crate::clipboard::RowRange>>,
+    target: PathBuf,
+) -> Result<crate::convert::ConvertEstimate, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.convert_estimate(database_id, ranges, target)).await
+}
+#[tauri::command]
+pub async fn convert_database(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    ranges: Option<Vec<crate::clipboard::RowRange>>,
+    target: PathBuf,
+    events: tauri::ipc::Channel<crate::convert::ConvertProgress>,
+) -> Result<crate::convert::ConvertResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || {
+        let mut last = std::time::Instant::now();
+        s.convert_database(database_id, ranges, target, |done, total| {
+            if last.elapsed().as_millis() >= 250 || done == total {
+                last = std::time::Instant::now();
+                let _ = events.send(crate::convert::ConvertProgress {
+                    done: done.to_string(),
+                    total: total.to_string(),
+                });
+            }
+        })
+    })
+    .await
+}
+#[tauri::command]
+pub fn cancel_convert(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_convert(database_id)
+}
+#[tauri::command]
 pub fn cancel_paste(
     state: tauri::State<'_, Arc<Registry>>,
     database_id: String,

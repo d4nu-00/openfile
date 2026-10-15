@@ -1325,6 +1325,23 @@ kbd {
 /* Options, Engine Management and Tactical Analysis: one row per setting. */
 .modal.options,
 .modal.engine-management,
+/* Convert to 2CBH */
+.modal.convert {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: min(560px, calc(100vw - 32px));
+}
+.modal.convert .mask-row {
+  flex-wrap: wrap;
+}
+.modal.convert .path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .modal.blunder-check {
   flex-direction: column;
   flex-wrap: nowrap;

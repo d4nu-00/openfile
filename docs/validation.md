@@ -633,6 +633,27 @@ A census of the classic Mega's CBG headers counted:
   and prefix symbols (8, 13, 142, and 22 beside them) are storable in
   2CBH.
 
+## Convert to 2CBH (2026-10-14)
+
+* **Measurements.** `cbh-reader/examples/convert.rs` converted three
+  50,000-entry slices of the classic Mega and the whole 2CBH Mega into the
+  scratch folder. The outputs were deleted afterwards. Times, sizes and the
+  estimate against the size written (1.11–1.57×) are in
+  [conversion](conversion.md#measurements). Chess960 games (42 in the last
+  slice) and text entries were left out and counted.
+* **Reader tests.** Deleted marks survive a conversion, games keep their
+  moves and annotations in the order asked for, and a cancelled conversion
+  writes nothing.
+* **App tests.** A whole database and a selection convert into new
+  databases. The progress runs from 0 to all, and no temporary files
+  remain. The source's files keep their sizes and times. An existing
+  family file (including `.2lcd`), or the source itself as target, is
+  refused.
+* **Frontend tests.** The dialog estimates the selection first and again
+  after switching to the whole database. Convert opens the new database for
+  editing and reports the counts. An estimate that does not fit disables
+  Convert and says why.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

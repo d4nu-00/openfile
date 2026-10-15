@@ -23,7 +23,9 @@ use std::{
 
 /// 2LID slot sizes: players, tournaments, sources, annotators, teams, titles.
 const SLOTS: [u32; LISTS] = [1024, 1120, 220, 1024, 314, 532];
-const LID_HEADER: u64 = 184;
+pub(crate) const LID_HEADER: u64 = 184;
+/// Bytes of one 2LID group: one slot of each list.
+pub(crate) const GROUP: u64 = 1024 + 1120 + 220 + 1024 + 314 + 532;
 /// Block slack after the payload, as in the Mega copy (see writing.md).
 const GAME_SLACK: usize = 104;
 const NOTES_SLACK: usize = 200;
@@ -205,7 +207,8 @@ fn read_strings(payload: &[u8], n: usize) -> Option<Vec<String>> {
 
 impl Lists {
     fn group() -> u64 {
-        SLOTS.iter().map(|&s| s as u64).sum()
+        const { assert!(GROUP == 1024 + 1120 + 220 + 1024 + 314 + 532) };
+        GROUP
     }
     fn offset(kind: usize, id: u32) -> u64 {
         LID_HEADER
@@ -542,10 +545,23 @@ impl Writer {
     /// Appends several games with one set of syncs, in the same order as a
     /// single append: data, names, records, then the count.
     pub fn append_all(&mut self, games: &[Game]) -> Result<Vec<(u64, Omitted)>, CbhError> {
+        self.append_marked(games, &vec![false; games.len()])
+    }
+
+    /// Appends several games as `append_all` does; `deleted[i]` marks game
+    /// `i` deleted, as a converted database keeps its source's marks.
+    pub fn append_marked(
+        &mut self,
+        games: &[Game],
+        deleted: &[bool],
+    ) -> Result<Vec<(u64, Omitted)>, CbhError> {
+        if games.len() != deleted.len() {
+            return Err(CbhError::Bounds);
+        }
         self.check()?;
         let mut prepared = Vec::with_capacity(games.len());
-        for game in games {
-            prepared.push(self.prepare(game, false)?);
+        for (game, &deleted) in games.iter().zip(deleted) {
+            prepared.push(self.prepare(game, deleted)?);
         }
         self.commit_data()?;
         let mut out = Vec::with_capacity(games.len());
