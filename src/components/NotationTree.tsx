@@ -38,11 +38,17 @@ const nagText = (n: number) => nagSymbols[n] ?? `$${n}`;
 
 type Token =
   | { kind: "move"; node: GameNode; depth: number; number?: string }
+  /** The variations of a folded branch, shown as one button. */
+  | { kind: "fold"; node: GameNode; depth: number; count: number }
   | { kind: "open"; depth: number }
   | { kind: "close"; depth: number };
 
 /** Linearise a move tree in PGN order: main reply, sibling variations, continuation. */
-export function notationTokens(nodes: GameNode[], startFen?: string): Token[] {
+export function notationTokens(
+  nodes: GameNode[],
+  startFen?: string,
+  folded?: ReadonlySet<number>,
+): Token[] {
   const fields = (startFen ?? "").split(" ");
   const basePly =
     (Math.max(1, Number(fields[5]) || 1) - 1) * 2 + (fields[1] === "b" ? 1 : 0);
@@ -51,7 +57,8 @@ export function notationTokens(nodes: GameNode[], startFen?: string): Token[] {
     | { k: "emit"; id: number; depth: number; force: boolean }
     | { k: "after"; id: number; depth: number }
     | { k: "open"; depth: number }
-    | { k: "close"; depth: number };
+    | { k: "close"; depth: number }
+    | { k: "fold"; id: number; depth: number };
   const out: Token[] = [];
   const seen = new Set<number>();
   const stack: Frame[] = [{ k: "after", id: 0, depth: 0 }];
@@ -69,6 +76,16 @@ export function notationTokens(nodes: GameNode[], startFen?: string): Token[] {
     }
     const node = nodes[f.id];
     if (!node) continue;
+    if (f.k === "fold") {
+      out.push({
+        kind: "fold",
+        node,
+        depth: f.depth,
+        count: node.children.length - 1,
+      });
+      forceNext = true;
+      continue;
+    }
     if (f.k === "emit") {
       if (seen.has(f.id)) break;
       seen.add(f.id);
@@ -89,6 +106,11 @@ export function notationTokens(nodes: GameNode[], startFen?: string): Token[] {
     const kids = node.children;
     if (!kids.length) continue;
     stack.push({ k: "after", id: kids[0], depth: f.depth });
+    if (kids.length > 1 && folded?.has(f.id)) {
+      stack.push({ k: "fold", id: f.id, depth: f.depth });
+      stack.push({ k: "emit", id: kids[0], depth: f.depth, force: false });
+      continue;
+    }
     for (let i = kids.length - 1; i >= 1; i--) {
       stack.push({ k: "close", depth: f.depth + 1 });
       stack.push({ k: "after", id: kids[i], depth: f.depth + 1 });
@@ -107,15 +129,20 @@ export function NotationTree({
   selection,
   onSelect,
   startFen,
+  folded,
+  onUnfold,
 }: {
   nodes: GameNode[];
   selection: number;
   onSelect: (id: number) => void;
   startFen?: string;
+  /** Branch nodes whose variations are folded (ChessBase's Fold). */
+  folded?: ReadonlySet<number>;
+  onUnfold?: (id: number) => void;
 }) {
   const tokens = useMemo(
-    () => notationTokens(nodes, startFen),
-    [nodes, startFen],
+    () => notationTokens(nodes, startFen, folded),
+    [nodes, startFen, folded],
   );
   const moveIndex = useMemo(
     () => tokens.flatMap((t, i) => (t.kind === "move" ? [i] : [])),
@@ -191,6 +218,16 @@ export function NotationTree({
                 <span key={i} className="paren">
                   )
                 </span>
+              ) : t.kind === "fold" ? (
+                <button
+                  key={`fold${t.node.id}`}
+                  className="fold"
+                  aria-label={`Unfold ${t.count} variation${t.count > 1 ? "s" : ""}`}
+                  title="Folded variations: click to unfold"
+                  onClick={() => onUnfold?.(t.node.id)}
+                >
+                  [+{t.count}]
+                </button>
               ) : (
                 <Fragment key={t.node.id}>
                   {t.node.preComments?.map((c, ci) => (

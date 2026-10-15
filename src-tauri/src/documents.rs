@@ -77,6 +77,15 @@ pub enum Edit {
         arrows: Vec<chess_core::ArrowMark>,
     },
     ClearMarks,
+    /// ChessBase's Insert Into Game for the variation containing `node`.
+    InsertVariation {
+        node: u32,
+    },
+    /// ChessBase's Delete Commentary commands; `node` is the selected move.
+    DeleteCommentary {
+        commentary: chess_core::edit::Commentary,
+        node: u32,
+    },
     /// Engine annotations of several moves at once (Blunder Check).
     AddAnalysis {
         items: Vec<AnalysisItem>,
@@ -411,6 +420,10 @@ impl Registry {
                 arrows,
             } => d.game.set_marks(node, squares, arrows)?,
             Edit::ClearMarks => d.game.clear_marks(),
+            Edit::InsertVariation { node } => selected = Some(d.game.insert_variation(node)?),
+            Edit::DeleteCommentary { commentary, node } => {
+                selected = Some(d.game.delete_commentary(commentary, node)?)
+            }
             Edit::AddAnalysis { items } => add_analysis(&mut d.game, items)?,
             Edit::AppendLine {
                 parent,

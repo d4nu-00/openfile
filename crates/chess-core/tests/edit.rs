@@ -212,3 +212,75 @@ fn engine_lines_follow_existing_moves_and_change_nothing_when_illegal() {
     assert_eq!(g, before);
     assert!(g.append_line(0, &[], &GameLimits::default()).is_err());
 }
+
+#[test]
+fn insert_into_game_puts_a_variation_before_the_moves_it_replaced() {
+    // 2. Nf3 Nc6 is replaced by 2. h3 h6 2... then the old moves follow.
+    let mut g = game("[Result \"*\"]\n\n1. e4 e5 2. Nf3 (2. h3 h6) 2... Nc6 (2... d6) 3. Bb5 *\n");
+    let h6 = find(&g, &["e4", "e5", "h3", "h6"]);
+    let last = g.insert_variation(h6).unwrap();
+    assert_eq!(moves(&g), "1. e4 e5 2. h3 h6 3. Nf3 Nc6 (3... d6) 4. Bb5 *");
+    assert_eq!(g.san_at(last).unwrap().as_deref(), Some("h6"));
+    // Every child has a higher id than its parent.
+    assert!(g.nodes.iter().all(|n| n.parent.is_none_or(|p| p < n.id)));
+    // An odd number of moves, or moves that no longer fit, are refused.
+    let mut odd = game("[Result \"*\"]\n\n1. e4 e5 2. Nf3 (2. h3) 2... Nc6 *\n");
+    let h3 = find(&odd, &["e4", "e5", "h3"]);
+    let before = odd.clone();
+    assert!(odd.insert_variation(h3).is_err());
+    assert_eq!(odd, before);
+    let mut blocked = game("[Result \"*\"]\n\n1. e4 e5 2. Nf3 (2. Nc3 Nf6) 2... Nc6 *\n");
+    let nf6 = find(&blocked, &["e4", "e5", "Nc3", "Nf6"]);
+    // 3. Nf3 is still legal, but 3... Nc6 is fine too: this one fits.
+    assert!(blocked.insert_variation(nf6).is_ok());
+    let mut illegal = game("[Result \"*\"]\n\n1. e4 e5 2. Nf3 (2. Qh5 Nc6) 2... Nc6 3. Bb5 *\n");
+    let nc6 = find(&illegal, &["e4", "e5", "Qh5", "Nc6"]);
+    // After 2. Qh5 Nc6, 3. Nf3 Nc6 would play a knight from b8 twice.
+    let before = illegal.clone();
+    assert!(illegal.insert_variation(nc6).is_err());
+    assert_eq!(illegal, before);
+    // The main line has no variation to insert.
+    let mut main = game(TREE);
+    assert!(main.insert_variation(find(&main, &["e4"])).is_err());
+}
+
+#[test]
+fn commentary_is_deleted_by_kind() {
+    use chess_core::edit::Commentary;
+    let pgn = "[Result \"*\"]\n\n{Intro} 1. e4 $1 {Best by test} {[%clk 0:05:00] fast} e5 {+0.35/22} (1... c5 {Sicilian}) 2. Nf3 {[%eval 0.3] [%emt 0:00:02]} *\n";
+    let mut text = game(pgn);
+    let nf3 = find(&text, &["e4", "e5", "Nf3"]);
+    assert_eq!(text.delete_commentary(Commentary::Text, nf3).unwrap(), nf3);
+    assert_eq!(moves(&text), "1. e4 $1 1... e5 (1... c5) 2. Nf3 *");
+
+    let mut evals = game(pgn);
+    evals
+        .delete_commentary(Commentary::EvaluationAndTime, nf3)
+        .unwrap();
+    assert_eq!(
+        moves(&evals),
+        "{Intro} 1. e4 $1 {Best by test} {fast} 1... e5 (1... c5 {Sicilian}) 2. Nf3 *"
+    );
+
+    let mut all = game(pgn);
+    let c5 = find(&all, &["e4", "c5"]);
+    // The selected move was in a variation: its ancestor e4 is selected.
+    let kept = all.delete_commentary(Commentary::All, c5).unwrap();
+    assert_eq!(moves(&all), "1. e4 e5 2. Nf3 *");
+    assert_eq!(all.san_at(kept).unwrap().as_deref(), Some("e4"));
+}
+
+#[test]
+fn null_moves_are_entered_outside_check() {
+    let mut g = game("[Result \"*\"]\n\n1. e4 e5 *\n");
+    let e5 = find(&g, &["e4", "e5"]);
+    let null = g.append_uci(e5, "0000", &GameLimits::default()).unwrap();
+    assert_eq!(g.san_at(null).unwrap().as_deref(), Some("--"));
+    let mut check = game("[Result \"*\"]\n\n1. e4 f5 2. Qh5+ *\n");
+    let qh5 = find(&check, &["e4", "f5", "Qh5+"]);
+    assert!(
+        check
+            .append_uci(qh5, "0000", &GameLimits::default())
+            .is_err()
+    );
+}

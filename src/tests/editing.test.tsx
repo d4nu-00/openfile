@@ -243,3 +243,50 @@ describe("new games and the clipboard", () => {
     );
   });
 });
+
+describe("notation editing batch", () => {
+  it("folds and unfolds variations", async () => {
+    const ui = renderWorkbench({ position: at(2) });
+    const notation = ui.getByLabelText("Game notation");
+    expect(within(notation).getByRole("button", { name: "c5" })).toBeVisible();
+    await ui.user.click(ui.getByRole("tab", { name: "Insert" }));
+    await ui.user.click(ui.getByRole("button", { name: "Fold All" }));
+    expect(within(notation).queryByRole("button", { name: "c5" })).toBeNull();
+    await ui.user.click(
+      within(notation).getByRole("button", { name: "Unfold 1 variation" }),
+    );
+    expect(within(notation).getByRole("button", { name: "c5" })).toBeVisible();
+    // Ctrl+- folds the branch of the current move, Ctrl++ unfolds it.
+    await ui.user.keyboard("{Control>}-{/Control}");
+    expect(within(notation).queryByRole("button", { name: "c5" })).toBeNull();
+    await ui.user.keyboard("{Control>}+{/Control}");
+    expect(within(notation).getByRole("button", { name: "c5" })).toBeVisible();
+  });
+
+  it("enters null moves, inserts variations and deletes commentary", async () => {
+    const ui = renderWorkbench({ position: at(3) });
+    await ui.user.keyboard("{Control>}{Alt>}0{/Alt}{/Control}");
+    expect(ui.api.editDocument).toHaveBeenCalledWith(
+      "doc-1",
+      { kind: "appendMove", parent: 3, uci: "0000" },
+      "0",
+    );
+    await ui.user.click(ui.getByRole("tab", { name: "Insert" }));
+    await ui.user.click(ui.getByRole("button", { name: "Insert Into Game" }));
+    expect(ui.api.editDocument).toHaveBeenLastCalledWith(
+      "doc-1",
+      { kind: "insertVariation", node: expect.any(Number) },
+      expect.any(String),
+    );
+    await ui.user.keyboard("{Control>}{Shift>}y{/Shift}{/Control}");
+    expect(ui.api.editDocument).toHaveBeenLastCalledWith(
+      "doc-1",
+      {
+        kind: "deleteCommentary",
+        commentary: "all",
+        node: expect.any(Number),
+      },
+      expect.any(String),
+    );
+  });
+});

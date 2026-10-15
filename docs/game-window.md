@@ -169,6 +169,65 @@ among the move symbols.
   click replaces the symbol in that group, so every combination can be
   stored in 2CBH. Only move is now NAG 8, and Equal is NAG 11.
 
+## Null moves, Insert Into Game, folding, deleting commentary
+
+### What ChessBase does
+
+The names, keys and tooltips come from the command table (`commands.json`):
+
+| Command | Id | Key | Tooltip |
+|---|---|---|---|
+| Enter Null Move | `GAMENULLMOVE` | Ctrl+Alt+0 | "Enter a null move = skip a move for this side" |
+| Insert Into Game | `INSERTVARIATIONINTOGAME` | none | "Insert moves of variation into main line. Even number needed" |
+| Fold All / Unfold All | `FOLDALL`, `UNFOLDALL` | none | "Fold/Unfold all variations in the game notation" |
+| Fold / Unfold next node | `FOLDNEXTNODE`, `UNFOLDNEXTNODE` | Ctrl+-, Ctrl++ | "… the next variation node in full notation" |
+| Delete All Commentary | `ANNODELETEALL` | Ctrl+Shift+Y | "Delete all variations and commentary" |
+| Delete Text Commentary | `ANNODELETETEXT` | none | "Delete all text commentary" |
+| Delete Evaluation + Time Commentary | `ANNODELETEFRITZ` | Alt+Shift+Y | "Delete all evaluation and time commentary" |
+
+The code behind these commands was not traced; the workbench follows the
+tooltips. The messages 3–8 describe folding: "Fold All", "Switch variation
+folding on/off" and "Fold all variations except the current one". The last
+two are not ported.
+
+### Workbench
+
+* **Enter Null Move** (Ctrl+Alt+0) adds a null move after the selected
+  move, as a variation where the position has a continuation. It is refused
+  in check.
+* **Insert Into Game** (Insert › Variations) works on the variation of the
+  selected move:
+  * that variation becomes the line;
+  * the moves it replaced continue after its last move, together with their
+    own variations;
+  * as ChessBase's tooltip says, the variation needs an even number of
+    moves, so the same side moves next;
+  * if a later move is no longer legal, nothing changes;
+  * the nodes are numbered again in pre-order, and the variation's last
+    move is selected.
+* **Folding** is how the notation is shown, not an edit of the game.
+  * A folded branch shows a **[+n]** button in place of its n variations,
+    and a click unfolds it.
+  * **Fold All** folds every branch; **Unfold All** unfolds them.
+  * **Fold next node** (Ctrl+-) folds the first unfolded branch from the
+    selected move's own branch onwards along the line. **Unfold next node**
+    (Ctrl++) unfolds the first folded one.
+  * Choosing a move inside folded variations unfolds them.
+  * Folds are kept per game tab while the tab is open.
+* **Delete commentary.** Each kind is one edit, so Undo restores it.
+  * **Delete All Commentary** (Ctrl+Shift+Y) removes every variation and
+    every annotation: text, symbols, squares and arrows. The selected move
+    stays selected, or its nearest remaining ancestor if it was in a
+    variation.
+  * **Delete Text Commentary** removes text before and after moves.
+  * **Delete Evaluation + Time Commentary** (Alt+Shift+Y) removes the
+    scores the workbench writes as text ("+0.35/22", "+M3") and PGN's
+    `[%eval]`, `[%clk]` and `[%emt]` commands inside comments. ChessBase's
+    own evaluation and time annotations are not decoded, so they are not in
+    the game to begin with.
+  * **Delete Colour Commentary** (Ctrl+Alt+Y) was already there. Training
+    and multimedia annotations are not decoded either.
+
 ## Game tabs
 
 ### What ChessBase does
