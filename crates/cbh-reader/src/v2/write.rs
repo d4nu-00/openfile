@@ -38,6 +38,29 @@ const TOURNAMENT_TAIL: usize = 108;
 const SOURCE_TAIL: [u8; 4] = [1, 0, 1, 0];
 const NONE: u64 = u64::MAX;
 
+/// The user medal of the medal word (record bytes 130–131): cyan in
+/// ChessBase's list, set by Mark Games.
+pub const USER_MEDAL: u16 = 0x8000;
+
+/// What an entry carries besides its game: the deleted mark and the medal
+/// word (record bytes 130–131).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct EntryMarks {
+    pub deleted: bool,
+    pub medals: u16,
+}
+
+/// Names Edit Game Data sets for a selection; see `Writer::set_names`.
+#[derive(Clone, Debug, Default, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SelectionNames {
+    /// Site and event.
+    pub tournament: Option<(String, String)>,
+    pub annotator: Option<String>,
+    /// Title and publisher.
+    pub source: Option<(String, String)>,
+}
+
 /// File extensions the writer creates and changes.
 pub const WRITTEN: [&str; 4] = ["2cbh", "2cbg", "2cba", "2lid"];
 
@@ -545,23 +568,25 @@ impl Writer {
     /// Appends several games with one set of syncs, in the same order as a
     /// single append: data, names, records, then the count.
     pub fn append_all(&mut self, games: &[Game]) -> Result<Vec<(u64, Omitted)>, CbhError> {
-        self.append_marked(games, &vec![false; games.len()])
+        self.append_marked(games, &vec![EntryMarks::default(); games.len()])
     }
 
-    /// Appends several games as `append_all` does; `deleted[i]` marks game
-    /// `i` deleted, as a converted database keeps its source's marks.
+    /// Appends several games as `append_all` does, with each entry's
+    /// deleted mark and medals, as a converted database keeps its source's.
     pub fn append_marked(
         &mut self,
         games: &[Game],
-        deleted: &[bool],
+        marks: &[EntryMarks],
     ) -> Result<Vec<(u64, Omitted)>, CbhError> {
-        if games.len() != deleted.len() {
+        if games.len() != marks.len() {
             return Err(CbhError::Bounds);
         }
         self.check()?;
         let mut prepared = Vec::with_capacity(games.len());
-        for (game, &deleted) in games.iter().zip(deleted) {
-            prepared.push(self.prepare(game, deleted)?);
+        for (game, marks) in games.iter().zip(marks) {
+            let (mut record, omitted) = self.prepare(game, marks.deleted)?;
+            record[130..132].copy_from_slice(&marks.medals.to_le_bytes());
+            prepared.push((record, omitted));
         }
         self.commit_data()?;
         let mut out = Vec::with_capacity(games.len());
@@ -593,6 +618,8 @@ impl Writer {
         self.check()?;
         let old = self.existing(ordinal)?;
         let (mut record, omitted) = self.prepare(game, old[0] & 0x80 != 0)?;
+        // Medals are not part of the game; the entry keeps them.
+        record[130..132].copy_from_slice(&old[130..132]);
         if crate::header::pgn_result(old[88]) == crate::header::pgn_result(record[88])
             && old[88] < 8
         {
@@ -615,6 +642,90 @@ impl Writer {
         }
         for (&ordinal, flag) in ordinals.iter().zip(flags) {
             self.header.write_at(ordinal * RECORD as u64, &[flag])?;
+        }
+        self.header.sync()
+    }
+
+    /// Mark Games (`MARKGAME`): toggles the user medal, bit 15 of the medal
+    /// word at bytes 130–131 (`0x14013d510`), of each game entry, with one
+    /// sync. Returns how many games are marked afterwards.
+    pub fn toggle_user_medal(&mut self, ordinals: &[u64]) -> Result<u64, CbhError> {
+        self.check()?;
+        let mut words = Vec::with_capacity(ordinals.len());
+        for &ordinal in ordinals {
+            let old = self.existing(ordinal)?;
+            words.push(u16::from_le_bytes([old[130], old[131]]) ^ USER_MEDAL);
+        }
+        for (&ordinal, &word) in ordinals.iter().zip(&words) {
+            self.header
+                .write_at(ordinal * RECORD as u64 + 130, &word.to_le_bytes())?;
+        }
+        self.header.sync()?;
+        Ok(words.iter().filter(|w| *w & USER_MEDAL != 0).count() as u64)
+    }
+
+    /// Sets the tournament, annotator or source of several game entries,
+    /// as ChessBase's Set Tournament, Set Annotator and Set Source do for a
+    /// selection. Only the records' name ids change; `None` leaves a field,
+    /// an empty name clears it. Names are reused or added as when saving.
+    pub fn set_names(&mut self, ordinals: &[u64], names: &SelectionNames) -> Result<(), CbhError> {
+        self.check()?;
+        let mut records = Vec::with_capacity(ordinals.len());
+        for &ordinal in ordinals {
+            records.push(self.existing(ordinal)?);
+        }
+        let mut ids: Vec<(usize, u64)> = vec![];
+        if let Some((site, event)) = &names.tournament {
+            let id = if site.is_empty() && event.is_empty() {
+                NONE
+            } else {
+                // The tournament's date: the first game's.
+                let date = records
+                    .first()
+                    .map_or(0, |r| u32::from_le_bytes(r[188..192].try_into().unwrap()));
+                let mut payload = strings(&[site, event]);
+                let mut tail = [0u8; TOURNAMENT_TAIL];
+                tail[..4].copy_from_slice(&date.to_le_bytes());
+                for at in [34, 45, 56] {
+                    tail[at] = 7;
+                }
+                payload.extend(tail);
+                self.names
+                    .id(Kind::Tournament, vec![site.clone(), event.clone()], payload)?
+                    as u64
+            };
+            ids.push((40, id));
+        }
+        if let Some(annotator) = &names.annotator {
+            let id = if annotator.is_empty() {
+                NONE
+            } else {
+                self.player(annotator)? as u64
+            };
+            ids.push((48, id));
+        }
+        if let Some((title, publisher)) = &names.source {
+            let id = if title.is_empty() {
+                NONE
+            } else {
+                let mut payload = strings(&[title, publisher]);
+                payload.extend([0u8; 8]);
+                payload.extend(SOURCE_TAIL);
+                self.names.id(
+                    Kind::Source,
+                    vec![title.clone(), publisher.clone()],
+                    payload,
+                )? as u64
+            };
+            ids.push((56, id));
+        }
+        // New names first, then the records that refer to them.
+        self.names.commit()?;
+        for &ordinal in ordinals {
+            for &(at, id) in &ids {
+                self.header
+                    .write_at(ordinal * RECORD as u64 + at as u64, &id.to_le_bytes())?;
+            }
         }
         self.header.sync()
     }

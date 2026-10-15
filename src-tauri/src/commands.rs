@@ -67,6 +67,9 @@ pub struct EntryDto {
     pub ordinal: String,
     pub kind: String,
     pub deleted: bool,
+    /// Marked with the user medal (Mark Games).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub marked: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub white: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -119,6 +122,7 @@ impl From<cbh_reader::EntrySummary> for EntryDto {
             }
             .into(),
             deleted: e.deleted,
+            marked: e.marked,
             white: e.white,
             black: e.black,
             event: e.event,
@@ -918,6 +922,27 @@ fn throttled(
             });
         }
     }
+}
+#[tauri::command]
+pub async fn mark_rows(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    ranges: Vec<crate::clipboard::RowRange>,
+    events: tauri::ipc::Channel<crate::maintenance::MaintenanceProgress>,
+) -> Result<crate::clipboard::SelectionEditResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.mark_rows(database_id, ranges, throttled(events))).await
+}
+#[tauri::command]
+pub async fn set_names_of_rows(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    ranges: Vec<crate::clipboard::RowRange>,
+    names: cbh_reader::v2::write::SelectionNames,
+    events: tauri::ipc::Channel<crate::maintenance::MaintenanceProgress>,
+) -> Result<crate::clipboard::SelectionEditResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.set_names_of_rows(database_id, ranges, names, throttled(events))).await
 }
 #[tauri::command]
 pub async fn check_integrity(

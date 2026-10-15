@@ -225,6 +225,7 @@ export function GameList({
             : cursor === i || (cursor === undefined && selected === e.ordinal)
         }
         data-deleted={e.deleted || undefined}
+        data-marked={e.marked || undefined}
         data-kind={e.kind}
         onClick={(ev) => onPreview(i, mods(ev))}
         onDoubleClick={() => onOpen(i)}
@@ -241,6 +242,14 @@ export function GameList({
           >
             {e.ordinal}
           </button>
+          {e.marked && (
+            <span
+              className="user-medal"
+              role="img"
+              aria-label="Marked"
+              title="Marked with the user medal (Mark Games)"
+            />
+          )}
         </td>
         {columns.map((c) => (
           <td key={c.key} className={c.className}>

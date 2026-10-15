@@ -295,6 +295,36 @@ of them are deleted already, it undeletes them, as the single-game command
 does. It works only in a database opened for editing, on at most 50,000
 games at once.
 
+**Mark Games** (`MARKGAME`, +) toggles the user medal of every selected
+game, as ChessBase does (`MarkGamesCmd` → `0x1408d6140`, which calls
+`0x14013d510` for each game: medal word XOR `0x8000`).
+* A marked game shows a cyan dot beside its number. ChessBase calls it "a
+  user medal in cyan color" (50884).
+* The status repeats ChessBase's message 50885, "%d Games have been marked
+  or unmarked".
+* Medals are kept by Replace and travel with Paste and Convert to 2CBH.
+
+**Edit Game Data** (`DBTOOLSEDIT`, F2 in the list) sets the tournament
+(event and site), the annotator or the source of every selected game.
+* ChessBase's Set Tournament, Set Annotator and Set Source
+  (`EditTournamentCmd`, `EditAnnotatorCmd`, `EditSourceCmd`) open their
+  dialog with the first selected game's value. On OK they set that name for
+  the whole selection: `InGridGameListWin` slots `0x420`, `0x440` and
+  `0x430`, through `0x140bd1580` with the name kind (2 tournament, 8
+  annotator).
+* The workbench opens one dialog with a tick for each field, starting with
+  the first selected game's values. An empty field clears the name.
+* Only the records' name ids are rewritten. Names are reused or added as
+  when saving, and moves and annotations are not touched.
+* A new tournament gets the first selected game's date.
+* ChessBase's tournament details (type, place, category) and Set Game Title
+  (the 2LID titles, not read) are not ported.
+
+Both work only in a database opened for editing. They handle at most 50,000
+games at once, written in chunks of 2,000 with progress, and Stop between
+chunks. The selection stays after Mark Games, and after Edit Game Data
+unless the list is sorted.
+
 **Measurements.** Games of the classic Mega were copied into a new 2CBH file
 in the scratch folder, the same way Paste does, by
 `cbh-reader/examples/copy_games.rs`:

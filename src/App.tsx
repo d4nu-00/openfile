@@ -16,6 +16,7 @@ import type {
   NameRow,
   ConvertEstimate,
   DoubleOptions,
+  SelectionNames,
   DatabaseSymbol,
   Edit,
   PlayerStatistics,
@@ -42,6 +43,7 @@ import { AnnotationPalette } from "./components/AnnotationPalette";
 import { SymbolMenu } from "./components/SymbolMenu";
 import { ConvertDialog, type ConvertScope } from "./components/ConvertDialog";
 import { DoublesDialog, JobDialog } from "./components/MaintenanceDialogs";
+import { SelectionDataDialog } from "./components/SelectionDataDialog";
 import type { SymbolSlot } from "./state/symbols";
 import { UnsavedDialog } from "./components/UnsavedDialog";
 import { SearchMask } from "./components/SearchMask";
@@ -478,7 +480,13 @@ export function App({
   // The list's multiple selection, per list.
   const listKey = `${state.database?.databaseId}:${state.listVersion}`;
   const [selection, setSelection] = useState<Selection>(noSelection);
-  useEffect(() => setSelection(noSelection), [listKey]);
+  /** Set before a refresh that keeps every row in place (Mark Games, Edit
+   * Game Data), so the selection survives it. */
+  const keepSelection = useRef(false);
+  useEffect(() => {
+    if (keepSelection.current) keepSelection.current = false;
+    else setSelection(noSelection);
+  }, [listKey]);
   /** Games copied and waiting to be pasted, and a running paste. */
   const [clipGames, setClipGames] = useState(0);
   const [pastingGames, setPastingGames] = useState<string>();
@@ -492,6 +500,20 @@ export function App({
     running?: string;
     error?: string;
     lines?: string[];
+  }>();
+  /** Edit Game Data for a selection: its dialog, while open. */
+  const [selEdit, setSelEdit] = useState<{
+    databaseId: string;
+    ranges: { start: string; end: string }[];
+    games: number;
+    initial: {
+      event?: string;
+      site?: string;
+      annotator?: string;
+      source?: string;
+    };
+    running?: string;
+    error?: string;
   }>();
   /** Convert to 2CBH: its dialog, while open. */
   const [converting, setConverting] = useState<{
@@ -711,6 +733,60 @@ export function App({
       );
     } catch (err) {
       setJob((j) => j && { ...j, running: undefined, error: explain(err) });
+    }
+  }
+  /** Mark Games (+): toggles the user medal of the selection's games. */
+  async function markGames() {
+    const db = state.database;
+    const ranges = chosenRanges();
+    if (!db?.writable || !ranges.length) return;
+    try {
+      const r = await api.markRows(db.databaseId, ranges, () => {});
+      keepSelection.current = true;
+      await w.refreshList();
+      // ChessBase's message 50885.
+      w.setStatus(`${r.changed} Games have been marked or unmarked`);
+    } catch (err) {
+      w.setDiagnostics([{ code: "mark", message: explain(err) }]);
+    }
+  }
+  function startSelectionEdit() {
+    const db = state.database;
+    const ranges = chosenRanges();
+    if (!db?.writable || !ranges.length) return;
+    const first = Number(ranges[0].start) - 1;
+    const row = w.rows.row(first);
+    setSelEdit({
+      databaseId: db.databaseId,
+      ranges,
+      games: ranges.reduce((n, r) => n + Number(r.end) - Number(r.start), 0),
+      initial: {
+        event: row?.event,
+        site: row?.site,
+        annotator: row?.annotator,
+        source: row?.source,
+      },
+    });
+  }
+  async function runSelectionEdit(names: SelectionNames) {
+    const s = selEdit;
+    if (!s || s.running) return;
+    setSelEdit({ ...s, running: "starting…", error: undefined });
+    try {
+      const r = await api.setNamesOfRows(s.databaseId, s.ranges, names, (p) =>
+        setSelEdit(
+          (x) => x && { ...x, running: `${p.done} of ${p.total} games` },
+        ),
+      );
+      setSelEdit(undefined);
+      // A list sorted by a name column may reorder after new names.
+      keepSelection.current = !w.current.current.sort;
+      await w.refreshList();
+      w.setStatus(
+        `Game data set for ${r.changed} games${r.cancelled ? " (stopped)" : ""}`,
+      );
+    } catch (err) {
+      setSelEdit((x) => x && { ...x, running: undefined, error: explain(err) });
     }
   }
   async function copyGames() {
@@ -1034,6 +1110,14 @@ export function App({
     "db-paste": {
       run: () => pasteGames(),
       enabled: !!state.database?.writable && clipGames > 0 && !pastingGames,
+    },
+    "mark-games": {
+      run: () => markGames(),
+      enabled: !!state.database?.writable && w.rowCount > 0,
+    },
+    "db-edit-game-data": {
+      run: () => startSelectionEdit(),
+      enabled: !!state.database?.writable && w.rowCount > 0 && !selEdit,
     },
     "check-integrity": {
       run: () => runIntegrity(),
@@ -2051,6 +2135,19 @@ export function App({
               })
               .catch((err) => setOptionsError(explain(err)))
           }
+        />
+      )}
+      {selEdit && (
+        <SelectionDataDialog
+          games={selEdit.games}
+          initial={selEdit.initial}
+          running={selEdit.running}
+          error={selEdit.error}
+          onStart={(names) => void runSelectionEdit(names)}
+          onCancel={() =>
+            void api.cancelMaintenance(selEdit.databaseId).catch(() => {})
+          }
+          onClose={() => setSelEdit(undefined)}
         />
       )}
       {job?.options && (

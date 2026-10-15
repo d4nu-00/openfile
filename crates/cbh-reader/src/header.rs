@@ -30,6 +30,10 @@ pub struct RawEntry {
     pub year: Option<u16>,
     /// Stored main-line move count (classic byte 45, 2CBH byte 138).
     pub move_count: u8,
+    /// The medal word: classic BE16 at byte 37, 2CBH LE16 at byte 130
+    /// (equal in all 8,790 Mega records that have one). Bit 15 is the user
+    /// medal of Mark Games.
+    pub medals: u16,
     pub diagnostics: Vec<Diagnostic>,
 }
 pub fn be24(bytes: &[u8]) -> u32 {
@@ -221,6 +225,7 @@ pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
         eco_raw: None,
         year: None,
         move_count: 0,
+        medals: 0,
         diagnostics: vec![],
     };
     if r.kind != EntryKind::Game {
@@ -238,6 +243,7 @@ pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
     r.date = date(packed);
     r.year = year(packed);
     r.move_count = bytes[45];
+    r.medals = u16::from_be_bytes([bytes[37], bytes[38]]);
     if packed != 0 && r.date.is_none() {
         r.diagnostics.push(Diagnostic::new(
             "invalidDate",

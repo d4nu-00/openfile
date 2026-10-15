@@ -243,7 +243,12 @@ fn conversion_keeps_deleted_marks_and_stops_when_cancelled() {
     let path = d.path().join("Source.2cbh");
     let mut w = Writer::create(&path).unwrap();
     let games = [annotated(), pgn("1. d4 d5 *"), pgn("1. c4 *")];
-    w.append_marked(&games, &[false, true, false]).unwrap();
+    let marks = |deleted, medals| cbh_reader::v2::write::EntryMarks { deleted, medals };
+    w.append_marked(
+        &games,
+        &[marks(false, 0), marks(true, 0), marks(false, 0x8001)],
+    )
+    .unwrap();
     drop(w);
     let mut source = Database::open(&path, ReadLimits::default()).unwrap();
     assert!(convert::estimate(&source, 3) > 3 * 192);
@@ -267,6 +272,11 @@ fn conversion_keeps_deleted_marks_and_stops_when_cancelled() {
         .map(|o| copy.load(o).unwrap().summary.deleted)
         .collect();
     assert_eq!(deleted, vec![false, true, false]);
+    // Medals travel with the entry: the source's game 3 is the copy's 1.
+    let medals: Vec<u16> = (1..=3)
+        .map(|o| copy.load(o).unwrap().summary.medals)
+        .collect();
+    assert_eq!(medals, vec![0x8001, 0, 0]);
     assert_eq!(
         walk(&copy.load(3).unwrap().game.unwrap()),
         walk(&source.load(1).unwrap().game.unwrap())

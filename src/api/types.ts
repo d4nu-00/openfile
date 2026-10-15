@@ -16,6 +16,8 @@ export interface EntrySummary {
   ordinal: string;
   kind: "game" | "text" | "unknown";
   deleted: boolean;
+  /** Marked with the user medal (Mark Games), shown in cyan. */
+  marked?: boolean;
   white?: string;
   black?: string;
   event?: string;
@@ -575,6 +577,21 @@ export interface ReferenceResponse {
   source: "tree" | "line" | "search" | "notSearched";
   /** A fallback search used the search booster. */
   indexed: boolean;
+}
+/** The names Edit Game Data sets for a selection; a field left out is
+ * kept, an empty one cleared. */
+export interface SelectionNames {
+  /** Site and event. */
+  tournament?: [string, string];
+  annotator?: string;
+  /** Title and publisher. */
+  source?: [string, string];
+}
+export interface SelectionEditResponse {
+  changed: string;
+  /** Mark Games: games marked afterwards. */
+  marked: string;
+  cancelled: boolean;
 }
 /** One problem Check Integrity found; entry 0 is a problem of the files. */
 export interface IntegrityProblem {

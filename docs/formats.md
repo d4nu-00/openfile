@@ -44,6 +44,7 @@ field, which fixes these offsets:
 | 90, 92 | 2 each | Round, subround |
 | 96, 112 | 2 each | White and black rating; Elo is the low 12 bits, as in classic |
 | 128 | 2 | Packed ECO (below) |
+| 130 | 2 | Medal word (below); classic bytes 37–38, big-endian |
 | 188 | 4 | Date, packed as in classic: `year << 9 | month << 5 | day` |
 
 **Result codes** (both families; classic bytes 27 and 28). The code is
@@ -59,6 +60,19 @@ classic Mega every code 0–7 occurs: 6,543 lines (most with moves), and
 Only lines carry a NAG; the values seen are evaluations 10–19 and 36, 40, 44,
 132, 138 and 146. The PGN `Result` tag keeps a forfeit's winner and is `*` for
 lines and `0-0`.
+
+**Medals** (both families). A 16-bit word: classic big-endian at bytes
+37–38, 2CBH little-endian at bytes 130–131. The two agree in all 8,790
+records of the Mega sample that have medals.
+* Bit 15 is the **user medal**, which Mark Games toggles (`0x14013d510`,
+  through the getter `0x1401ceb70` and setter `0x1401cf3b0` at +0x82).
+* The Medals dialog (template 112) lists sixteen medals: Best game, Model
+  game, Decided tournament, Novelty, Pawn structure, Strategy, Tactics,
+  With attack, Defense, Sacrifice, Material, Piece play, Endgame, Tactical
+  blunder, Strategical blunder and User. Their control ids run 1059–1075,
+  with 1062 being Reset. Read as bit numbers, they put User at bit 15, as
+  traced. The other bits' meanings are only inferred from that order and
+  are not shown.
 
 **Packed ECO** (both families). Bits 7–15 hold 1–500 for A00–E99, and 0 means
 no code. The low seven bits are a ChessBase sub-classification that the reader

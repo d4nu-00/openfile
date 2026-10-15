@@ -83,6 +83,7 @@ This is the part most in need of a test in real ChessBase.
 | 90, 92 | Round, subround |
 | 96, 112 | White and black Elo |
 | 128 | Packed ECO |
+| 130 | Medal word: kept by Replace, copied by Paste and conversion, toggled by Mark Games; 0 for a new game |
 | 138 | Number of moves in the main line, capped at 255 as in classic byte 45 |
 | 188 | Packed date |
 | everything else | 0 |

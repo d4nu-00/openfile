@@ -40,6 +40,8 @@ import type {
   DoubleOptions,
   DoublesResponse,
   CompactResponse,
+  SelectionEditResponse,
+  SelectionNames,
   PlayerStatistics,
   PositionQuery,
   StatGroup,
@@ -233,6 +235,36 @@ export const backend = {
     events.onmessage = onProgress;
     return invoke<CompactResponse>("remove_deleted_games", {
       databaseId,
+      events,
+    });
+  },
+  /** Mark Games: toggles the user medal of the rows' games. */
+  markRows: async (
+    databaseId: string,
+    ranges: { start: string; end: string }[],
+    onProgress: (p: { done: string; total: string }) => void,
+  ) => {
+    const events = new Channel<{ done: string; total: string }>();
+    events.onmessage = onProgress;
+    return invoke<SelectionEditResponse>("mark_rows", {
+      databaseId,
+      ranges,
+      events,
+    });
+  },
+  /** Edit Game Data for a selection: tournament, annotator or source. */
+  setNamesOfRows: async (
+    databaseId: string,
+    ranges: { start: string; end: string }[],
+    names: SelectionNames,
+    onProgress: (p: { done: string; total: string }) => void,
+  ) => {
+    const events = new Channel<{ done: string; total: string }>();
+    events.onmessage = onProgress;
+    return invoke<SelectionEditResponse>("set_names_of_rows", {
+      databaseId,
+      ranges,
+      names,
       events,
     });
   },

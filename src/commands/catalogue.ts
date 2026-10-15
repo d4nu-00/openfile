@@ -193,6 +193,22 @@ const list: CommandMeta[] = [
     views: db,
   },
   {
+    id: "mark-games",
+    label: "Mark Games",
+    tip: "Mark or unmark the selected games with a user medal in cyan color",
+    icon: Star,
+    keys: "+",
+    views: db,
+  },
+  {
+    id: "db-edit-game-data",
+    label: "Edit Game Data",
+    tip: "Edit the selected list items: tournament, annotator or source",
+    icon: TableProperties,
+    keys: "F2",
+    views: db,
+  },
+  {
     id: "db-select-all",
     label: "Select All",
     tip: "Select the whole list",
@@ -1008,6 +1024,8 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             S("db-copy"),
             S("delete-game"),
             S("db-select-all"),
+            S("mark-games"),
+            S("db-edit-game-data"),
           ],
         },
         {

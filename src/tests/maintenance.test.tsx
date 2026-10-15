@@ -101,3 +101,49 @@ describe("database maintenance", () => {
     ).toHaveTextContent("400");
   });
 });
+
+describe("selection edits", () => {
+  it("marks the selected games with + and sets game data with F2", async () => {
+    const ui = renderWorkbench({ clean: true });
+    ui.api.chooseDatabase.mockResolvedValue("/synthetic/edit.2cbh");
+    await ui.user.click(
+      screen.getByRole("button", { name: "Open for Editing" }),
+    );
+    await screen.findByRole("tab", { name: "Database edit" });
+    await ui.user.click(
+      await screen.findByRole("button", { name: "Load entry 1" }),
+    );
+    await ui.user.keyboard("{Shift>}");
+    await ui.user.click(screen.getByRole("button", { name: "Load entry 3" }));
+    await ui.user.keyboard("{/Shift}");
+    await ui.user.keyboard("+");
+    expect(ui.api.markRows).toHaveBeenCalledWith(
+      "db-1",
+      [{ start: "1", end: "4" }],
+      expect.any(Function),
+    );
+    expect(
+      await screen.findByText("3 Games have been marked or unmarked"),
+    ).toBeVisible();
+
+    await ui.user.keyboard("{F2}");
+    const dialog = await screen.findByRole("dialog", {
+      name: "Edit Game Data",
+    });
+    expect(within(dialog).getByRole("button", { name: "Set" })).toBeDisabled();
+    await ui.user.click(
+      within(dialog).getByRole("checkbox", { name: "Set annotator" }),
+    );
+    const field = within(dialog).getByRole("textbox", { name: "Annotator" });
+    await ui.user.clear(field);
+    await ui.user.type(field, "Kasparov, Garry");
+    await ui.user.click(within(dialog).getByRole("button", { name: "Set" }));
+    expect(ui.api.setNamesOfRows).toHaveBeenCalledWith(
+      "db-1",
+      [{ start: "1", end: "4" }],
+      { annotator: "Kasparov, Garry" },
+      expect.any(Function),
+    );
+    expect(await screen.findByText("Game data set for 3 games")).toBeVisible();
+  });
+});

@@ -6,6 +6,12 @@ pub struct EntrySummary {
     pub ordinal: u64,
     pub kind: EntryKind,
     pub deleted: bool,
+    /// Marked with the user medal (Mark Games).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub marked: bool,
+    /// The whole medal word; see `header::RawEntry::medals`.
+    #[serde(skip)]
+    pub medals: u16,
     pub white: Option<String>,
     pub black: Option<String>,
     pub event: Option<String>,
@@ -538,6 +544,8 @@ impl Database {
             ordinal: r.ordinal,
             kind: r.kind,
             deleted: r.deleted,
+            marked: r.medals & crate::v2::write::USER_MEDAL != 0,
+            medals: r.medals,
             white,
             black,
             event,
