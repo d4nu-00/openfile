@@ -316,6 +316,34 @@ export function mockApi(firstDatabase = 1) {
         },
       ),
     stopDeepAnalysis: vi.fn().mockResolvedValue(undefined),
+    classifyGame: vi.fn().mockResolvedValue({
+      eco: "C20",
+      name: "King's Pawn Game",
+      ply: 2,
+      current: "C40",
+    }),
+    setEcoCodes: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          _only: boolean,
+          onProgress: (p: { done: string; total: string }) => void,
+        ) => {
+          onProgress({ done: "200", total: "401" });
+          return {
+            games: "399",
+            changed: "12",
+            unchanged: "300",
+            kept: "80",
+            unclassified: "7",
+            unreadable: "0",
+            agreed: "300",
+            hadCode: "380",
+            cancelled: false,
+          };
+        },
+      ),
     analysisJobs: vi.fn().mockResolvedValue({ jobs: [], running: false }),
     addAnalysisJobs: vi
       .fn()

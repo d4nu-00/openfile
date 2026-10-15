@@ -890,6 +890,21 @@ const list: CommandMeta[] = [
     views: game,
   },
   {
+    id: "classify-opening",
+    label: "Classify Opening",
+    tip: "Show the ECO code and opening name of the current game (workbench table)",
+    icon: BookOpen,
+    keys: "Ctrl+Alt+C",
+    views: game,
+  },
+  {
+    id: "set-eco-codes",
+    label: "Set ECO Codes",
+    tip: "Write ECO codes into games",
+    icon: BookOpen,
+    views: db,
+  },
+  {
     id: "new-analysis-jobs",
     label: "New analysis jobs",
     tip: "Create a new collection of analysis jobs",
@@ -1200,6 +1215,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             S("check-integrity"),
             S("find-double-games"),
             S("remove-deleted-games"),
+            S("set-eco-codes"),
             S("sort-database"),
           ],
         },
@@ -1343,7 +1359,14 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
     {
       label: "Report",
       groups: [
-        { label: "Report", items: [L("opening-report"), L("similar-games")] },
+        {
+          label: "Report",
+          items: [
+            L("opening-report"),
+            L("similar-games"),
+            S("classify-opening"),
+          ],
+        },
       ],
     },
     {

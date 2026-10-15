@@ -8,6 +8,7 @@ import {
   emptyFilter,
   type AppSettings,
   type BlunderParams,
+  type Classification,
   type DeepParams,
   type DeepProgress,
   type JobKind,
@@ -41,6 +42,7 @@ import { EngineManagement } from "./components/EngineManagement";
 import { TablebasePane } from "./components/TablebasePane";
 import { BlunderCheckDialog } from "./components/BlunderCheckDialog";
 import { DeepAnalysisDialog } from "./components/DeepAnalysisDialog";
+import { ClassifyDialog, SetEcoDialog } from "./components/OpeningDialogs";
 import {
   AnalysisJobsDialog,
   defaultJobKind,
@@ -674,8 +676,9 @@ export function App({
   const [pastingGames, setPastingGames] = useState<string>();
   /** A maintenance job: Check Integrity, Find Double Games or Remove
    * Deleted Games, with its progress and result. */
+  const [classified, setClassified] = useState<Classification>();
   const [job, setJob] = useState<{
-    kind: "integrity" | "doubles" | "compact";
+    kind: "integrity" | "doubles" | "compact" | "eco";
     databaseId: string;
     /** Find Double Games shows its options first. */
     options?: boolean;
@@ -838,6 +841,38 @@ export function App({
       setJob((j) => j && { ...j, running: undefined, lines });
     } catch (err) {
       setJob((j) => j && { ...j, running: undefined, error: explain(err) });
+    }
+  }
+  /** Set ECO Codes, after its options. */
+  async function runSetEco(onlyMissing: boolean) {
+    const db = state.database;
+    if (!db?.writable) return;
+    setJob({ kind: "eco", databaseId: db.databaseId, running: "starting…" });
+    try {
+      const r = await api.setEcoCodes(db.databaseId, onlyMissing, jobProgress);
+      const lines = r.cancelled
+        ? [`Stopped; ${r.changed} codes were written before.`]
+        : [
+            `${r.games} games classified: ${r.changed} codes written, ${r.unchanged} already right${onlyMissing ? `, ${r.kept} other codes kept` : ""}.`,
+            `${r.unclassified} games not classified (set-ups or no moves)${Number(r.unreadable) ? `; ${r.unreadable} games could not be read` : ""}.`,
+            `Of the ${r.hadCode} games that had a code, ${r.agreed} already had the table's.`,
+          ];
+      setJob((j) => j && { ...j, running: undefined, lines });
+      if (Number(r.changed) > 0) {
+        keepSelection.current = true;
+        await w.refreshList();
+      }
+    } catch (err) {
+      setJob((j) => j && { ...j, running: undefined, error: explain(err) });
+    }
+  }
+  async function classifyOpening() {
+    const doc = state.document;
+    if (!doc?.documentId) return;
+    try {
+      setClassified(await api.classifyGame(doc.documentId));
+    } catch (err) {
+      w.setDiagnostics([{ code: "classify", message: explain(err) }]);
     }
   }
   async function runDoubles(options: DoubleOptions) {
@@ -1535,6 +1570,20 @@ export function App({
       ),
     },
     "engine-management": { run: () => setEnginesOpen(true) },
+    "classify-opening": {
+      run: () => void classifyOpening(),
+      enabled: !!state.document?.documentId,
+    },
+    "set-eco-codes": {
+      run: () =>
+        state.database &&
+        setJob({
+          kind: "eco",
+          databaseId: state.database.databaseId,
+          options: true,
+        }),
+      enabled: !!state.database?.writable && !job,
+    },
     "deep-analysis": {
       run: () => setDeep((d) => d ?? {}),
       enabled: !!state.document?.documentId,
@@ -2419,7 +2468,7 @@ export function App({
           onClose={() => setSelEdit(undefined)}
         />
       )}
-      {job?.options && (
+      {job?.kind === "doubles" && job.options && (
         <DoublesDialog
           running={job.running}
           error={job.error}
@@ -2437,6 +2486,7 @@ export function App({
               integrity: "Check Integrity",
               doubles: "Find Double Games",
               compact: "Remove Deleted Games",
+              eco: "Set ECO Codes",
             }[job.kind]
           }
           running={job.running && `${job.running}`}
@@ -2491,6 +2541,30 @@ export function App({
               void api.cancelBlunderCheck(blunder.documentId).catch(() => {});
           }}
           onClose={() => setBlunder(undefined)}
+        />
+      )}
+      {job?.kind === "eco" && job.options && (
+        <SetEcoDialog
+          onStart={(onlyMissing) => void runSetEco(onlyMissing)}
+          onClose={() => setJob(undefined)}
+        />
+      )}
+      {classified && (
+        <ClassifyDialog
+          result={classified}
+          onSetEco={
+            classified.eco && classified.eco !== classified.current && game
+              ? () => {
+                  const eco = classified.eco!;
+                  setClassified(undefined);
+                  void e.edit({
+                    kind: "setTags",
+                    tags: { ...game.tags, ECO: eco },
+                  });
+                }
+              : undefined
+          }
+          onClose={() => setClassified(undefined)}
         />
       )}
       {deep && (
