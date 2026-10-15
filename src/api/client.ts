@@ -34,6 +34,8 @@ import type {
   JobsView,
   RunJobsParams,
   RunJobsReport,
+  Classification,
+  EcoResult,
   SortColumn,
   SortProgress,
   SortResponse,
@@ -615,6 +617,24 @@ export const backend = {
     return invoke<RunJobsReport>("run_analysis_jobs", { params, events });
   },
   stopAnalysisJobs: () => invoke<void>("stop_analysis_jobs"),
+  /** Classify Opening: the document's main line. */
+  classifyGame: (documentId: string) =>
+    invoke<Classification>("classify_game", { documentId }),
+  /** Set ECO Codes for a database opened for editing; Stop through
+   * `cancelMaintenance`. */
+  setEcoCodes: (
+    databaseId: string,
+    onlyMissing: boolean,
+    onProgress: (p: { done: string; total: string }) => void,
+  ) => {
+    const events = new Channel<{ done: string; total: string }>();
+    events.onmessage = onProgress;
+    return invoke<EcoResult>("set_eco_codes", {
+      databaseId,
+      onlyMissing,
+      events,
+    });
+  },
   /** The game's main line annotated from the tablebases. */
   tablebaseAnnotation: (documentId: string) =>
     invoke<TablebaseAnnotation>("tablebase_annotation", { documentId }),

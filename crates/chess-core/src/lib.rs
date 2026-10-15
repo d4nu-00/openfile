@@ -1,3 +1,4 @@
+pub mod eco;
 pub mod edit;
 pub mod error;
 pub mod model;

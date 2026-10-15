@@ -292,6 +292,14 @@ export function demoApi(): WorkbenchApi {
       best: [],
     }),
     stopDeepAnalysis: async () => {},
+    classifyGame: async () => ({
+      eco: "C42",
+      name: "Petrov's Defense",
+      ply: 4,
+    }),
+    setEcoCodes: async () => {
+      throw { code: "readOnly", message: "The demo database is read-only" };
+    },
     analysisJobs: async () => ({ jobs: [], running: false }),
     addAnalysisJobs: async () => {
       throw { code: "readOnly", message: "The demo database is read-only" };

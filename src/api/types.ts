@@ -630,6 +630,26 @@ export interface RunJobsReport {
   failed: number;
   jobs: AnalysisJob[];
 }
+/** Classify Opening: the shown game's opening from the open table. */
+export interface Classification {
+  eco?: string;
+  name?: string;
+  /** The main-line ply whose position the table holds. */
+  ply?: number;
+  /** The game's own ECO tag. */
+  current?: string;
+}
+export interface EcoResult {
+  games: string;
+  changed: string;
+  unchanged: string;
+  kept: string;
+  unclassified: string;
+  unreadable: string;
+  agreed: string;
+  hadCode: string;
+  cancelled: boolean;
+}
 /** An engine in Engine Management. */
 export interface InstalledEngine {
   id: string;

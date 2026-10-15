@@ -164,7 +164,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Opening tree from the user's own databases: moves, frequency, score and Elo (`OPENBOOK`, `TOGGLEBOOKPANE`) *(Create Opening Tree builds it into the app data folder; Book tab and extra pane with N, share, %, =%, Av, Perf and last played; main lines only; journal keeps it current across the workbench's own saves; see docs/opening-tree.md)*
 - [x] P1 🟢 Reference database search for the current position (`TOGGLEREFERENCEPANE`, `FINDREFDBBOARD`, `AutoSearchDB`) *(Reference tab and pane follow the board, from the opening tree or Find Position; stale searches are cancelled; the reference database is the open database, a separate reference database setting is not implemented)*
 - [ ] P2 🟢 Opening books: import games or books, copy lines, save the tree (`BOOKIMPORTGAMES`, `BOOKIMPORTBOOK`, `COPYLINETOBOOK`, `SAVETREE`)
-- [ ] P2 🟢 Opening classification with ECO and opening keys (`CLASSIFYGAME`, `ClassifyOpening`)
+- [x] P2 🟢 Opening classification with ECO and opening keys (`CLASSIFYGAME`, `ClassifyOpening`) *(ECO only, from the open lichess table (CC0) instead of ChessBase's Eco.cod: Classify Opening (Ctrl+Alt+C) with Set ECO, and Set ECO Codes (`DBTOOLSSETECOCODE`) for a 2CBH opened for editing, cancellable with progress, keeping existing codes by default. The table gives ChessBase's main code for 76 % of the 2CBH Mega's coded games. Opening keys (`.cko`) are not ported; see [openings](docs/openings.md))*
 - [ ] P2 🟢 Opening report from a database (`OpeningReport`)
 - [ ] P2 🟢 Repertoire database: add white/black lines, find, report, print (`ADDTOREPERTOIREBOARD`, `OPEN_REPERTOIREDB`, `PRINTREPERTOIRE`)
 - [ ] P2 🟢 Generate a repertoire from your own games (`GENERATEREPERTOIRE`)

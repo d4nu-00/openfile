@@ -44,3 +44,8 @@ part of Chess Workbench's distribution. Native system libraries and WebView
 runtimes are platform prerequisites. Source distributions must include this
 file, LICENSE and licenses/. The macOS bundle includes these resources; CI
 executable artifacts include them alongside the binary.
+
+The ECO codes and opening names in crates/chess-core/data/eco/ (a.tsv to
+e.tsv) are the lichess-org/chess-openings data, dedicated to the public domain
+under CC0 1.0 Universal, revision a6189a30dc273ccb21fc2536a9a2fefd5592a67a
+(2026-10-06), kept unmodified. Full text: licenses/chess-openings-CC0.txt.

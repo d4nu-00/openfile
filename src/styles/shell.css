@@ -1824,3 +1824,14 @@ kbd {
     width: 160px;
   }
 }
+
+/* Classify Opening: the ECO code and opening name. */
+.modal.classify-opening {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: min(480px, calc(100vw - 32px));
+}
+.classify-code strong {
+  margin-right: 6px;
+}

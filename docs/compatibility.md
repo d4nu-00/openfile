@@ -138,7 +138,10 @@ offer that option. Other variant rules cannot be enabled. Deep Analysis
 follows ChessBase's traced schedule with one engine, and the analysis jobs
 queue replaces games of a 2CBH database opened for editing with their
 analysis; ChessBase's jobs files are not read or written (see
-[analysis](analysis.md)). Engines and private databases are
+[analysis](analysis.md)). ECO codes come from the open lichess opening table
+(CC0), not from ChessBase's `Eco.cod`, and agree with ChessBase's own codes
+for about 69–76 % of the Mega's games; Set ECO Codes keeps existing codes by
+default and never writes a sub-classification (see [openings](openings.md)). Engines and private databases are
 separate user-provided files. The first workbench does not yet implement
 ChessBase's full search/indexing, its own opening book files (.ctg and trees),
 training, multimedia, cloud services or lossless writing of every ChessBase
