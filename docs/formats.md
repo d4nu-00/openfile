@@ -66,13 +66,36 @@ lines and `0-0`.
 records of the Mega sample that have medals.
 * Bit 15 is the **user medal**, which Mark Games toggles (`0x14013d510`,
   through the getter `0x1401ceb70` and setter `0x1401cf3b0` at +0x82).
-* The Medals dialog (template 112) lists sixteen medals: Best game, Model
-  game, Decided tournament, Novelty, Pawn structure, Strategy, Tactics,
-  With attack, Defense, Sacrifice, Material, Piece play, Endgame, Tactical
-  blunder, Strategical blunder and User. Their control ids run 1059–1075,
-  with 1062 being Reset. Read as bit numbers, they put User at bit 15, as
-  traced. The other bits' meanings are only inferred from that order and
-  are not shown.
+* The other bits are traced from the Medals dialog (template 112, class
+  at vtable `0x1411ddff8`). Its init (`0x1407c1470`) labels the checkboxes
+  with messages and passes the word to `0x1407c1670`. That function sets
+  one checkbox field per bit, and the data exchange (`0x1407c0ee0`) ties
+  each field to a control:
+
+  | Bit | Medal (message) | Control |
+  |---|---|---|
+  | 0 | Best game (291) | 1059 |
+  | 1 | Decided tournament (296) | 1061 |
+  | 2 | Model game (292) | 1060 |
+  | 3 | Novelty (294) | 1063 |
+  | 4 | Pawn structure (301) | 1064 |
+  | 5 | Strategy (305) | 1065 |
+  | 6 | Tactics (304) | 1066 |
+  | 7 | With attack (40) | 1067 |
+  | 8 | Defense (295) | 1068 |
+  | 9 | Sacrifice (300) | 1069 |
+  | 10 | Material (302) | 1070 |
+  | 11 | Piece play (303) | 1071 |
+  | 12 | Endgame (167) | 1072 |
+  | 13 | Tactical blunder (297) | 1073 |
+  | 14 | Strategical blunder (298) | 1074 |
+  | 15 | User (299) | 1075 |
+
+  Control 1062 is Reset (724). The dialog edits a word handed to it (the
+  move medal of "Set Medal", `ANNOMEDAL`). The game's medal word is read
+  with the same bits, since bit 15 is the user medal in both. In the 2CBH
+  Mega sample, 62 records have medals, Endgame (22) and Best game (13)
+  most often.
 
 **Packed ECO** (both families). Bits 7–15 hold 1–500 for A00–E99, and 0 means
 no code. The low seven bits are a ChessBase sub-classification that the reader
