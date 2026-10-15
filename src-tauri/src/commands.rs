@@ -70,6 +70,9 @@ pub struct EntryDto {
     /// Marked with the user medal (Mark Games).
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub marked: bool,
+    /// ChessBase's other medals of the game, by name.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub medals: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub white: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -123,6 +126,10 @@ impl From<cbh_reader::EntrySummary> for EntryDto {
             .into(),
             deleted: e.deleted,
             marked: e.marked,
+            medals: cbh_reader::header::medal_names(e.medals & 0x7fff)
+                .into_iter()
+                .map(String::from)
+                .collect(),
             white: e.white,
             black: e.black,
             event: e.event,

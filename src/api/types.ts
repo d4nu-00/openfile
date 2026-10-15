@@ -18,6 +18,8 @@ export interface EntrySummary {
   deleted: boolean;
   /** Marked with the user medal (Mark Games), shown in cyan. */
   marked?: boolean;
+  /** ChessBase's other medals (Best game, Novelty, Endgame, …). */
+  medals?: string[];
   white?: string;
   black?: string;
   event?: string;
@@ -166,6 +168,9 @@ export type Edit =
     }
   | { kind: "clearMarks" }
   | { kind: "insertVariation"; node: NodeId }
+  | { kind: "exchangeMoves"; node: NodeId }
+  | { kind: "reorderVariations"; node: NodeId; mainLine: boolean }
+  | { kind: "cleanUpVariations" }
   | {
       kind: "deleteCommentary";
       commentary: "all" | "text" | "evaluationAndTime";
@@ -189,6 +194,9 @@ export type Edit =
 /** Edits that change the tree's shape; the selection is re-read after them. */
 export const structuralEdits: Edit["kind"][] = [
   "insertVariation",
+  "exchangeMoves",
+  "reorderVariations",
+  "cleanUpVariations",
   "deleteCommentary",
   "deleteVariation",
   "promoteVariation",

@@ -45,6 +45,7 @@ import { BlunderCheckDialog } from "./components/BlunderCheckDialog";
 import { DeepAnalysisDialog } from "./components/DeepAnalysisDialog";
 import { ClassifyDialog, SetEcoDialog } from "./components/OpeningDialogs";
 import { OpeningReportDialog } from "./components/OpeningReportDialog";
+import { ReorderDialog } from "./components/ReorderDialog";
 import {
   AnalysisJobsDialog,
   defaultJobKind,
@@ -679,6 +680,7 @@ export function App({
   /** A maintenance job: Check Integrity, Find Double Games or Remove
    * Deleted Games, with its progress and result. */
   const [classified, setClassified] = useState<Classification>();
+  const [reordering, setReordering] = useState(false);
   const [report, setReport] = useState<{
     databaseId: string;
     startFen?: string;
@@ -1780,6 +1782,25 @@ export function App({
       run: () => e.edit({ kind: "promoteVariation", node: selected }),
       enabled: inVariation && !busy,
     },
+    "exchange-moves": {
+      run: () => e.edit({ kind: "exchangeMoves", node: selected }),
+      // ChessBase's Exchange Moves works on a variation's first move.
+      enabled:
+        !busy &&
+        !!game &&
+        selected !== 0 &&
+        (game.nodes[game.nodes[selected]?.parent ?? 0]?.children.indexOf(
+          selected,
+        ) ?? 0) > 0,
+    },
+    "reorder-variations": {
+      run: () => setReordering(true),
+      enabled: !!game && !busy,
+    },
+    "cleanup-variations": {
+      run: () => e.edit({ kind: "cleanUpVariations" }),
+      enabled: !!game && !busy,
+    },
     "delete-remaining-moves": {
       run: () => e.edit({ kind: "deleteRemaining", node: selected }),
       enabled: !!game?.nodes[selected]?.children.length && !busy,
@@ -2608,6 +2629,19 @@ export function App({
             void api.cancelMaintenance(report.databaseId).catch(() => {})
           }
           onClose={() => setReport(undefined)}
+        />
+      )}
+      {reordering && (
+        <ReorderDialog
+          onAnswer={(mainLine) => {
+            setReordering(false);
+            void e.edit({
+              kind: "reorderVariations",
+              node: selected,
+              mainLine,
+            });
+          }}
+          onClose={() => setReordering(false)}
         />
       )}
       {classified && (

@@ -814,6 +814,26 @@ A census of the classic Mega's CBG headers counted:
   report of 1.e4 c5 takes 4.5 s; the classic Mega's Najdorf takes 23.8 s
   warm.
 
+## Variation tools and medal names (2026-10-15)
+
+* **Core tests** (`chess_core::variations`):
+  * Exchange Moves swaps 1...c5 with 1...e5, keeping 1...e6, and refuses
+    a main-line move or a variation's later move.
+  * Reorder Variations puts the 6-move Sicilian before the 2-move line
+    when the main line is included, and only reorders inside variations
+    otherwise.
+  * Clean up variations merges 1.c4 e6 2.d4 Nf6 3.Nc3 Bb4 4.Qc2 into the
+    main line's Nimzo-Indian position: 6 moves dropped, 4.Qc2 and its
+    comment kept. A variation that never transposes stays as it is.
+* **App test:** the three edits go through the document service as JSON.
+  This caught `mainLine` being ignored, since the `Edit` enum renames
+  variants but not fields.
+* **Reader test:** medal names by bit.
+* **Frontend tests:** the ribbon commands and the "Including the mainline?"
+  question send their edits; a game's medals are named in the list.
+* **Mega check** (read-only): 62 medalled 2CBH records, mostly Endgame
+  (22) and Best game (13).
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

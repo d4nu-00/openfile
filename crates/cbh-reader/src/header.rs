@@ -119,6 +119,36 @@ pub(crate) fn date(value: u32) -> Option<String> {
         }
     ))
 }
+/// The medals of the medal word, by bit (`0x1407c1670`, which fills the
+/// Medals dialog's checkboxes from a word; the labels are messages 291–305,
+/// 167 and 40). Bit 15, User, is the medal Mark Games toggles.
+pub const MEDAL_NAMES: [&str; 16] = [
+    "Best game",
+    "Decided tournament",
+    "Model game",
+    "Novelty",
+    "Pawn structure",
+    "Strategy",
+    "Tactics",
+    "With attack",
+    "Defense",
+    "Sacrifice",
+    "Material",
+    "Piece play",
+    "Endgame",
+    "Tactical blunder",
+    "Strategical blunder",
+    "User",
+];
+
+/// The names of the medals set in `word`, in bit order.
+pub fn medal_names(word: u16) -> Vec<&'static str> {
+    (0..16)
+        .filter(|b| word >> b & 1 != 0)
+        .map(|b| MEDAL_NAMES[b])
+        .collect()
+}
+
 /// Year of a packed date; 0 means unknown.
 pub(crate) fn year(value: u32) -> Option<u16> {
     let y = ((value >> 9) & 4095) as u16;
@@ -273,4 +303,14 @@ pub fn parse_record(bytes: &[u8], ordinal: u64) -> Result<RawEntry, CbhError> {
     }
     r.eco_raw = Some(u16::from_be_bytes([bytes[35], bytes[36]]));
     Ok(r)
+}
+
+#[cfg(test)]
+mod medal_tests {
+    #[test]
+    fn medal_bits_follow_the_dialog() {
+        assert_eq!(super::medal_names(0), Vec::<&str>::new());
+        assert_eq!(super::medal_names(1), ["Best game"]);
+        assert_eq!(super::medal_names(1 << 12 | 1 << 15), ["Endgame", "User"]);
+    }
 }

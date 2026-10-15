@@ -228,6 +228,65 @@ two are not ported.
   * **Delete Colour Commentary** (Ctrl+Alt+Y) was already there. Training
     and multimedia annotations are not decoded either.
 
+## Exchange Moves, Reorder and Clean up variations
+
+Evidence: CBase18.exe 18.1, through an REA session
+(`analysis/variations/` in the research workspace).
+
+| Command | Id | Run slot | Message |
+|---|---|---|---|
+| Exchange Moves | `EXCHANGEMOVES` (`ExchangeMovesCmd`) | `0x1409c6480` → `0x1409fa050` | "Replace moves of main line with variation" |
+| Reorder Variations | `REORDERVARIATIONS` | `0x1408e1bd0` → `0x1408ea000` | "Rearrange deeply nested variations to minimize depth" (50360) |
+| Clean up variations | `CLEANUPVARIATIONS` | `0x1408e0fb0` → `0x1408e6d70` | "Clean up different move orders in a deeply annotated game" (50602) |
+
+None has a default key. The workbench puts them beside Promote Variation
+(Insert › Variations).
+
+### What ChessBase does
+
+* **Exchange Moves** (`0x140b5b930`, `0x140b5bc60`, `0x140b5b9c0`) works
+  only on the first move of a variation. The variation's moves replace
+  the line's continuation, which then takes the variation's place.
+  Elsewhere it says "Can't replace moves." (1244). A length and legality
+  check (`0x140b4db60`) exists because ChessBase stores lines as arrays.
+  The swap is undoable.
+* **Reorder Variations** asks "Including the mainline?" (51513, Yes/No/Cancel),
+  then runs `0x140b62270` from the cursor along its line.
+  * At every move with variations, each variation is reordered inside first
+    (the recursion always includes its own line).
+  * With Yes, the variation with the largest size (`0x140b4adb0`: its moves
+    and all the moves of its nested variations) becomes the line when it is
+    larger than the line's continuation, through Exchange Moves.
+  * Ties keep the line, and among variations the first largest wins.
+* **Clean up variations** builds an empty game with the same header, splits
+  the game into its lines (`0x140b65df0`), and merges each line into it
+  (`0x140b64220` → `0x140b64c80`, at most 2,000 plies).
+  * The merge walks a line back from its end to the deepest position the
+    new game already holds, compared by position (`0x140b639b0`), so a
+    different move order counts.
+  * The rest of the line is attached there; the moves before it are
+    dropped.
+
+### Workbench
+
+The three are game-window commands, each one undoable edit. Exchange and
+Reorder keep the selection on the same move; Clean up selects the start.
+* **Exchange Moves** swaps the selected variation with its parent's first
+  continuation. It is enabled on a variation's first move and refused
+  elsewhere. In the workbench's tree the swap needs no legality check.
+* **Reorder Variations** asks "Including the mainline?" and follows the
+  rules above from the selected move, comparing subtree sizes.
+* **Clean up variations** rebuilds the whole game from its lines, main line
+  first. Each line is attached after its deepest position already in the
+  rebuilt game; positions compare board, side to move, castling rights and
+  a legal en-passant square.
+  * Moves kept keep their annotations.
+  * Comments of a move that meets an existing one are added to it, and its
+    symbols are added when the existing move has none.
+  * The dropped moves of an alternative move order lose their annotations,
+    as ChessBase's merge drops those moves. Whether ChessBase keeps their
+    comments elsewhere was not traced.
+
 ## Game tabs
 
 ### What ChessBase does

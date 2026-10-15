@@ -335,3 +335,11 @@ in the scratch folder, the same way Paste does, by
 * the first comparison found one "0-0" game that came back as "Line", which
   led to the `CBResult` tag above;
 * a cold first run took 26 ms per game, waiting on the disk.
+
+## Medals
+
+A game with any of ChessBase's other fifteen medals shows an amber dot
+after its number. Its tooltip names them, e.g. "Medals: Novelty, Endgame",
+in bit order (see [formats](formats.md) for the traced bits). The user
+medal keeps its cyan dot. Medals other than the user medal are shown only;
+setting them is not ported.
