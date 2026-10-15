@@ -60,7 +60,7 @@ export function PrepareDialog({
             </strong>
             {data && (
               <div className="hint">
-                {data.games} games with {colour}
+                {data.games} {data.games === 1 ? "game" : "games"} with {colour}
                 {data.firstYear
                   ? ` from ${data.firstYear}${data.lastYear !== data.firstYear ? `–${data.lastYear}` : ""}`
                   : ""}

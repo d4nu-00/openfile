@@ -106,7 +106,9 @@ fn prepare_against_builds_the_player_s_tree_with_one_colour() {
         .unwrap()
         .unwrap();
     assert_eq!((black.games, black.score.points), (1, 0.0));
-    assert!(black.repertoire.is_empty());
+    // A single game is still a line.
+    assert_eq!(black.repertoire.len(), 1);
+    assert_eq!(black.repertoire[0].text, "1.c4");
 
     // Closing it returns the Book to the database's tree, and changing the
     // database drops it too.

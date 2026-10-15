@@ -1919,6 +1919,7 @@ kbd {
 }
 .prepare .prepare-score {
   width: auto;
+  align-self: flex-start;
 }
 .prepare .prepare-lists {
   display: grid;

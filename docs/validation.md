@@ -879,3 +879,16 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
 * **Tests.** `setups.rs` builds set-ups with kings on g1/g8 and K, k set
   (both dropped), and with one possible and one impossible right (the
   possible one kept, and castling with it decodes).
+
+## Prepare against White or Black (2026-10-15)
+
+* **Measurements** on the classic Mega, read-only: see
+  [preparation](preparation.md#measurements). Carlsen with White: 3,515
+  games, all readable; 14 repertoire lines.
+* **Tests.** Reader tests answer positions from kept main lines, follow the
+  repertoire threshold and average the recent rating. An app test prepares
+  against a player of a scratch 2CBH with each colour, answers the Book,
+  lists all games and those of a line, refuses another colour, and drops the
+  preparation when it is closed or the database changes. Frontend tests run
+  Ctrl+W and Ctrl+B from the Players list, switch colour, list a line's
+  games, show the preparation in the Book and return to the database tree.

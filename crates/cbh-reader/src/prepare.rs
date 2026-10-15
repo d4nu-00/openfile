@@ -77,13 +77,17 @@ impl PlayerTree {
 
     /// The lines the player keeps playing from the standard start position:
     /// a move continues a line while at least [`LINE_SHARE_PERCENT`] % of the
-    /// games (and [`LINE_MIN_GAMES`]) play it, up to [`LINE_PLIES`]. The most
+    /// games (and [`LINE_MIN_GAMES`], or the one game there is) play it, up
+    /// to [`LINE_PLIES`]. The most
     /// played [`MAX_LINES`] lines, most played first.
     pub fn repertoire(&self, player_white: bool) -> Vec<RepertoireLine> {
         let start = Chess::default();
         let root = Replay::new(start.board(), start.turn());
         let all: u64 = self.moves_at(root.hash()).iter().map(|m| m.games).sum();
-        let min = (all * LINE_SHARE_PERCENT).div_ceil(100).max(LINE_MIN_GAMES);
+        // A player with a single game still has that game's line.
+        let min = (all * LINE_SHARE_PERCENT)
+            .div_ceil(100)
+            .max(LINE_MIN_GAMES.min(all.max(1)));
         let mut out = vec![];
         let mut stack = vec![(root, Vec::<u16>::new())];
         while let Some((replay, moves)) = stack.pop() {
