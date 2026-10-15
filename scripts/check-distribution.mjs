@@ -42,6 +42,7 @@ const documents = new Set([
   "analysis.md",
   "openings.md",
   "preparation.md",
+  "player-dossier.md",
 ]);
 export function allowedSourcePath(candidate) {
   if (

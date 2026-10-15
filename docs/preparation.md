@@ -48,7 +48,7 @@ session (`analysis/reports/` in the research workspace).
   or black> was successful." From the ribbon (database window, Home ›
   Players) it has no parameters, so it only opens the list.
 * The **Dossier** (`PLAYERDOSSIER`, Ctrl+Alt+D) uses the list's slot 0x400
-  (`0x14073b640`).
+  (`0x14073b640`); see [player dossier](player-dossier.md).
 
 **Not traced:**
 * what the game window does with the player's games beyond its list: mode 2

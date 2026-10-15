@@ -47,5 +47,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         d.mates_read,
         d.annotated_count
     );
+    if let Some(g) = d.mates_given.first().or(d.medal_games.first()) {
+        println!("a listed game: entry {}", g.ordinal);
+    }
     Ok(())
 }
