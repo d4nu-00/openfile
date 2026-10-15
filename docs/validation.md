@@ -689,6 +689,23 @@ A census of the classic Mega's CBG headers counted:
 * **Frontend tests.** The three dialogs and their results; doubles pass
   the chosen options.
 
+## Mark Games and selection edits (2026-10-15)
+
+* **Mega check.** The medal word at 2CBH bytes 130–131 equals classic
+  bytes 37–38 read big-endian in all 8,790 records of the first 24,783
+  entries that have medals. The user medal (bit 15) is set in 11 games.
+* **App tests.**
+  * Mark Games toggles each selected game on its own, and Replace keeps the
+    medal.
+  * Edit Game Data sets the tournament (event and site) and the source, and
+    clears the annotator of the selection only.
+  * Moves are unchanged.
+  * An empty request or a name with a line break is refused.
+* **Reader tests.** A conversion keeps each entry's medal word.
+* **Frontend tests.** "+" marks the Shift-selection and reports ChessBase's
+  message. F2 opens the dialog, which sets only the ticked field for the
+  same selection.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private
