@@ -757,6 +757,40 @@ A census of the classic Mega's CBG headers counted:
   * The time warning holds ChessBase's minimum.
   * Add Analysis Job sends the board position; Restart sends its action.
 
+## Opening classification (2026-10-15)
+
+* **Core tests** (`chess_core::eco`):
+  * every line of the pinned lichess table replays and is indexed;
+  * the Najdorf is B90 after 5...a6 (ply 10), and 6.Be3 is a deeper named
+    line;
+  * moves past the table keep the last match;
+  * the Nimzo-Indian is E20 by either move order;
+  * a game is classified by its main line, not its variations;
+  * set-ups are not classified.
+* **Reader tests** (`tests/eco.rs`):
+  * Set ECO Codes classifies five games (Petrov, Najdorf, a mis-coded
+    Queen's Gambit, a set-up, a Petrov after a variation) into B90, D35 and
+    C42 changes, one unchanged and one unclassified;
+  * "Only games without a code" keeps the wrong code;
+  * the written codes read back, and a ChessBase sub-classification on an
+    unchanged code survives;
+  * a word beyond E99 is refused before anything is written;
+  * a cancelled run returns nothing.
+* **App tests:**
+  * Classify Opening names the shown game (C42, Petrov's Defense, ply 6)
+    beside its own ECO tag;
+  * Set ECO Codes writes the codes of a new 2CBH database (only missing,
+    then all) and refuses a read-only database.
+* **Frontend tests.**
+  * Ctrl+Alt+C shows the code, name and move, and Set ECO sends one
+    `setTags` edit with the code.
+  * Set ECO Codes starts with "Only games without an ECO code" ticked and
+    reports the counts.
+* **Measurements** on the Mega, read-only: see [openings](openings.md).
+  * 2CBH family: 24,759 games in 0.26 s, the same main code as ChessBase
+    for 76.4 % of coded games.
+  * Classic: 11.15 M games in 188.5 s with 8 workers, 68.6 %.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private
