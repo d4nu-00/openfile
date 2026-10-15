@@ -36,6 +36,10 @@ import type {
   PasteResponse,
   ConvertEstimate,
   ConvertResponse,
+  IntegrityReport,
+  DoubleOptions,
+  DoublesResponse,
+  CompactResponse,
   PlayerStatistics,
   PositionQuery,
   StatGroup,
@@ -200,6 +204,45 @@ export const backend = {
       events,
     });
   },
+  checkIntegrity: async (
+    databaseId: string,
+    onProgress: (p: { done: string; total: string }) => void,
+  ) => {
+    const events = new Channel<{ done: string; total: string }>();
+    events.onmessage = onProgress;
+    return invoke<IntegrityReport>("check_integrity", { databaseId, events });
+  },
+  findDoubleGames: async (
+    databaseId: string,
+    options: DoubleOptions,
+    onProgress: (p: { done: string; total: string }) => void,
+  ) => {
+    const events = new Channel<{ done: string; total: string }>();
+    events.onmessage = onProgress;
+    return invoke<DoublesResponse>("find_double_games", {
+      databaseId,
+      options,
+      events,
+    });
+  },
+  removeDeletedGames: async (
+    databaseId: string,
+    onProgress: (p: { done: string; total: string }) => void,
+  ) => {
+    const events = new Channel<{ done: string; total: string }>();
+    events.onmessage = onProgress;
+    return invoke<CompactResponse>("remove_deleted_games", {
+      databaseId,
+      events,
+    });
+  },
+  cancelMaintenance: (databaseId: string) =>
+    invoke<void>("cancel_maintenance", { databaseId }),
+  confirmRemoveDeleted: () =>
+    ask(
+      "Games marked as deleted are removed from the database files for good, and the other games are numbered anew. The files are rewritten beside the database and swapped in when complete. ChessBase's index files (.2lcd, .2lgd) are removed; its Check Integrity rebuilds them. Files beside the database that refer to game numbers, such as ChessBase's key files, are not updated.",
+      { title: "Remove Deleted Games", kind: "warning", okLabel: "Remove" },
+    ),
   cancelConvert: (databaseId: string) =>
     invoke<void>("cancel_convert", { databaseId }),
   createDatabase: (path: string, requestId: string) =>

@@ -905,6 +905,55 @@ pub async fn convert_database(
     })
     .await
 }
+fn throttled(
+    events: tauri::ipc::Channel<crate::maintenance::MaintenanceProgress>,
+) -> impl FnMut(u64, u64) {
+    let mut last = std::time::Instant::now();
+    move |done, total| {
+        if last.elapsed().as_millis() >= 250 || done == total {
+            last = std::time::Instant::now();
+            let _ = events.send(crate::maintenance::MaintenanceProgress {
+                done: done.to_string(),
+                total: total.to_string(),
+            });
+        }
+    }
+}
+#[tauri::command]
+pub async fn check_integrity(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    events: tauri::ipc::Channel<crate::maintenance::MaintenanceProgress>,
+) -> Result<cbh_reader::maintain::IntegrityReport, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.check_integrity(database_id, throttled(events))).await
+}
+#[tauri::command]
+pub async fn find_double_games(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    options: cbh_reader::maintain::DoubleOptions,
+    events: tauri::ipc::Channel<crate::maintenance::MaintenanceProgress>,
+) -> Result<crate::maintenance::DoublesResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.find_double_games(database_id, options, throttled(events))).await
+}
+#[tauri::command]
+pub async fn remove_deleted_games(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    events: tauri::ipc::Channel<crate::maintenance::MaintenanceProgress>,
+) -> Result<crate::maintenance::CompactResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.remove_deleted_games(database_id, throttled(events))).await
+}
+#[tauri::command]
+pub fn cancel_maintenance(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_maintenance(database_id)
+}
 #[tauri::command]
 pub fn cancel_convert(
     state: tauri::State<'_, Arc<Registry>>,

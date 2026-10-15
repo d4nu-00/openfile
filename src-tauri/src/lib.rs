@@ -7,6 +7,7 @@ pub mod documents;
 pub mod engine_commands;
 pub mod library;
 pub mod lists;
+pub mod maintenance;
 pub mod names;
 pub mod registry;
 pub mod save;
@@ -184,6 +185,10 @@ pub fn run() {
             commands::convert_estimate,
             commands::convert_database,
             commands::cancel_convert,
+            commands::check_integrity,
+            commands::find_double_games,
+            commands::remove_deleted_games,
+            commands::cancel_maintenance,
             commands::delete_rows,
             commands::load_entry,
             commands::position_at,

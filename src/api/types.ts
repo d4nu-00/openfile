@@ -576,6 +576,53 @@ export interface ReferenceResponse {
   /** A fallback search used the search booster. */
   indexed: boolean;
 }
+/** One problem Check Integrity found; entry 0 is a problem of the files. */
+export interface IntegrityProblem {
+  ordinal: number;
+  code: string;
+  message: string;
+}
+export interface IntegrityReport {
+  checked: number;
+  games: number;
+  texts: number;
+  deleted: number;
+  counts: Record<string, number>;
+  problems: IntegrityProblem[];
+  cancelled: boolean;
+}
+export type DoubleCompare = "exact" | "similar" | "ignore";
+/** ChessBase's Kill Doubles options that the workbench ports. */
+export interface DoubleOptions {
+  decision: "first" | "second" | "keepBetter";
+  names: DoubleCompare;
+  moves: DoubleCompare;
+  minMoves: number;
+  ignoreResult: boolean;
+  ignoreYear: boolean;
+  keepAnnotators: boolean;
+  deleteAnnotated: boolean;
+}
+export interface DoublesResponse {
+  checked: string;
+  marked: string;
+  keptBoth: string;
+  /** The first pairs, as (marked, kept) entry numbers. */
+  pairs: [string, string][];
+  cancelled: boolean;
+  treeStale: boolean;
+}
+export interface CompactResponse {
+  kept: string;
+  removed: string;
+  bytesBefore: string;
+  bytesAfter: string;
+  cancelled: boolean;
+  entryCount: string;
+  /** Open games whose entry number changed, as (old, new); new "0" when removed. */
+  moved: [string, string][];
+  treeDeleted: boolean;
+}
 /** The space Convert to 2CBH needs, against the target disk's free space. */
 export interface ConvertEstimate {
   games: string;

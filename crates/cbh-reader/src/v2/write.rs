@@ -605,6 +605,20 @@ impl Writer {
         Ok(omitted)
     }
 
+    /// Marks several entries deleted with one sync (Find Double Games).
+    pub fn set_deleted_many(&mut self, ordinals: &[u64]) -> Result<(), CbhError> {
+        self.check()?;
+        // Every entry is checked before any is changed.
+        let mut flags = Vec::with_capacity(ordinals.len());
+        for &ordinal in ordinals {
+            flags.push(self.existing(ordinal)?[0] | 0x80);
+        }
+        for (&ordinal, flag) in ordinals.iter().zip(flags) {
+            self.header.write_at(ordinal * RECORD as u64, &[flag])?;
+        }
+        self.header.sync()
+    }
+
     /// Sets or clears the deleted flag (bit 7 of byte 0) of entry `ordinal`.
     pub fn set_deleted(&mut self, ordinal: u64, deleted: bool) -> Result<(), CbhError> {
         self.check()?;

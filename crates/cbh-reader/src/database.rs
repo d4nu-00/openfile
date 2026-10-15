@@ -119,10 +119,10 @@ impl Names {
 }
 /// A read-only CBH-family database in either supported format.
 pub struct Database {
-    format: DatabaseFormat,
+    pub(crate) format: DatabaseFormat,
     header: crate::source::SourceFile,
-    moves: Option<crate::source::SourceFile>,
-    annotations: Option<crate::source::SourceFile>,
+    pub(crate) moves: Option<crate::source::SourceFile>,
+    pub(crate) annotations: Option<crate::source::SourceFile>,
     /// Classic CBJ: per-entry records whose first eight bytes are the BE32
     /// white and black team ids.
     teams: Option<TeamIndex>,
@@ -703,7 +703,7 @@ impl Database {
         Ok(loaded)
     }
     /// Decodes the move tree stored at `offset` of the move file.
-    fn decode_moves_at(
+    pub(crate) fn decode_moves_at(
         &self,
         file: &crate::source::SourceFile,
         offset: u64,
@@ -750,7 +750,7 @@ impl Database {
         }
     }
     /// Parses the CBA/2CBA annotation record at `offset`.
-    fn parse_annotations(
+    pub(crate) fn parse_annotations(
         &self,
         file: &crate::source::SourceFile,
         offset: u64,

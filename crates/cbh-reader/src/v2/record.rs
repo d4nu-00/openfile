@@ -7,8 +7,8 @@
 use crate::{CbhError, Diagnostic, EntryKind, header::RawEntry};
 
 pub const RECORD: usize = 192;
-const TYPE_GAME: u16 = 0x0101;
-const TYPE_TEXT: u16 = 0x0301;
+pub(crate) const TYPE_GAME: u16 = 0x0101;
+pub(crate) const TYPE_TEXT: u16 = 0x0301;
 
 #[derive(Debug)]
 pub struct NewHeader {

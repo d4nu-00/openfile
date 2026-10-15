@@ -654,6 +654,41 @@ A census of the classic Mega's CBG headers counted:
   editing and reports the counts. An estimate that does not fit disables
   Convert and says why.
 
+## Database maintenance (2026-10-14)
+
+* **Measurements** (`cbh-reader/examples/maintain.rs`, release, warm):
+  * Check Integrity on the 2CBH Mega found no problems (0.18 s).
+  * On the classic Mega it took 133.8 s and found 16 problems in
+    11,151,119 entries. 14 are set-ups whose castling rights the board
+    does not allow, which the reader refuses and earlier spot checks had
+    not met. One is the known Chess960 record without a start position,
+    and one is an annotation record that does not parse.
+  * Find Double Games marked 4 games of the 2CBH Mega with the defaults.
+  * Remove Deleted Games on a scratch copy with every tenth game marked
+    removed 2,476 entries in 0.41 s, and Check Integrity afterwards was
+    clean. The copy was deleted. See [maintenance](maintenance.md#measurements).
+* **Reader tests.**
+  * Compaction:
+    * keeps the other entries' moves, comments and variations, drops
+      deleted entries and replaced games' old blocks, and renumbers;
+    * removes `.2lcd`;
+    * does nothing when cancelled, and refuses to overwrite a leftover
+      backup.
+  * A damaged 2CBG block is reported for its entry.
+  * Doubles:
+    * Similar names pair "Kasparov, G" with "Kasparov, Garry";
+    * the annotated game is kept, then the rated one;
+    * Always second and the game length work.
+* **App tests.**
+  * Integrity, doubles and compaction work through the registry.
+  * A game open in a tab follows its new entry number, and Replace writes
+    the right entry afterwards.
+  * The database can be written after the swap, and no temporary or
+    backup files remain.
+  * Read-only databases can be checked but not marked or compacted.
+* **Frontend tests.** The three dialogs and their results; doubles pass
+  the chosen options.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

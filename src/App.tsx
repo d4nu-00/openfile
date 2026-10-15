@@ -15,6 +15,7 @@ import type {
   NameKind,
   NameRow,
   ConvertEstimate,
+  DoubleOptions,
   DatabaseSymbol,
   Edit,
   PlayerStatistics,
@@ -40,6 +41,7 @@ import { PasteDialog } from "./components/PasteDialog";
 import { AnnotationPalette } from "./components/AnnotationPalette";
 import { SymbolMenu } from "./components/SymbolMenu";
 import { ConvertDialog, type ConvertScope } from "./components/ConvertDialog";
+import { DoublesDialog, JobDialog } from "./components/MaintenanceDialogs";
 import type { SymbolSlot } from "./state/symbols";
 import { UnsavedDialog } from "./components/UnsavedDialog";
 import { SearchMask } from "./components/SearchMask";
@@ -480,6 +482,17 @@ export function App({
   /** Games copied and waiting to be pasted, and a running paste. */
   const [clipGames, setClipGames] = useState(0);
   const [pastingGames, setPastingGames] = useState<string>();
+  /** A maintenance job: Check Integrity, Find Double Games or Remove
+   * Deleted Games, with its progress and result. */
+  const [job, setJob] = useState<{
+    kind: "integrity" | "doubles" | "compact";
+    databaseId: string;
+    /** Find Double Games shows its options first. */
+    options?: boolean;
+    running?: string;
+    error?: string;
+    lines?: string[];
+  }>();
   /** Convert to 2CBH: its dialog, while open. */
   const [converting, setConverting] = useState<{
     databaseId: string;
@@ -590,6 +603,114 @@ export function App({
       setConverting(
         (s) => s && { ...s, running: undefined, error: explain(err) },
       );
+    }
+  }
+  const jobProgress = (p: { done: string; total: string }) =>
+    setJob((j) => j && { ...j, running: `${p.done} of ${p.total} entries` });
+  async function runIntegrity() {
+    const db = state.database;
+    if (!db) return;
+    setJob({
+      kind: "integrity",
+      databaseId: db.databaseId,
+      running: "starting…",
+    });
+    try {
+      const r = await api.checkIntegrity(db.databaseId, jobProgress);
+      const counts = Object.entries(r.counts);
+      const lines = [
+        `${r.cancelled ? "Stopped after" : "Checked"} ${r.checked} entries: ${r.games} games, ${r.texts} texts, ${r.deleted} marked deleted.`,
+        counts.length
+          ? `${counts.reduce((n, [, c]) => n + c, 0)} problems: ${counts.map(([k, c]) => `${k} ${c}`).join(", ")}.`
+          : "No problems found.",
+        ...r.problems
+          .slice(0, 50)
+          .map((p) =>
+            p.ordinal
+              ? `Entry ${p.ordinal}: ${p.message}`
+              : `Files: ${p.message}`,
+          ),
+      ];
+      setJob((j) => j && { ...j, running: undefined, lines });
+    } catch (err) {
+      setJob((j) => j && { ...j, running: undefined, error: explain(err) });
+    }
+  }
+  async function runDoubles(options: DoubleOptions) {
+    const db = state.database;
+    if (!db) return;
+    setJob({
+      kind: "doubles",
+      databaseId: db.databaseId,
+      options: true,
+      running: "starting…",
+    });
+    try {
+      const r = await api.findDoubleGames(db.databaseId, options, jobProgress);
+      await w.refreshList();
+      const lines = r.cancelled
+        ? ["Stopped; nothing was marked."]
+        : [
+            `Compared ${r.checked} entries: ${r.marked} doubles marked deleted.`,
+            ...(r.keptBoth !== "0"
+              ? [
+                  `${r.keptBoth} pairs kept both games (annotated, or different annotators).`,
+                ]
+              : []),
+            ...(r.treeStale ? ["The opening tree needs rebuilding."] : []),
+            ...r.pairs
+              .slice(0, 50)
+              .map(([gone, kept]) => `Game ${gone} marked; game ${kept} kept.`),
+          ];
+      setJob((j) => j && { ...j, options: false, running: undefined, lines });
+    } catch (err) {
+      setJob((j) => j && { ...j, running: undefined, error: explain(err) });
+    }
+  }
+  async function runCompact() {
+    const db = state.database;
+    if (!db?.writable || !(await api.confirmRemoveDeleted())) return;
+    setJob({
+      kind: "compact",
+      databaseId: db.databaseId,
+      running: "starting…",
+    });
+    try {
+      const r = await api.removeDeletedGames(db.databaseId, jobProgress);
+      if (r.cancelled) {
+        setJob(
+          (j) =>
+            j && {
+              ...j,
+              running: undefined,
+              lines: ["Stopped; the database is unchanged."],
+            },
+        );
+        return;
+      }
+      w.renumber(db.databaseId, r.moved, r.entryCount);
+      const mb = (b: string) => `${(Number(b) / 1e6).toFixed(1)} MB`;
+      setJob(
+        (j) =>
+          j && {
+            ...j,
+            running: undefined,
+            lines: [
+              `${r.removed} deleted games removed; ${r.kept} entries kept.`,
+              `The files took ${mb(r.bytesBefore)} and now take ${mb(r.bytesAfter)}.`,
+              ...(r.moved.length
+                ? [
+                    `${r.moved.length} open games follow their new entry numbers.`,
+                  ]
+                : []),
+              ...(r.treeDeleted
+                ? ["The opening tree was deleted; create it again when needed."]
+                : []),
+            ],
+          },
+      );
+    } catch (err) {
+      setJob((j) => j && { ...j, running: undefined, error: explain(err) });
     }
   }
   async function copyGames() {
@@ -913,6 +1034,24 @@ export function App({
     "db-paste": {
       run: () => pasteGames(),
       enabled: !!state.database?.writable && clipGames > 0 && !pastingGames,
+    },
+    "check-integrity": {
+      run: () => runIntegrity(),
+      enabled: !!state.database && !job,
+    },
+    "find-double-games": {
+      run: () =>
+        state.database &&
+        setJob({
+          kind: "doubles",
+          databaseId: state.database.databaseId,
+          options: true,
+        }),
+      enabled: !!state.database?.writable && !job,
+    },
+    "remove-deleted-games": {
+      run: () => runCompact(),
+      enabled: !!state.database?.writable && !job,
     },
     "convert-to-2cbh": {
       run: () => startConvert(),
@@ -1912,6 +2051,35 @@ export function App({
               })
               .catch((err) => setOptionsError(explain(err)))
           }
+        />
+      )}
+      {job?.options && (
+        <DoublesDialog
+          running={job.running}
+          error={job.error}
+          onStart={(o) => void runDoubles(o)}
+          onCancel={() =>
+            void api.cancelMaintenance(job.databaseId).catch(() => {})
+          }
+          onClose={() => setJob(undefined)}
+        />
+      )}
+      {job && !job.options && (
+        <JobDialog
+          title={
+            {
+              integrity: "Check Integrity",
+              doubles: "Find Double Games",
+              compact: "Remove Deleted Games",
+            }[job.kind]
+          }
+          running={job.running && `${job.running}`}
+          error={job.error}
+          lines={job.lines}
+          onCancel={() =>
+            void api.cancelMaintenance(job.databaseId).catch(() => {})
+          }
+          onClose={() => setJob(undefined)}
         />
       )}
       {converting && (

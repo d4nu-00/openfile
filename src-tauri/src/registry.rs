@@ -58,6 +58,7 @@ pub(crate) struct State {
     pub(crate) clip: Option<Arc<crate::clipboard::Clip>>,
     pub(crate) paste_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     /// Running conversions to 2CBH, by source database.
+    pub(crate) maintenance_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     pub(crate) convert_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     pub documents: HashMap<String, Arc<Mutex<Document>>>,
 }

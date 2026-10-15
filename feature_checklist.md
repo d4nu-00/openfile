@@ -49,9 +49,9 @@ Names in backticks are ChessBase command ids, for traceability.
 - [ ] P2 🟢 Database properties: icon, type, description (`EDITDBPROPERTIES`, `Properties`)
 - [x] P2 🟢 Several databases open at once *(up to four, a tab each; each keeps its own search, sort and scroll position)*
 - [x] P1 🟢 Search Booster: create and delete the fast position index (`DBTOOLSCREATESEARCHBOOSTER`, `DBTOOLSDELETESEARCHBOOSTER`) *(the workbench's own index in its data folder; built by 8 workers, 128 s for the classic Mega; ChessBase's .cit/.cib files are not read)*
-- [ ] P2 🟢 Remove deleted games, i.e. compact the database (`DBTOOLSPHYSICALDELETIONS`, `REMOVEDELETEDGAMES`)
-- [ ] P2 🟢 Check integrity (`CHECKINTEGRITY`)
-- [ ] P2 🟢 Find and mark double games, with keep-better and annotation options (`REMOVEDOUBLESCMD`, `DeleteDubs`)
+- [x] P2 🟢 Remove deleted games, i.e. compact the database (`DBTOOLSPHYSICALDELETIONS`, `REMOVEDELETEDGAMES`) *(2CBH opened for editing: blocks copied byte for byte into temporary files, swapped in through backups; open games follow their new numbers; ChessBase's .2lcd/.2lgd removed for its Check Integrity to rebuild; 0.41 s for the 2CBH Mega; see [maintenance](docs/maintenance.md))*
+- [x] P2 🟢 Check integrity (`CHECKINTEGRITY`) *(any database, read only: headers, records, name references, every game's moves and annotations, in parallel with progress and Stop; repair and ChessBase's control-structure rebuild not ported; see [maintenance](docs/maintenance.md))*
+- [x] P2 🟢 Find and mark double games, with keep-better and annotation options (`REMOVEDOUBLESCMD`, `DeleteDubs`) *(ChessBase's Kill Doubles decision traced (`0x140715720`): annotated games kept, keep-better completeness score, keep different annotators, delete annotated doubles; names Exact/Similar/Ignore, moves Exact/Similar, game length, ignore result/year; marks only, in one write; 2CBH opened for editing, up to 2 M entries; merge/replace, tournaments and clip not ported; see [maintenance](docs/maintenance.md))*
 - [ ] P2 🟢 Sort the database, fix sort order (`SORTDBEXPL`, `FIXSORTORDER`) *(the list's sort is a view, as in ChessBase; these rewrite the files)*
 - [ ] P2 🟢 Set ECO codes, final material, Elo values; reset ratings, teams and rounds (`DBTOOLSSETECOCODE`, `DBTOOLSSETMATERIAL`, `SETELOVALUES`, `RESETRATINGVALUES`)
 - [ ] P2 🟢 Improve player and tournament names (`IMPROVEPLAYERNAMES`, `IMPROVETOURNAMENT`, `ImproveDB`)
