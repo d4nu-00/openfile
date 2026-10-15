@@ -429,6 +429,16 @@ kbd {
   background: #00b5d8;
   vertical-align: middle;
 }
+/* ChessBase's other medals: one amber dot; the names are in its tooltip. */
+.game-list .medals {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: #e0a400;
+  vertical-align: middle;
+}
 .game-list tr[data-deleted] td {
   text-decoration: line-through;
   color: var(--text-muted);

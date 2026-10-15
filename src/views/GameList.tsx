@@ -250,6 +250,14 @@ export function GameList({
               title="Marked with the user medal (Mark Games)"
             />
           )}
+          {!!e.medals?.length && (
+            <span
+              className="medals"
+              role="img"
+              aria-label={`Medals: ${e.medals.join(", ")}`}
+              title={`Medals: ${e.medals.join(", ")}`}
+            />
+          )}
         </td>
         {columns.map((c) => (
           <td key={c.key} className={c.className}>
