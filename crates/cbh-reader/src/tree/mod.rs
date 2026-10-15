@@ -425,7 +425,7 @@ impl MoveStats {
 }
 
 /// Counts a game under its move, adding a row for a new move.
-fn add_game(moves: &mut Vec<MoveStats>, code: u16, game: &GameStats, black: bool) {
+pub(crate) fn add_game(moves: &mut Vec<MoveStats>, code: u16, game: &GameStats, black: bool) {
     match moves.iter_mut().find(|s| s.code == code) {
         Some(s) => s.add(game, black),
         None => {
