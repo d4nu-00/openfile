@@ -77,6 +77,18 @@ pub enum Edit {
         arrows: Vec<chess_core::ArrowMark>,
     },
     ClearMarks,
+    /// ChessBase's Exchange Moves on the first move of a variation.
+    ExchangeMoves {
+        node: u32,
+    },
+    /// ChessBase's Reorder Variations from `node` along its line.
+    ReorderVariations {
+        node: u32,
+        #[serde(default, rename = "mainLine")]
+        main_line: bool,
+    },
+    /// ChessBase's Clean up variations of the whole game.
+    CleanUpVariations,
     /// ChessBase's Insert Into Game for the variation containing `node`.
     InsertVariation {
         node: u32,
@@ -454,6 +466,14 @@ impl Registry {
             Edit::SetPreComments { node, comments } => d.game.set_pre_comments(node, comments)?,
             Edit::DeleteVariation { node } => selected = Some(d.game.delete_variation(node)?),
             Edit::PromoteVariation { node } => selected = Some(d.game.promote_variation(node)?),
+            Edit::ExchangeMoves { node } => selected = Some(d.game.exchange_moves(node)?),
+            Edit::ReorderVariations { node, main_line } => {
+                selected = Some(d.game.reorder_variations(node, main_line)?)
+            }
+            Edit::CleanUpVariations => {
+                d.game.clean_up_variations()?;
+                selected = Some(0);
+            }
             Edit::DeleteRemaining { node } => selected = Some(d.game.delete_remaining(node)?),
             Edit::DeletePrevious { node } => selected = Some(d.game.delete_previous(node)?),
             Edit::SetTags { tags } => d.game.set_tags(tags)?,
