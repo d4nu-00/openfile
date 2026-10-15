@@ -1,8 +1,10 @@
+pub mod analysis_jobs;
 pub mod blunder_check;
 pub mod clipboard;
 pub mod commands;
 pub mod convert;
 pub mod database_writes;
+pub mod deep_analysis;
 pub mod documents;
 pub mod engine_commands;
 pub mod library;
@@ -135,6 +137,7 @@ pub fn run() {
         })
         .manage(settings::Settings::default())
         .manage(std::sync::Arc::new(blunder_check::BlunderJobs::default()))
+        .manage(std::sync::Arc::new(deep_analysis::DeepJobs::default()))
         .manage(std::sync::Arc::new(tablebases::Tablebases::default()))
         .manage(ExitPolicy::default())
         .manage(StartupRequest(
@@ -212,6 +215,15 @@ pub fn run() {
             tablebases::tablebase_annotation,
             blunder_check::blunder_check,
             blunder_check::cancel_blunder_check,
+            deep_analysis::deep_analysis,
+            deep_analysis::stop_deep_analysis,
+            analysis_jobs::analysis_jobs,
+            analysis_jobs::add_analysis_jobs,
+            analysis_jobs::add_analysis_job,
+            analysis_jobs::edit_analysis_job,
+            analysis_jobs::clear_analysis_jobs,
+            analysis_jobs::run_analysis_jobs,
+            analysis_jobs::stop_analysis_jobs,
             settings::get_settings,
             library::start_screen,
             library::folder_databases,

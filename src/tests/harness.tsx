@@ -283,6 +283,68 @@ export function mockApi(firstDatabase = 1) {
         },
       ),
     cancelBlunderCheck: vi.fn().mockResolvedValue(undefined),
+    deepAnalysis: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _doc: string,
+          params: { node: number },
+          onProgress: (p: unknown) => void,
+        ) => {
+          onProgress({
+            iteration: 1,
+            positions: 7,
+            nodes: 9,
+            elapsedMs: 4000,
+            best: ["d4", "d5"],
+            score: "+0.20",
+          });
+          return {
+            cancelled: false,
+            iterations: 1,
+            positions: 7,
+            limited: false,
+            node: params.node,
+            revision: String(revision),
+            best: ["d4", "d5"],
+            score: "+0.20",
+            lines: [
+              { moves: ["d2d4", "d7d5"], evaluation: 11, comment: "+0.20/18" },
+              { moves: ["c2c4"], evaluation: 14, comment: "+0.35/18" },
+            ],
+          };
+        },
+      ),
+    stopDeepAnalysis: vi.fn().mockResolvedValue(undefined),
+    analysisJobs: vi.fn().mockResolvedValue({ jobs: [], running: false }),
+    addAnalysisJobs: vi
+      .fn()
+      .mockImplementation(async (databaseId, ranges, kind) => ({
+        view: {
+          running: false,
+          jobs: ranges.map((r: { start: string }, i: number) => ({
+            id: i + 1,
+            databaseId,
+            ordinal: r.start,
+            label: "White – Black",
+            moves: ["e2e4", "e7e5"],
+            kind,
+            status: "waiting",
+          })),
+        },
+        leftOut: 0,
+      })),
+    addAnalysisJob: vi.fn().mockResolvedValue({ jobs: [], running: false }),
+    editAnalysisJob: vi.fn().mockResolvedValue({ jobs: [], running: false }),
+    clearAnalysisJobs: vi.fn().mockResolvedValue({ jobs: [], running: false }),
+    runAnalysisJobs: vi.fn().mockResolvedValue({
+      stopped: false,
+      done: 1,
+      skipped: 0,
+      failed: 0,
+      jobs: [],
+    }),
+    stopAnalysisJobs: vi.fn().mockResolvedValue(undefined),
     chooseTablebaseFolder: vi.fn().mockResolvedValue("/synthetic/syzygy"),
     startScreen: vi.fn().mockResolvedValue({
       favorites: [

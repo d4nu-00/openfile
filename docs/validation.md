@@ -724,6 +724,42 @@ A census of the classic Mega's CBG headers counted:
   variation. Ctrl+Alt+0, Insert Into Game and Ctrl+Shift+Y send their
   edits.
 
+## Deep Analysis and analysis jobs (2026-10-15)
+
+* **Unit tests** (`deep_analysis.rs`):
+  * ChessBase's schedule: 4 s, depth 2 and widths 3/1 at iteration 0; 7 s,
+    depth 3, 4/2 at iteration 1; 6,735 s, depth 5, 5/3 at iteration 14.
+  * Time per position: half as much again at the root, 0.7 at the deepest
+    ply, at least 3 s.
+  * The sibling rule, the "one more than ? and ??" rule, and the 70/70 cut.
+  * A scripted analyst builds iteration 0's tree: 3 lines of 3 moves from 7
+    positions. Stopping keeps a bounded tree with a best line.
+* **App tests** with `mock-uci legal`, a mock mode that scores the legal
+  moves of any position:
+  * Deep Analysis builds a tree that goes in as one edit and comes out
+    with one Undo.
+  * Cancel returns nothing.
+  * A time limit ends it; a missing engine is an error.
+  * The jobs queue replaces two games of a new 2CBH database with two
+    engine lines each.
+  * A game open in a tab and a game changed since its job was added are
+    skipped with their reasons. A Deep Analysis job goes in, and a
+    restarted job runs once the tab is closed.
+  * ChessBase's minimum times (15 s, 30 s), the 1,000-job bound, Skip,
+    Remove, New analysis jobs, and refusal on a read-only database.
+* **Real engine** (`UCI_ENGINE=/opt/homebrew/bin/stockfish`, start
+  position, 100 ms base and a 3 s limit): 2 iterations, 24 positions,
+  6 lines, best line 1.Nf3 d5 2.d4 Bf5 (+0.31). The lines go in as one edit.
+* **Frontend tests.**
+  * Deep Analysis sends the node and time limit, adds the lines as one
+    `addLines` edit, and reports the iterations.
+  * Progress shows the iteration, positions, moves, time and best line;
+    Cancel adds nothing.
+  * Create analysis jobs sends the selection and the settings, then Start
+    runs the queue.
+  * The time warning holds ChessBase's minimum.
+  * Add Analysis Job sends the board position; Restart sends its action.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

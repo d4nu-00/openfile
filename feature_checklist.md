@@ -22,7 +22,7 @@ Names in backticks are ChessBase command ids, for traceability.
 3. Opening tree built from the user's databases, and the reference search (§8).
 4. Complete notation editing: variation operations, game data, symbols (§6). *(P1 items done)*
 5. Multiple game tabs, the clipboard database and save/replace into a database (§2, §3). *(game tabs done)*
-6. Engine tools: blunder check, deep analysis, analysis jobs, tablebases (§7). *(kibitzers, lines, paste, Engine Management, Tactical Analysis, tablebase tab and annotation done; deep analysis and analysis jobs remain)*
+6. Engine tools: blunder check, deep analysis, analysis jobs, tablebases (§7). *(kibitzers, lines, paste, Engine Management, Tactical Analysis, tablebase tab and annotation, Deep Analysis and analysis jobs done)*
 7. Reports, preparation and training (§9–§11), then publishing (§12). *(player statistics done)*
 
 ## 1. Database formats and storage
@@ -148,10 +148,10 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Engine management: installed engine list, defaults, several kibitzers (`ENGINEMANAGEMENT`, `CLOSEALLKIBITZERS`, `TOGGLEDEFAULTKIBITZER`) *(up to 4 kibitzers; installed engines, default and kept options in the app's settings; Default Kibitzer Alt+F2)*
 - [x] P1 🟢 Endgame tablebases (Syzygy) for analysis and the notation *(Tablebase tab with the result and DTZ of the position and every move; engines get the chosen folder through `SyzygyPath`, as ChessBase does; Tablebase Annotation marks main-line moves that give away a win or draw, with the tables' best move, as one undoable edit (the workbench's own symbols and texts, since ChessBase's notation display was not traced); see [engines](docs/engines.md))*
 - [x] P1 🟢 Tactical analysis or blunder check that annotates a game (`TACTICAL_ANALYSIS`, `BlunderCheck`) *(Ctrl+Alt+Shift+U: ChessBase's Time and Fine/Medium/Coarse thresholds (35/55/150 cp), cancellable with progress, one undoable edit. Evaluation symbols follow ChessBase's traced rule (±/⩲/= by score, set where the evaluation changes). The ?/?? rule stays the workbench's own, since ChessBase's was not found; see [engines](docs/engines.md))*
-- [ ] P2 🟢 Deep analysis: tree-building position analysis (`DEEP_ANALYSIS`)
+- [x] P2 🟢 Deep analysis: tree-building position analysis (`DEEP_ANALYSIS`) *(ChessBase's traced iterations, time per position, depth, widths and 70-centipawn window, with one engine; cancellable with progress, bounded to 400 nodes; the tree goes in as one undoable edit with ChessBase's evaluation symbols and the score as text. Multi-engine roles and move symbol 8 are not ported; see [analysis](docs/analysis.md))*
 - [ ] P2 🟢 Centipawn and achievement analysis (`CENTIPAWN`, `ACHIEVEMENT_ANALYSIS`)
 - [ ] P2 🟢 Analyse threat, lock engine, next best / search better (`ANALYSETHREAT`, `LOCKENGINE`, `NEXTBEST`, `SEARCHBETTER`)
-- [ ] P2 🟢 Analysis jobs queue (`NEW_ANALYSIS_JOBS`, `ADD_ANALYSIS_JOB`, `OPEN_ANALYSIS_JOBS`)
+- [x] P2 🟢 Analysis jobs queue (`NEW_ANALYSIS_JOBS`, `ADD_ANALYSIS_JOB`, `OPEN_ANALYSIS_JOBS`) *(also `CREATE_CORR_ANALYSIS_JOBS`; ChessBase's Analysis and Deep Analysis job types and minimum times, for games of a 2CBH opened for editing; each result replaces its game ("Merge result with original game"); at most 1,000 jobs, with Stop and progress. The queue lasts for the session: ChessBase's jobs file is not read or written; see [analysis](docs/analysis.md))*
 - [ ] P2 🟢 Evaluation profile graph (`TOGGLEEVPROFILE`)
 - [ ] P3 🟢 Assisted analysis: engine help on hover (`ASSISTED_ANALYSIS`)
 - [ ] P3 🟢 Position measurements: Plan Explorer, piece values, heat maps, mobility, attackers/defenders (`POSITION_INFO`)

@@ -90,6 +90,12 @@ pub enum Edit {
     AddAnalysis {
         items: Vec<AnalysisItem>,
     },
+    /// Lines from `parent` (Deep Analysis), each ending with an evaluation
+    /// symbol and a comment.
+    AddLines {
+        parent: u32,
+        lines: Vec<crate::deep_analysis::LineItem>,
+    },
     /// Moves from `parent` (an engine line), with a comment after the last.
     AppendLine {
         parent: u32,
@@ -162,27 +168,64 @@ fn add_analysis(game: &mut chess_core::Game, items: Vec<AnalysisItem>) -> Result
             next.set_nags(item.node, nags)?;
         }
         if let Some(nag) = item.evaluation {
-            let nags = &next.nodes[item.node as usize].nags;
-            let other = nags.iter().any(|g| {
-                !crate::blunder_check::EVALUATION_NAGS.contains(g)
-                    && !(1..=9).contains(g)
-                    && *g != 22
-                    && !(140..=145).contains(g)
-            });
-            if !other {
-                let mut nags: Vec<u16> = nags
-                    .iter()
-                    .copied()
-                    .filter(|g| !crate::blunder_check::EVALUATION_NAGS.contains(g))
-                    .collect();
-                nags.push(nag);
-                next.set_nags(item.node, nags)?;
-            }
+            set_evaluation(&mut next, item.node, nag)?;
         }
         push(&mut next, item.node, item.comment)?;
         if !item.line.is_empty() {
             let last = next.append_line(parent, &item.line, &chess_core::GameLimits::default())?;
             push(&mut next, last, item.line_comment)?;
+        }
+    }
+    *game = next;
+    Ok(())
+}
+/// Sets ChessBase's evaluation symbol `nag` on `node`, replacing an
+/// evaluation it has but not another position symbol such as "with attack".
+fn set_evaluation(game: &mut chess_core::Game, node: u32, nag: u16) -> Result<(), AppError> {
+    let nags = &game.nodes[node as usize].nags;
+    let other = nags.iter().any(|g| {
+        !crate::blunder_check::EVALUATION_NAGS.contains(g)
+            && !(1..=9).contains(g)
+            && *g != 22
+            && !(140..=145).contains(g)
+    });
+    if !other {
+        let mut nags: Vec<u16> = nags
+            .iter()
+            .copied()
+            .filter(|g| !crate::blunder_check::EVALUATION_NAGS.contains(g))
+            .collect();
+        nags.push(nag);
+        game.set_nags(node, nags)?;
+    }
+    Ok(())
+}
+
+/// Adds `lines` from `parent`, following moves already there; nothing
+/// changes unless all of them apply.
+pub fn add_lines(
+    game: &mut chess_core::Game,
+    parent: u32,
+    lines: &[crate::deep_analysis::LineItem],
+) -> Result<(), AppError> {
+    if lines.len() > 1_000 {
+        return Err(AppError::new("limitExceeded", "Too many lines at once"));
+    }
+    if game.nodes.get(parent as usize).is_none() {
+        return Err(AppError::new("invalidNode", "Unknown node"));
+    }
+    let mut next = game.clone();
+    for line in lines {
+        let last = next.append_line(parent, &line.moves, &chess_core::GameLimits::default())?;
+        if let Some(nag) = line.evaluation {
+            set_evaluation(&mut next, last, nag)?;
+        }
+        if let Some(text) = line.comment.as_ref().filter(|t| !t.trim().is_empty()) {
+            let mut comments = next.nodes[last as usize].comments.clone();
+            if !comments.contains(text) {
+                comments.push(text.clone());
+                next.set_comments(last, comments)?;
+            }
         }
     }
     *game = next;
@@ -425,6 +468,7 @@ impl Registry {
                 selected = Some(d.game.delete_commentary(commentary, node)?)
             }
             Edit::AddAnalysis { items } => add_analysis(&mut d.game, items)?,
+            Edit::AddLines { parent, lines } => add_lines(&mut d.game, parent, &lines)?,
             Edit::AppendLine {
                 parent,
                 moves,

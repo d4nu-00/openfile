@@ -17,6 +17,8 @@ pub struct Registry {
     /// Overrides the size up to which the reference search runs Find
     /// Position without a search booster by itself (tests); 0 is the default.
     pub(crate) reference_auto_limit: std::sync::atomic::AtomicU64,
+    /// The analysis jobs queue.
+    pub(crate) analysis_jobs: Mutex<crate::analysis_jobs::Queue>,
 }
 #[derive(Default)]
 pub(crate) struct State {
