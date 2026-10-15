@@ -185,6 +185,8 @@ pub fn run() {
             commands::convert_estimate,
             commands::convert_database,
             commands::cancel_convert,
+            commands::mark_rows,
+            commands::set_names_of_rows,
             commands::check_integrity,
             commands::find_double_games,
             commands::remove_deleted_games,
