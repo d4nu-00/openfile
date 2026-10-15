@@ -615,6 +615,103 @@ export function demoApi(): WorkbenchApi {
       };
     },
     cancelPreparation: async () => {},
+    playerDossier: async (_db, playerId, onProgress) => {
+      onProgress({ stage: "mates", done: "1", total: "1" });
+      const stats = demoStatistics(playerId);
+      const name = stats.name;
+      const mine = entries.filter(
+        (e) =>
+          e.kind === "game" &&
+          !e.deleted &&
+          (e.white === name || e.black === name),
+      );
+      const colour = (white?: boolean) => {
+        const list = mine.filter(
+          (e) => white === undefined || (e.white === name) === white,
+        );
+        const count = (r: string) => list.filter((e) => e.result === r).length;
+        const s =
+          white === undefined ? undefined : white ? stats.white : stats.black;
+        return {
+          games: list.length,
+          whiteWins: count("1-0"),
+          draws: count("1/2-1/2"),
+          blackWins: count("0-1"),
+          score: s?.percent,
+          scoreBand: s?.percent === undefined ? undefined : 4,
+          opponentsAverage: s ? 2500 : undefined,
+          performance: s ? 2550 : undefined,
+          whiteWinMoves: 34,
+          whiteWinBand: 2,
+          drawMoves: 28,
+          drawBand: 1,
+          blackWinMoves: 41,
+          blackWinBand: 3,
+          drawPercent: 30,
+          drawQuoteBand: 2,
+          quickDrawPercent: 5,
+        };
+      };
+      const rows = mine
+        .slice(-5)
+        .reverse()
+        .map((e) => ({
+          ordinal: e.ordinal,
+          white: e.white === name,
+          opponent: e.white === name ? e.black : e.white,
+          year: Number(e.date?.slice(0, 4)) || undefined,
+          result: e.result,
+          moves: 30,
+          eco: e.eco,
+          tournament: e.event,
+          medals: [] as string[],
+        }));
+      return {
+        playerId,
+        name,
+        games: mine.length,
+        deleted: 0,
+        truncated: false,
+        firstYear: stats.firstYear,
+        lastYear: stats.lastYear,
+        years: stats.years,
+        all: colour(),
+        white: colour(true),
+        black: colour(false),
+        ratingBands: [
+          { from: 2450, games: 3, points: 2, percent: 67 },
+          { from: 2500, games: 4, points: 2, percent: 50 },
+        ],
+        tournaments: stats.tournaments.slice(0, 10),
+        opponents: stats.opponents.slice(0, 10),
+        moreTournaments: 0,
+        moreOpponents: 0,
+        repertoireWhite: [
+          {
+            moves: ["e2e4", "e7e5"],
+            text: "1.e4 e5",
+            eco: "C20",
+            name: "King's Pawn Game",
+            games: 4,
+            score: 62,
+            lastYear: 2002,
+          },
+        ],
+        repertoireBlack: [],
+        medalGames: rows
+          .slice(0, 1)
+          .map((r) => ({ ...r, medals: ["Best game"] })),
+        medalCount: 1,
+        matesGiven: rows.slice(1, 2),
+        matesGivenCount: 1,
+        matesReceived: [],
+        matesReceivedCount: 0,
+        matesRead: mine.length,
+        annotated: [],
+        annotatedCount: 0,
+      };
+    },
+    cancelDossier: async () => {},
     closePreparation: async () => {},
     preparedTree: async (_db, line, requestId) => {
       const moves = line.moves.length === 0 ? ["e2e4", "d2d4"] : [];

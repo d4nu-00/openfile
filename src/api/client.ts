@@ -21,6 +21,8 @@ import type {
   Line,
   TreeResponse,
   Preparation,
+  Dossier,
+  DossierProgress,
   PrepareProgress,
   TreeProgress,
   ReferenceResponse,
@@ -581,6 +583,24 @@ export const backend = {
       line,
       requestId,
     }),
+  /** A player's dossier; undefined when cancelled. */
+  playerDossier: async (
+    databaseId: string,
+    playerId: number,
+    onProgress: (p: DossierProgress) => void,
+  ) => {
+    const events = new Channel<DossierProgress>();
+    events.onmessage = onProgress;
+    return (
+      (await invoke<Dossier | null>("player_dossier", {
+        databaseId,
+        playerId,
+        events,
+      })) ?? undefined
+    );
+  },
+  cancelDossier: (databaseId: string) =>
+    invoke<void>("cancel_dossier", { databaseId }),
   loadEntry: (databaseId: string, ordinal: string, requestId: string) =>
     invoke<GameResponse>("load_entry", { databaseId, ordinal, requestId }),
   positionAt: (documentId: string, nodeId: number, requestId: string) =>

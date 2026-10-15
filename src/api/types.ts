@@ -490,6 +490,79 @@ export interface PrepareProgress {
   done: string;
   total: string;
 }
+/** Player dossier. */
+export interface ColourStats {
+  games: number;
+  whiteWins: number;
+  draws: number;
+  blackWins: number;
+  score?: number;
+  /** 0 (worst) … 3 (as expected) … 6 (best). */
+  scoreBand?: number;
+  opponentsAverage?: number;
+  performance?: number;
+  whiteWinMoves?: number;
+  whiteWinBand?: number;
+  drawMoves?: number;
+  drawBand?: number;
+  blackWinMoves?: number;
+  blackWinBand?: number;
+  drawPercent?: number;
+  /** 0 (lowest) … 3 (average) … 5 (highest). */
+  drawQuoteBand?: number;
+  quickDrawPercent?: number;
+}
+export interface RatingBand {
+  from: number;
+  games: number;
+  points: number;
+  percent: number;
+}
+export interface DossierGame {
+  ordinal: string;
+  white: boolean;
+  opponent?: string;
+  year?: number;
+  result?: string;
+  moves: number;
+  eco?: string;
+  tournament?: string;
+  medals: string[];
+}
+export interface Dossier {
+  playerId: number;
+  name?: string;
+  games: number;
+  deleted: number;
+  truncated: boolean;
+  firstYear: number;
+  lastYear: number;
+  years: YearStat[];
+  all: ColourStats;
+  white: ColourStats;
+  black: ColourStats;
+  ratingBands: RatingBand[];
+  tournaments: TournamentStat[];
+  opponents: OpponentStat[];
+  moreTournaments: number;
+  moreOpponents: number;
+  repertoireWhite: RepertoireRow[];
+  repertoireBlack: RepertoireRow[];
+  medalGames: DossierGame[];
+  medalCount: number;
+  matesGiven: DossierGame[];
+  matesGivenCount: number;
+  matesReceived: DossierGame[];
+  matesReceivedCount: number;
+  matesRead: number;
+  annotated: DossierGame[];
+  annotatedCount: number;
+}
+export interface DossierProgress {
+  stage: "games" | "lines" | "mates";
+  done: string;
+  total: string;
+}
 /** The games of a statistics row. */
 export type StatGroup =
   | { kind: "all" }
