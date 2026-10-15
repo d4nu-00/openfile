@@ -55,7 +55,10 @@ pub struct CompactResponse {
 }
 
 impl Registry {
-    fn maintenance_cancel(&self, database_id: &str) -> Result<Arc<AtomicBool>, AppError> {
+    pub(crate) fn maintenance_cancel(
+        &self,
+        database_id: &str,
+    ) -> Result<Arc<AtomicBool>, AppError> {
         let cancel = Arc::new(AtomicBool::new(false));
         if let Some(old) = self
             .lock()?
@@ -67,7 +70,7 @@ impl Registry {
         Ok(cancel)
     }
 
-    fn maintenance_done(&self, database_id: &str, cancel: &Arc<AtomicBool>) {
+    pub(crate) fn maintenance_done(&self, database_id: &str, cancel: &Arc<AtomicBool>) {
         if let Ok(mut state) = self.lock()
             && state
                 .maintenance_cancels

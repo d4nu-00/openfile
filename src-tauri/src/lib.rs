@@ -11,6 +11,7 @@ pub mod library;
 pub mod lists;
 pub mod maintenance;
 pub mod names;
+pub mod openings;
 pub mod registry;
 pub mod save;
 pub mod searches;
@@ -192,6 +193,8 @@ pub fn run() {
             commands::set_names_of_rows,
             commands::check_integrity,
             commands::find_double_games,
+            openings::classify_game,
+            openings::set_eco_codes,
             commands::remove_deleted_games,
             commands::cancel_maintenance,
             commands::delete_rows,
