@@ -791,6 +791,26 @@ A census of the classic Mega's CBG headers counted:
     for 76.4 % of coded games.
   * Classic: 11.15 M games in 188.5 s with 8 workers, 68.6 %.
 
+## Opening report (2026-10-15)
+
+* **App test** on a new 2CBH database of 62 games:
+  * 60 reach 1.e4, with results 10/20/30;
+  * history: the earliest (1990) and latest (2019) games, years, and
+    5-year fashion buckets against the database's years;
+  * players: the 2700 player as Black at 75 %, and ChessBase's notable
+    rule picking the two regular players over twenty one-game club players;
+  * move rows from the games read (c5 40, e6 20, with "played by" and
+    scores), then from the opening tree with performance once one is built;
+  * the main line 1...c5 2.Nf3 d6 3.d4;
+  * the two 1.d4 games listed individually.
+* **Reader test:** years from the reader's dates.
+* **Frontend test:** the report shows its title, line, results, history,
+  year chart, players, moves with "played by", and the main line numbered
+  after the position.
+* **Measurements:** see [openings](openings.md#measurements-1). The 2CBH Mega
+  report of 1.e4 c5 takes 4.5 s; the classic Mega's Najdorf takes 23.8 s
+  warm.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private
