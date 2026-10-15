@@ -292,6 +292,12 @@ export function demoApi(): WorkbenchApi {
       best: [],
     }),
     stopDeepAnalysis: async () => {},
+    openingReport: async () => {
+      throw {
+        code: "noTree",
+        message: "The demo has no games to report on",
+      };
+    },
     classifyGame: async () => ({
       eco: "C42",
       name: "Petrov's Defense",

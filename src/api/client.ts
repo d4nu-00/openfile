@@ -36,6 +36,7 @@ import type {
   RunJobsReport,
   Classification,
   EcoResult,
+  OpeningReport,
   SortColumn,
   SortProgress,
   SortResponse,
@@ -632,6 +633,25 @@ export const backend = {
     return invoke<EcoResult>("set_eco_codes", {
       databaseId,
       onlyMissing,
+      events,
+    });
+  },
+  /** The opening report of a line's position in a database; Stop
+   * through `cancelMaintenance`. */
+  openingReport: (
+    databaseId: string,
+    line: { startFen: string; moves: string[] },
+    onProgress: (p: { stage: string; done: string; total: string }) => void,
+  ) => {
+    const events = new Channel<{
+      stage: string;
+      done: string;
+      total: string;
+    }>();
+    events.onmessage = onProgress;
+    return invoke<OpeningReport>("opening_report", {
+      databaseId,
+      line,
       events,
     });
   },

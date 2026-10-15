@@ -1,4 +1,4 @@
-# Opening classification
+# Opening classification and the opening report
 
 Status: implemented on branch `eco-classification` (2026-10-15). The
 direction was agreed in conversation: classify from open data only, never
@@ -100,3 +100,120 @@ Every standard game with at least one move in the 2CBH sample was
 classified. The differences come from the two tables: lichess's
 assignments are not ChessBase's, and ChessBase's sub-classified table is
 finer than five ECO volumes.
+
+# Opening Report
+
+Status: implemented on branch `opening-report` (2026-10-15).
+
+## What ChessBase does
+
+**Opening Report** (`OPENINGREPORTBOARDCMD`, `OpeningReportBoardCmd`, run slot
+`0x1408e19d0`; "Create a detailed for the current board position", 50540;
+no default key) calls `0x1407a9e60`. That picks the reference database
+(`0x1407b19c0`) and creates the report (`OpeningReport`, vtable
+`0x1411c5aa8`) as an HTML page in a report window
+(`HtmlOpeningReportLink`). The generator is `0x1407075a0`. In order:
+
+1. **Title.** "Opening report: " (50270), with the position's ECO code and
+   opening name from the classifier above. A start position gives "Not
+   enough moves" (10). Ten weights 7, 4, 2.5, 1, 0.9, 0.8, 0.7, 0.64, 0.55
+   and 0.5 are set up (offset 0x770), and the current year is clamped to
+   1998–2020 (offset 0x780). Neither use was followed.
+2. **The games.** A position search of the database (`0x14070ac70`) fills
+   a sorted list of game numbers, then a summary of the count
+   (`0x140705cd0`).
+3. **History** (50274, `0x140704f20`).
+   * Fewer than 10 games are listed one by one.
+   * Otherwise it shows the earliest game (50275), the latest annotated
+     game (50278), the latest grandmaster game (50277) if it is another,
+     and the latest game (50276) if it is yet another.
+   * Then a 580×280 chart, "Games played in years" (50093).
+   * Over 50 games it adds a second chart, the "Fashion index - Distribution
+     of games relative to database" (50279). Its years per bar follow the
+     count: 10 under 50 games, 5 under 301, 3 under 801, 2 under 2,001, and 1
+     above.
+   * The charts need the database's year statistics. Without them the
+     report asks for the database to be installed on the hard disk (50554).
+4. **Players** (81, `0x140706c50`), when the players have more than 6
+   games.
+   * a) "Strong grandmasters who used this line as" (50281) White or Black:
+     up to 10, chosen by `0x140704620` (not followed).
+   * b) "Other notable players" (50282): up to 8 players with more than a
+     hundredth of the games or more than 10, or an average rating over 2500,
+     and at least 2 games, not already listed.
+   * Each row (`0x140709a90`) has the player, the games ("n="), the score,
+     and the rating.
+5. **Statistics** (448, `0x140707230`).
+6. **Moves and plans**, after "Calculate plans?" (50273):
+   * a book is built from the games (50345, `0x14083ef00`);
+   * "Process moves" (50272) prepares 20 moves (`0x1407042a0`);
+   * "Games + Moves" (50553) follows;
+   * "Moves and Plans" (50283, `0x140706040`): each move with its games,
+     rating and score, "played by" (50284) its strongest players (up to 5),
+     then its plans (50280), "You should play" (50285), "Alternative"
+     (50287) and "Click for games" (50286, `0x14070adf0`).
+   * "Main line" (50289, `0x140708a30`) follows a move only while at least
+     3 games play it; "Critical line" (50288) also exists.
+7. **Opening keys** (909, `0x1407059b0`).
+
+**Not traced.** The statistics block, how plans and "You should play" are
+computed, the strong-grandmaster filter, the weights, and the HTML layout
+beyond its headings.
+
+## Workbench
+
+**Opening Report** (game window, Report tab) reports on the board position
+of the shown game, from the open database. It runs in the backend with
+progress and Stop.
+
+* **The games** come from the reference search: the opening tree, or Find
+  Position (run even on a large database without a search booster, since
+  the user asked). At most 100,000 games in database order are read; the
+  report says when more reach the position.
+* **Title:** the ECO code and name from the open table, and the line.
+* **Results:** White wins, draws and Black wins.
+* **History**, as ChessBase lays it out:
+  * under 10 games, every game;
+  * otherwise the earliest game, the latest annotated game, the latest
+    strong game when it is another, and the latest game when it is yet
+    another;
+  * games per year;
+  * over 50 games, the fashion index in ChessBase's bucket sizes: the
+    bucket's share of the position's games over its share of the
+    database's games (100 = average). Buckets with fewer than 100 database
+    games get no index, and the chart caps bars at 400. Both are the
+    workbench's choices, so a single old game does not dominate the
+    chart.
+  * "Annotated" means the game has an annotator, and "strong" that both
+    players are rated 2500 or more. Both are the workbench's choices, since
+    ChessBase's flags were not traced.
+  * The database's games per year are counted once per entry count (a
+    parallel scan of the entry records) and kept for the session.
+* **Players:**
+  * strong players by colour: rated 2500 or more, best first, up to 10 (the
+    workbench's filter);
+  * ChessBase's "Other notable players" rule, by games.
+* **Moves.** Up to 20 move rows: from the opening tree when it covers the
+  position, all games included, otherwise from the games read. "Played by"
+  lists the five strongest players of each move.
+* **Games read.** The moves after the position are read from the 5,000
+  strongest games by rating.
+* **Main line:** the most played move while at least 3 of the games read
+  play it, up to 20 plies.
+* **Not ported:** plans, "You should play", alternatives, the critical line,
+  the statistics block, opening keys, photos and the HTML page. The report
+  is a dialog.
+
+### Measurements
+
+Release build, through `src-tauri/examples/opening_report.rs`, read-only,
+with the app's own opening-tree cache.
+
+| Database | Position | Games | Time | Notes |
+|---|---|---|---|---|
+| 2CBH Mega | 1.e4 c5 | 1,523 | 4.5 s | no tree: Find Position over 24,783 entries; moves from the games read |
+| Classic Mega | Najdorf (5...a6) | 100,000 of more | 50.8 s, then 23.8 s warm | the first run counts the years of 11.15 M entries; moves from the tree; ten strong players by colour |
+
+Most of the warm time goes to reading 100,000 entry summaries and 5,000
+games. The history of a truncated report covers the first 100,000 games in
+database order: the Najdorf's then ends in 2009.

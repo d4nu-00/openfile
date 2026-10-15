@@ -650,6 +650,64 @@ export interface EcoResult {
   hadCode: string;
   cancelled: boolean;
 }
+/** A game in the opening report. */
+export interface ReportGame {
+  ordinal: string;
+  white?: string;
+  black?: string;
+  whiteElo?: number;
+  blackElo?: number;
+  date?: string;
+  result?: string;
+  event?: string;
+}
+export interface ReportPlayer {
+  name: string;
+  games: number;
+  /** The player's score in these games, in percent. */
+  score: number;
+  bestElo?: number;
+  averageElo?: number;
+}
+export interface ReportMove {
+  uci: string;
+  san: string;
+  games: number;
+  share: number;
+  score?: number;
+  draws?: number;
+  averageElo?: number;
+  performance?: number;
+  lastYear?: number;
+  playedBy: string[];
+}
+export interface OpeningReport {
+  eco?: string;
+  name?: string;
+  line: string[];
+  whiteToMove: boolean;
+  games: number;
+  truncated: boolean;
+  cancelled: boolean;
+  whiteWins: number;
+  draws: number;
+  blackWins: number;
+  otherResults: number;
+  listed: ReportGame[];
+  earliest?: ReportGame;
+  latestAnnotated?: ReportGame;
+  latestStrong?: ReportGame;
+  latest?: ReportGame;
+  years: [number, number][];
+  fashion: { from: number; to: number; games: number; index?: number }[];
+  strongWhite: ReportPlayer[];
+  strongBlack: ReportPlayer[];
+  notable: ReportPlayer[];
+  moves: ReportMove[];
+  movesFromTree: boolean;
+  read: number;
+  mainLine: string[];
+}
 /** An engine in Engine Management. */
 export interface InstalledEngine {
   id: string;

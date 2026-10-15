@@ -1835,3 +1835,60 @@ kbd {
 .classify-code strong {
   margin-right: 6px;
 }
+
+/* Opening Report: sections of tables and two small bar charts. */
+.modal.opening-report {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: min(900px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+}
+.opening-report .report-body {
+  overflow: auto;
+  min-height: 0;
+}
+.opening-report h3 {
+  margin: 12px 0 4px;
+  font-size: 14px;
+}
+.opening-report h4 {
+  margin: 8px 0 2px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.report-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  width: 100%;
+}
+.report-table th,
+.report-table td {
+  padding: 2px 6px;
+  text-align: left;
+  border-bottom: 1px solid var(--grid-line);
+}
+.report-table thead th {
+  background: var(--pane-header-bg);
+}
+.report-bars {
+  margin: 8px 0;
+  font-size: 11px;
+}
+.report-bars-plot {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 90px;
+  border-bottom: 1px solid var(--pane-border);
+}
+.report-bar {
+  flex: 1;
+  min-width: 1px;
+  background: var(--accent);
+}
+.report-bars-axis {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+}
