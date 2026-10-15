@@ -37,8 +37,18 @@ and cbh2pgn and libcbh both skip the byte. Byte 1's upper three bits and byte
 2's upper four bits must be zero; other values return `unsupportedSetup`. The turn bit is `0x10`,
 en-passant file is the low four bits (0 absent, 1–8 a–h), and castling rights
 use low bits 1/Q, 2/K, 4/q, 8/k. Move number 0 is read as 1. An en-passant file that is impossible on the board
-is dropped, matching ChessBase's own 2CBG copy of the same game. The occupancy stream
-is file-major and MSB-first, with standard chess position validation.
+is dropped, matching ChessBase's own 2CBG copy of the same game. A castling
+right whose king or rook is off its standard square is dropped too, one right
+at a time; the rest are kept. Twelve set-ups of the classic Mega need this
+(entries 64687, 64740, 68207, 96531, 96535 and seven others). They are games
+taken up in the middle, with the kings already castled or moved but K and k
+still set, and all twelve then decode to their last move. A set-up is always
+tried as stored first. A standard record is read as standard chess before
+Chess960, so a stored right is never taken for a Chess960 one; no game of the
+classic Mega relied on that. How ChessBase itself treats such rights was not
+traced: its copies of these games are outside the 2CBH sample. 2CBG set-ups
+follow the same rule. The occupancy stream is file-major and MSB-first, with
+standard chess position validation.
 
 En-passant controls were corroborated against
 [libcbh PositionStack::setup](https://github.com/rolandlo/libcbh/blob/main/src/cbh_position.cpp).

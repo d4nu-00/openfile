@@ -338,8 +338,15 @@ fn setup(words: &[u16]) -> Result<(Game, usize), CbhError> {
         }
         *square = piece as char;
     }
-    let fen = crate::moves::setup::fen(&board, turn & 1 == 1, (turn >> 8) as u8, 0, number);
-    Ok((Game::from_fen(&fen)?, index))
+    let game = crate::moves::setup::setup_game(
+        &board,
+        turn & 1 == 1,
+        (turn >> 8) as u8,
+        0,
+        number,
+        false,
+    )?;
+    Ok((game, index))
 }
 
 pub fn decode_moves(payload: &[u8], limits: &ReadLimits) -> Result<Decoded, CbhError> {

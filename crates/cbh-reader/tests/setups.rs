@@ -182,6 +182,43 @@ fn setup_byte_zero_one_and_impossible_en_passant_are_accepted() {
     assert_eq!(g.start_fen, "4k3/8/8/8/8/8/8/4K3 w - - 0 1");
 }
 
+#[test]
+fn setup_impossible_castling_rights_are_dropped_one_by_one() {
+    // Kings on g1 and g8 with K and k set (bits 2 and 8), as in classic Mega
+    // entries 64687 and 96531: both rights are impossible and dropped.
+    let g = decode_classic(
+        &setup(
+            0,
+            0x0a,
+            17,
+            &[(48, 1), (40, 5), (55, 9), (63, 13)],
+            &["g1g2"],
+        ),
+        &ReadLimits::default(),
+    )
+    .unwrap();
+    assert_eq!(g.start_fen, "6kr/8/8/8/8/8/8/5RK1 w - - 0 17");
+    assert_eq!(g.nodes[1].uci.as_deref(), Some("g1g2"));
+    // A possible right is kept beside an impossible one: White's K stays
+    // and castles, Black's k (king on g8) goes.
+    let g = decode_classic(
+        &setup(
+            0,
+            0x0a,
+            5,
+            &[(32, 1), (56, 5), (55, 9), (63, 13)],
+            &["e1g1"],
+        ),
+        &ReadLimits::default(),
+    )
+    .unwrap();
+    assert_eq!(g.start_fen, "6kr/8/8/8/8/8/8/4K2R w K - 0 5");
+    assert_eq!(
+        g.position_at(1).unwrap().fen,
+        "6kr/8/8/8/8/8/8/5RK1 b - - 1 5"
+    );
+}
+
 mod kinds {
     use cbh_reader::{
         ReadLimits,

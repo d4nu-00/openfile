@@ -1,12 +1,14 @@
 use super::pieces::PieceState;
 use crate::CbhError;
 use chess_core::Game;
+use shakmaty::{CastlingMode, Chess, fen::Fen};
 
 /// Classic 28-byte setup: file-major, MSB-first occupancy/piece stream.
 /// Control layout corroborated against libcbh's PositionStack::setup:
 /// https://github.com/rolandlo/libcbh/blob/main/src/cbh_position.cpp
 /// In particular the en-passant file is a four-bit value, 0 absent, 1..8 a..h.
-pub fn decode_setup(bytes: &[u8]) -> Result<(String, PieceState), CbhError> {
+/// `chess960` is set for records flagged as Chess960.
+pub fn decode_setup(bytes: &[u8], chess960: bool) -> Result<(String, PieceState), CbhError> {
     if bytes.len() != 28 {
         return Err(CbhError::Truncated);
     }
@@ -54,18 +56,76 @@ pub fn decode_setup(bytes: &[u8]) -> Result<(String, PieceState), CbhError> {
             }
         }
     }
-    // An en-passant file that is impossible on this board (no pawn that could
-    // just have double-pushed) carries no information; ChessBase's own 2CBG
-    // conversion drops it (Mega Database 2025 entry 13409), and so does this
-    // reader.
-    let game = match Game::from_fen(&fen(&board, black, bytes[2], ep_file, bytes[3].into())) {
-        Err(_) if ep_file != 0 => {
-            Game::from_fen(&fen(&board, black, bytes[2], 0, bytes[3].into()))?
-        }
-        other => other?,
-    };
+    let game = setup_game(&board, black, bytes[2], ep_file, bytes[3].into(), chess960)?;
     let pieces = PieceState::from_position(&game.chess_position(0)?);
     Ok((game.start_fen, pieces))
+}
+
+/// The game of a decoded set-up. An en-passant file that is impossible on
+/// this board (no pawn that could just have double-pushed) carries no
+/// information; ChessBase's own 2CBG conversion drops it (Mega Database 2025
+/// entry 13409), and so does this reader. Castling rights whose king or rook
+/// is off its standard square are dropped the same way, one right at a time
+/// (classic Mega entries 64687, 64740 and ten others; see
+/// docs/compatibility.md). The set-up as stored is tried first, so nothing
+/// that decodes as stored changes.
+///
+/// A standard game is read as standard chess first, so that a stored right
+/// is not taken for a Chess960 one (king g8 and rook h8 with "k"). A Chess960
+/// record keeps its rights; `chess960_castling` replaces them.
+pub(crate) fn setup_game(
+    board: &[char; 64],
+    black: bool,
+    rights: u8,
+    ep_file: u8,
+    number: u16,
+    chess960: bool,
+) -> Result<Game, CbhError> {
+    let castling = possible_castling(board, rights);
+    let mut tries = vec![(rights, ep_file)];
+    for candidate in [(rights, 0), (castling, ep_file), (castling, 0)] {
+        if !tries.contains(&candidate) {
+            tries.push(candidate);
+        }
+    }
+    let standard = |f: &str| {
+        f.parse::<Fen>()
+            .is_ok_and(|f| f.into_position::<Chess>(CastlingMode::Standard).is_ok())
+    };
+    if !chess960
+        && let Some(f) = tries
+            .iter()
+            .map(|&(rights, ep)| fen(board, black, rights, ep, number))
+            .find(|f| standard(f))
+    {
+        return Ok(Game::from_fen(&f)?);
+    }
+    let mut result = Err(CbhError::Decode("Invalid setup".into()));
+    for (rights, ep) in tries {
+        result = Game::from_fen(&fen(board, black, rights, ep, number)).map_err(CbhError::from);
+        if result.is_ok() {
+            break;
+        }
+    }
+    result
+}
+
+/// The castling rights of `rights` (bits 1/Q, 2/K, 4/q, 8/k) whose king and
+/// rook stand on their standard squares on `board` (indexed `rank * 8 +
+/// file`).
+pub(crate) fn possible_castling(board: &[char; 64], rights: u8) -> u8 {
+    let mut kept = 0;
+    for (mask, king, rook, k, r) in [
+        (1, 4, 0, 'K', 'R'),
+        (2, 4, 7, 'K', 'R'),
+        (4, 60, 56, 'k', 'r'),
+        (8, 60, 63, 'k', 'r'),
+    ] {
+        if rights & mask != 0 && board[king] == k && board[rook] == r {
+            kept |= mask;
+        }
+    }
+    kept
 }
 
 /// FEN for a decoded setup. `board` is indexed `rank * 8 + file`; castling uses

@@ -232,7 +232,8 @@ Release build on the development Mac, through
 | Job | Database | Result | Time |
 |---|---|---|---|
 | Check Integrity | 2CBH Mega (24,783 entries) | no problems; 24 texts | 0.18 s |
-| Check Integrity | classic Mega (11,151,119 entries) | 16 problems: 14 set-up positions with impossible castling rights (e.g. entries 64687, 64740), the known Chess960 record without a start position, one annotation record that does not parse | 133.8 s (8 workers) |
+| Check Integrity | classic Mega (11,151,119 entries), before the set-up fix | 16 problems: 12 set-ups with impossible castling rights (e.g. entries 64687, 64740), two damaged move records, the known Chess960 record without a start position, one annotation record that does not parse | 133.8 s (8 workers) |
+| Check Integrity | classic Mega, after dropping impossible castling rights (2026-10-15) | 4 problems: the two damaged move records (3079389, absent piece ordinal; 7168922, no line terminator), the Chess960 record (489834), the annotation record (2455498) | 157.9 s (8 workers, with a Ghidra analysis running beside it) |
 | Find Double Games, defaults | 2CBH Mega | 4 doubles marked, 4 pairs kept | 0.64 s |
 | Find Double Games, Exact names and moves | 2CBH Mega | none | 0.23 s |
 | Remove Deleted Games | a copy of the 2CBH Mega with every tenth game marked | 2,476 removed, 22,307 kept, 39.9 → 37.9 MB, Check Integrity clean afterwards | 0.41 s |
