@@ -322,31 +322,32 @@ export function DossierDialog({
               </section>
               <section aria-label="Score by rating">
                 <h3>Score by the opponent's rating</h3>
-                {data.ratingBands.length === 0 && (
+                {data.ratingBands.length === 0 ? (
                   <p className="hint">No opponent is rated.</p>
-                )}
-                <table className="stat-table">
-                  <thead>
-                    <tr>
-                      <th>Elo</th>
-                      <th className="num">N</th>
-                      <th className="num">Pts.</th>
-                      <th className="num">Score</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.ratingBands.map((b) => (
-                      <tr key={b.from}>
-                        <td>
-                          {b.from}–{b.from + 49}
-                        </td>
-                        <td className="num">{b.games}</td>
-                        <td className="num">{points(b.points)}</td>
-                        <td className="num">{b.percent}%</td>
+                ) : (
+                  <table className="stat-table">
+                    <thead>
+                      <tr>
+                        <th>Elo</th>
+                        <th className="num">N</th>
+                        <th className="num">Pts.</th>
+                        <th className="num">Score</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {data.ratingBands.map((b) => (
+                        <tr key={b.from}>
+                          <td>
+                            {b.from}–{b.from + 49}
+                          </td>
+                          <td className="num">{b.games}</td>
+                          <td className="num">{points(b.points)}</td>
+                          <td className="num">{b.percent}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </section>
             </div>
             <div className="dossier-columns">
