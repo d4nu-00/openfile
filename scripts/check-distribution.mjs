@@ -40,6 +40,7 @@ const documents = new Set([
   "conversion.md",
   "maintenance.md",
   "analysis.md",
+  "openings.md",
 ]);
 export function allowedSourcePath(candidate) {
   if (
@@ -83,6 +84,9 @@ export function allowedSourcePath(candidate) {
     return true;
   if (candidate.startsWith("docs/") && documents.has(candidate.slice(5)))
     return true;
+  // The open ECO table (lichess-org/chess-openings, CC0).
+  if (/^crates\/chess-core\/data\/eco\/[a-e]\.tsv$/.test(candidate))
+    return true;
   if (
     [
       "scripts/check-distribution.mjs",
@@ -91,6 +95,7 @@ export function allowedSourcePath(candidate) {
       "tests/fixtures/README.md",
       "tests/fixtures/synthetic-start.pgn",
       "licenses/cbh2pgn-MIT.txt",
+      "licenses/chess-openings-CC0.txt",
       "licenses/dependencies.json",
       ".github/workflows/desktop.yml",
     ].includes(candidate)
