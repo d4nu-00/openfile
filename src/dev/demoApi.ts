@@ -545,6 +545,113 @@ export function demoApi(): WorkbenchApi {
       return demoStatistics(playerId);
     },
     cancelPlayerStatistics: async () => {},
+    prepareAgainst: async (_db, playerId, white, onProgress) => {
+      onProgress({ stage: "lines", done: "1", total: "1" });
+      const stats = demoStatistics(playerId);
+      const name = stats.name;
+      const mine = entries.filter(
+        (e) =>
+          e.kind === "game" &&
+          !e.deleted &&
+          (white ? e.white === name : e.black === name),
+      );
+      const score = white ? stats.white : stats.black;
+      const lines: [string[], string, string, string][] = white
+        ? [
+            [
+              ["e2e4", "e7e5", "g1f3"],
+              "1.e4 e5 2.Nf3",
+              "C40",
+              "King's Knight Opening",
+            ],
+            [["d2d4", "d7d5", "c2c4"], "1.d4 d5 2.c4", "D06", "Queen's Gambit"],
+          ]
+        : [
+            [["e2e4", "c7c5"], "1.e4 c5", "B20", "Sicilian Defense"],
+            [
+              ["d2d4", "g8f6", "c2c4", "e7e6"],
+              "1.d4 Nf6 2.c4 e6",
+              "E00",
+              "Indian Defense",
+            ],
+          ];
+      return {
+        playerId,
+        name,
+        white,
+        games: mine.length,
+        deleted: 0,
+        read: mine.length,
+        unreadable: 0,
+        truncated: false,
+        score,
+        recentRating: 2650,
+        firstYear: stats.firstYear,
+        lastYear: stats.lastYear,
+        repertoire: lines.map(([moves, text, eco, opening], i) => ({
+          moves,
+          text,
+          eco,
+          name: opening,
+          games: Math.max(1, Math.round(mine.length / (i + 2))),
+          score: 60 - i * 10,
+          lastYear: 2002 - i,
+        })),
+        openings: stats.openings
+          .map((o) => ({ eco: o.eco, score: white ? o.white : o.black }))
+          .filter((o) => o.score.games > 0),
+        latest: mine
+          .slice(-10)
+          .reverse()
+          .map((e) => ({
+            ordinal: e.ordinal,
+            year: Number(e.date?.slice(0, 4)) || undefined,
+            opponent: white ? e.black : e.white,
+            result: e.result,
+            eco: e.eco,
+            tournament: e.event,
+          })),
+        lastGame: mine.at(-1)?.ordinal,
+      };
+    },
+    cancelPreparation: async () => {},
+    closePreparation: async () => {},
+    preparedTree: async (_db, line, requestId) => {
+      const moves = line.moves.length === 0 ? ["e2e4", "d2d4"] : [];
+      return {
+        requestId,
+        status: moves.length ? ("tree" as const) : ("notInTree" as const),
+        games: moves.length ? 12 : 0,
+        ended: 0,
+        moves: moves.map((uci, i) => ({
+          uci,
+          san: uci === "e2e4" ? "e4" : "d4",
+          games: 8 - i * 4,
+          share: i ? 33.3 : 66.7,
+          score: 60 - i * 10,
+          draws: 30,
+          averageElo: 2650,
+          performance: 2700 - i * 50,
+          firstYear: 1990,
+          lastYear: 2002,
+        })),
+      };
+    },
+    preparationGames: async (_db, playerId, white, _line, requestId) => {
+      const name = demoNames("players")[playerId]?.name;
+      hits = all().filter((n) => {
+        const e = demoEntry(n);
+        return white ? e.white === name : e.black === name;
+      });
+      return {
+        requestId,
+        hits: String(hits.length),
+        scanned: String(hits.length),
+        truncated: false,
+        cancelled: false,
+        indexed: false,
+      };
+    },
     statisticsGames: async (_db, playerId, _group, requestId) => {
       const name = demoNames("players")[playerId]?.name;
       hits = all().filter((n) => {

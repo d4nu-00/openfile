@@ -20,6 +20,8 @@ import type {
   BoosterProgress,
   Line,
   TreeResponse,
+  Preparation,
+  PrepareProgress,
   TreeProgress,
   ReferenceResponse,
   AppSettings,
@@ -537,6 +539,46 @@ export const backend = {
       databaseId,
       playerId,
       group,
+      requestId,
+    }),
+  /** Prepare against White or Black; undefined when cancelled. */
+  prepareAgainst: async (
+    databaseId: string,
+    playerId: number,
+    white: boolean,
+    onProgress: (p: PrepareProgress) => void,
+  ) => {
+    const events = new Channel<PrepareProgress>();
+    events.onmessage = onProgress;
+    return (
+      (await invoke<Preparation | null>("prepare_against", {
+        databaseId,
+        playerId,
+        white,
+        events,
+      })) ?? undefined
+    );
+  },
+  cancelPreparation: (databaseId: string) =>
+    invoke<void>("cancel_preparation", { databaseId }),
+  closePreparation: (databaseId: string) =>
+    invoke<void>("close_preparation", { databaseId }),
+  /** The prepared player's moves in a position, for the Book pane. */
+  preparedTree: (databaseId: string, line: Line, requestId: string) =>
+    invoke<TreeResponse>("prepared_tree", { databaseId, line, requestId }),
+  /** Lists the prepared games, or those reaching `line`. */
+  preparationGames: (
+    databaseId: string,
+    playerId: number,
+    white: boolean,
+    line: Line | null,
+    requestId: string,
+  ) =>
+    invoke<SearchResponse>("preparation_games", {
+      databaseId,
+      playerId,
+      white,
+      line,
       requestId,
     }),
   loadEntry: (databaseId: string, ordinal: string, requestId: string) =>

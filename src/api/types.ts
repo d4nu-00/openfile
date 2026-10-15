@@ -445,6 +445,51 @@ export interface PlayerStatistics {
   moreOpponents: number;
   moreTournaments: number;
 }
+/** Prepare against White or Black: the player's games with one colour. */
+export interface RepertoireRow {
+  /** UCI moves from the start position. */
+  moves: string[];
+  /** "1.e4 c5 2.Nf3". */
+  text: string;
+  eco?: string;
+  name?: string;
+  games: number;
+  /** The player's score in percent. */
+  score?: number;
+  lastYear?: number;
+}
+export interface PreparedGame {
+  ordinal: string;
+  year?: number;
+  opponent?: string;
+  opponentElo?: number;
+  result?: string;
+  eco?: string;
+  tournament?: string;
+}
+export interface Preparation {
+  playerId: number;
+  name?: string;
+  white: boolean;
+  games: number;
+  deleted: number;
+  read: number;
+  unreadable: number;
+  truncated: boolean;
+  score: StatScore;
+  recentRating?: number;
+  firstYear: number;
+  lastYear: number;
+  repertoire: RepertoireRow[];
+  openings: { eco?: string; score: StatScore }[];
+  latest: PreparedGame[];
+  lastGame?: string;
+}
+export interface PrepareProgress {
+  stage: "games" | "lines";
+  done: string;
+  total: string;
+}
 /** The games of a statistics row. */
 export type StatGroup =
   | { kind: "all" }

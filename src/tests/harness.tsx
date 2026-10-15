@@ -1007,6 +1007,119 @@ export function mockApi(firstDatabase = 1) {
         },
       ),
     cancelPlayerStatistics: vi.fn().mockResolvedValue(undefined),
+    prepareAgainst: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          playerId: number,
+          white: boolean,
+          onProgress: (p: {
+            stage: string;
+            done: string;
+            total: string;
+          }) => void,
+        ) => {
+          onProgress({ stage: "lines", done: "1", total: "2" });
+          return {
+            playerId,
+            name: `Player ${playerId}, A`,
+            white,
+            games: 3,
+            deleted: 0,
+            read: 3,
+            unreadable: 0,
+            truncated: false,
+            score: {
+              games: 3,
+              wins: 1,
+              draws: 1,
+              losses: 1,
+              points: 1.5,
+              percent: 50,
+              averageElo: 2500,
+              performance: 2500,
+            },
+            recentRating: 2450,
+            firstYear: 2019,
+            lastYear: 2020,
+            repertoire: [
+              {
+                moves: ["e2e4", "c7c5", "g1f3"],
+                text: "1.e4 c5 2.Nf3",
+                eco: "B27",
+                name: "Sicilian Defense",
+                games: 2,
+                score: 75,
+                lastYear: 2020,
+              },
+            ],
+            openings: [
+              {
+                eco: "B27",
+                score: {
+                  games: 2,
+                  wins: 1,
+                  draws: 1,
+                  losses: 0,
+                  points: 1.5,
+                  percent: 75,
+                },
+              },
+            ],
+            latest: [
+              {
+                ordinal: "3",
+                year: 2020,
+                opponent: "Bravo, B",
+                result: "0-1",
+                eco: "D02",
+                tournament: "Club",
+              },
+            ],
+            lastGame: "3",
+          };
+        },
+      ),
+    cancelPreparation: vi.fn().mockResolvedValue(undefined),
+    closePreparation: vi.fn().mockResolvedValue(undefined),
+    preparedTree: vi
+      .fn()
+      .mockImplementation(async (_db: string, _line: unknown, requestId) => ({
+        requestId,
+        status: "tree",
+        games: 3,
+        ended: 0,
+        moves: [
+          {
+            uci: "e2e4",
+            san: "e4",
+            games: 2,
+            share: 66.7,
+            score: 75,
+            draws: 50,
+            firstYear: 2019,
+            lastYear: 2020,
+          },
+        ],
+      })),
+    preparationGames: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          _p: number,
+          _w: boolean,
+          _l: unknown,
+          requestId: string,
+        ) => ({
+          requestId,
+          hits: "2",
+          scanned: "3",
+          truncated: false,
+          cancelled: false,
+        }),
+      ),
     statisticsGames: vi
       .fn()
       .mockImplementation(

@@ -27,6 +27,7 @@ import type {
   DatabaseSymbol,
   Edit,
   PlayerStatistics,
+  Preparation,
   SortColumn,
 } from "./api/types";
 import {
@@ -73,6 +74,7 @@ import { NamesPane } from "./views/NamesPane";
 import { StartScreen, type StartView } from "./views/StartScreen";
 import { CrosstableDialog } from "./components/CrosstableDialog";
 import { PlayerStatisticsDialog } from "./components/PlayerStatisticsDialog";
+import { PrepareDialog } from "./components/PrepareDialog";
 import {
   chooseRow,
   isSelected,
@@ -93,6 +95,9 @@ import { format } from "./commands/keys";
 import "./styles/theme.css";
 import "./styles/shell.css";
 import "./styles/board.css";
+
+/** The standard start position. */
+const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 export type Theme = "white" | "blue" | "gray" | "black";
 type Layout = "standard" | "wide-list" | "big-board" | "big-engine";
@@ -210,6 +215,23 @@ export function App({
     error?: string;
     players?: { id: number; name?: string }[];
   }>();
+  /** Prepare against White or Black: the dialog's player and result. */
+  const [prep, setPrep] = useState<{
+    databaseId: string;
+    playerId: number;
+    white: boolean;
+    name?: string;
+    data?: Preparation;
+    progress?: string;
+    error?: string;
+  }>();
+  /** The preparation the Book pane shows instead of the opening tree. */
+  const [bookPrep, setBookPrep] = useState<{
+    databaseId: string;
+    playerId: number;
+    white: boolean;
+    label: string;
+  }>();
   /** The start screen (My Databases): shown when asked, or with no database. */
   const [startOpen, setStartOpen] = useState(false);
   const [showFolders, setShowFolders] = useState(true);
@@ -265,10 +287,19 @@ export function App({
     return undefined;
   }
   const inGame = view === "game";
-  const panes = usePositionPanes(api, state, {
-    book: inGame && (notationTab === "book" || extraBook),
-    reference: inGame && (notationTab === "reference" || extraReference),
-  });
+  const bookPrepared =
+    bookPrep && bookPrep.databaseId === state.database?.databaseId
+      ? bookPrep
+      : undefined;
+  const panes = usePositionPanes(
+    api,
+    state,
+    {
+      book: inGame && (notationTab === "book" || extraBook),
+      reference: inGame && (notationTab === "reference" || extraReference),
+    },
+    bookPrepared && `${bookPrepared.playerId}:${bookPrepared.white}`,
+  );
   const title = game
     ? `${game.tags.White ?? "?"} — ${game.tags.Black ?? "?"}`
     : "Game board";
@@ -1229,6 +1260,70 @@ export function App({
       );
     }
   }
+  /** Prepares against a player of the active database with one colour. */
+  async function openPreparation(
+    playerId: number,
+    white: boolean,
+    name?: string,
+  ) {
+    const db = state.database;
+    if (!db) return;
+    const databaseId = db.databaseId;
+    const live = (c?: {
+      databaseId: string;
+      playerId: number;
+      white: boolean;
+    }) =>
+      c?.databaseId === databaseId &&
+      c.playerId === playerId &&
+      c.white === white;
+    setPrep((c) => ({
+      databaseId,
+      playerId,
+      white,
+      name: name ?? (c?.playerId === playerId ? c.name : undefined),
+      progress: "Finding the games…",
+    }));
+    try {
+      const data = await api.prepareAgainst(
+        databaseId,
+        playerId,
+        white,
+        (p) => {
+          const pct = Number((BigInt(p.done) * 100n) / BigInt(p.total || "1"));
+          const what =
+            p.stage === "games" ? "Finding the games" : "Reading the moves";
+          setPrep((c) =>
+            live(c) ? { ...c!, progress: `${what}, ${pct}%` } : c,
+          );
+        },
+      );
+      // The backend keeps one preparation per database: this one.
+      setBookPrep((b) =>
+        b?.databaseId === databaseId &&
+        (b.playerId !== playerId || b.white !== white)
+          ? undefined
+          : b,
+      );
+      setPrep((c) =>
+        live(c)
+          ? data
+            ? { ...c!, data, name: data.name, progress: undefined }
+            : { ...c!, progress: undefined, error: "Preparation stopped" }
+          : c,
+      );
+    } catch (e) {
+      setPrep((c) =>
+        live(c)
+          ? {
+              ...c!,
+              progress: undefined,
+              error: (e as { message?: string })?.message ?? String(e),
+            }
+          : c,
+      );
+    }
+  }
   /** The players of the shown game, when it comes from the active database. */
   const gamePlayers: { id: number; name?: string }[] = [];
   if (
@@ -1255,6 +1350,20 @@ export function App({
     listTab === "players" && chosenName.players
       ? chosenName.players.id
       : gamePlayers[0]?.id;
+  /** The player to prepare against with a colour: the chosen one, else the
+   * shown game's player of that colour. */
+  const prepPlayer = (white: boolean) =>
+    listTab === "players" && chosenName.players
+      ? chosenName.players
+      : state.document && state.database
+        ? gamePlayers.find(
+            (p) =>
+              p.id ===
+              (white
+                ? state.document!.summary.whiteId
+                : state.document!.summary.blackId),
+          )
+        : undefined;
   /** The tournament for Cross Table: the chosen one, else the game's. */
   const crossTournament =
     listTab === "tournaments" && chosenName.tournaments
@@ -1294,6 +1403,12 @@ export function App({
       onPlay={playBookMove}
       onCreate={() => void w.createTree()}
       building={w.treeBuild && `Building the opening tree: ${w.treeBuild}`}
+      prepared={bookPrepared?.label}
+      onLeavePrepared={() => {
+        if (!bookPrepared) return;
+        setBookPrep(undefined);
+        void api.closePreparation(bookPrepared.databaseId).catch(() => {});
+      }}
     />
   );
   const referencePane = (
@@ -1553,6 +1668,33 @@ export function App({
         if (listTab === "players" && row) return openStatistics(row.id);
       },
       enabled: listTab === "players" && !!chosenName.players,
+    },
+    // The player chosen in the Players list, else the shown game's player
+    // of that colour (the workbench's addition).
+    "prepare-white": {
+      run: () => {
+        const p = prepPlayer(true);
+        if (p) return openPreparation(p.id, true, p.name);
+      },
+      enabled: !!prepPlayer(true),
+    },
+    "prepare-black": {
+      run: () => {
+        const p = prepPlayer(false);
+        if (p) return openPreparation(p.id, false, p.name);
+      },
+      enabled: !!prepPlayer(false),
+    },
+    // ChessBase opens the Players list, where the player is chosen and
+    // prepared against; with a player chosen, the workbench starts at once.
+    "prepare-against": {
+      run: () => {
+        const row = chosenName.players;
+        if (listTab === "players" && row)
+          return openPreparation(row.id, true, row.name);
+        showList("players");
+      },
+      enabled: !!state.database,
     },
     "player-statistic": {
       run: () => {
@@ -2785,6 +2927,54 @@ export function App({
             if (stats.progress)
               void api.cancelPlayerStatistics(stats.databaseId);
             setStats(undefined);
+          }}
+        />
+      )}
+      {prep && (
+        <PrepareDialog
+          name={prep.name}
+          white={prep.white}
+          data={prep.data}
+          progress={prep.progress}
+          error={prep.error}
+          onColor={(white) =>
+            void openPreparation(prep.playerId, white, prep.name)
+          }
+          onCancel={() => void api.cancelPreparation(prep.databaseId)}
+          onShowInBook={() => {
+            const colour = prep.white ? "White" : "Black";
+            setBookPrep({
+              databaseId: prep.databaseId,
+              playerId: prep.playerId,
+              white: prep.white,
+              label: `Prepare against ${colour}: ${prep.name ?? "?"}`,
+            });
+            setPrep(undefined);
+            if (game) {
+              setView("game");
+              setNotationTab("book");
+            }
+          }}
+          onListGames={(line) => {
+            const { playerId, white, name } = prep;
+            const colour = white ? "White" : "Black";
+            setPrep(undefined);
+            showList("games");
+            void w.preparationGames(
+              playerId,
+              white,
+              line ? { startFen: START_FEN, moves: line.moves } : null,
+              `${name ?? "?"} as ${colour}${line ? `: ${line.text}` : ""}`,
+            );
+          }}
+          onLoadGame={(ordinal) => {
+            setPrep(undefined);
+            setListTab("games");
+            void e.openEntry(ordinal);
+          }}
+          onClose={() => {
+            if (prep.progress) void api.cancelPreparation(prep.databaseId);
+            setPrep(undefined);
           }}
         />
       )}

@@ -10,6 +10,7 @@ import type {
   PositionQuery,
   SortColumn,
   StatGroup,
+  Line,
 } from "../api/types";
 import type { WorkbenchApi } from "../api/client";
 import { SelectionGate } from "./selection";
@@ -564,6 +565,17 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       api.statisticsGames(db, playerId, group, request),
     );
   }
+  /** Lists the games of a preparation, or those reaching `line`. */
+  function preparationGames(
+    playerId: number,
+    white: boolean,
+    line: Line | null,
+    label: string,
+  ) {
+    return runSearch({ label }, (db, request) =>
+      api.preparationGames(db, playerId, white, line, request),
+    );
+  }
   /** Finds games that reach the position `fen`. */
   function findPosition(fen: string) {
     return runSearch({ fen }, (db, request, progress) =>
@@ -944,6 +956,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     openDatabase,
     search,
     statisticsGames,
+    preparationGames,
     findPosition,
     positionSearch,
     searching,
