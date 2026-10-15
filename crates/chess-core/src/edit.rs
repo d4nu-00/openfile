@@ -223,6 +223,157 @@ impl Game {
         Ok(at)
     }
 
+    /// Renumbers the nodes in pre-order (each node before its children,
+    /// the main continuation first), so every child has a higher id than
+    /// its parent. Returns each old node's new id.
+    fn renumber(&mut self) -> Vec<NodeId> {
+        let mut order = Vec::with_capacity(self.nodes.len());
+        let mut stack = vec![0 as NodeId];
+        while let Some(id) = stack.pop() {
+            order.push(id);
+            stack.extend(self.nodes[id as usize].children.iter().rev());
+        }
+        let mut map = vec![0 as NodeId; self.nodes.len()];
+        for (new, &old) in order.iter().enumerate() {
+            map[old as usize] = new as NodeId;
+        }
+        let mut old = std::mem::take(&mut self.nodes);
+        self.nodes = order
+            .iter()
+            .map(|&o| {
+                let mut n = std::mem::replace(
+                    &mut old[o as usize],
+                    crate::Node {
+                        id: 0,
+                        parent: None,
+                        uci: None,
+                        children: vec![],
+                        comments: vec![],
+                        nags: vec![],
+                        pre_comments: vec![],
+                        squares: vec![],
+                        arrows: vec![],
+                    },
+                );
+                n.id = map[o as usize];
+                n.parent = n.parent.map(|p| map[p as usize]);
+                n.children = n.children.iter().map(|&c| map[c as usize]).collect();
+                n
+            })
+            .collect();
+        map
+    }
+
+    /// Checks every move of the tree against its position.
+    fn check_moves(&self) -> Result<(), CoreError> {
+        let mut stack = vec![(0 as NodeId, crate::model::parse_position(&self.start_fen)?)];
+        while let Some((id, pos)) = stack.pop() {
+            for &child in &self.nodes[id as usize].children {
+                let uci = self.nodes[child as usize]
+                    .uci
+                    .as_deref()
+                    .ok_or(CoreError::InvalidNode)?;
+                stack.push((child, crate::model::apply_uci(pos.clone(), uci)?));
+            }
+        }
+        Ok(())
+    }
+
+    /// ChessBase's Insert Into Game (`INSERTVARIATIONINTOGAME`, "Insert moves
+    /// of variation into main line. Even number needed"): the variation that
+    /// contains `node` becomes the line, and the moves it replaced, with
+    /// their variations, continue after its last move. The variation must
+    /// have an even number of moves, so the same side moves next, and every
+    /// later move must still be legal. Returns the variation's last move.
+    pub fn insert_variation(&mut self, node: NodeId) -> Result<NodeId, CoreError> {
+        let start = self
+            .variation_start(node)?
+            .ok_or_else(|| CoreError::InvalidPgn("The move is not in a variation".into()))?;
+        let parent = self.node_parent(start)?.ok_or(CoreError::InvalidNode)?;
+        let replaced = self.nodes[parent as usize].children[0];
+        let mut last = start;
+        let mut plies = 1;
+        while let Some(&next) = self.nodes[last as usize].children.first() {
+            last = next;
+            plies += 1;
+        }
+        if plies % 2 != 0 {
+            return Err(CoreError::InvalidPgn(
+                "Insert Into Game needs a variation with an even number of moves".into(),
+            ));
+        }
+        let mut next = self.clone();
+        let children = &mut next.nodes[parent as usize].children;
+        children.retain(|&c| c != start && c != replaced);
+        children.insert(0, start);
+        next.nodes[last as usize].children.push(replaced);
+        next.nodes[replaced as usize].parent = Some(last);
+        next.check_moves().map_err(|_| {
+            CoreError::InvalidPgn("The moves after the variation are not legal after it".into())
+        })?;
+        let map = next.renumber();
+        *self = next;
+        Ok(map[last as usize])
+    }
+
+    /// ChessBase's Delete Commentary commands. Returns the new id of
+    /// `keep` (the selected move), or the nearest of its ancestors that
+    /// remains.
+    pub fn delete_commentary(
+        &mut self,
+        kind: Commentary,
+        keep: NodeId,
+    ) -> Result<NodeId, CoreError> {
+        let path = self.path_to(keep)?;
+        match kind {
+            // "Delete all variations and commentary" (Ctrl+Shift+Y).
+            Commentary::All => {
+                let mut main = vec![false; self.nodes.len()];
+                let mut at = 0usize;
+                main[0] = true;
+                while let Some(&c) = self.nodes[at].children.first() {
+                    main[c as usize] = true;
+                    at = c as usize;
+                }
+                for n in &mut self.nodes {
+                    n.comments.clear();
+                    n.pre_comments.clear();
+                    n.nags.clear();
+                    n.squares.clear();
+                    n.arrows.clear();
+                }
+                let map = self.retain(&main);
+                Ok(path
+                    .iter()
+                    .rev()
+                    .find_map(|&id| map[id as usize])
+                    .unwrap_or(0))
+            }
+            // "Delete all text commentary".
+            Commentary::Text => {
+                for n in &mut self.nodes {
+                    n.comments.clear();
+                    n.pre_comments.clear();
+                }
+                Ok(keep)
+            }
+            // "Delete all evaluation and time commentary": the scores the
+            // workbench writes as text ("+0.35/22") and PGN's [%eval],
+            // [%clk] and [%emt] commands.
+            Commentary::EvaluationAndTime => {
+                for n in &mut self.nodes {
+                    n.comments = n
+                        .comments
+                        .iter()
+                        .map(|c| strip_engine_commands(c))
+                        .filter(|c| !c.is_empty() && !is_score(c))
+                        .collect();
+                }
+                Ok(keep)
+            }
+        }
+    }
+
     /// Removes every coloured square and arrow from the game (ChessBase
     /// "Delete Colour Commentary").
     pub fn clear_marks(&mut self) {
@@ -297,4 +448,63 @@ impl Game {
         self.tags = next;
         Ok(())
     }
+}
+
+/// Kinds of commentary ChessBase deletes at once.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Commentary {
+    /// Variations and every annotation (`ANNODELETEALL`).
+    All,
+    /// Text before and after moves (`ANNODELETETEXT`).
+    Text,
+    /// Evaluation and time annotations (`ANNODELETEFRITZ`).
+    EvaluationAndTime,
+}
+
+/// A score as the workbench writes it after a pasted line or an analysis:
+/// "+0.35", "-1.20/18", "+M3/30".
+fn is_score(text: &str) -> bool {
+    let t = text.trim();
+    let Some(rest) = t.strip_prefix(['+', '-']) else {
+        return false;
+    };
+    let (value, depth) = rest.split_once('/').unwrap_or((rest, ""));
+    let number = |v: &str| !v.is_empty() && v.bytes().all(|b| b.is_ascii_digit());
+    let value_ok = match value.strip_prefix('M') {
+        Some(m) => number(m),
+        None => value
+            .split_once('.')
+            .is_some_and(|(a, b)| number(a) && b.len() == 2 && number(b)),
+    };
+    value_ok && (depth.is_empty() || number(depth))
+}
+
+/// The comment without PGN's [%eval …], [%clk …] and [%emt …] commands.
+fn strip_engine_commands(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    let mut removed = false;
+    while let Some(at) = rest.find("[%") {
+        let tail = &rest[at + 2..];
+        let is_engine = ["eval ", "clk ", "emt "]
+            .iter()
+            .any(|k| tail.starts_with(k));
+        match (is_engine, tail.find(']')) {
+            (true, Some(end)) => {
+                out.push_str(&rest[..at]);
+                rest = &tail[end + 1..];
+                removed = true;
+            }
+            _ => {
+                out.push_str(&rest[..at + 2]);
+                rest = tail;
+            }
+        }
+    }
+    if !removed {
+        return text.to_string();
+    }
+    out.push_str(rest);
+    out.split_whitespace().collect::<Vec<_>>().join(" ")
 }
