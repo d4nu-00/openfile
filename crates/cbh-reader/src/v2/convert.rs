@@ -1,7 +1,7 @@
 //! Converting games of any database into a 2CBH database (ChessBase's
 //! "Convert to free 2CBH format", `CONVERT_TO_FREE_2CBH`). Each game is
 //! loaded from the source and appended in batches; see docs/conversion.md.
-use super::write::Writer;
+use super::write::{EntryMarks, Writer};
 use crate::{CbhError, DataStatus, Database, EntryKind};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -47,7 +47,7 @@ pub fn convert(
             break;
         }
         let mut games = Vec::with_capacity(BATCH);
-        let mut deleted = Vec::with_capacity(BATCH);
+        let mut marks = Vec::with_capacity(BATCH);
         let mut partial = Vec::with_capacity(BATCH);
         for ordinal in ordinals.by_ref().take(BATCH) {
             report.done += 1;
@@ -60,15 +60,18 @@ pub fn convert(
                         loaded.annotations_status,
                         DataStatus::Available | DataStatus::Missing
                     ));
-                    deleted.push(loaded.summary.deleted);
+                    marks.push(EntryMarks {
+                        deleted: loaded.summary.deleted,
+                        medals: loaded.summary.medals,
+                    });
                     games.push(game);
                 }
                 (_, None) => report.unreadable += 1,
             }
         }
-        let written = writer.append_marked(&games, &deleted)?;
+        let written = writer.append_marked(&games, &marks)?;
         report.written += written.len() as u64;
-        report.deleted += deleted.iter().filter(|&&d| d).count() as u64;
+        report.deleted += marks.iter().filter(|m| m.deleted).count() as u64;
         report.incomplete += written
             .iter()
             .zip(&partial)
