@@ -6,6 +6,7 @@ pub mod eco;
 pub mod entities;
 pub mod error;
 pub mod header;
+pub mod history;
 pub mod limits;
 pub mod maintain;
 pub mod moves;
