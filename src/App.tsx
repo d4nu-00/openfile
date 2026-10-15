@@ -201,6 +201,8 @@ export function App({
   const [setupError, setSetupError] = useState<string>();
   const [pasting, setPasting] = useState<"game" | "position">();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  /** Folded variation nodes, per game document (ChessBase's Fold). */
+  const [folds, setFolds] = useState<Record<string, number[]>>({});
   /** The symbol popup opened by typing !, ?, = or $. */
   const [symbolMenu, setSymbolMenu] = useState<SymbolSlot>();
   // Notation tabs, and the book and reference panes outside them.
@@ -212,6 +214,30 @@ export function App({
 
   const game = state.document?.game;
   const selected = state.position?.nodeId ?? 0;
+  const foldKey = state.document?.documentId ?? "";
+  const folded = useMemo(() => new Set(folds[foldKey] ?? []), [folds, foldKey]);
+  const setFolded = (ids: number[]) =>
+    setFolds((f) => ({ ...f, [foldKey]: ids }));
+  const setFold = (id: number, on: boolean) =>
+    setFolds((f) => {
+      const now = new Set(f[foldKey] ?? []);
+      if (on) now.add(id);
+      else now.delete(id);
+      return { ...f, [foldKey]: [...now] };
+    });
+  /** The first branch node from the selected move's own branch onwards,
+   * along the line, that `wanted` accepts (Fold/Unfold next node). */
+  function nextBranch(wanted: (id: number) => boolean): number | undefined {
+    if (!game) return undefined;
+    let id: number | undefined = game.nodes[selected]?.parent ?? 0;
+    for (let i = 0; id !== undefined && i < game.nodes.length; i++) {
+      const n: (typeof game.nodes)[number] | undefined = game.nodes[id];
+      if (!n) return undefined;
+      if (n.children.length > 1 && wanted(id)) return id;
+      id = n.children[0];
+    }
+    return undefined;
+  }
   const inGame = view === "game";
   const panes = usePositionPanes(api, state, {
     book: inGame && (notationTab === "book" || extraBook),
@@ -1418,6 +1444,60 @@ export function App({
       run: () => e.edit({ kind: "deleteVariation", node: selected }),
       enabled: inVariation && !busy,
     },
+    "null-move": {
+      run: () => e.edit({ kind: "appendMove", parent: selected, uci: "0000" }),
+      enabled: !!game && !busy,
+    },
+    "insert-variation": {
+      run: () => e.edit({ kind: "insertVariation", node: selected }),
+      enabled: !!game && !busy && inVariation,
+    },
+    "fold-all": {
+      run: () =>
+        setFolded(
+          game?.nodes.filter((n) => n.children.length > 1).map((n) => n.id) ??
+            [],
+        ),
+      enabled: !!game?.nodes.some((n) => n.children.length > 1),
+    },
+    "unfold-all": { run: () => setFolded([]), enabled: folded.size > 0 },
+    "fold-next-node": {
+      run: () => {
+        const n = nextBranch((id) => !folded.has(id));
+        if (n !== undefined) setFold(n, true);
+      },
+      enabled: !!game,
+    },
+    "unfold-next-node": {
+      run: () => {
+        const n = nextBranch((id) => folded.has(id));
+        if (n !== undefined) setFold(n, false);
+      },
+      enabled: folded.size > 0,
+    },
+    "delete-all-commentary": {
+      run: () =>
+        e.edit({ kind: "deleteCommentary", commentary: "all", node: selected }),
+      enabled: !!game && !busy,
+    },
+    "delete-text-commentary": {
+      run: () =>
+        e.edit({
+          kind: "deleteCommentary",
+          commentary: "text",
+          node: selected,
+        }),
+      enabled: !!game && !busy,
+    },
+    "delete-evaluation-commentary": {
+      run: () =>
+        e.edit({
+          kind: "deleteCommentary",
+          commentary: "evaluationAndTime",
+          node: selected,
+        }),
+      enabled: !!game && !busy,
+    },
     "delete-colour-commentary": {
       run: () => e.edit({ kind: "clearMarks" }),
       enabled:
@@ -1496,6 +1576,19 @@ export function App({
         k.kibitzers.some((v) => v.enabled) || !!w.treeBuild || !!w.searching,
     },
   };
+  // A move chosen inside folded variations unfolds them.
+  useEffect(() => {
+    if (!game || !folded.size) return;
+    const open: number[] = [];
+    for (let id = selected, i = 0; id !== 0 && i < game.nodes.length; i++) {
+      const parent = game.nodes[id]?.parent;
+      if (parent === undefined || parent === null) break;
+      if (folded.has(parent) && game.nodes[parent].children[0] !== id)
+        open.push(parent);
+      id = parent;
+    }
+    if (open.length) setFolded([...folded].filter((f) => !open.includes(f)));
+  }, [selected, game]);
   // A symbol popup belongs to the move it was opened for.
   useEffect(() => setSymbolMenu(undefined), [selected, game]);
   useEffect(() => {
@@ -1583,6 +1676,8 @@ export function App({
       selection={selected}
       onSelect={(id) => void w.selectNode(id)}
       startFen={game.startFen}
+      folded={folded}
+      onUnfold={(id) => setFold(id, false)}
     />
   ) : (
     <div className="empty-state">

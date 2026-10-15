@@ -165,6 +165,12 @@ export type Edit =
       arrows: ArrowMark[];
     }
   | { kind: "clearMarks" }
+  | { kind: "insertVariation"; node: NodeId }
+  | {
+      kind: "deleteCommentary";
+      commentary: "all" | "text" | "evaluationAndTime";
+      node: NodeId;
+    }
   | {
       kind: "addAnalysis";
       items: {
@@ -181,6 +187,8 @@ export type Edit =
   | { kind: "redo" };
 /** Edits that change the tree's shape; the selection is re-read after them. */
 export const structuralEdits: Edit["kind"][] = [
+  "insertVariation",
+  "deleteCommentary",
   "deleteVariation",
   "promoteVariation",
   "deleteRemaining",

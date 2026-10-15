@@ -1133,6 +1133,16 @@ kbd {
   font-weight: 600;
 }
 
+/* Folded variations */
+.notation .fold {
+  border: 1px solid var(--pane-border);
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0 4px;
+  margin: 0 3px;
+  font-size: 0.85em;
+  cursor: pointer;
+}
 /* Symbol popup for typed !, ?, = and $ */
 .symbol-menu {
   position: relative;
