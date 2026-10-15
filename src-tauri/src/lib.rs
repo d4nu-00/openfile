@@ -12,6 +12,7 @@ pub mod lists;
 pub mod maintenance;
 pub mod names;
 pub mod openings;
+pub mod prepare;
 pub mod registry;
 pub mod save;
 pub mod searches;
@@ -182,6 +183,11 @@ pub fn run() {
             commands::player_statistics,
             commands::cancel_player_statistics,
             commands::statistics_games,
+            commands::prepare_against,
+            commands::cancel_preparation,
+            commands::close_preparation,
+            commands::prepared_tree,
+            commands::preparation_games,
             commands::copy_rows,
             commands::clip_size,
             commands::paste_games,

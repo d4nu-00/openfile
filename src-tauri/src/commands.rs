@@ -840,6 +840,66 @@ pub async fn statistics_games(
     blocking(move || s.statistics_games(database_id, player_id, group, request_id)).await
 }
 #[tauri::command]
+pub async fn prepare_against(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    player_id: u32,
+    white: bool,
+    events: tauri::ipc::Channel<crate::prepare::PrepareProgress>,
+) -> Result<Option<crate::prepare::Preparation>, AppError> {
+    let s = state.inner().clone();
+    blocking(move || {
+        let mut last = std::time::Instant::now();
+        s.prepare_against(database_id, player_id, white, |stage, done, total| {
+            if last.elapsed().as_millis() >= 250 || done == total {
+                last = std::time::Instant::now();
+                let _ = events.send(crate::prepare::PrepareProgress {
+                    stage,
+                    done: done.to_string(),
+                    total: total.to_string(),
+                });
+            }
+        })
+    })
+    .await
+}
+#[tauri::command]
+pub fn cancel_preparation(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_preparation(database_id)
+}
+#[tauri::command]
+pub fn close_preparation(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.close_preparation(database_id)
+}
+#[tauri::command]
+pub async fn prepared_tree(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    line: crate::trees::Line,
+    request_id: String,
+) -> Result<crate::trees::TreeResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.prepared_tree(database_id, line, request_id)).await
+}
+#[tauri::command]
+pub async fn preparation_games(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    player_id: u32,
+    white: bool,
+    line: Option<crate::trees::Line>,
+    request_id: String,
+) -> Result<crate::searches::SearchResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.preparation_games(database_id, player_id, white, line, request_id)).await
+}
+#[tauri::command]
 pub async fn crosstable(
     state: tauri::State<'_, Arc<Registry>>,
     database_id: String,
