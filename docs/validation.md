@@ -706,6 +706,21 @@ A census of the classic Mega's CBG headers counted:
   message. F2 opens the dialog, which sets only the ticked field for the
   same selection.
 
+## Notation editing batch (2026-10-15)
+
+* **Core tests.**
+  * Insert Into Game puts 2. h3 h6 before 2. Nf3 Nc6, keeping the
+    variation 2... d6. Ids stay in pre-order.
+  * An odd number of moves, or later moves that no longer fit (2. Qh5 Nc6
+    then Nc6 again), changes nothing.
+  * Delete Commentary by kind: text, evaluation and time (scores and
+    `[%clk]`/`[%eval]`/`[%emt]`), and all, which also removes variations
+    and selects the nearest remaining ancestor.
+  * Null moves are refused in check.
+* **Frontend tests.** Fold All, [+1] and Ctrl+-/Ctrl++ hide and show the
+  variation. Ctrl+Alt+0, Insert Into Game and Ctrl+Shift+Y send their
+  edits.
+
 ## Distribution and remaining acceptance
 
 Git-tracked source paths are checked against an explicit allowlist. Private

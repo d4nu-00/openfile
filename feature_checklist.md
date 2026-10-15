@@ -127,9 +127,9 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 New game and position setup (`GAMENEW`, `NEWPOSITION`) *(Ctrl+N; S opens a board editor with side to move, castling, en passant, move number and FEN)*
 - [x] P1 🟢 Copy the position as FEN (`EDITCOPYPOSITION`) *(partial: no picture yet)*
 - [x] P1 🟢 Copy and paste games as PGN; paste a position from FEN (`EDITCOPYGAME`, `EDITPASTEGAME`, `EDITPASTEPOSITION`) *(Ctrl+C, Ctrl+V; when the clipboard cannot be read, a dialog takes the text)*
-- [ ] P2 🟢 Null move, exchange moves, insert a variation into the game, reorder or clean up variations (`GAMENULLMOVE`, `EXCHANGEMOVES`, `INSERTVARIATIONINTOGAME`, `REORDERVARIATIONS`, `CLEANUPVARIATIONS`)
-- [ ] P2 🟢 Fold and unfold variations (`FOLDALL`, `UNFOLDALL`, `FOLDNEXTNODE`)
-- [ ] P2 🟢 Delete commentary by kind: all, colour, evaluation/time, text, training, multimedia (`ANNODELETEALL`, `ANNODELETECOLOR`, `ANNODELETEFRITZ`)
+- [ ] P2 🟢 Null move, exchange moves, insert a variation into the game, reorder or clean up variations (`GAMENULLMOVE`, `EXCHANGEMOVES`, `INSERTVARIATIONINTOGAME`, `REORDERVARIATIONS`, `CLEANUPVARIATIONS`) *(partial: Enter Null Move (Ctrl+Alt+0) and Insert Into Game (even number of moves; later moves checked) are done, each undoable; exchange, reorder and clean up remain; see [game window](docs/game-window.md))*
+- [x] P2 🟢 Fold and unfold variations (`FOLDALL`, `UNFOLDALL`, `FOLDNEXTNODE`) *(Fold/Unfold All, next node with Ctrl+-/Ctrl++, [+n] in the notation; choosing a folded move unfolds; folding the others and switching folding off not ported)*
+- [x] P2 🟢 Delete commentary by kind: all, colour, evaluation/time, text, training, multimedia (`ANNODELETEALL`, `ANNODELETECOLOR`, `ANNODELETEFRITZ`) *(all (variations too, Ctrl+Shift+Y), text, evaluation and time (scores written as text and PGN [%eval]/[%clk]/[%emt], Alt+Shift+Y) and colour, each undoable; training and multimedia annotations are not decoded, so there is nothing to delete)*
 - [ ] P2 🟢 Insert diagrams, set medals, mark critical positions (opening, middlegame, endgame) (`ANNODIAGRAM`, `ANNOMEDAL`, `ANNOCRITICALPOSOPENING`)
 - [ ] P2 🟢 Pawn structure and piece path annotations (`ANNOPAWNSTRUCTURE`, `ANNOPIECEPATH`)
 - [ ] P2 🟢 Move times and clock comments (`ANNO_MOVETIME`)
