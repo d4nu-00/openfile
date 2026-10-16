@@ -189,7 +189,7 @@ export function ErrorReportDialog({
             >
               {players.map((p) => (
                 <option key={p.id} value={String(p.id)}>
-                  {p.name ?? "?"} ({p.games} games)
+                  {p.name ?? "?"} ({p.games} {p.games === 1 ? "game" : "games"})
                 </option>
               ))}
               <option value="both">Both sides</option>
