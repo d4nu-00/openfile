@@ -1,7 +1,8 @@
 # Error report: blunder statistics and estimated rating
 
 Status: spec written first on branch `error-report` (2026-10-16), stacked on
-`tournament-report`; implemented as described below. The direction was
+`tournament-report`; implemented as described below, with the error value
+corrected after measuring. The direction was
 agreed in conversation: reuse the engine infrastructure of Tactical
 Analysis, and port what can be traced.
 
@@ -95,13 +96,16 @@ be the analysed plies), and the observation rules.
   before less the evaluation after, from the mover's side, clamped to
   0–400, and 0 when the move is the engine's best. Unreadable games and
   set-ups the engine refuses are skipped and counted.
-* **Weights**: ChessBase's 0 for the only legal move and 0.2 for a
-  recapture (a capture on the square of the previous move's capture);
-  every other move weighs 1. ChessBase's other tags need its engine's
-  complexity and deep searches, which a UCI engine does not report.
-* **Error value** *e* = Σ loss × weight / Σ weight over the counted moves.
-  Because the other weights are 1, this is close to an average centipawn
-  loss.
+* **Weights**, ChessBase's where they can be known: 0 for the only legal
+  move and 0.2 for a recapture (a capture on the square of the previous
+  move's capture). Every other move gets 2, which is ChessBase's least weight
+  of an ordinary move (1 + its complexity / 100, at least 1). ChessBase's
+  complexity and its deep-search tags come from its own engine; a UCI
+  engine does not report them.
+* **Error value**, in ChessBase's form: *e* = Σ loss / Σ weight over the
+  moves with a weight. A first version weighted the losses as well, which
+  gave about twice the error and estimates 400–700 points too low on real
+  games (see Measurements).
 * **Blunder Elo**: ChessBase's curve of *e*, with *a* = the analysed plies
   per game. The slope and shape terms are left out (no complexity
   measure). It is shown with the side's average rating in the analysed
@@ -149,3 +153,23 @@ slope, the shape, and ChessBase's deep-search weights.
   then the report). Mocks are in the harness and the demo API.
 * Tests: pure statistics; an app test with `mock-uci legal` over a scratch
   2CBH; frontend tests for the dialog.
+
+## Measurements
+
+Release build, `src-tauri/examples/error_report.rs`, the classic Mega
+read-only, Stockfish 17 (`/opt/homebrew/bin/stockfish`), Quick (depth 9).
+Each run took the player's latest games in entry order, which may include
+rapid and blitz.
+
+| Player | Games | Moves | Time | Average loss | *e* | Blunder Elo | Rating | Difference |
+|---|---|---|---|---|---|---|---|---|
+| player A | 20 | 1,014 | 71 s | 11.8 | 6.4 | 2750 | 2832 | −82 |
+| player B | 30 | 1,111 | 57 s | 16.6 | 9.0 | 2560 | 2812 | −252 |
+| player D | 20 | 905 | 45 s | 19.0 | 10.4 | 2510 | 2802 | −292 |
+
+Slower (depth 12) on player A took 95 s for the same 1,014 moves. With the
+first version's weighting (losses weighted by 1), the same runs gave 2430,
+2130 and similar, 400–700 points low, which led to the correction above.
+Stockfish's evaluations at these depths vary from run to run. The estimate
+tends to be low for strong players, as ChessBase's own remarks warn for few
+games and fast games.
