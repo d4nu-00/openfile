@@ -185,16 +185,18 @@ pub fn band(cp: i32) -> usize {
     }
 }
 
-/// The error value: Σ loss × weight / Σ weight.
+/// The weight of an ordinary move: ChessBase gives 1 + max(1, complexity /
+/// 100) (`0x1404035c0`, "CPLX"); without its complexity this is the least.
+pub const ORDINARY: f64 = 2.0;
+/// The weight of a recapture ("RECAPT").
+pub const RECAPTURE: f64 = 0.2;
+
+/// The error value as ChessBase forms it (`0x14046f140`): the sum of the
+/// losses over the sum of the weights, moves of weight 0 left out.
 pub fn error_value(records: &[MoveRecord]) -> Option<f64> {
-    let weights: f64 = records.iter().map(|r| r.weight).sum();
-    (weights > 0.0).then(|| {
-        records
-            .iter()
-            .map(|r| f64::from(r.loss) * r.weight)
-            .sum::<f64>()
-            / weights
-    })
+    let counted = records.iter().filter(|r| r.weight > 0.0);
+    let weights: f64 = counted.clone().map(|r| r.weight).sum();
+    (weights > 0.0).then(|| counted.map(|r| f64::from(r.loss)).sum::<f64>() / weights)
 }
 
 fn severity(loss: i32) -> Option<usize> {
@@ -566,9 +568,9 @@ impl Registry {
                         weight: if only {
                             0.0
                         } else if recapture {
-                            0.2
+                            RECAPTURE
                         } else {
-                            1.0
+                            ORDINARY
                         },
                         before: before.clamp(-MATE, MATE),
                         after: after.clamp(-MATE, MATE),
@@ -628,15 +630,16 @@ mod tests {
     }
 
     #[test]
-    fn error_value_weights_the_losses() {
+    fn error_value_divides_the_losses_by_the_weights() {
         let r = [
-            record(100, 1.0),
-            record(0, 1.0),
-            record(50, 0.2),
+            record(100, ORDINARY),
+            record(0, ORDINARY),
+            record(10, RECAPTURE),
+            // The only legal move does not count.
             record(400, 0.0),
         ];
-        // (100 + 10) / 2.2
-        assert!((error_value(&r).unwrap() - 50.0).abs() < 1e-9);
+        // (100 + 0 + 10) / (2 + 2 + 0.2)
+        assert!((error_value(&r).unwrap() - 110.0 / 4.2).abs() < 1e-9);
     }
 
     #[test]

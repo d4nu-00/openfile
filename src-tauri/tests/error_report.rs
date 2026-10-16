@@ -90,7 +90,8 @@ fn error_report_counts_the_player_s_losses() {
     // 2...Nc6. Every other move loses +0.30 − (−0.30) = 60.
     assert_eq!(report.moves, 4);
     assert_eq!(report.average_loss, Some(45.0));
-    assert_eq!(report.error_value, Some(45.0));
+    // Losses over weights: 180 / (4 × 2).
+    assert_eq!(report.error_value, Some(22.5));
     assert_eq!(report.severity, [0, 3, 0, 0]);
     assert_eq!(report.worst.len(), 3);
     assert_eq!(report.worst[0].loss, 60);
