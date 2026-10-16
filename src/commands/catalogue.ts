@@ -409,6 +409,14 @@ const list: CommandMeta[] = [
     views: both,
   },
   {
+    id: "error-report",
+    label: "Error Report",
+    tip: "Statistical analysis of blunder types",
+    icon: Gauge,
+    keys: "B",
+    views: db,
+  },
+  {
     id: "tournament-report",
     label: "Tournament report",
     tip: "The tournament's games round by round, with the standings",
@@ -1254,7 +1262,11 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
       groups: [
         {
           label: "Report",
-          items: [L("opening-reference"), L("generate-repertoire")],
+          items: [
+            L("opening-reference"),
+            L("generate-repertoire"),
+            L("error-report"),
+          ],
         },
       ],
     },

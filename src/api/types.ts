@@ -390,6 +390,59 @@ export interface Crosstable {
   averageElo?: number;
   category?: number;
 }
+/** Error Report (see docs/error-report.md). */
+export interface ErrorReportParams {
+  engine: string;
+  options: Record<string, string>;
+  /** ChessBase's "Slower (top games)": depth 12 instead of 9. */
+  slower: boolean;
+  /** Count this player's moves; both sides when null. */
+  player: number | null;
+  ranges: { start: string; end: string }[];
+}
+export interface ContextRow {
+  moves: number;
+  errors: number;
+  averageLoss?: number | null;
+}
+export interface ErrorReport {
+  cancelled: boolean;
+  depth: number;
+  games: number;
+  skipped: number;
+  truncated: boolean;
+  player?: string | null;
+  moves: number;
+  averageLoss?: number | null;
+  errorValue?: number | null;
+  pliesPerGame?: number | null;
+  blunderElo?: number | null;
+  rating?: number | null;
+  difference?: number | null;
+  severity: [number, number, number, number];
+  distribution: number[];
+  phases: Record<string, ContextRow>;
+  opponents: Record<string, ContextRow>;
+  transitions: number[][];
+  worst: {
+    ordinal: string;
+    node: number;
+    number: string;
+    san: string;
+    best?: string | null;
+    loss: number;
+  }[];
+}
+export interface ErrorProgress {
+  gamesDone: number;
+  games: number;
+  positions: number;
+}
+export interface SelectionPlayer {
+  id: number;
+  name?: string | null;
+  games: number;
+}
 /** Tournament report: the crosstable's games by round. */
 export interface RoundGame {
   ordinal: number;

@@ -753,6 +753,40 @@ export function demoApi(): WorkbenchApi {
         },
       };
     },
+    selectionPlayers: async () => [
+      { id: 0, name: demoNames("players")[0]?.name, games: 2 },
+    ],
+    errorReport: async (_db, params, onProgress) => {
+      onProgress({ gamesDone: 1, games: 1, positions: 60 });
+      return {
+        cancelled: false,
+        depth: params.slower ? 12 : 9,
+        games: 1,
+        skipped: 0,
+        truncated: false,
+        player: params.player === null ? null : demoNames("players")[0]?.name,
+        moves: 30,
+        averageLoss: 21.4,
+        errorValue: 19.8,
+        pliesPerGame: 62,
+        blunderElo: 1990,
+        rating: 2200,
+        difference: -210,
+        severity: [4, 2, 1, 0],
+        distribution: [4, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        phases: { opening: { moves: 15, errors: 1, averageLoss: 12 } },
+        opponents: { unrated: { moves: 30, errors: 3, averageLoss: 21.4 } },
+        transitions: [
+          [0, 0, 0, 0, 0],
+          [0, 0, 1, 0, 0],
+          [0, 0, 1, 1, 0],
+          [0, 0, 0, 0, 0],
+          [0, 0, 0, 0, 0],
+        ],
+        worst: [],
+      };
+    },
+    cancelErrorReport: async () => {},
     showEntries: async (_db, ordinals, requestId) => {
       hits = ordinals.map(Number);
       return {

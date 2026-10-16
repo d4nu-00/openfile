@@ -96,7 +96,10 @@ export function mockApi(firstDatabase = 1) {
   let nextDatabase = firstDatabase;
   let game = structuredClone(selected.game!);
   let revision = 0;
-  let settings: AppSettings = { maxGameTabs: 8, engines: [] };
+  let settings: AppSettings = {
+    maxGameTabs: 8,
+    engines: [],
+  };
   // The list shows these entries while a search is active.
   let searching = false;
   const api = {
@@ -1316,6 +1319,65 @@ export function mockApi(firstDatabase = 1) {
           },
         };
       }),
+    selectionPlayers: vi.fn().mockResolvedValue([
+      { id: 3, name: "Player 3, A", games: 2 },
+      { id: 5, name: "Bravo, B", games: 1 },
+    ]),
+    errorReport: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          params: { player: number | null; slower: boolean },
+          onProgress: (p: {
+            gamesDone: number;
+            games: number;
+            positions: number;
+          }) => void,
+        ) => {
+          onProgress({ gamesDone: 1, games: 2, positions: 40 });
+          return {
+            cancelled: false,
+            depth: params.slower ? 12 : 9,
+            games: 2,
+            skipped: 0,
+            truncated: false,
+            player: params.player ? "Player 3, A" : null,
+            moves: 60,
+            averageLoss: 18.5,
+            errorValue: 17.2,
+            pliesPerGame: 84,
+            blunderElo: 2190,
+            rating: 2400,
+            difference: -210,
+            severity: [6, 3, 2, 1],
+            distribution: [6, 2, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            phases: {
+              opening: { moves: 20, errors: 1, averageLoss: 8 },
+              middlegame: { moves: 40, errors: 5, averageLoss: 24 },
+            },
+            opponents: { equal: { moves: 60, errors: 6, averageLoss: 18.5 } },
+            transitions: [
+              [0, 1, 0, 0, 0],
+              [0, 0, 2, 0, 0],
+              [0, 0, 1, 2, 0],
+              [0, 0, 0, 0, 0],
+              [0, 0, 0, 0, 0],
+            ],
+            worst: [
+              {
+                ordinal: "3",
+                node: 21,
+                number: "11.",
+                san: "Qxb7",
+                best: "Nf3",
+                loss: 340,
+              },
+            ],
+          };
+        },
+      ),
+    cancelErrorReport: vi.fn().mockResolvedValue(undefined),
     showEntries: vi
       .fn()
       .mockImplementation(

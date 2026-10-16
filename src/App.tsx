@@ -30,6 +30,8 @@ import type {
   Preparation,
   Dossier,
   TournamentReport,
+  ErrorReport,
+  SelectionPlayer,
   SortColumn,
 } from "./api/types";
 import {
@@ -79,6 +81,7 @@ import { PlayerStatisticsDialog } from "./components/PlayerStatisticsDialog";
 import { PrepareDialog } from "./components/PrepareDialog";
 import { DossierDialog } from "./components/DossierDialog";
 import { TournamentReportDialog } from "./components/TournamentReportDialog";
+import { ErrorReportDialog } from "./components/ErrorReportDialog";
 import {
   chooseRow,
   isSelected,
@@ -227,6 +230,16 @@ export function App({
     name?: string;
     data?: Preparation;
     progress?: string;
+    error?: string;
+  }>();
+  /** The Error Report: its selection, players, progress and result. */
+  const [errors, setErrors] = useState<{
+    databaseId: string;
+    ranges: { start: string; end: string }[];
+    selected: number;
+    players: SelectionPlayer[];
+    report?: ErrorReport;
+    running?: string;
     error?: string;
   }>();
   /** The tournament report shown. */
@@ -1238,6 +1251,22 @@ export function App({
       );
     }
   }
+  /** Error Report: the selected games and their players. */
+  async function openErrorReport() {
+    const db = state.database;
+    const ranges = chosenRanges();
+    if (!db || !ranges.length) return;
+    const selected = ranges.reduce(
+      (n, r) => n + Number(r.end) - Number(r.start),
+      0,
+    );
+    try {
+      const players = await api.selectionPlayers(db.databaseId, ranges);
+      setErrors({ databaseId: db.databaseId, ranges, selected, players });
+    } catch (err) {
+      w.setDiagnostics([{ code: "errorReport", message: explain(err) }]);
+    }
+  }
   /** Shows the round-by-round report of a tournament of the database. */
   async function openReport(tournamentId: number) {
     const db = state.database;
@@ -1799,6 +1828,10 @@ export function App({
       run: () =>
         crossTournament !== undefined && openCrosstable(crossTournament),
       enabled: !!state.database && crossTournament !== undefined,
+    },
+    "error-report": {
+      run: () => openErrorReport(),
+      enabled: !!state.database && w.rowCount > 0,
     },
     "tournament-report": {
       run: () => {
@@ -3125,6 +3158,54 @@ export function App({
             void openReport(id);
           }}
           onClose={() => setCross(undefined)}
+        />
+      )}
+      {errors && (
+        <ErrorReportDialog
+          engines={settings.engines}
+          defaultEngine={settings.defaultEngine}
+          players={errors.players}
+          selected={errors.selected}
+          report={errors.report}
+          running={errors.running}
+          error={errors.error}
+          onChooseFile={api.pickEngine}
+          onStart={(params) => {
+            const { databaseId, ranges } = errors;
+            setErrors(
+              (c) =>
+                c && {
+                  ...c,
+                  running: "Starting the engine…",
+                  error: undefined,
+                },
+            );
+            void api
+              .errorReport(databaseId, { ...params, ranges }, (p) =>
+                setErrors(
+                  (c) =>
+                    c && {
+                      ...c,
+                      running: `Game ${Math.min(p.gamesDone + 1, p.games)} of ${p.games} · ${p.positions} positions`,
+                    },
+                ),
+              )
+              .then((report) =>
+                setErrors((c) => c && { ...c, report, running: undefined }),
+              )
+              .catch((err) =>
+                setErrors(
+                  (c) => c && { ...c, running: undefined, error: explain(err) },
+                ),
+              );
+          }}
+          onCancel={() => void api.cancelErrorReport(errors.databaseId)}
+          onLoadGame={(ordinal, node) => {
+            setErrors(undefined);
+            setListTab("games");
+            void e.openEntry(ordinal, node);
+          }}
+          onClose={() => setErrors(undefined)}
         />
       )}
       {tourReport && (
