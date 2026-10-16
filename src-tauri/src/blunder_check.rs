@@ -172,10 +172,11 @@ pub fn evaluation_symbols(
     out
 }
 
-struct Eval {
-    cp: i32,
-    depth: Option<u32>,
-    pv: Vec<String>,
+pub(crate) struct Eval {
+    /// From the side to move.
+    pub cp: i32,
+    pub depth: Option<u32>,
+    pub pv: Vec<String>,
 }
 
 /// The engine's view of one position after `millis`; `None` when cancelled.
@@ -184,6 +185,19 @@ fn evaluate(
     request: AnalysisRequest,
     position: &Chess,
     millis: u64,
+    cancel: &AtomicBool,
+) -> Result<Option<Eval>, AppError> {
+    evaluate_to(session, request, position, millis, None, cancel)
+}
+
+/// As [`evaluate`], but stops as soon as the best line reaches `depth`,
+/// when one is given; `millis` caps the search.
+pub(crate) fn evaluate_to(
+    session: &mut EngineSession,
+    request: AnalysisRequest,
+    position: &Chess,
+    millis: u64,
+    depth: Option<u32>,
     cancel: &AtomicBool,
 ) -> Result<Option<Eval>, AppError> {
     if position.is_checkmate() {
@@ -223,6 +237,11 @@ fn evaluate(
         if cancel.load(Ordering::Relaxed) {
             session.stop().map_err(err)?;
             return Ok(None);
+        }
+        if let (Some(want), Some(b)) = (depth, &best)
+            && b.depth.is_some_and(|d| d >= want)
+        {
+            break;
         }
         let wait = deadline
             .saturating_duration_since(Instant::now())
