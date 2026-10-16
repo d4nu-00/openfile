@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { ReportRound, TournamentReport } from "../api/types";
 
+/** A stored date without its unknown parts: "1905.??.??" is "1905". */
+const dateText = (d: string) => d.replace(/(\.\?\?)+$/, "");
 const points = (p: number) =>
   Number.isInteger(p) ? String(p) : `${Math.floor(p) || ""}½`;
 
@@ -159,7 +161,7 @@ export function TournamentReportDialog({
                   <section key={r.round} aria-label={label}>
                     <h3>
                       {label}
-                      {r.date ? ` – ${r.date}` : ""}{" "}
+                      {r.date ? ` – ${dateText(r.date)}` : ""}{" "}
                       <button
                         type="button"
                         className="link-button"

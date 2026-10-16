@@ -33,6 +33,9 @@ describe("tournament report", () => {
       within(dialog).queryByRole("region", { name: "Round 1" }),
     ).toBeNull();
     const second = within(dialog).getByRole("region", { name: "Round 2" });
+    // Unknown parts of a date are left out.
+    expect(within(second).getByText(/Round 2 – 2020/)).toBeVisible();
+    expect(within(second).queryByText(/\?\?/)).toBeNull();
     await ui.user.click(within(second).getByRole("button", { name: "Games" }));
     expect(ui.api.showEntries).toHaveBeenCalledWith(
       "db-1",

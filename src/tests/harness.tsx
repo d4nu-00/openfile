@@ -1292,7 +1292,7 @@ export function mockApi(firstDatabase = 1) {
             },
             {
               round: 2,
-              date: "2020.01.11",
+              date: "2020.??.??",
               games: [
                 {
                   ordinal: 8,
