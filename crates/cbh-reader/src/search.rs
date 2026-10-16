@@ -71,6 +71,119 @@ pub struct GameFilter {
     pub full_text: String,
     /// Games whose annotations do not hold `full_text`.
     pub full_text_not: bool,
+    /// The search mask's Medals tab (dialog 312): games with any of these
+    /// medal bits.
+    pub medals: u16,
+    /// The search mask's Annotations tab (dialog 343).
+    pub annotations: AnnotationQuery,
+}
+
+/// The search mask's Annotations tab (dialog 343, `CAnnoMaskDialog`; see
+/// docs/search.md). Every criterion set must hold.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct AnnotationQuery {
+    /// Text1 and Text2: each must be in a text annotation.
+    pub text1: String,
+    pub text2: String,
+    pub whole_word: bool,
+    /// Symbols as PGN NAG numbers; each must be in the game.
+    pub symbols: Vec<u8>,
+    pub any_text: bool,
+    pub any_symbols: bool,
+    /// Coloured squares or arrows.
+    pub colours: bool,
+    pub training: bool,
+    /// Audio, picture or video.
+    pub multimedia: bool,
+    pub pawn_structure: bool,
+    pub piece_path: bool,
+    pub critical_opening: bool,
+    pub critical_middlegame: bool,
+    pub critical_endgame: bool,
+    /// The game has variations.
+    pub variations: bool,
+}
+
+impl AnnotationQuery {
+    /// Criteria that read the annotation record.
+    fn reads_annotations(&self) -> bool {
+        !self.text1.trim().is_empty()
+            || !self.text2.trim().is_empty()
+            || !self.symbols.is_empty()
+            || self.any_text
+            || self.any_symbols
+            || self.colours
+            || self.training
+            || self.multimedia
+            || self.pawn_structure
+            || self.piece_path
+            || self.critical_opening
+            || self.critical_middlegame
+            || self.critical_endgame
+    }
+    fn is_empty(&self) -> bool {
+        !self.reads_annotations() && !self.variations
+    }
+    /// Whether annotation entries satisfy the criteria.
+    pub fn matches(&self, entries: &[crate::annotations::Entry]) -> bool {
+        use crate::annotations::Kind;
+        let texts: Vec<String> = entries
+            .iter()
+            .filter_map(|e| match &e.kind {
+                Kind::Text { text, .. } => Some(fold(text)),
+                _ => None,
+            })
+            .collect();
+        let has_text = |needle: &str| {
+            let needle = fold(needle);
+            needle.is_empty()
+                || texts.iter().any(|t| {
+                    if self.whole_word {
+                        whole_word(t, &needle)
+                    } else {
+                        t.contains(&needle)
+                    }
+                })
+        };
+        if !has_text(&self.text1) || !has_text(&self.text2) {
+            return false;
+        }
+        let nags: Vec<u8> = entries
+            .iter()
+            .filter_map(|e| match &e.kind {
+                Kind::Symbols(n) => Some(n.iter().copied().filter(|n| *n != 0)),
+                _ => None,
+            })
+            .flatten()
+            .collect();
+        if !self.symbols.iter().all(|s| nags.contains(s)) {
+            return false;
+        }
+        let any = |f: &dyn Fn(&Kind) -> bool| entries.iter().any(|e| f(&e.kind));
+        let other = |types: &[u16]| any(&|k| matches!(k, Kind::Other(t) if types.contains(t)));
+        let critical = |n: u8| any(&|k| matches!(k, Kind::Critical(c) if *c == n));
+        (!self.any_text || !texts.is_empty())
+            && (!self.any_symbols || !nags.is_empty())
+            && (!self.colours
+                || any(&|k| matches!(k, Kind::Squares(_) | Kind::Arrows(_)))
+                || other(&[0x84, 0x85]))
+            && (!self.training || other(&[0x09]))
+            && (!self.multimedia || other(&[0x10, 0x11, 0x12]))
+            && (!self.pawn_structure || other(&[0x14]))
+            && (!self.piece_path || other(&[0x15]))
+            && (!self.critical_opening || critical(1))
+            && (!self.critical_middlegame || critical(2))
+            && (!self.critical_endgame || critical(3))
+    }
+}
+
+/// `needle` in `text` with no letter or digit on either side.
+fn whole_word(text: &str, needle: &str) -> bool {
+    let word = |c: Option<char>| c.is_some_and(char::is_alphanumeric);
+    text.match_indices(needle).any(|(at, _)| {
+        !word(text[..at].chars().next_back()) && !word(text[at + needle.len()..].chars().next())
+    })
 }
 
 /// How a game's main line ends.
@@ -280,6 +393,9 @@ impl GameFilter {
         if self.moves_min.is_some_and(|m| moves < m) || self.moves_max.is_some_and(|m| moves > m) {
             return false;
         }
+        if self.medals != 0 && r.medals & self.medals == 0 {
+            return false;
+        }
         if !self.results.is_empty() {
             let shown = if code == 7 { Some("0-0") } else { pgn };
             if !shown.is_some_and(|s| self.results.iter().any(|r| r == s)) {
@@ -296,7 +412,7 @@ impl GameFilter {
     }
     /// The filter needs more than the entry index.
     fn reads_games(&self) -> bool {
-        self.wants_ending() || !self.full_text.trim().is_empty()
+        self.wants_ending() || !self.full_text.trim().is_empty() || !self.annotations.is_empty()
     }
     /// The parts of the filter that read the game: its final position and
     /// its text annotations. Games that cannot be read do not match.
@@ -308,6 +424,22 @@ impl GameFilter {
             };
             let found = texts.iter().any(|t| t.to_lowercase().contains(&needle));
             if found == self.full_text_not {
+                return Ok(false);
+            }
+        }
+        if self.annotations.reads_annotations() {
+            let Some(entries) = db.annotation_entries(r)? else {
+                return Ok(false);
+            };
+            if !self.annotations.matches(&entries) {
+                return Ok(false);
+            }
+        }
+        if self.annotations.variations {
+            let Some(game) = db.moves_of(r)? else {
+                return Ok(false);
+            };
+            if !game.nodes.iter().any(|n| n.children.len() > 1) {
                 return Ok(false);
             }
         }
