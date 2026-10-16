@@ -8,6 +8,7 @@ pub mod deep_analysis;
 pub mod documents;
 pub mod dossier;
 pub mod engine_commands;
+pub mod error_report;
 pub mod library;
 pub mod lists;
 pub mod maintenance;
@@ -140,6 +141,7 @@ pub fn run() {
         })
         .manage(settings::Settings::default())
         .manage(std::sync::Arc::new(blunder_check::BlunderJobs::default()))
+        .manage(std::sync::Arc::new(error_report::ErrorReportJobs::default()))
         .manage(std::sync::Arc::new(deep_analysis::DeepJobs::default()))
         .manage(std::sync::Arc::new(tablebases::Tablebases::default()))
         .manage(ExitPolicy::default())
@@ -193,6 +195,9 @@ pub fn run() {
             commands::cancel_dossier,
             commands::tournament_report,
             commands::show_entries,
+            error_report::error_report,
+            error_report::cancel_error_report,
+            error_report::selection_players,
             commands::copy_rows,
             commands::clip_size,
             commands::paste_games,

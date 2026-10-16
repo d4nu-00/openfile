@@ -21,6 +21,10 @@ import type {
   Line,
   TreeResponse,
   Preparation,
+  ErrorReport,
+  ErrorReportParams,
+  ErrorProgress,
+  SelectionPlayer,
   TournamentReport,
   Dossier,
   DossierProgress,
@@ -614,6 +618,22 @@ export const backend = {
       ordinals,
       requestId,
     }),
+  /** The Error Report on the selected games. */
+  errorReport: async (
+    databaseId: string,
+    params: ErrorReportParams,
+    onProgress: (p: ErrorProgress) => void,
+  ) => {
+    const events = new Channel<ErrorProgress>();
+    events.onmessage = onProgress;
+    return invoke<ErrorReport>("error_report", { databaseId, params, events });
+  },
+  cancelErrorReport: (databaseId: string) =>
+    invoke<void>("cancel_error_report", { databaseId }),
+  selectionPlayers: (
+    databaseId: string,
+    ranges: { start: string; end: string }[],
+  ) => invoke<SelectionPlayer[]>("selection_players", { databaseId, ranges }),
   loadEntry: (databaseId: string, ordinal: string, requestId: string) =>
     invoke<GameResponse>("load_entry", { databaseId, ordinal, requestId }),
   positionAt: (documentId: string, nodeId: number, requestId: string) =>

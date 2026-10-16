@@ -923,3 +923,19 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
   unknown date parts, list a round's games and load a game.
 * **Real app.** A debug snapshot of a 17-round match of the 2CBH Mega showed
   dates as "1905.??.??"; unknown parts are now left out.
+
+## Error Report (2026-10-16)
+
+* **Measurements** with Stockfish 17 on the classic Mega, read-only: see
+  [error report](error-report.md#measurements). The first version's
+  estimates were 400–700 points low; tracing showed ChessBase divides the
+  plain losses by weights of at least 2 for ordinary moves, and the
+  corrected version came within 82–292 points on three strong players'
+  latest games.
+* **Tests.** Unit tests check ChessBase's Blunder Elo curve, the error
+  value, the bands, severity, distribution, transitions, phase and opponent
+  strength. An app test runs `mock-uci legal` over a scratch 2CBH: one
+  player's moves or both sides', a game without the player skipped, losses,
+  the error value, the rating, too few moves for an estimate, Stop, and an
+  empty selection refused. Frontend tests run the dialog with a player and
+  with both sides, and load a worst move.

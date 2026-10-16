@@ -23,7 +23,7 @@ Names in backticks are ChessBase command ids, for traceability.
 4. Complete notation editing: variation operations, game data, symbols (§6). *(P1 items done)*
 5. Multiple game tabs, the clipboard database and save/replace into a database (§2, §3). *(game tabs done)*
 6. Engine tools: blunder check, deep analysis, analysis jobs, tablebases (§7). *(kibitzers, lines, paste, Engine Management, Tactical Analysis, tablebase tab and annotation, Deep Analysis and analysis jobs done)*
-7. Reports, preparation and training (§9–§11), then publishing (§12). *(player statistics, preparation, dossier and tournament report done)*
+7. Reports, preparation and training (§9–§11), then publishing (§12). *(player statistics, preparation, dossier, tournament and error reports done)*
 
 ## 1. Database formats and storage
 
@@ -179,7 +179,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Player statistics: score by colour, opening and year (`STATISTICS`, `PLAYERSTATISTIC`) *(ChessBase's Player statistic layout, dialog 846: score by colour and year, then opponents, tournaments and openings by ECO with its sort buttons and Table; performance and average Elo; one cancellable parallel scan, 0.06 s for Carlsen's 6,925 games on the classic Mega warm; rows open their games; the graphical Statistics dialog and opening keys are not ported; see [player statistics](docs/player-statistics.md))*
 - [x] P2 🟢 Player dossier (`PLAYERDOSSIER`) *(traced: the generator `0x1408358a0` and its sections, statistics tallies and verdict band tables; ported: statistics with ChessBase's bands in the workbench's words, years, score by rating band, tournaments, opponents, repertoire for each colour, medal games, mates given and received, self-annotated games; 0.62 s warm for 6,925 games on the classic Mega; biography, pictures and rating history need the player encyclopedia and are left out; see [player dossier](docs/player-dossier.md))*
 - [x] P2 🟢 Tournament crosstable and report (`DBTOOLSCROSSTABLE`, `TournamentReport`) *(crosstable done, §3; report traced to `0x14083a600`/`0x14083a800`: rounds with date and pairings, round range, two columns; ported with standings after each round and result statistics; reached from Cross table, both ribbons; see [tournament report](docs/tournament-report.md))*
-- [ ] P2 🟢 Error report: blunder statistics and estimated rating (`BLUNDER_REPORT`)
+- [x] P2 🟢 Error report: blunder statistics and estimated rating (`BLUNDER_REPORT`) *(traced: Quick/Slower depths 9/12, per-move loss and weights, error value, the Blunder Elo curve `0x1404705d0`; ported with the user's UCI engine: ChessBase's curve and error value with the weights a UCI engine allows, plus severity, losses by size, phase, opponent, evaluation transitions and worst moves; within 82–292 points of three strong players' ratings with Stockfish at depth 9; complexity, shape, slope and GM reference charts not ported; see [error report](docs/error-report.md))*
 - [ ] P3 🟢 Style report (`STYLE_REPORT`)
 - [ ] P3 🟢 Game overview and theme classification (`OVERVIEWBOARD`, `THEMECLASSIFYBOARD`)
 - [ ] P3 🟢 Piece probability and piece first-move statistics (`DBTOOLSPIECEPROBABILITY`, `DBTOOLSPIECEFIRSTMOVE`)

@@ -154,7 +154,11 @@ biography, pictures and rating history of its player encyclopedia are left
 out (see [player dossier](player-dossier.md)). The tournament report lists the
 crosstable's games round by round with ChessBase's round range and two
 columns; its HTML page, German headings and per-round PGN files are not
-ported (see [tournament report](tournament-report.md)). Engines and private databases are
+ported (see [tournament report](tournament-report.md)). The Error Report analyses
+the selected games with the user's UCI engine to ChessBase's depths and
+applies ChessBase's Blunder Elo curve to an error value formed as
+ChessBase forms it, but without its engine's complexity and deep-search
+weights; the estimate is approximate (see [error report](error-report.md)). Engines and private databases are
 separate user-provided files. The first workbench does not yet implement
 ChessBase's full search/indexing, its own opening book files (.ctg and trees),
 training, multimedia, cloud services or lossless writing of every ChessBase
