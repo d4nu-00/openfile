@@ -226,6 +226,13 @@ const list: CommandMeta[] = [
     views: db,
   },
   {
+    id: "search-text",
+    label: "Search text",
+    tip: "Search text",
+    icon: Filter,
+    views: db,
+  },
+  {
     id: "filter-games",
     label: "Filter Games",
     tip: "Use the search mask as filter in this game list",
@@ -1233,6 +1240,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
           items: [
             L("filter-games"),
             S("quick-filter"),
+            S("search-text"),
             S("reset-filter"),
             S("search-online"),
             S("search-hard-disk"),

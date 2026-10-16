@@ -1,11 +1,30 @@
 import { useState } from "react";
 import {
+  emptyAnnotations,
   emptyFilter,
+  MEDAL_NAMES,
+  type AnnotationQuery,
   type EloMode,
   type GameFilter,
   type PositionQuery,
 } from "../api/types";
 import { PositionMask } from "./PositionMask";
+import { SYMBOL_GROUPS } from "../state/symbols";
+
+/** The Annotations tab's checkboxes, in dialog 343's order. */
+const ANNOTATION_CHECKS: [keyof AnnotationQuery, string][] = [
+  ["anyText", "Any text"],
+  ["anySymbols", "Any symbols"],
+  ["colours", "Colours"],
+  ["training", "Training"],
+  ["multimedia", "Multimedia"],
+  ["pawnStructure", "Pawn structure"],
+  ["piecePath", "Piece path"],
+  ["variations", "Variations"],
+  ["criticalOpening", "Critical opening position"],
+  ["criticalMiddlegame", "Critical middlegame position"],
+  ["criticalEndgame", "Critical endgame position"],
+];
 
 /** Number input value: empty means "no bound". */
 const num = (v: string) => (v.trim() === "" ? undefined : Number(v));
@@ -26,6 +45,7 @@ const RESULTS: [string, string][] = [
  */
 export function SearchMask({
   initial,
+  initialTab,
   initialPosition,
   boardFen,
   onSearch,
@@ -33,6 +53,8 @@ export function SearchMask({
   onClose,
 }: {
   initial?: GameFilter;
+  /** The tab to open on. */
+  initialTab?: "annotations";
   /** The position tab of the current search. */
   initialPosition?: PositionQuery;
   /** The current board, offered on the position tab. */
@@ -41,9 +63,9 @@ export function SearchMask({
   onSearchPosition: (query: PositionQuery) => void;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<"game" | "position">(
-    initialPosition ? "position" : "game",
-  );
+  const [tab, setTab] = useState<
+    "game" | "annotations" | "position" | "medals"
+  >(initialTab ?? (initialPosition ? "position" : "game"));
   const [position, setPosition] = useState<{
     query?: PositionQuery;
     valid: boolean;
@@ -51,6 +73,10 @@ export function SearchMask({
   const [positionKey, setPositionKey] = useState(0);
   const [f, setF] = useState<GameFilter>(initial ?? emptyFilter());
   const set = (patch: Partial<GameFilter>) => setF((v) => ({ ...v, ...patch }));
+  const anno = f.annotations ?? emptyAnnotations();
+  const setAnno = (patch: Partial<AnnotationQuery>) =>
+    set({ annotations: { ...anno, ...patch } });
+  const medals = f.medals ?? 0;
   const player = (side: "white" | "black", label: string) => (
     <div className="mask-row">
       <span className="mask-label">{label}</span>
@@ -128,7 +154,9 @@ export function SearchMask({
           {(
             [
               ["game", "Game data"],
+              ["annotations", "Annotations"],
               ["position", "Position"],
+              ["medals", "Medals"],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -149,6 +177,86 @@ export function SearchMask({
             boardFen={boardFen}
             onChange={(query, valid) => setPosition({ query, valid })}
           />
+        )}
+        {tab === "annotations" && (
+          <div className="mask-annotations">
+            {(["text1", "text2"] as const).map((k, i) => (
+              <div className="mask-row" key={k}>
+                <span className="mask-label">Text {i + 1}</span>
+                <input
+                  aria-label={`Text ${i + 1}`}
+                  value={anno[k]}
+                  onChange={(e) => setAnno({ [k]: e.target.value })}
+                />
+              </div>
+            ))}
+            <label className="mask-check">
+              <input
+                type="checkbox"
+                checked={anno.wholeWord}
+                onChange={(e) => setAnno({ wholeWord: e.target.checked })}
+              />
+              Whole word
+            </label>
+            <fieldset className="mask-symbols">
+              <legend className="mask-label">Symbols</legend>
+              {Object.values(SYMBOL_GROUPS)
+                .flat()
+                .map((s) => (
+                  <label key={s.nag} className="mask-check">
+                    <input
+                      type="checkbox"
+                      checked={anno.symbols.includes(s.nag)}
+                      onChange={(e) =>
+                        setAnno({
+                          symbols: e.target.checked
+                            ? [...anno.symbols, s.nag]
+                            : anno.symbols.filter((n) => n !== s.nag),
+                        })
+                      }
+                    />
+                    {s.name}
+                  </label>
+                ))}
+            </fieldset>
+            <div className="mask-checks">
+              {ANNOTATION_CHECKS.map(([k, label]) => (
+                <label key={k} className="mask-check">
+                  <input
+                    type="checkbox"
+                    checked={!!anno[k]}
+                    onChange={(e) => setAnno({ [k]: e.target.checked })}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <p className="hint">
+              Every criterion set must hold. Annotations are read from each game
+              that matches the other tabs, so this search is slower.
+            </p>
+          </div>
+        )}
+        {tab === "medals" && (
+          <div className="mask-checks" role="group" aria-label="Medals">
+            {MEDAL_NAMES.map((name, bit) => (
+              <label key={name} className="mask-check">
+                <input
+                  type="checkbox"
+                  checked={(medals & (1 << bit)) !== 0}
+                  onChange={(e) =>
+                    set({
+                      medals: e.target.checked
+                        ? medals | (1 << bit)
+                        : medals & ~(1 << bit),
+                    })
+                  }
+                />
+                {name}
+              </label>
+            ))}
+            <p className="hint">Games with any of the medals checked.</p>
+          </div>
         )}
         {tab === "game" && (
           <>
