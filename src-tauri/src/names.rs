@@ -206,19 +206,46 @@ impl Registry {
         tournament_id: u32,
         layout: Option<cbh_reader::crosstable::Layout>,
     ) -> Result<cbh_reader::crosstable::Crosstable, AppError> {
-        let mut reader = self.own_handle(&database_id)?;
+        self.with_tournament(&database_id, |reader, order, cancel| {
+            reader.crosstable_with(tournament_id, layout, order, cancel)
+        })
+    }
+
+    /// The tournament report (`TournamentReport`; see
+    /// docs/tournament-report.md): the crosstable's games by round.
+    pub fn tournament_report(
+        &self,
+        database_id: String,
+        tournament_id: u32,
+    ) -> Result<cbh_reader::tournament_report::TournamentReport, AppError> {
+        self.with_tournament(&database_id, |reader, order, cancel| {
+            reader.tournament_report(tournament_id, order, cancel)
+        })
+    }
+
+    /// Runs `f` on a separate read handle, with a current sort order by
+    /// tournament when there is one (it finds the games without reading the
+    /// whole entry index), cancellable like the crosstable.
+    fn with_tournament<T>(
+        &self,
+        database_id: &str,
+        f: impl FnOnce(
+            &mut cbh_reader::Database,
+            Option<&mut cbh_reader::sort::SortOrder>,
+            &AtomicBool,
+        ) -> Result<Option<T>, cbh_reader::CbhError>,
+    ) -> Result<T, AppError> {
+        let mut reader = self.own_handle(database_id)?;
         let cancel = Arc::new(AtomicBool::new(false));
         if let Some(old) = self
             .lock()?
             .crosstable_cancels
-            .insert(database_id.clone(), cancel.clone())
+            .insert(database_id.to_string(), cancel.clone())
         {
             old.store(true, Ordering::Relaxed);
         }
-        // A current sort order by tournament finds the games without reading
-        // the whole entry index.
         let mut order = self
-            .data_file(&database_id, Some("sort-orders"), "tournament.cwsort")
+            .data_file(database_id, Some("sort-orders"), "tournament.cwsort")
             .ok()
             .and_then(|path| {
                 cbh_reader::sort::SortOrder::open(
@@ -229,15 +256,15 @@ impl Registry {
                 .ok()
                 .flatten()
             });
-        let table = reader.crosstable_with(tournament_id, layout, order.as_mut(), &cancel);
+        let result = f(&mut reader, order.as_mut(), &cancel);
         let mut state = self.lock()?;
         if state
             .crosstable_cancels
-            .get(&database_id)
+            .get(database_id)
             .is_some_and(|c| Arc::ptr_eq(c, &cancel))
         {
-            state.crosstable_cancels.remove(&database_id);
+            state.crosstable_cancels.remove(database_id);
         }
-        table?.ok_or_else(|| AppError::new("cancelled", "Crosstable cancelled"))
+        result?.ok_or_else(|| AppError::new("cancelled", "Crosstable cancelled"))
     }
 }

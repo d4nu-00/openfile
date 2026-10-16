@@ -2012,3 +2012,67 @@ kbd {
     grid-template-columns: 1fr;
   }
 }
+.modal.tournament-report {
+  width: min(1000px, 96vw);
+  max-width: min(1000px, 96vw);
+  height: min(760px, 92vh);
+  flex-direction: column;
+  flex-wrap: nowrap;
+  cursor: default;
+}
+.tournament-report .report-body {
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
+}
+.tournament-report h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.tournament-report p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+.tournament-report .report-standings {
+  width: auto;
+}
+.tournament-report .report-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+}
+.tournament-report .report-options input[type="number"] {
+  width: 4.5em;
+}
+.tournament-report .report-rounds {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.tournament-report .report-rounds.two {
+  grid-template-columns: 1fr 1fr;
+}
+.tournament-report .report-rounds .stat-table {
+  width: auto;
+}
+.tournament-report .modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.tournament-report .modal-actions .actions {
+  display: flex;
+  gap: 6px;
+}
+@media (max-width: 760px) {
+  .tournament-report .report-rounds.two {
+    grid-template-columns: 1fr;
+  }
+}

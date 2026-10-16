@@ -1244,6 +1244,89 @@ export function mockApi(firstDatabase = 1) {
           cancelled: false,
         }),
       ),
+    tournamentReport: vi
+      .fn()
+      .mockImplementation(async (_db: string, tournamentId: number) => {
+        const player = (id: number, name: string, pts: number) => ({
+          id,
+          name,
+          elo: 2400,
+          points: pts,
+          games: 2,
+          wins: 1,
+          blackGames: 1,
+          blackWins: 0,
+          sonnebornBerger: 0.5,
+          buchholz: 1,
+          performance: 2500,
+          cells: [],
+        });
+        return {
+          table: {
+            event: `Open ${tournamentId}`,
+            site: "Oslo",
+            layout: "swiss",
+            rounds: 2,
+            games: 3,
+            unscored: 0,
+            truncated: false,
+            averageElo: 2400,
+            category: null,
+            players: [
+              player(1, "Alpha, A", 1.5),
+              player(2, "Bravo, B", 1),
+              player(3, "Charlie, C", 0.5),
+            ],
+          },
+          rounds: [
+            {
+              round: 1,
+              date: "2020.01.10",
+              games: [
+                { ordinal: 7, white: 1, black: 0, result: "0-1", moves: 30 },
+              ],
+              standings: [
+                { row: 0, points: 1, games: 1 },
+                { row: 1, points: 0, games: 1 },
+              ],
+            },
+            {
+              round: 2,
+              date: "2020.??.??",
+              games: [
+                {
+                  ordinal: 8,
+                  white: 0,
+                  black: 2,
+                  result: "1/2-1/2",
+                  moves: 41,
+                },
+              ],
+              standings: [{ row: 0, points: 1.5, games: 2 }],
+            },
+          ],
+          stats: {
+            games: 3,
+            whiteWins: 1,
+            draws: 1,
+            blackWins: 1,
+            forfeits: 0,
+            whiteScore: 50,
+            averageMoves: 35,
+          },
+        };
+      }),
+    showEntries: vi
+      .fn()
+      .mockImplementation(
+        async (_db: string, ordinals: string[], requestId: string) => ({
+          requestId,
+          hits: String(ordinals.length),
+          scanned: String(ordinals.length),
+          truncated: false,
+          cancelled: false,
+        }),
+      ),
     crosstable: vi
       .fn()
       .mockImplementation(

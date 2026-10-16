@@ -29,6 +29,7 @@ import type {
   PlayerStatistics,
   Preparation,
   Dossier,
+  TournamentReport,
   SortColumn,
 } from "./api/types";
 import {
@@ -77,6 +78,7 @@ import { CrosstableDialog } from "./components/CrosstableDialog";
 import { PlayerStatisticsDialog } from "./components/PlayerStatisticsDialog";
 import { PrepareDialog } from "./components/PrepareDialog";
 import { DossierDialog } from "./components/DossierDialog";
+import { TournamentReportDialog } from "./components/TournamentReportDialog";
 import {
   chooseRow,
   isSelected,
@@ -225,6 +227,13 @@ export function App({
     name?: string;
     data?: Preparation;
     progress?: string;
+    error?: string;
+  }>();
+  /** The tournament report shown. */
+  const [tourReport, setTourReport] = useState<{
+    tournamentId: number;
+    data?: TournamentReport;
+    loading?: boolean;
     error?: string;
   }>();
   /** The player dossier shown. */
@@ -1229,6 +1238,27 @@ export function App({
       );
     }
   }
+  /** Shows the round-by-round report of a tournament of the database. */
+  async function openReport(tournamentId: number) {
+    const db = state.database;
+    if (!db) return;
+    setTourReport({ tournamentId, loading: true });
+    try {
+      const data = await api.tournamentReport(db.databaseId, tournamentId);
+      setTourReport((c) =>
+        c?.tournamentId === tournamentId ? { tournamentId, data } : c,
+      );
+    } catch (e) {
+      setTourReport((c) =>
+        c?.tournamentId === tournamentId
+          ? {
+              tournamentId,
+              error: (e as { message?: string })?.message ?? String(e),
+            }
+          : c,
+      );
+    }
+  }
   /** Shows the statistics of a player of the active database. */
   async function openStatistics(
     playerId: number,
@@ -1769,6 +1799,21 @@ export function App({
       run: () =>
         crossTournament !== undefined && openCrosstable(crossTournament),
       enabled: !!state.database && crossTournament !== undefined,
+    },
+    "tournament-report": {
+      run: () => {
+        const id =
+          view === "game"
+            ? state.document?.summary.tournamentId
+            : crossTournament;
+        if (id !== undefined) return openReport(id);
+      },
+      enabled:
+        !!state.database &&
+        (view === "game"
+          ? state.document?.summary.tournamentId !== undefined &&
+            state.origin?.databaseId === state.database.databaseId
+          : crossTournament !== undefined),
     },
     "show-crosstable": {
       run: () => {
@@ -3074,7 +3119,35 @@ export function App({
             setListTab("games");
             void e.openEntry(String(ordinal));
           }}
+          onReport={() => {
+            const id = cross.tournamentId;
+            setCross(undefined);
+            void openReport(id);
+          }}
           onClose={() => setCross(undefined)}
+        />
+      )}
+      {tourReport && (
+        <TournamentReportDialog
+          report={tourReport.data}
+          loading={tourReport.loading}
+          error={tourReport.error}
+          onCrosstable={() => {
+            const id = tourReport.tournamentId;
+            setTourReport(undefined);
+            void openCrosstable(id);
+          }}
+          onListGames={(ordinals, label) => {
+            setTourReport(undefined);
+            showList("games");
+            void w.showEntries(ordinals, label);
+          }}
+          onLoadGame={(ordinal) => {
+            setTourReport(undefined);
+            setListTab("games");
+            void e.openEntry(ordinal);
+          }}
+          onClose={() => setTourReport(undefined)}
         />
       )}
       {maskOpen && (

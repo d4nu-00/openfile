@@ -20,6 +20,7 @@ pub mod scan;
 pub mod search;
 pub mod sort;
 pub mod source;
+pub mod tournament_report;
 pub mod tree;
 pub mod v2;
 pub use database::*;

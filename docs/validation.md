@@ -909,3 +909,17 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
 * **Real app.** A debug snapshot of a 446-game player of the 2CBH Mega
   showed "null%" for missing values; the dialogs (and Player statistic's
   score) now treat null as missing.
+
+## Tournament report (2026-10-16)
+
+* **Measurements** on the classic Mega, read-only: see
+  [tournament report](tournament-report.md#measurements).
+* **Tests.** An app test reports a scratch 2CBH tournament of three players:
+  rounds in order with the unnumbered game last, the earliest date, the
+  pairings, the standings after each round (ties in crosstable order), the
+  result statistics, and listing a round's games with `show_entries`, which
+  refuses entries out of range. Frontend tests open the report from the
+  Tournaments list and from the Cross table, apply the round range, trim
+  unknown date parts, list a round's games and load a game.
+* **Real app.** A debug snapshot of a 17-round match of the 2CBH Mega showed
+  dates as "1905.??.??"; unknown parts are now left out.

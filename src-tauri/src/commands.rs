@@ -930,6 +930,25 @@ pub fn cancel_dossier(
     state.cancel_dossier(database_id)
 }
 #[tauri::command]
+pub async fn tournament_report(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    tournament_id: u32,
+) -> Result<cbh_reader::tournament_report::TournamentReport, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.tournament_report(database_id, tournament_id)).await
+}
+#[tauri::command]
+pub async fn show_entries(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    ordinals: Vec<String>,
+    request_id: String,
+) -> Result<crate::searches::SearchResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.show_entries(database_id, ordinals, request_id)).await
+}
+#[tauri::command]
 pub async fn crosstable(
     state: tauri::State<'_, Arc<Registry>>,
     database_id: String,

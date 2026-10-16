@@ -21,6 +21,7 @@ import type {
   Line,
   TreeResponse,
   Preparation,
+  TournamentReport,
   Dossier,
   DossierProgress,
   PrepareProgress,
@@ -601,6 +602,18 @@ export const backend = {
   },
   cancelDossier: (databaseId: string) =>
     invoke<void>("cancel_dossier", { databaseId }),
+  tournamentReport: (databaseId: string, tournamentId: number) =>
+    invoke<TournamentReport>("tournament_report", {
+      databaseId,
+      tournamentId,
+    }),
+  /** Shows the given entries as the list's search result. */
+  showEntries: (databaseId: string, ordinals: string[], requestId: string) =>
+    invoke<SearchResponse>("show_entries", {
+      databaseId,
+      ordinals,
+      requestId,
+    }),
   loadEntry: (databaseId: string, ordinal: string, requestId: string) =>
     invoke<GameResponse>("load_entry", { databaseId, ordinal, requestId }),
   positionAt: (documentId: string, nodeId: number, requestId: string) =>

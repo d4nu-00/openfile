@@ -303,6 +303,49 @@ impl Registry {
         Ok(())
     }
 
+    /// Shows the given entries as the database's search result, in the
+    /// order given (at most 100,000).
+    pub fn show_entries(
+        &self,
+        database_id: String,
+        ordinals: Vec<String>,
+        request_id: String,
+    ) -> Result<SearchResponse, AppError> {
+        if ordinals.len() > 100_000 {
+            return Err(AppError::new("bounds", "Too many entries"));
+        }
+        let count = self
+            .database(&database_id)?
+            .lock()
+            .map_err(|_| AppError::new("state", "Database unavailable"))?
+            .info()
+            .entry_count;
+        let ordinals = ordinals
+            .iter()
+            .map(|o| match o.parse::<u64>() {
+                Ok(n) if (1..=count).contains(&n) => Ok(n),
+                _ => Err(AppError::new("bounds", format!("No entry {o}"))),
+            })
+            .collect::<Result<Vec<u64>, _>>()?;
+        let response = SearchResponse {
+            request_id,
+            hits: ordinals.len().to_string(),
+            scanned: ordinals.len().to_string(),
+            truncated: false,
+            cancelled: false,
+            indexed: false,
+        };
+        self.lock()?.searches.insert(
+            database_id,
+            Arc::new(Hits {
+                ordinals,
+                nodes: None,
+                fen: None,
+            }),
+        );
+        Ok(response)
+    }
+
     pub fn clear_search(&self, database_id: String) -> Result<(), AppError> {
         self.lock()?.searches.remove(&database_id);
         Ok(())
