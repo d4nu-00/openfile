@@ -27,7 +27,7 @@ pub struct GameLine {
 
 impl GameLine {
     /// The side to move and the move played where the line reaches `hash`.
-    pub(super) fn at(&self, hash: u64) -> Option<(bool, u16)> {
+    pub(crate) fn at(&self, hash: u64) -> Option<(bool, u16)> {
         self.positions
             .iter()
             .find(|p| p.0 == hash)

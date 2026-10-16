@@ -263,9 +263,25 @@ const list: CommandMeta[] = [
   {
     id: "prepare-against",
     label: "Prepare Against",
-    tip: "Prepare against a player",
+    tip: "Prepare against a player by checking his/her games",
     icon: Swords,
     views: db,
+  },
+  {
+    id: "prepare-white",
+    label: "Prepare against White",
+    tip: "Prepare against this player checking the games as White",
+    icon: Swords,
+    keys: "Ctrl+W",
+    views: both,
+  },
+  {
+    id: "prepare-black",
+    label: "Prepare against Black",
+    tip: "Prepare against this player checking the games as Black",
+    icon: Swords,
+    keys: "Ctrl+B",
+    views: both,
   },
   {
     id: "player-encyclopedia",
@@ -1198,7 +1214,12 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
         },
         {
           label: "Players",
-          items: [L("prepare-against"), S("player-encyclopedia")],
+          items: [
+            L("prepare-against"),
+            S("prepare-white"),
+            S("prepare-black"),
+            S("player-encyclopedia"),
+          ],
         },
         {
           label: "Analysis jobs",
@@ -1325,6 +1346,8 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             S("load-next-game"),
             S("show-crosstable"),
             S("player-statistic"),
+            S("prepare-white"),
+            S("prepare-black"),
           ],
         },
       ],

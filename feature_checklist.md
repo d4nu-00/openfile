@@ -23,7 +23,7 @@ Names in backticks are ChessBase command ids, for traceability.
 4. Complete notation editing: variation operations, game data, symbols (§6). *(P1 items done)*
 5. Multiple game tabs, the clipboard database and save/replace into a database (§2, §3). *(game tabs done)*
 6. Engine tools: blunder check, deep analysis, analysis jobs, tablebases (§7). *(kibitzers, lines, paste, Engine Management, Tactical Analysis, tablebase tab and annotation, Deep Analysis and analysis jobs done)*
-7. Reports, preparation and training (§9–§11), then publishing (§12). *(player statistics done)*
+7. Reports, preparation and training (§9–§11), then publishing (§12). *(player statistics and preparation done)*
 
 ## 1. Database formats and storage
 
@@ -187,7 +187,7 @@ Names in backticks are ChessBase command ids, for traceability.
 
 ## 10. Players and preparation
 
-- [ ] P2 🟢 Prepare against White or Black from the database (`PREPARE_WHITE`, `PREPARE_BLACK`, `PREPARE_AGAINST`)
+- [x] P2 🟢 Prepare against White or Black from the database (`PREPARE_WHITE`, `PREPARE_BLACK`, `PREPARE_AGAINST`) *(traced: the player's games of one colour, deleted left out, in a game window with the last game loaded, and the average of the last ten ratings; the workbench shows score, recent rating, repertoire lines with ECO names, openings and latest games, and the player's tree in the Book pane; a player's 3,515 White games read in 0.12 s warm on the classic Mega; the window's tree mode and rating formula use not traced; see [preparation](docs/preparation.md))*
 - [ ] P2 🟡 Player encyclopedia: names, photos, ratings and biography; FIDE rating lists could supply open data (`OPENPLAYERBASE`, `PB_EDITPLAYER`, `SHOWELOLIST`)
 - [ ] P3 🟢 Player photos in the game window (`TOGGLEPHOTOS`)
 - [ ] P3 🟡 Find a player online or match Lichess accounts (`SEARCHPLAYER`, `ComparePlayerOnline`)

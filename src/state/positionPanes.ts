@@ -53,6 +53,11 @@ export function usePositionPanes(
   api: WorkbenchApi,
   state: WorkbenchState,
   active: { book: boolean; reference: boolean },
+  /**
+   * When set, the Book shows this database's preparation instead of its
+   * tree; a new key (another player or colour) asks again.
+   */
+  prepared?: string,
 ) {
   const db = state.database;
   const game = state.document?.game;
@@ -80,7 +85,9 @@ export function usePositionPanes(
     setBook((b) => ({ ...b, loading: true }));
     const timer = setTimeout(async () => {
       try {
-        const tree = await api.openingTree(db.databaseId, line, request);
+        const tree = prepared
+          ? await api.preparedTree(db.databaseId, line, request)
+          : await api.openingTree(db.databaseId, line, request);
         if (gates.book.accept(tree.requestId))
           setBook({ loading: false, tree });
       } catch (e) {
@@ -90,7 +97,7 @@ export function usePositionPanes(
     }, SETTLE_MS);
     return () => clearTimeout(timer);
     // The database object changes when its tree is built or deleted.
-  }, [active.book, db, key]);
+  }, [active.book, db, key, prepared]);
 
   useEffect(() => {
     if (!active.reference || !db || !line) return;

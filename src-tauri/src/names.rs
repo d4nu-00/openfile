@@ -133,6 +133,7 @@ impl Registry {
         if let Ok(mut state) = self.lock() {
             state.name_lists.retain(|(id, _), _| id != database_id);
             state.player_games.remove(database_id);
+            state.preparations.remove(database_id);
         }
     }
 

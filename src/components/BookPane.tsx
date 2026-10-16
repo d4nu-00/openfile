@@ -44,6 +44,8 @@ export function BookPane({
   onPlay,
   onCreate,
   building,
+  prepared,
+  onLeavePrepared,
 }: {
   book: BookState;
   hasDatabase: boolean;
@@ -52,12 +54,20 @@ export function BookPane({
   onCreate?: () => void;
   /** Progress of a running build, if any. */
   building?: string;
+  /** "Prepare against White: name" while the Book shows a preparation. */
+  prepared?: string;
+  /** Returns to the database's opening tree. */
+  onLeavePrepared?: () => void;
 }) {
   const tree = book.tree;
   let message: string | undefined;
   if (!hasDatabase) message = "Open a database to see its opening tree.";
   else if (!hasLine) message = "Select a game to see the moves played.";
   else if (book.error) message = book.error;
+  else if (prepared && tree?.status === "noTree")
+    message = "The preparation is no longer current.";
+  else if (prepared && tree?.status === "notInTree")
+    message = "The player's games do not reach this position.";
   else if (tree?.status === "noTree")
     message = building ?? "This database has no opening tree yet.";
   else if (tree?.status === "notInTree")
@@ -71,11 +81,27 @@ export function BookPane({
     <div className="book-pane" aria-label="Opening book">
       <div className="pane-header">
         <strong>Book</strong>
+        {prepared && (
+          <span className="book-prepared">
+            {prepared}{" "}
+            {onLeavePrepared && (
+              <button
+                type="button"
+                className="link-button"
+                onClick={onLeavePrepared}
+              >
+                Database tree
+              </button>
+            )}
+          </span>
+        )}
         {tree && tree.games > 0 && (
           <span className="hint">
             {games.format(tree.games)} games
             {tree.ended > 0 ? ` · ${games.format(tree.ended)} end here` : ""}
-            {sources[tree.status] ? ` · ${sources[tree.status]}` : ""}
+            {!prepared && sources[tree.status]
+              ? ` · ${sources[tree.status]}`
+              : ""}
           </span>
         )}
         {book.loading && <span className="hint">Updating…</span>}
@@ -83,7 +109,7 @@ export function BookPane({
       {message ? (
         <div className="empty-state">
           <p>{message}</p>
-          {tree?.status === "noTree" && onCreate && !building && (
+          {!prepared && tree?.status === "noTree" && onCreate && !building && (
             <button onClick={onCreate}>Create Opening Tree</button>
           )}
         </div>

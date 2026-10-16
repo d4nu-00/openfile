@@ -41,6 +41,7 @@ const documents = new Set([
   "maintenance.md",
   "analysis.md",
   "openings.md",
+  "preparation.md",
 ]);
 export function allowedSourcePath(candidate) {
   if (

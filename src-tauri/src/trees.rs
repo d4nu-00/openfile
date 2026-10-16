@@ -142,7 +142,7 @@ pub(crate) fn replay(line: &Line) -> Result<(Chess, Vec<u64>, Vec<u16>), AppErro
     Ok((pos, hashes, moves))
 }
 
-fn san(pos: &Chess, uci: &str) -> String {
+pub(crate) fn san(pos: &Chess, uci: &str) -> String {
     if uci == "0000" {
         return "--".into();
     }
@@ -153,6 +153,30 @@ fn san(pos: &Chess, uci: &str) -> String {
             || uci.into(),
             |m| SanPlus::from_move(pos.clone(), m).to_string(),
         )
+}
+
+/// Puts the rows of `moves`, played in `pos`, into `response`; games that
+/// end in the position are counted apart.
+pub(crate) fn fill_moves(response: &mut TreeResponse, pos: &Chess, moves: &[tree::MoveStats]) {
+    response.games = moves.iter().map(|m| m.games).sum();
+    for m in moves {
+        let Some(uci) = m.uci() else {
+            response.ended += m.games;
+            continue;
+        };
+        response.moves.push(TreeMove {
+            san: san(pos, &uci),
+            uci,
+            games: m.games,
+            share: m.games as f64 * 100.0 / response.games.max(1) as f64,
+            score: m.score(),
+            draws: m.draw_rate(),
+            average_elo: m.average_elo(),
+            performance: m.performance(),
+            first_year: (m.year_min > 0).then_some(m.year_min),
+            last_year: (m.year_max > 0).then_some(m.year_max),
+        });
+    }
 }
 
 impl Registry {
@@ -278,25 +302,7 @@ impl Registry {
             Source::Line => TreeStatus::Line,
             Source::None => TreeStatus::NotInTree,
         };
-        response.games = answer.moves.iter().map(|m| m.games).sum();
-        for m in &answer.moves {
-            let Some(uci) = m.uci() else {
-                response.ended += m.games;
-                continue;
-            };
-            response.moves.push(TreeMove {
-                san: san(&pos, &uci),
-                uci,
-                games: m.games,
-                share: m.games as f64 * 100.0 / response.games.max(1) as f64,
-                score: m.score(),
-                draws: m.draw_rate(),
-                average_elo: m.average_elo(),
-                performance: m.performance(),
-                first_year: (m.year_min > 0).then_some(m.year_min),
-                last_year: (m.year_max > 0).then_some(m.year_max),
-            });
-        }
+        fill_moves(&mut response, &pos, &answer.moves);
         Ok(response)
     }
 

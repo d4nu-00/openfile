@@ -22,6 +22,12 @@ function split(shortcut: string) {
   return { mods: new Set(parts), key };
 }
 
+/**
+ * Shortcuts the macOS menu takes with the command key (⌘W Close Window, ⌘Q
+ * Quit, ⌘H Hide, ⌘M Minimize). There they run from the Control key instead.
+ */
+const macReserved = new Set(["Ctrl+W", "Ctrl+Q", "Ctrl+H", "Ctrl+M"]);
+
 export function matches(shortcut: string, event: KeyboardEvent) {
   const { mods, key } = split(shortcut);
   // ChessBase's Ctrl is the platform command key; accept either on all hosts.
@@ -41,7 +47,7 @@ export function format(shortcut: string) {
   const { mods, key } = split(shortcut);
   if (!isMac) return shortcut;
   const symbols = [
-    mods.has("Ctrl") ? "⌘" : "",
+    mods.has("Ctrl") ? (macReserved.has(shortcut) ? "⌃" : "⌘") : "",
     mods.has("Alt") ? "⌥" : "",
     mods.has("Shift") ? "⇧" : "",
   ].join("");
