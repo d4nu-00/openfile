@@ -191,6 +191,8 @@ pub fn run() {
             commands::preparation_games,
             commands::player_dossier,
             commands::cancel_dossier,
+            commands::tournament_report,
+            commands::show_entries,
             commands::copy_rows,
             commands::clip_size,
             commands::paste_games,
