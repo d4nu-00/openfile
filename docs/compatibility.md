@@ -151,7 +151,10 @@ player dossier ports ChessBase's statistics, verdict bands, years,
 opponents, tournaments and repertoire; medal games stand in for its
 "spectacular games", mates are found by replaying decisive games, and the
 biography, pictures and rating history of its player encyclopedia are left
-out (see [player dossier](player-dossier.md)). Engines and private databases are
+out (see [player dossier](player-dossier.md)). The tournament report lists the
+crosstable's games round by round with ChessBase's round range and two
+columns; its HTML page, German headings and per-round PGN files are not
+ported (see [tournament report](tournament-report.md)). Engines and private databases are
 separate user-provided files. The first workbench does not yet implement
 ChessBase's full search/indexing, its own opening book files (.ctg and trees),
 training, multimedia, cloud services or lossless writing of every ChessBase
