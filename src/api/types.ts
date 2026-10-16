@@ -390,6 +390,35 @@ export interface Crosstable {
   averageElo?: number;
   category?: number;
 }
+/** Tournament report: the crosstable's games by round. */
+export interface RoundGame {
+  ordinal: number;
+  /** Rows of the crosstable. */
+  white: number;
+  black: number;
+  result: string;
+  moves: number;
+}
+export interface ReportRound {
+  /** 0 for games without a round. */
+  round: number;
+  date?: string;
+  games: RoundGame[];
+  standings: { row: number; points: number; games: number }[];
+}
+export interface TournamentReport {
+  table: Crosstable;
+  rounds: ReportRound[];
+  stats: {
+    games: number;
+    whiteWins: number;
+    draws: number;
+    blackWins: number;
+    forfeits: number;
+    whiteScore?: number;
+    averageMoves?: number;
+  };
+}
 /** A player's score in a group of games (see docs/player-statistics.md). */
 export interface StatScore {
   /** Games with a result. */

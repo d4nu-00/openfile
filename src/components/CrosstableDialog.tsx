@@ -16,6 +16,7 @@ export function CrosstableDialog({
   error,
   onLayout,
   onOpenGame,
+  onReport,
   onClose,
 }: {
   table?: Crosstable;
@@ -23,6 +24,8 @@ export function CrosstableDialog({
   error?: string;
   onLayout: (layout: CrossLayout) => void;
   onOpenGame: (ordinal: number) => void;
+  /** Opens the tournament report. */
+  onReport?: () => void;
   onClose: () => void;
 }) {
   const swiss = table?.layout === "swiss";
@@ -154,6 +157,11 @@ export function CrosstableDialog({
           )}
         </div>
         <footer className="modal-actions">
+          {onReport && (
+            <button type="button" disabled={!table} onClick={onReport}>
+              Report
+            </button>
+          )}
           <button type="button" onClick={onClose} autoFocus>
             Close
           </button>

@@ -409,6 +409,13 @@ const list: CommandMeta[] = [
     views: both,
   },
   {
+    id: "tournament-report",
+    label: "Tournament report",
+    tip: "The tournament's games round by round, with the standings",
+    icon: Trophy,
+    views: both,
+  },
+  {
     id: "cross-table",
     label: "Cross Table",
     tip: "Create a tournament cross table",
@@ -1210,6 +1217,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             S("player-statistic"),
             S("player-dossier"),
             L("cross-table"),
+            S("tournament-report"),
           ],
         },
         {
@@ -1355,6 +1363,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             S("load-previous-game"),
             S("load-next-game"),
             S("show-crosstable"),
+            S("tournament-report"),
             S("player-statistic"),
             S("player-dossier"),
             S("prepare-white"),

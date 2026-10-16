@@ -712,6 +712,58 @@ export function demoApi(): WorkbenchApi {
       };
     },
     cancelDossier: async () => {},
+    tournamentReport: async (db, tournamentId) => {
+      const table = await api.crosstable!(db, tournamentId, "swiss");
+      const rounds = Array.from({ length: table.rounds }, (_, i) => i + 1);
+      const seen = new Set<number>();
+      return {
+        table,
+        rounds: rounds.map((round) => ({
+          round,
+          date: `1999.05.${String(10 + round).padStart(2, "0")}`,
+          games: table.players.flatMap((p, row) =>
+            p.cells
+              .flat()
+              .filter(
+                (g) => g.round === round && g.white && !seen.has(g.ordinal),
+              )
+              .map((g) => {
+                seen.add(g.ordinal);
+                return {
+                  ordinal: g.ordinal,
+                  white: row,
+                  black: g.opponent,
+                  result:
+                    g.mark === "1" ? "1-0" : g.mark === "0" ? "0-1" : "1/2-1/2",
+                  moves: 30 + round,
+                };
+              }),
+          ),
+          standings: table.players
+            .slice(0, 5)
+            .map((_, row) => ({ row, points: round / 2, games: round })),
+        })),
+        stats: {
+          games: table.games,
+          whiteWins: 0,
+          draws: 0,
+          blackWins: 0,
+          forfeits: 0,
+          averageMoves: 38,
+        },
+      };
+    },
+    showEntries: async (_db, ordinals, requestId) => {
+      hits = ordinals.map(Number);
+      return {
+        requestId,
+        hits: String(hits.length),
+        scanned: String(hits.length),
+        truncated: false,
+        cancelled: false,
+        indexed: false,
+      };
+    },
     closePreparation: async () => {},
     preparedTree: async (_db, line, requestId) => {
       const moves = line.moves.length === 0 ? ["e2e4", "d2d4"] : [];

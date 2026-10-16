@@ -576,6 +576,12 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       api.preparationGames(db, playerId, white, line, request),
     );
   }
+  /** Lists the given entries. */
+  function showEntries(ordinals: string[], label: string) {
+    return runSearch({ label }, (db, request) =>
+      api.showEntries(db, ordinals, request),
+    );
+  }
   /** Finds games that reach the position `fen`. */
   function findPosition(fen: string) {
     return runSearch({ fen }, (db, request, progress) =>
@@ -957,6 +963,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     search,
     statisticsGames,
     preparationGames,
+    showEntries,
     findPosition,
     positionSearch,
     searching,
