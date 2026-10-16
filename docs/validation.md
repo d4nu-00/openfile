@@ -892,3 +892,20 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
   preparation when it is closed or the database changes. Frontend tests run
   Ctrl+W and Ctrl+B from the Players list, switch colour, list a line's
   games, show the preparation in the Book and return to the database tree.
+
+## Player dossier (2026-10-15)
+
+* **Measurements** on both Megas, read-only: see
+  [player dossier](player-dossier.md#measurements).
+* **Tests.** Reader tests check ChessBase's band tables, the per-colour
+  tally (score rounding, performance, game lengths, draws and quick draws,
+  forfeits left out) and the score by rating band. An app test builds the
+  dossier of a scratch 2CBH player: score bands by colour, quick draws,
+  rating bands, a mate given and one received, a medal set in the record,
+  a self-annotated game, the White repertoire, and listing the kept games.
+  Frontend tests open it with Ctrl+Alt+D, check the workbench's wording
+  and that missing values show as nothing, list an opponent's games and
+  load a mate.
+* **Real app.** A debug snapshot of a 446-game player of the 2CBH Mega
+  showed "null%" for missing values; the dialogs (and Player statistic's
+  score) now treat null as missing.

@@ -1963,3 +1963,52 @@ kbd {
     grid-template-columns: 1fr;
   }
 }
+.modal.dossier {
+  width: min(1100px, 96vw);
+  max-width: min(1100px, 96vw);
+  height: min(760px, 92vh);
+  flex-direction: column;
+  flex-wrap: nowrap;
+  cursor: default;
+}
+.dossier .dossier-body {
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-right: 4px;
+}
+.dossier h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.dossier p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+.dossier .dossier-score {
+  width: auto;
+}
+.dossier .dossier-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.dossier .stat-table td.prepare-line {
+  max-width: 22em;
+  white-space: normal;
+}
+.dossier .modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+@media (max-width: 760px) {
+  .dossier .dossier-columns {
+    grid-template-columns: 1fr;
+  }
+}

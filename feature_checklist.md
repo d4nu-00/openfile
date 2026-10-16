@@ -23,7 +23,7 @@ Names in backticks are ChessBase command ids, for traceability.
 4. Complete notation editing: variation operations, game data, symbols (§6). *(P1 items done)*
 5. Multiple game tabs, the clipboard database and save/replace into a database (§2, §3). *(game tabs done)*
 6. Engine tools: blunder check, deep analysis, analysis jobs, tablebases (§7). *(kibitzers, lines, paste, Engine Management, Tactical Analysis, tablebase tab and annotation, Deep Analysis and analysis jobs done)*
-7. Reports, preparation and training (§9–§11), then publishing (§12). *(player statistics and preparation done)*
+7. Reports, preparation and training (§9–§11), then publishing (§12). *(player statistics, preparation and dossier done)*
 
 ## 1. Database formats and storage
 
@@ -177,7 +177,7 @@ Names in backticks are ChessBase command ids, for traceability.
 ## 9. Reports and statistics
 
 - [x] P1 🟢 Player statistics: score by colour, opening and year (`STATISTICS`, `PLAYERSTATISTIC`) *(ChessBase's Player statistic layout, dialog 846: score by colour and year, then opponents, tournaments and openings by ECO with its sort buttons and Table; performance and average Elo; one cancellable parallel scan, 0.06 s for Carlsen's 6,925 games on the classic Mega warm; rows open their games; the graphical Statistics dialog and opening keys are not ported; see [player statistics](docs/player-statistics.md))*
-- [ ] P2 🟢 Player dossier (`PLAYERDOSSIER`)
+- [x] P2 🟢 Player dossier (`PLAYERDOSSIER`) *(traced: the generator `0x1408358a0` and its sections, statistics tallies and verdict band tables; ported: statistics with ChessBase's bands in the workbench's words, years, score by rating band, tournaments, opponents, repertoire for each colour, medal games, mates given and received, self-annotated games; 0.62 s warm for 6,925 games on the classic Mega; biography, pictures and rating history need the player encyclopedia and are left out; see [player dossier](docs/player-dossier.md))*
 - [ ] P2 🟢 Tournament crosstable and report (`DBTOOLSCROSSTABLE`, `TournamentReport`) *(crosstable done, §3; no report)*
 - [ ] P2 🟢 Error report: blunder statistics and estimated rating (`BLUNDER_REPORT`)
 - [ ] P3 🟢 Style report (`STYLE_REPORT`)

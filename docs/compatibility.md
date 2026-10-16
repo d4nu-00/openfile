@@ -146,7 +146,12 @@ The opening report ports ChessBase's history, players, moves and main line,
 but not its plans, recommendations or opening keys. Prepare against White or Black
 shows the player's games of one colour, their repertoire lines and their
 tree in the Book pane; ChessBase's game window mode for them and its
-rating formula were not traced (see [preparation](preparation.md)). Engines and private databases are
+rating formula were not traced (see [preparation](preparation.md)). The
+player dossier ports ChessBase's statistics, verdict bands, years,
+opponents, tournaments and repertoire; medal games stand in for its
+"spectacular games", mates are found by replaying decisive games, and the
+biography, pictures and rating history of its player encyclopedia are left
+out (see [player dossier](player-dossier.md)). Engines and private databases are
 separate user-provided files. The first workbench does not yet implement
 ChessBase's full search/indexing, its own opening book files (.ctg and trees),
 training, multimedia, cloud services or lossless writing of every ChessBase

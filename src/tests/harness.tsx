@@ -1082,6 +1082,119 @@ export function mockApi(firstDatabase = 1) {
         },
       ),
     cancelPreparation: vi.fn().mockResolvedValue(undefined),
+    playerDossier: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          playerId: number,
+          onProgress: (p: {
+            stage: string;
+            done: string;
+            total: string;
+          }) => void,
+        ) => {
+          onProgress({ stage: "mates", done: "1", total: "2" });
+          // Missing values arrive as null, as the backend sends them.
+          const none = null as unknown as undefined;
+          const colour = (score?: number, band?: number) => ({
+            games: 3,
+            whiteWins: 2,
+            draws: 1,
+            blackWins: 0,
+            score: score ?? none,
+            scoreBand: band ?? none,
+            opponentsAverage: score === undefined ? none : 2500,
+            performance: score === undefined ? none : 2620,
+            whiteWinMoves: 30,
+            whiteWinBand: 1,
+            drawMoves: 15,
+            drawBand: 0,
+            drawPercent: 33,
+            drawQuoteBand: 2,
+            quickDrawPercent: 33,
+          });
+          const game = (ordinal: string, medals: string[] = []) => ({
+            ordinal,
+            white: true,
+            opponent: "Bravo, B",
+            year: 2020,
+            result: "1-0",
+            moves: 30,
+            eco: "C42",
+            tournament: "Club",
+            medals,
+          });
+          return {
+            playerId,
+            name: `Player ${playerId}, A`,
+            games: 3,
+            deleted: 0,
+            truncated: false,
+            firstYear: 2019,
+            lastYear: 2020,
+            years: [
+              {
+                year: 2020,
+                elo: 2450,
+                score: {
+                  games: 3,
+                  wins: 2,
+                  draws: 1,
+                  losses: 0,
+                  points: 2.5,
+                  percent: 83,
+                },
+              },
+            ],
+            all: colour(),
+            white: colour(83, 6),
+            black: colour(),
+            ratingBands: [{ from: 2500, games: 2, points: 1.5, percent: 75 }],
+            tournaments: [],
+            opponents: [
+              {
+                id: 5,
+                name: "Bravo, B",
+                elo: 2450,
+                score: {
+                  games: 2,
+                  wins: 1,
+                  draws: 1,
+                  losses: 0,
+                  points: 1.5,
+                  percent: 75,
+                },
+                lastYear: 2020,
+              },
+            ],
+            moreTournaments: 0,
+            moreOpponents: 0,
+            repertoireWhite: [
+              {
+                moves: ["e2e4"],
+                text: "1.e4",
+                eco: "B00",
+                name: "King's Pawn",
+                games: 3,
+                score: 83,
+                lastYear: 2020,
+              },
+            ],
+            repertoireBlack: [],
+            medalGames: [game("2", ["Best game"])],
+            medalCount: 1,
+            matesGiven: [game("3")],
+            matesGivenCount: 1,
+            matesReceived: [],
+            matesReceivedCount: 0,
+            matesRead: 3,
+            annotated: [],
+            annotatedCount: 0,
+          };
+        },
+      ),
+    cancelDossier: vi.fn().mockResolvedValue(undefined),
     closePreparation: vi.fn().mockResolvedValue(undefined),
     preparedTree: vi
       .fn()

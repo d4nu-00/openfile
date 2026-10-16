@@ -5,8 +5,8 @@ import type {
   StatScore,
 } from "../api/types";
 
-const pct = (s: StatScore) => (s.percent === undefined ? "" : `${s.percent}%`);
-const score = (v?: number) => (v === undefined ? "" : `${v.toFixed(0)}%`);
+const pct = (s: StatScore) => (s.percent == null ? "" : `${s.percent}%`);
+const score = (v?: number) => (v == null ? "" : `${v.toFixed(0)}%`);
 
 /**
  * Prepare against White or Black (ChessBase's `PREPARE_WHITE`,

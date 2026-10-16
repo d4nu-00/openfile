@@ -126,6 +126,67 @@ impl PlayerTree {
     }
 }
 
+/// Calls `f` on each of `ordinals` with up to `workers` threads, each with
+/// its own read handle, and returns the results in the same order. None when
+/// cancelled. `progress` gets (games done, games) about every 50 ms.
+pub(crate) fn map_games<T: Send>(
+    db: &Database,
+    ordinals: &[u64],
+    workers: usize,
+    cancel: &AtomicBool,
+    mut progress: impl FnMut(u64, u64),
+    f: impl Fn(&Database, u64) -> Result<T, CbhError> + Sync,
+) -> Result<Option<Vec<T>>, CbhError> {
+    let total = ordinals.len() as u64;
+    let workers = workers.clamp(1, 64);
+    let per = ordinals.len().div_ceil(workers).max(1);
+    let parts: Vec<&[u64]> = ordinals.chunks(per).collect();
+    let handles = (1..parts.len())
+        .map(|_| db.reopen())
+        .collect::<Result<Vec<_>, _>>()?;
+    let done = AtomicU64::new(0);
+    let f = &f;
+    let results = std::thread::scope(|scope| -> Result<Option<Vec<Vec<T>>>, CbhError> {
+        let mut running = vec![];
+        for (i, part) in parts.iter().enumerate() {
+            let handle = if i == 0 { db } else { &handles[i - 1] };
+            let done = &done;
+            running.push(scope.spawn(move || -> Result<Option<Vec<T>>, CbhError> {
+                let mut out = Vec::with_capacity(part.len());
+                for &ordinal in *part {
+                    if cancel.load(Ordering::Relaxed) {
+                        return Ok(None);
+                    }
+                    out.push(f(handle, ordinal)?);
+                    done.fetch_add(1, Ordering::Relaxed);
+                }
+                Ok(Some(out))
+            }));
+        }
+        loop {
+            let finished = running.iter().all(|p| p.is_finished());
+            progress(done.load(Ordering::Relaxed), total);
+            if finished {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        let mut out = vec![];
+        for p in running {
+            match p
+                .join()
+                .map_err(|_| CbhError::Io(std::io::Error::other("worker stopped")))??
+            {
+                Some(part) => out.push(part),
+                None => return Ok(None),
+            }
+        }
+        Ok(Some(out))
+    })?;
+    // Parts cover consecutive slices, so the results stay in order.
+    Ok(results.map(|parts| parts.into_iter().flatten().collect()))
+}
+
 impl Database {
     /// Reads the main lines of `ordinals` (at most [`MAX_GAMES`], the last
     /// ones) up to `plies`, with up to `workers` threads, each with its own
@@ -136,70 +197,30 @@ impl Database {
         plies: usize,
         workers: usize,
         cancel: &AtomicBool,
-        mut progress: impl FnMut(u64, u64),
+        progress: impl FnMut(u64, u64),
     ) -> Result<Option<PlayerTree>, CbhError> {
         let ordinals = &ordinals[ordinals.len().saturating_sub(MAX_GAMES)..];
-        let total = ordinals.len() as u64;
-        let workers = workers.clamp(1, 64);
-        let per = ordinals.len().div_ceil(workers).max(1);
-        let parts: Vec<&[u64]> = ordinals.chunks(per).collect();
-        let handles = (1..parts.len())
-            .map(|_| self.reopen())
-            .collect::<Result<Vec<_>, _>>()?;
-        let done = AtomicU64::new(0);
-        let me: &Database = self;
-        let results = std::thread::scope(|scope| -> Result<Option<Vec<PlayerTree>>, CbhError> {
-            let mut running = vec![];
-            for (i, part) in parts.iter().enumerate() {
-                let handle = if i == 0 { me } else { &handles[i - 1] };
-                let done = &done;
-                running.push(
-                    scope.spawn(move || -> Result<Option<PlayerTree>, CbhError> {
-                        let mut tree = PlayerTree::default();
-                        for &ordinal in *part {
-                            if cancel.load(Ordering::Relaxed) {
-                                return Ok(None);
-                            }
-                            match handle.main_line(ordinal, plies) {
-                                Ok(Some(line)) => tree.lines.push((ordinal, line)),
-                                Err(e @ (CbhError::Io(_) | CbhError::SourceChanged)) => {
-                                    return Err(e);
-                                }
-                                Ok(None) | Err(_) => tree.unreadable += 1,
-                            }
-                            done.fetch_add(1, Ordering::Relaxed);
-                        }
-                        Ok(Some(tree))
-                    }),
-                );
-            }
-            loop {
-                let finished = running.iter().all(|p| p.is_finished());
-                progress(done.load(Ordering::Relaxed), total);
-                if finished {
-                    break;
-                }
-                std::thread::sleep(std::time::Duration::from_millis(50));
-            }
-            let mut out = vec![];
-            for p in running {
-                match p.join().map_err(|_| {
-                    CbhError::Io(std::io::Error::other("preparation worker stopped"))
-                })?? {
-                    Some(part) => out.push(part),
-                    None => return Ok(None),
-                }
-            }
-            Ok(Some(out))
-        })?;
-        let Some(results) = results else {
+        let lines = map_games(
+            self,
+            ordinals,
+            workers,
+            cancel,
+            progress,
+            |db, ordinal| match db.main_line(ordinal, plies) {
+                Ok(line) => Ok(line.map(|l| (ordinal, l))),
+                Err(e @ (CbhError::Io(_) | CbhError::SourceChanged)) => Err(e),
+                Err(_) => Ok(None),
+            },
+        )?;
+        let Some(lines) = lines else {
             return Ok(None);
         };
-        // Parts cover consecutive slices, so the games stay in entry order.
         let mut tree = PlayerTree::default();
-        for part in results {
-            tree.unreadable += part.unreadable;
-            tree.lines.extend(part.lines);
+        for line in lines {
+            match line {
+                Some(l) => tree.lines.push(l),
+                None => tree.unreadable += 1,
+            }
         }
         Ok(Some(tree))
     }

@@ -2,6 +2,7 @@ pub mod annotations;
 pub mod companions;
 pub mod crosstable;
 mod database;
+pub mod dossier;
 pub mod eco;
 pub mod entities;
 pub mod error;

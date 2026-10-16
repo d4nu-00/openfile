@@ -443,6 +443,10 @@ impl Database {
     pub fn player_name(&mut self, id: u32) -> Result<Option<String>, CbhError> {
         Ok(self.entities.player(id)?.text)
     }
+    /// An annotator's name.
+    pub fn annotator_name(&mut self, id: u32) -> Result<Option<String>, CbhError> {
+        Ok(self.entities.annotator(id)?.text)
+    }
     /// A tournament's name and site.
     pub fn tournament_name(
         &mut self,

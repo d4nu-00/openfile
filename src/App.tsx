@@ -28,6 +28,7 @@ import type {
   Edit,
   PlayerStatistics,
   Preparation,
+  Dossier,
   SortColumn,
 } from "./api/types";
 import {
@@ -75,6 +76,7 @@ import { StartScreen, type StartView } from "./views/StartScreen";
 import { CrosstableDialog } from "./components/CrosstableDialog";
 import { PlayerStatisticsDialog } from "./components/PlayerStatisticsDialog";
 import { PrepareDialog } from "./components/PrepareDialog";
+import { DossierDialog } from "./components/DossierDialog";
 import {
   chooseRow,
   isSelected,
@@ -222,6 +224,15 @@ export function App({
     white: boolean;
     name?: string;
     data?: Preparation;
+    progress?: string;
+    error?: string;
+  }>();
+  /** The player dossier shown. */
+  const [dossier, setDossier] = useState<{
+    databaseId: string;
+    playerId: number;
+    name?: string;
+    data?: Dossier;
     progress?: string;
     error?: string;
   }>();
@@ -1324,6 +1335,45 @@ export function App({
       );
     }
   }
+  /** Builds the dossier of a player of the active database. */
+  async function openDossier(playerId: number, name?: string) {
+    const db = state.database;
+    if (!db) return;
+    const databaseId = db.databaseId;
+    const live = (c?: { databaseId: string; playerId: number }) =>
+      c?.databaseId === databaseId && c.playerId === playerId;
+    setDossier({ databaseId, playerId, name, progress: "Finding the games…" });
+    const stages = {
+      games: "Finding the games",
+      lines: "Building the repertoire",
+      mates: "Looking for mates",
+    };
+    try {
+      const data = await api.playerDossier(databaseId, playerId, (p) => {
+        const pct = Number((BigInt(p.done) * 100n) / BigInt(p.total || "1"));
+        setDossier((c) =>
+          live(c) ? { ...c!, progress: `${stages[p.stage]}, ${pct}%` } : c,
+        );
+      });
+      setDossier((c) =>
+        live(c)
+          ? data
+            ? { ...c!, data, progress: undefined }
+            : { ...c!, progress: undefined, error: "Dossier stopped" }
+          : c,
+      );
+    } catch (e) {
+      setDossier((c) =>
+        live(c)
+          ? {
+              ...c!,
+              progress: undefined,
+              error: (e as { message?: string })?.message ?? String(e),
+            }
+          : c,
+      );
+    }
+  }
   /** The players of the shown game, when it comes from the active database. */
   const gamePlayers: { id: number; name?: string }[] = [];
   if (
@@ -1695,6 +1745,17 @@ export function App({
         showList("players");
       },
       enabled: !!state.database,
+    },
+    "player-dossier": {
+      run: () => {
+        if (statsPlayer === undefined) return;
+        const fromList = listTab === "players" && !!chosenName.players;
+        const name = fromList
+          ? chosenName.players?.name
+          : gamePlayers.find((p) => p.id === statsPlayer)?.name;
+        return openDossier(statsPlayer, name);
+      },
+      enabled: !!state.database && statsPlayer !== undefined,
     },
     "player-statistic": {
       run: () => {
@@ -2927,6 +2988,30 @@ export function App({
             if (stats.progress)
               void api.cancelPlayerStatistics(stats.databaseId);
             setStats(undefined);
+          }}
+        />
+      )}
+      {dossier && (
+        <DossierDialog
+          name={dossier.name}
+          data={dossier.data}
+          progress={dossier.progress}
+          error={dossier.error}
+          onCancel={() => void api.cancelDossier(dossier.databaseId)}
+          onOpenGames={(group, label) => {
+            const playerId = dossier.playerId;
+            setDossier(undefined);
+            showList("games");
+            void w.statisticsGames(playerId, group, label);
+          }}
+          onLoadGame={(ordinal) => {
+            setDossier(undefined);
+            setListTab("games");
+            void e.openEntry(ordinal);
+          }}
+          onClose={() => {
+            if (dossier.progress) void api.cancelDossier(dossier.databaseId);
+            setDossier(undefined);
           }}
         />
       )}
