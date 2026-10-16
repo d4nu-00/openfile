@@ -315,3 +315,107 @@ fn hit_limits_keep_the_first_hits_in_entry_order() {
         assert_eq!(r.truncated, limit < 4, "limit {limit}");
     }
 }
+
+const ANNOTATED: &str = r#"[White "A, A"]
+[Black "B, B"]
+[Result "1-0"]
+
+1. e4 {The Kingpin} e5 2. Nf3! $18 (2. Qh5 {Wild}) Nc6 1-0
+
+[White "C, C"]
+[Black "D, D"]
+[Result "0-1"]
+
+1. d4 {[%csl Re4][%cal Ga2a4] a kingside plan} d5 2. c4!! 0-1
+
+[White "E, E"]
+[Black "F, F"]
+[Result "1/2-1/2"]
+
+1. c4 c5 1/2-1/2"#;
+
+#[test]
+fn annotation_and_medal_criteria() {
+    let d = tempfile::tempdir().unwrap();
+    let path = d.path().join("Annotated.2cbh");
+    let games = parse_pgn(ANNOTATED.as_bytes(), &GameLimits::default()).unwrap();
+    let mut w = Writer::create(&path).unwrap();
+    w.append_all(&games).unwrap();
+    w.toggle_user_medal(&[3]).unwrap();
+    drop(w);
+    let mut db = Database::open(&path, ReadLimits::default()).unwrap();
+    let f = |patch: &dyn Fn(&mut GameFilter)| {
+        let mut f = GameFilter::default();
+        patch(&mut f);
+        f
+    };
+    let a = |patch: &dyn Fn(&mut cbh_reader::search::AnnotationQuery)| {
+        f(&|f| patch(&mut f.annotations))
+    };
+    // Texts: both must be there; whole words only when asked.
+    assert_eq!(hits(&mut db, a(&|q| q.text1 = "king".into())), [1, 2]);
+    assert_eq!(
+        hits(
+            &mut db,
+            a(&|q| {
+                q.text1 = "king".into();
+                q.whole_word = true;
+            })
+        ),
+        Vec::<u64>::new()
+    );
+    assert_eq!(
+        hits(
+            &mut db,
+            a(&|q| {
+                q.text1 = "kingpin".into();
+                q.text2 = "wild".into();
+                q.whole_word = true;
+            })
+        ),
+        [1]
+    );
+    // Symbols: every one given must be in the game.
+    assert_eq!(hits(&mut db, a(&|q| q.symbols = vec![1, 18])), [1]);
+    assert_eq!(hits(&mut db, a(&|q| q.symbols = vec![3])), [2]);
+    assert_eq!(hits(&mut db, a(&|q| q.any_symbols = true)), [1, 2]);
+    assert_eq!(hits(&mut db, a(&|q| q.any_text = true)), [1, 2]);
+    assert_eq!(hits(&mut db, a(&|q| q.colours = true)), [2]);
+    assert_eq!(hits(&mut db, a(&|q| q.variations = true)), [1]);
+    // Medals: any of the bits given.
+    assert_eq!(hits(&mut db, f(&|f| f.medals = 0x8000)), [3]);
+    assert_eq!(hits(&mut db, f(&|f| f.medals = 0x0001)), Vec::<u64>::new());
+}
+
+#[test]
+fn annotation_kinds_without_a_writer() {
+    use cbh_reader::{
+        annotations::{Entry, Kind},
+        search::AnnotationQuery,
+    };
+    let entries = [
+        Entry {
+            position: 3,
+            kind: Kind::Critical(2),
+        },
+        Entry {
+            position: 4,
+            kind: Kind::Other(0x09),
+        },
+        Entry {
+            position: 5,
+            kind: Kind::Other(0x11),
+        },
+    ];
+    let q = |patch: &dyn Fn(&mut AnnotationQuery)| {
+        let mut q = AnnotationQuery::default();
+        patch(&mut q);
+        q.matches(&entries)
+    };
+    assert!(q(&|q| q.critical_middlegame = true));
+    assert!(!q(&|q| q.critical_opening = true));
+    assert!(q(&|q| q.training = true));
+    assert!(q(&|q| q.multimedia = true));
+    assert!(!q(&|q| q.pawn_structure = true));
+    assert!(!q(&|q| q.any_text = true));
+}

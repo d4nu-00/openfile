@@ -2149,3 +2149,16 @@ kbd {
     grid-template-columns: 1fr;
   }
 }
+.search-mask .mask-checks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 12px;
+}
+.search-mask .mask-symbols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px 12px;
+  border: 1px solid var(--pane-border);
+  padding: 4px 8px;
+  margin: 6px 0;
+}

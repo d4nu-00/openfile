@@ -323,7 +323,66 @@ export interface GameFilter {
    * without it. */
   fullText?: string;
   fullTextNot?: boolean;
+  /** The Medals tab: games with any of these medal bits. */
+  medals?: number;
+  /** The Annotations tab; every criterion set must hold. */
+  annotations?: AnnotationQuery;
 }
+/** The search mask's Annotations tab (dialog 343; see docs/search.md). */
+export interface AnnotationQuery {
+  text1: string;
+  text2: string;
+  wholeWord: boolean;
+  /** PGN NAG numbers; each must be in the game. */
+  symbols: number[];
+  anyText: boolean;
+  anySymbols: boolean;
+  colours: boolean;
+  training: boolean;
+  multimedia: boolean;
+  pawnStructure: boolean;
+  piecePath: boolean;
+  criticalOpening: boolean;
+  criticalMiddlegame: boolean;
+  criticalEndgame: boolean;
+  variations: boolean;
+}
+export const emptyAnnotations = (): AnnotationQuery => ({
+  text1: "",
+  text2: "",
+  wholeWord: false,
+  symbols: [],
+  anyText: false,
+  anySymbols: false,
+  colours: false,
+  training: false,
+  multimedia: false,
+  pawnStructure: false,
+  piecePath: false,
+  criticalOpening: false,
+  criticalMiddlegame: false,
+  criticalEndgame: false,
+  variations: false,
+});
+/** The medals by bit (see docs/formats.md). */
+export const MEDAL_NAMES = [
+  "Best game",
+  "Decided tournament",
+  "Model game",
+  "Novelty",
+  "Pawn structure",
+  "Strategy",
+  "Tactics",
+  "With attack",
+  "Defense",
+  "Sacrifice",
+  "Material",
+  "Piece play",
+  "Endgame",
+  "Tactical blunder",
+  "Strategical blunder",
+  "User",
+];
 /** The search mask's position tab (see docs/position-search.md). Pieces
  * are [square, letter]: KQRBNP White, kqrbnp Black, X/x any piece. */
 export interface PositionQuery {

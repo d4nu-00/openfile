@@ -52,6 +52,10 @@ pub enum Kind {
     Squares(Vec<(u8, u8)>),
     /// (colour code, from, to) triples.
     Arrows(Vec<(u8, u8, u8)>),
+    /// A critical position (type 0x18): 1 opening, 2 middlegame, 3 endgame,
+    /// as ChessBase's three commands set it (`0x1408e0cb0`, `0x1408e0c50`,
+    /// `0x1408e0bf0`). Kept for searching; not shown.
+    Critical(u8),
     /// A recognised type this reader does not represent.
     Other(u16),
 }
@@ -193,6 +197,7 @@ pub fn parse_classic(bytes: &[u8], ordinal: u64) -> Result<Parsed, CbhError> {
             SQUARES => pairs(data).ok_or_else(|| CbhError::Decode("Odd square list".into()))?,
             ARROWS => triples(data).ok_or_else(|| CbhError::Decode("Uneven arrow list".into()))?,
             SYMBOLS => return Err(CbhError::Decode("Long CBA symbol record".into())),
+            0x18 if !data.is_empty() => Kind::Critical(data[0]),
             other => Kind::Other(other),
         };
         parsed.entries.push(Entry { position, kind });
@@ -291,10 +296,11 @@ pub fn parse_new(payload: &[u8]) -> Result<Parsed, CbhError> {
                     c.u32()?;
                     Kind::Other(ty)
                 }
-                0x14 | 0x18 => {
+                0x14 => {
                     c.u8()?;
                     Kind::Other(ty)
                 }
+                0x18 => Kind::Critical(c.u8()?),
                 0x27 => {
                     c.u16()?;
                     Kind::Other(ty)
@@ -494,6 +500,7 @@ pub fn apply(game: &mut Game, parsed: Parsed, order: Order) -> (DataStatus, Vec<
                 }
             }
             Kind::Other(ty) => *other.entry(ty).or_default() += 1,
+            Kind::Critical(_) => *other.entry(0x18).or_default() += 1,
         }
     }
     if omitted_text > 0 {

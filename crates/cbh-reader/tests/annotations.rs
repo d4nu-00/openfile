@@ -126,7 +126,8 @@ fn one_language_is_kept_with_neutral_text() {
 
 #[test]
 fn unsupported_and_unsized_types_are_reported() {
-    // Critical position (one byte) is skipped; a game quotation stops parsing.
+    // A critical position (one byte, kept for searching) is not shown; a game
+    // quotation stops parsing.
     let payload = [
         group(0, &[vec![0x18, 0, 2]]),
         group(1, &[vec![0x13, 0, 9, 9, 9]]),
@@ -135,7 +136,7 @@ fn unsupported_and_unsized_types_are_reported() {
     .concat();
     let parsed = parse_new(&payload).unwrap();
     assert_eq!(parsed.entries.len(), 1);
-    assert_eq!(parsed.entries[0].kind, Kind::Other(0x18));
+    assert_eq!(parsed.entries[0].kind, Kind::Critical(2));
     assert_eq!(parsed.stopped_at, Some((1, 0x13)));
     let mut g = game();
     let (status, notes) = apply(&mut g, parsed, Order::Line);

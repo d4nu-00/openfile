@@ -813,6 +813,21 @@ impl Database {
             Err(_) => Ok(None),
         }
     }
+    /// The annotation entries of an entry, for searching; `None` when its
+    /// record cannot be read.
+    pub(crate) fn annotation_entries(
+        &self,
+        raw: &crate::header::RawEntry,
+    ) -> Result<Option<Vec<crate::annotations::Entry>>, CbhError> {
+        let (Some(file), Some(offset)) = (&self.annotations, raw.annotation_offset) else {
+            return Ok(Some(vec![]));
+        };
+        match self.parse_annotations(file, offset, raw.ordinal) {
+            Ok(parsed) => Ok(Some(parsed.entries)),
+            Err(CbhError::SourceChanged) => Err(CbhError::SourceChanged),
+            Err(_) => Ok(None),
+        }
+    }
     /// Decodes this game's CBA/2CBA annotations into `game`. Only a changed
     /// source is an error; anything else becomes a status and diagnostics.
     fn annotate(

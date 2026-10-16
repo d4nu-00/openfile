@@ -200,7 +200,9 @@ export function App({
   const [palette, setPalette] = useState(false);
   const [filter, setFilter] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
-  const [maskOpen, setMaskOpen] = useState(false);
+  /** The search mask, and the tab it opens on ("annotations" for Search
+   * text). */
+  const [maskOpen, setMaskOpen] = useState<false | true | "annotations">(false);
   /** The database window's list: games, players or tournaments. */
   const [listTab, setListTab] = useState<"games" | NameKind>("games");
   const [openedTabs, setOpenedTabs] = useState<NameKind[]>([]);
@@ -1643,6 +1645,12 @@ export function App({
     "open-pgn": { run: () => e.run(e.openPgn, false) },
     "open-board": { run: () => setView("game"), enabled: !!game },
     "database-window": { run: () => setView("database") },
+    // ChessBase's Search text (GENERALSEARCH); what its own command opens
+    // was not traced, so the workbench opens the Annotations tab.
+    "search-text": {
+      run: () => setMaskOpen("annotations"),
+      enabled: !!state.database,
+    },
     "filter-games": {
       run: () => setMaskOpen(true),
       enabled: !!state.database,
@@ -2181,7 +2189,7 @@ export function App({
     !!e.question ||
       palette ||
       !!symbolMenu ||
-      maskOpen ||
+      !!maskOpen ||
       gameDataOpen ||
       setupOpen ||
       !!pasting ||
@@ -3233,6 +3241,7 @@ export function App({
       )}
       {maskOpen && (
         <SearchMask
+          initialTab={maskOpen === "annotations" ? "annotations" : undefined}
           initial={state.search?.filter}
           initialPosition={state.search?.position}
           boardFen={state.position?.fen}

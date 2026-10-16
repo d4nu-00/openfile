@@ -158,7 +158,11 @@ ported (see [tournament report](tournament-report.md)). The Error Report analyse
 the selected games with the user's UCI engine to ChessBase's depths and
 applies ChessBase's Blunder Elo curve to an error value formed as
 ChessBase forms it, but without its engine's complexity and deep-search
-weights; the estimate is approximate (see [error report](error-report.md)). Engines and private databases are
+weights; the estimate is approximate (see [error report](error-report.md)). The search mask's Annotations
+and Medals tabs search texts, symbols, colours, training, multimedia, pawn
+structures, piece paths, critical positions, variations and medals; how
+ChessBase combines several symbols or medals was not traced (see
+[search](search.md)). Engines and private databases are
 separate user-provided files. The first workbench does not yet implement
 ChessBase's full search/indexing, its own opening book files (.ctg and trees),
 training, multimedia, cloud services or lossless writing of every ChessBase
