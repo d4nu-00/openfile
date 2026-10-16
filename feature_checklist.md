@@ -88,7 +88,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Position search: exact position, with OR/NOT boards and mirrored search *(the Position tab, dialog 314, traced in CBase18: 'Look for', 'Or' and 'Exclude' boards with any-piece and several pieces per square, Horizontal/Vertical mirroring, First/Length/Last, side to move, Include lines; Exact position uses the search booster with mirrored targets; patterns replay games; Sacrifice not ported; on the classic Mega a full replay takes 2 min on 8 workers, a boosted search seconds; see [position search](docs/position-search.md))*
 - [x] P1 🟢 Find the current board position in a database (`FINDINDBBOARD`, `FINDPOSITION`) *(games open at the position found)*
 - [ ] P2 🟢 Material search (endgame type, material balance)
-- [ ] P2 🟢 Annotation and text search: symbols, commentary text, medals (`GENERALSEARCH`)
+- [x] P2 🟢 Annotation and text search: symbols, commentary text, medals (`GENERALSEARCH`) *(the search mask's Annotations tab (dialog 343) and Medals tab (dialog 312), traced from their data exchange: two texts, whole words, symbols, any text or symbol, colours, training, multimedia, pawn structure, piece path, the three critical positions, variations and medals; about 1 s on the classic Mega; Deleted, Position and the 960 number not ported; see [search](docs/search.md))*
 - [ ] P2 🟢 Manoeuvre search (piece routes) and attack/defence patterns
 - [ ] P3 🟢 Game phase and structural theme filters
 - [ ] P2 🟢 Save and load search masks (`SAVE_SEARCHMASK`)

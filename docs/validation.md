@@ -939,3 +939,16 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
   the error value, the rating, too few moves for an estimate, Stop, and an
   empty selection refused. Frontend tests run the dialog with a player and
   with both sides, and load a worst move.
+
+## Annotation and medal search (2026-10-16)
+
+* **Measurements** on the classic Mega, read-only: see
+  [search](search.md#annotations-and-medals-tabs-2026-10-16). Each search
+  took about 1 s, reading only the annotation records of annotated games.
+* **Tests.** A reader test writes a scratch 2CBH with texts, symbols,
+  coloured squares and arrows, a variation and a user medal, and checks
+  each criterion (two texts, whole words, symbols, any text or symbol,
+  colours, variations, medals). Another checks the critical-position kinds,
+  training and multimedia on parsed entries. A frontend test opens Search
+  text on the Annotations tab and searches with symbols, colours, a
+  critical position and two medals.

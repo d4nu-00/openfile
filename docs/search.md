@@ -54,6 +54,61 @@ in the table above.
 * Time Controls All/Slow/Rapid/Blitz (1315–1319): the game type is not read
   from the records.
 
+## Annotations and Medals tabs (2026-10-16)
+
+ChessBase's search mask (dialog 310) has, besides game data and position,
+an **Annotations** tab (dialog 343, class `CAnnoMaskDialog`, vtable
+`0x1411e1b58`) and a **Medals** tab (dialog 312). `Search text`
+(`GENERALSEARCH`, kc 597, no key) has no traced action. The workbench opens
+the search mask on the Annotations tab for it (database window, Home ›
+Search games).
+
+**Annotations.** The data exchange (`0x1407d5530`) and the labels set in
+the init (`0x1407d5c50`, messages 490–501, 723):
+
+| Control | Field | Workbench |
+|---|---|---|
+| Text1 (1109), Text2 (1112) | 0x13000, 0x13008 | each must be in a text annotation, case-insensitively |
+| Whole word (1110) | 0x12ff4 | no letter or digit on either side |
+| Symbols (1114) | 0x12ff8, a text field | the symbol palette's symbols as checkboxes; each checked symbol must be in the game |
+| Any text (1064), Any symbols (1065) | 0x12fc4, 0x12fc0 | the game has a text or a symbol annotation |
+| Colours (1058) | 0x12fc8 | coloured squares or arrows (types 0x04, 0x05, 0x84, 0x85) |
+| Training (1059), Multimedia (1060) | 0x12fec, 0x12fe0 | types 0x09; 0x10, 0x11, 0x12 (audio, picture, video) |
+| Pawn structure (1061), Piece path (1062) | 0x12fe4, 0x12fe8 | types 0x14, 0x15 |
+| Critical opening/middlegame/endgame position (1066–1068) | 0x12fd4, 0x12fd0, 0x12fcc | type 0x18 with kind 1, 2 or 3 |
+| Variations (1063) | 0x12ff0 | the game has a variation (its moves are read) |
+
+The critical position's kind is the byte the three commands store:
+`AnnoCriticalPosOpeningCmd` (`0x1408e0cb0`) passes 1, the middlegame command
+(`0x1408e0c50`) 2, and the endgame command (`0x1408e0bf0`) 3. The reader now
+keeps it (`Kind::Critical`).
+
+**Medals.** Dialog 312 has one checkbox per medal, in bit order (see
+[formats](formats.md)). A game matches when its medal word has any of the
+checked bits. This is read from the entry index, without reading the game.
+
+**Combining.** Every criterion set must hold, as for the game-data tab. How
+ChessBase combines its criteria (any or all symbols, any or all medals) was
+not traced; these are the workbench's choices. As with Full Text, only the
+annotation record of a game that passes the other fields is read.
+
+**Not ported:** Deleted (1115, 0x12fd8) and Position (1054, 0x12fdc),
+whose meaning was not traced, and the Chess960 number (2380, 0x13018).
+
+**Measurements** (classic Mega, 11,151,119 entries, release build, warm,
+`cbh-reader/examples/search.rs`):
+
+| Search | Hits | Time |
+|---|---|---|
+| Medal Best game | 318 | 0.92 s |
+| User medal | 224 | 0.93 s |
+| Critical endgame position | 2,166 | 1.32 s |
+| Symbol !! | 11,188 | 1.15 s |
+| Text "novelty", whole word | 3,725 | 1.16 s |
+| Colours | 48,212 | 1.23 s |
+| Training | 2,304 | 1.28 s |
+
+
 **How it runs.** Name fields are resolved once: the reader scans the name
 table (CBP/CBT/CBC or 2LID) and collects the matching ids. The entry index
 (CBH or 2CBH) is then read in large chunks by up to 8 workers, each with its
