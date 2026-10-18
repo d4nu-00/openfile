@@ -442,10 +442,10 @@ impl Registry {
         database_id: String,
         request_id: String,
     ) -> Result<(), AppError> {
-        if let Some((active_id, cancel)) = self.lock()?.filtered_tree_cancels.get(&database_id) {
-            if *active_id == request_id {
-                cancel.store(true, Ordering::Relaxed);
-            }
+        if let Some((active_id, cancel)) = self.lock()?.filtered_tree_cancels.get(&database_id)
+            && *active_id == request_id
+        {
+            cancel.store(true, Ordering::Relaxed);
         }
         Ok(())
     }
