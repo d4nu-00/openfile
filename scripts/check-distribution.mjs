@@ -46,6 +46,7 @@ const documents = new Set([
   "tournament-report.md",
   "error-report.md",
   "repertoire.md",
+  "centipawn-analysis.md",
 ]);
 export function allowedSourcePath(candidate) {
   if (

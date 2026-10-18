@@ -1,5 +1,6 @@
 pub mod analysis_jobs;
 pub mod blunder_check;
+pub mod centipawn;
 pub mod clipboard;
 pub mod cloud;
 pub mod commands;
@@ -166,6 +167,7 @@ pub fn run() {
         .manage(std::sync::Arc::new(blunder_check::BlunderJobs::default()))
         .manage(std::sync::Arc::new(error_report::ErrorReportJobs::default()))
         .manage(std::sync::Arc::new(repertoire::RepertoireJobs::default()))
+        .manage(std::sync::Arc::new(centipawn::CentipawnJobs::default()))
         .manage(std::sync::Arc::new(deep_analysis::DeepJobs::default()))
         .manage(std::sync::Arc::new(tablebases::Tablebases::default()))
         .manage(ExitPolicy::default())
@@ -227,6 +229,8 @@ pub fn run() {
             error_report::error_report,
             error_report::cancel_error_report,
             error_report::selection_players,
+            centipawn::centipawn_analysis,
+            centipawn::cancel_centipawn_analysis,
             repertoire::frequent_players,
             repertoire::generate_repertoire,
             repertoire::repertoire_report,

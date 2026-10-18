@@ -70,6 +70,8 @@ import type {
   FolderListing,
   CloudStatus,
   CloudProgress,
+  CentipawnParams,
+  CentipawnReport,
   FrequentPlayer,
   GeneratedRepertoire,
   RepertoireProgress,
@@ -758,6 +760,22 @@ export const backend = {
       events,
     });
   },
+  /** Centipawn Analysis of the document's main line. */
+  centipawnAnalysis: (
+    documentId: string,
+    params: CentipawnParams,
+    onProgress: (p: { done: number; total: number }) => void,
+  ) => {
+    const events = new Channel<{ done: number; total: number }>();
+    events.onmessage = onProgress;
+    return invoke<CentipawnReport>("centipawn_analysis", {
+      documentId,
+      params,
+      events,
+    });
+  },
+  cancelCentipawnAnalysis: (documentId: string) =>
+    invoke<void>("cancel_centipawn_analysis", { documentId }),
   cancelBlunderCheck: (documentId: string) =>
     invoke<void>("cancel_blunder_check", { documentId }),
   /** Deep Analysis of one position; the tree comes back as lines. */

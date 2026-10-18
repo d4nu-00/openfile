@@ -288,6 +288,37 @@ export function mockApi(firstDatabase = 1) {
         },
       ),
     cancelBlunderCheck: vi.fn().mockResolvedValue(undefined),
+    centipawnAnalysis: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _doc: string,
+          _params: unknown,
+          onProgress: (p: { done: number; total: number }) => void,
+        ) => {
+          onProgress({ done: 3, total: 4 });
+          const side = (loss: number, mistakes: number) => ({
+            moves: 2,
+            averageLoss: loss,
+            errorValue: loss / 2,
+            categories: [0, 0, 1, 0, 0, mistakes, 0, 0],
+          });
+          return {
+            revision: "0",
+            cancelled: false,
+            positions: 4,
+            bookPlies: 10,
+            millisPerMove: 750,
+            white: side(18, 1),
+            black: side(40, 0),
+            items: [
+              { node: 0, comment: "Centipawn Analysis after ply 10" },
+              { node: 1, comment: "Mistake (−1.2)" },
+            ],
+          };
+        },
+      ),
+    cancelCentipawnAnalysis: vi.fn().mockResolvedValue(undefined),
     deepAnalysis: vi
       .fn()
       .mockImplementation(

@@ -1167,6 +1167,32 @@ export interface CloudProgress {
   bytes: string;
 }
 
+/** Centipawn Analysis (docs/centipawn-analysis.md). */
+export interface CentipawnParams {
+  engine: string;
+  options: Record<string, string>;
+  /** The reference app's "Seconds", 0 to 60. */
+  seconds: number;
+  everyMove: boolean;
+}
+export interface CentipawnSide {
+  moves: number;
+  averageLoss?: number | null;
+  errorValue?: number | null;
+  /** Per category, in the reference app's order. */
+  categories: number[];
+}
+export interface CentipawnReport {
+  revision: string;
+  cancelled: boolean;
+  positions: number;
+  bookPlies: number;
+  millisPerMove: number;
+  white: CentipawnSide;
+  black: CentipawnSide;
+  /** Texts: node 0 is before the first move. */
+  items: { node: NodeId; comment: string }[];
+}
 /** Generate Repertoire and the Repertoire Report (docs/repertoire.md). */
 export interface RepertoireProgress {
   stage: "games" | "lines" | "writing" | "repertoire" | "scan";

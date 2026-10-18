@@ -47,6 +47,7 @@ import { useKibitzers } from "./state/kibitzers";
 import { EngineManagement } from "./components/EngineManagement";
 import { TablebasePane } from "./components/TablebasePane";
 import { BlunderCheckDialog } from "./components/BlunderCheckDialog";
+import { CentipawnDialog } from "./components/CentipawnDialog";
 import { DeepAnalysisDialog } from "./components/DeepAnalysisDialog";
 import { ClassifyDialog, SetEcoDialog } from "./components/OpeningDialogs";
 import { OpeningReportDialog } from "./components/OpeningReportDialog";
@@ -171,6 +172,8 @@ export function App({
   const k = useKibitzers(api, state, settings, saveSettings);
   const [enginesOpen, setEnginesOpen] = useState(false);
   /** Tactical Analysis: open, its progress while running, its error. */
+  /** The document Centipawn Analysis runs on. */
+  const [centipawn, setCentipawn] = useState<string>();
   const [blunder, setBlunder] = useState<{
     running?: string;
     error?: string;
@@ -1986,6 +1989,11 @@ export function App({
       run: () => void createJobs(),
       enabled: !!state.database?.writable && w.rowCount > 0,
     },
+    "centipawn-analysis": {
+      run: () =>
+        state.document?.documentId && setCentipawn(state.document.documentId),
+      enabled: !!state.document?.documentId,
+    },
     "tactical-analysis": {
       run: () => setBlunder((b) => b ?? {}),
       enabled: !!state.document?.documentId,
@@ -2949,6 +2957,37 @@ export function App({
               void api.cancelBlunderCheck(blunder.documentId).catch(() => {});
           }}
           onClose={() => setBlunder(undefined)}
+        />
+      )}
+      {centipawn && (
+        <CentipawnDialog
+          api={api}
+          documentId={centipawn}
+          engines={settings.engines}
+          defaultEngine={settings.defaultEngine}
+          onChooseFile={api.pickEngine}
+          onApply={async (report) => {
+            const now = w.current.current.document;
+            if (
+              now?.documentId !== centipawn ||
+              now.revision !== report.revision
+            )
+              return "The game changed during the analysis; run it again.";
+            const result = await e.edit({
+              kind: "addAnalysis",
+              items: report.items.map((i) => ({
+                node: i.node,
+                comment: i.comment,
+                line: [],
+              })),
+            });
+            if (result === null) return "The texts could not be added.";
+            w.setStatus(
+              `Centipawn Analysis: average loss White ${report.white.averageLoss?.toFixed(0) ?? "–"}, Black ${report.black.averageLoss?.toFixed(0) ?? "–"}`,
+            );
+            return undefined;
+          }}
+          onClose={() => setCentipawn(undefined)}
         />
       )}
       {job?.kind === "eco" && job.options && (

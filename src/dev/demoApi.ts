@@ -309,6 +309,10 @@ export function demoApi(): WorkbenchApi {
       revision: "0",
     }),
     cancelBlunderCheck: async () => {},
+    centipawnAnalysis: async () => {
+      throw { code: "unsupported", message: "Not available in the demo" };
+    },
+    cancelCentipawnAnalysis: async () => {},
     deepAnalysis: async (_doc, params) => ({
       cancelled: false,
       iterations: 0,

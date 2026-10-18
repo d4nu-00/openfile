@@ -1003,3 +1003,22 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
   * Taking the first marked position in repertoire order, as the reference
     app does, left 32 of 400 White topics with games. Taking the deepest
     gives 400.
+
+## Centipawn Analysis (2026-10-18)
+
+* **Tests.** Unit tests cover the time rule, the classifier and the summary.
+  An app test runs `mock-uci` on a Ruy Lopez with six moves after the table's
+  line. It checks:
+  * the opening skipped;
+  * a loss of 34 cp and an inaccuracy for every counted move;
+  * the summary before the first move, applied as one edit;
+  * a symbol at the start refused;
+  * cancelling, the seconds bound, and a game with no moves after its
+    opening.
+
+  A frontend test covers the dialog, the time per position, the edit and
+  the tables.
+* **The test database.** Stockfish 17 at Seconds 1 analysed three games of
+  the classic test database read-only in 39–50 s each (about 0.77 s per
+  position). Average losses were 8–63 cp per side.
+
