@@ -2149,13 +2149,18 @@ export function App({
     },
     "stop-process": {
       run: () =>
-        w.searching
-          ? w.cancelSearch()
-          : w.treeBuild
-            ? w.cancelTree()
-            : k.stopAll(),
+        w.cloudDownload
+          ? w.cancelCloudDownload()
+          : w.searching
+            ? w.cancelSearch()
+            : w.treeBuild
+              ? w.cancelTree()
+              : k.stopAll(),
       enabled:
-        k.kibitzers.some((v) => v.enabled) || !!w.treeBuild || !!w.searching,
+        k.kibitzers.some((v) => v.enabled) ||
+        !!w.treeBuild ||
+        !!w.searching ||
+        !!w.cloudDownload,
     },
   };
   // A move chosen inside folded variations unfolds them.

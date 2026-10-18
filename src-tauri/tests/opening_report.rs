@@ -1,4 +1,4 @@
-use chess_workbench::{registry::Registry, trees::Line};
+use openfile::{registry::Registry, trees::Line};
 
 const START: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 

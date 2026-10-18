@@ -1,5 +1,5 @@
 use cbh_reader::name_list::NameKind;
-use chess_workbench::registry::Registry;
+use openfile::registry::Registry;
 
 #[test]
 fn panes_list_names_find_them_and_build_a_crosstable() {

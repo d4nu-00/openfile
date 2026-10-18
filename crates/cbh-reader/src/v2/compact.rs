@@ -186,7 +186,7 @@ pub fn compact(
         let parsed = super::record::NewHeader::parse(&head, length)?;
         if head[8] != 0x26 || head[13] != 5 {
             return Err(CbhError::Unsupported(
-                "2CBH header version the workbench does not know".into(),
+                "2CBH header version OpenFile does not know".into(),
             ));
         }
         let count = parsed.entry_count;
@@ -227,7 +227,7 @@ pub fn compact(
                     super::record::TYPE_TEXT => &[8],
                     kind => {
                         return Err(CbhError::Unsupported(format!(
-                            "Entry {ordinal} has a kind the workbench does not know ({kind:#06x})"
+                            "Entry {ordinal} has a kind OpenFile does not know ({kind:#06x})"
                         )));
                     }
                 };
@@ -254,7 +254,11 @@ pub fn compact(
         records.write_all(&next.to_le_bytes())?;
         records.sync_all()?;
         std::fs::copy(path.with_extension("2lid"), temp.with_extension("2lid"))?;
-        File::open(temp.with_extension("2lid"))?.sync_all()?;
+        // Windows flushes only a handle opened for writing.
+        OpenOptions::new()
+            .write(true)
+            .open(temp.with_extension("2lid"))?
+            .sync_all()?;
         report.bytes_after = family_bytes(&temp);
         Ok(report)
     })();

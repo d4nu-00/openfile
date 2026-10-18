@@ -1,4 +1,4 @@
-use chess_workbench::registry::Registry;
+use openfile::registry::Registry;
 
 /// A 2CBH database with five games by White's name: Echo, Delta, Charlie,
 /// Bravo, Alpha, in entry order; the odd entries are wins.

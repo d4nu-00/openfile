@@ -1,4 +1,4 @@
-use chess_workbench::{clipboard::RowRange, registry::Registry};
+use openfile::{clipboard::RowRange, registry::Registry};
 
 fn range(start: u64, end: u64) -> RowRange {
     serde_json::from_value(serde_json::json!({
@@ -137,7 +137,7 @@ fn delete_marks_the_selection_and_undeletes_it_when_all_are_deleted() {
 
 #[test]
 fn a_paste_keeps_the_target_opening_tree_current() {
-    use chess_workbench::trees::{Line, TreeStatus};
+    use openfile::trees::{Line, TreeStatus};
     let d = tempfile::tempdir().unwrap();
     let r = Registry::default();
     r.set_index_dir(d.path().join("data/search-boosters"));

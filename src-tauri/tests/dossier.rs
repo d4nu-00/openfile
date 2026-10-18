@@ -1,5 +1,5 @@
 use cbh_reader::{name_list::NameKind, player_stats::Group};
-use chess_workbench::registry::Registry;
+use openfile::registry::Registry;
 
 #[test]
 fn player_dossier_reports_statistics_lines_mates_medals_and_annotations() {

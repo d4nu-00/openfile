@@ -285,12 +285,7 @@ impl Database {
             DatabaseFormat::New => None,
         };
         let (listed, decoded): (&[&str], &[&str]) = match format {
-            DatabaseFormat::Classic => (
-                CLASSIC_COMPANIONS,
-                &[
-                    "cbh", "cbg", "cbp", "cbt", "cba", "cbc", "cbs", "cbe", "cbj",
-                ],
-            ),
+            DatabaseFormat::Classic => (CLASSIC_COMPANIONS, crate::companions::CLASSIC_READ),
             DatabaseFormat::New => (NEW_COMPANIONS, crate::v2::names::DECODED_COMPANIONS),
         };
         let companions = listed

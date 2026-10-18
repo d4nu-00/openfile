@@ -486,7 +486,7 @@ pub fn standard_option(name: &str, value: &str) -> Result<(), AppError> {
     {
         return Err(AppError::new(
             "unsupported",
-            "This workbench analyses standard chess only",
+            "OpenFile analyses standard chess only",
         ));
     }
     Ok(())

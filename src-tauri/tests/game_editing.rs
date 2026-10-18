@@ -1,4 +1,4 @@
-use chess_workbench::{documents::Edit, registry::Registry};
+use openfile::{documents::Edit, registry::Registry};
 
 const PGN: &str =
     "[White \"A\"]\n[Black \"B\"]\n[Result \"*\"]\n\n1. e4 e5 (1... c5 2. Nf3) 2. Nf3 Nc6 *\n";
@@ -109,7 +109,7 @@ fn variation_tools_go_through_the_document_as_edits() {
     let d = tempfile::tempdir().unwrap();
     let path = d.path().join("v.pgn");
     std::fs::write(&path, "1. e4 e5 (1... c5 2. Nf3 d6 3. d4) 2. Nf3 *\n").unwrap();
-    let r = chess_workbench::registry::Registry::default();
+    let r = openfile::registry::Registry::default();
     let c = r.open_pgn(path, "o".into()).unwrap();
     let doc = r
         .load_pgn_game(c.collection_id, 0, "l".into())

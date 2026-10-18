@@ -1,4 +1,4 @@
-use chess_workbench::{clipboard::RowRange, registry::Registry};
+use openfile::{clipboard::RowRange, registry::Registry};
 
 fn range(start: u64, end: u64) -> RowRange {
     serde_json::from_value(serde_json::json!({

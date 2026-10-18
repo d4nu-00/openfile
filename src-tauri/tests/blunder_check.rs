@@ -1,4 +1,4 @@
-use chess_workbench::{blunder_check::BlunderParams, registry::Registry};
+use openfile::{blunder_check::BlunderParams, registry::Registry};
 use std::sync::atomic::AtomicBool;
 
 fn mock_engine() -> std::path::PathBuf {

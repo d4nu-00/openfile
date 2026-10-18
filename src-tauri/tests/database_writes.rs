@@ -1,4 +1,4 @@
-use chess_workbench::registry::Registry;
+use openfile::registry::Registry;
 
 fn pgn_document(r: &Registry, d: &tempfile::TempDir, text: &str) -> String {
     let path = d.path().join("games.pgn");

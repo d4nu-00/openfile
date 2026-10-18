@@ -1,4 +1,4 @@
-use chess_workbench::{
+use openfile::{
     documents::Edit,
     registry::Registry,
     save::{atomic_pgn, atomic_pgn_with_writer},

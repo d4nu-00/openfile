@@ -1,5 +1,5 @@
 use cbh_reader::name_list::NameKind;
-use chess_workbench::{clipboard::RowRange, error_report::ErrorReportParams, registry::Registry};
+use openfile::{clipboard::RowRange, error_report::ErrorReportParams, registry::Registry};
 use std::sync::atomic::AtomicBool;
 
 /// The mock engine copied as `mock-uci-legal`: line 1 is the first legal

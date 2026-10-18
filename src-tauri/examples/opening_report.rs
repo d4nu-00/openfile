@@ -1,7 +1,7 @@
 //! Times an opening report on a database opened read-only, using the
 //! app's data folder for its opening tree.
 //!   opening_report <db> <data folder> <uci moves…>
-use chess_workbench::{registry::Registry, trees::Line};
+use openfile::{registry::Registry, trees::Line};
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

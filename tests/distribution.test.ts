@@ -18,7 +18,7 @@ describe("source distribution boundary", () => {
       ["", "Users", "example", "private.cbh"].join("/"),
       "C:/private/database.cbh",
       "tooling/reference/game.py",
-      "target/release/chess-workbench",
+      "target/release/openfile",
     ])
       expect(allowedSourcePath(path), path).toBe(false);
   });

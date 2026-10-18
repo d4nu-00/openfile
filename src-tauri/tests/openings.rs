@@ -1,4 +1,4 @@
-use chess_workbench::registry::Registry;
+use openfile::registry::Registry;
 
 /// A new 2CBH database with `games` saved into it; returns its id.
 fn database(r: &Registry, d: &tempfile::TempDir, games: &[&str]) -> String {

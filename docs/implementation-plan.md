@@ -502,7 +502,7 @@ fn diagnostic_offsets_are_decimal_strings_on_wire() {
 }
 ```
 
-- [x] Run `cargo test -p chess-workbench --test commands` and confirm failures. Test services independently of launching a webview.
+- [x] Run `cargo test -p openfile --test commands` and confirm failures. Test services independently of launching a webview.
 - [x] Implement opaque handle registries with per-database locking and bounded loaded-document ownership. Use Tauri `spawn_blocking` for decoding; release the global registry lock before file work. A supported load creates an independent document handle; an unsupported load creates no editable document. Closing a database releases its files but does not invalidate an already loaded working copy. Default to four open databases and ten loaded documents; explicitly reject excess handles and close discarded/stale loads to prevent leaks. Backend DTO conversion computes SAN by a single traversal with incrementally maintained positions, avoiding per-node root replay and quadratic tree conversion.
 
 ```typescript
@@ -570,7 +570,7 @@ it("keeps an edited game when replacement is cancelled", async () => {
 });
 ```
 
-- [x] Run `npm test -- src/tests/edit.test.tsx` and `cargo test -p chess-workbench --test save`; confirm behavioural failures.
+- [x] Run `npm test -- src/tests/edit.test.tsx` and `cargo test -p openfile --test save`; confirm behavioural failures.
 - [x] Implement revisioned backend edits with mutation only after core validation. An appended existing move only selects it; actual content changes increment revision. Load capped PGN collections using the core parser, applying aggregate limits and closing unused collection handles. UI sends exact legal UCI moves from selected-square pairs; promotion candidates require explicit queen/rook/bishop/knight selection. Add a visible compatibility summary before exporting a CBH-derived document whose original annotations or other content are unavailable; `allowIncomplete` records this acknowledgement. The backend also checks it, so direct command invocation cannot silently omit undecoded content.
 - [x] Write UTF-8 PGN to a `NamedTempFile` in the destination directory, flush/sync, then persist/replace without deleting the old file first. Preserve permissions where supported and surface platform-specific replacement errors. On success mark clean only if the current revision equals `savedRevision`; an edit during save remains dirty. Refuse a destination that resolves to any source companion or has a CBH-family extension. Overwrite confirmation happens through the native save dialog/explicit existing-target prompt. If an additional atomic replacement primitive is needed on Windows, choose and verify it in the save module without weakening the contract.
 

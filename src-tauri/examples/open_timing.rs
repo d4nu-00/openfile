@@ -2,11 +2,11 @@
 //! building its view, serialising the response, the first position, and the
 //! book and reference queries for a few positions of the game.
 //!
-//! `cargo run --release -p chess-workbench --example open_timing -- <db> <data dir> [sample]`
+//! `cargo run --release -p openfile --example open_timing -- <db> <data dir> [sample]`
 //!
 //! `<data dir>` is the app's data folder (it holds `search-boosters/`,
 //! `opening-trees/` …). `sample` entries are spread evenly over the database.
-use chess_workbench::{registry::Registry, trees::Line};
+use openfile::{registry::Registry, trees::Line};
 use std::time::Instant;
 
 fn ms(t: Instant) -> f64 {

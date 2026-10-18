@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="docs/media/logo.png" alt="Chess Workbench" width="88" />
-  <h1>Chess Workbench</h1>
+  <img src="docs/media/logo.png" alt="OpenFile" width="88" />
+  <h1>OpenFile</h1>
   <p><strong>Your ChessBase databases, on any desktop, free and open source.</strong></p>
   <p>
     <a href="#get-started">Get started</a> ·
@@ -19,7 +19,7 @@
 
 ![The game window: Morphy's Opera Game at 16.Qb8+, with comments, a variation, symbols, arrows and a coloured square](docs/media/hero.png)
 
-Chess Workbench is a desktop chess database app for macOS, Windows and Linux.
+OpenFile is a desktop chess database app for macOS, Windows and Linux.
 It opens the databases you already have from ChessBase, the classic `.cbh`
 and ChessBase 18's `.2cbh`. You can browse, search, analyse and edit them in
 a fast, familiar window that looks and handles like ChessBase 18.
@@ -116,12 +116,50 @@ turns them into a database.
 
 ## Get started
 
-There are no published downloads yet. Today you build it from source.
+Download the installer for your system from the
+[latest release](https://github.com/d4nu-00/openfile/releases/latest):
 
-| Platform | Status |
+| System | File |
 |---|---|
-| macOS on Apple Silicon | Built and used daily |
-| Windows, Linux | Should build the same way; not yet verified on real machines |
+| macOS, Apple Silicon or Intel | `.dmg` |
+| Windows 10 or 11 (x64) | `-setup.exe`, or `.msi` |
+| Linux x64 | `.AppImage`, `.deb` or `.rpm` |
+
+macOS on Apple Silicon is used daily. The Windows and Linux builds are made
+automatically and have not yet been tried on real machines; please report
+anything that goes wrong.
+
+The builds are not signed by Apple or Microsoft yet, so your system warns you
+the first time you open the app.
+
+**macOS.** Open the `.dmg` and drag **OpenFile** into
+**Applications**. On the first launch, macOS says it cannot verify the app:
+1. Click **Done** (not Move to Trash).
+2. Open **System Settings › Privacy & Security**, scroll down to
+   **Security**, and click **Open Anyway** next to "OpenFile was
+   blocked". Confirm with your password.
+
+You only need to do this once. On macOS 14 and earlier, right-clicking the
+app and choosing **Open** also works. If macOS instead says the app "is
+damaged and can't be opened", that is the download quarantine, not a broken
+file. Run this once in Terminal, then open the app normally:
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/OpenFile.app"
+```
+
+**Windows.** If SmartScreen shows "Windows protected your PC", click **More
+info › Run anyway**. The app uses Microsoft Edge WebView2, which Windows 10
+and 11 already have.
+
+**Linux.** Make the AppImage executable (`chmod +x`) and run it, or install
+the `.deb` or `.rpm` with your package manager. It needs WebKitGTK 4.1
+(Ubuntu 22.04, Debian 12, Fedora 36 or later).
+
+Then add an engine: **Add Kibitzer** (Ctrl+K) picks any UCI engine
+executable; none is bundled. Homebrew installs Stockfish at
+`/opt/homebrew/bin/stockfish` (in the macOS file picker, press ⌘⇧G to type
+that path).
 
 ### Build from source
 
@@ -140,22 +178,17 @@ npm run tauri -- build
 ```
 
 That builds the app and every package your platform supports, under
-`target/release/bundle/`: `macos/Chess Workbench.app` and `dmg/…` on macOS,
+`target/release/bundle/`: `macos/OpenFile.app` and `dmg/…` on macOS,
 `nsis/…-setup.exe` and `msi/…` on Windows, `appimage/`, `deb/` and `rpm/` on
 Linux. A database named on the command line opens at start, optionally at an
 entry:
 
 ```sh
-chess-workbench "My Games.2cbh" --entry 42
+openfile "My Games.2cbh" --entry 42
 ```
 
-Then add an engine: **Add Kibitzer** (Ctrl+K) picks any UCI engine
-executable; none is bundled. Homebrew installs Stockfish at
-`/opt/homebrew/bin/stockfish` (in the macOS file picker, press ⌘⇧G to type
-that path).
-
 <details>
-<summary><strong>Development builds, executable only, and future releases</strong></summary>
+<summary><strong>Development builds, executable only, and making a release</strong></summary>
 
 For just the executable, without installers:
 
@@ -163,7 +196,7 @@ For just the executable, without installers:
 npm run tauri -- build --no-bundle -- --locked
 ```
 
-The executable is `target/release/chess-workbench` (`.exe` on Windows).
+The executable is `target/release/openfile` (`.exe` on Windows).
 
 For development, `npm run tauri -- dev` runs a debug build with hot reload.
 `npm run dev` alone serves the interface in a browser with a demo backend
@@ -171,19 +204,14 @@ For development, `npm run tauri -- dev` runs a debug build with hot reload.
 Don't use `tauri dev --release`: release builds only load their bundled
 pages, so that window stays white.
 
-**What a release will look like.** Tauri produces the native package for each
-platform. It has to be built on that platform, so a CI matrix does it; the
-repository's workflow builds all three but has not run yet.
-
-| Platform | You download | How you install it |
-|---|---|---|
-| macOS | `Chess Workbench.dmg`, holding `Chess Workbench.app` | Open the `.dmg` and drag the app into Applications. Apple Silicon and Intel need separate builds, or one universal build. |
-| Windows | `Chess Workbench_x.y.z_x64-setup.exe` (NSIS) or `.msi` | Run the installer. It uses Microsoft Edge WebView2, which Windows 10 and 11 already have. |
-| Linux | `.AppImage`, `.deb` or `.rpm` | Make the AppImage executable and run it, or install the package. It needs WebKitGTK 4.1. |
-
-Until the builds are signed, the operating system warns the first time you
-open the app. On macOS, right-click the app and choose **Open**; on Windows,
-choose **More info › Run anyway** in SmartScreen.
+**Releases.** Pushing a tag such as `v0.1.0` runs
+[the release workflow](.github/workflows/release.yml): it builds the
+installers on macOS (one universal app), Windows and Ubuntu 22.04, and
+attaches them to a draft GitHub Release with the notes in
+`docs/releases/<tag>.md`. The draft is published by hand once checked.
+macOS builds are ad-hoc signed but not notarised; signing and notarising
+needs an Apple Developer ID, and a Windows code-signing certificate removes
+the SmartScreen warning.
 
 </details>
 
@@ -193,6 +221,16 @@ choose **More info › Run anyway** in SmartScreen.
 macOS) and pick a `.cbh` or `.2cbh` file. Keep its companion files beside it
 with the same name: `.cbg` holds moves, `.cbp`/`.cbt` names, `.cba`
 annotations. Anything missing or not understood is reported, never guessed.
+
+**Databases in iCloud Drive.** With "Optimize Mac Storage" on, macOS
+removes the contents of files in iCloud Drive (such as `~/Documents`) when
+space runs low, and downloads them again when they are read. A large
+database can then take minutes, or for ever when iCloud cannot download,
+before it opens. OpenFile checks first: it says how much of the database is
+only in iCloud and offers **Download and Open**, with progress in the status
+bar; **Stop** ends the wait. To keep a database on your Mac for good,
+right-click its folder in Finder and choose **Keep Downloaded**, or keep it
+outside iCloud Drive.
 
 <details>
 <summary><strong>The database window</strong> · Games, Players and Tournaments</summary>

@@ -952,3 +952,30 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
   training and multimedia on parsed entries. A frontend test opens Search
   text on the Annotations tab and searches with symbols, colours, a
   critical position and two medals.
+
+## Databases in iCloud Drive (2026-10-18)
+
+* **The report.** Opening the classic Mega "took forever". The backend's
+  open (`src-tauri/examples/open_timing.rs`, release build) had not returned
+  after ten minutes. A stack sample showed it blocked in `pread` with no CPU
+  time, reading a name table's header.
+* **The cause.** The database lies in `~/Documents`, which iCloud Drive
+  syncs, and "Optimize Mac Storage" was on. After the disk filled up on
+  2026-10-16, macOS had removed the contents of most of its files
+  (`ls -lO` shows `dataless`): 5 of the 9 files the classic reader opens,
+  1.49 GB including the 1.25 GB move file, and all 4 files of the 2CBH
+  family. Reading such a file waits until macOS has downloaded all of it.
+  `brctl status` showed the download failing ("Network Failure … The
+  request timed out", three attempts); a 32 KB file requested with
+  `brctl download` had not arrived after a minute either.
+* **The change.** `cbh_reader::companions::not_downloaded` lists the files
+  opening would read that are dataless; `stat` reports the flag
+  (`SF_DATALESS`) without starting a download (82 ms cold, 0.4 ms warm on
+  the Mega; `cbh-reader/examples/cloud.rs`). Before opening, the frontend
+  asks; **Download and Open** requests each file with `brctl download` (or
+  a one-byte read) and waits, reporting finished files and bytes in the
+  status bar, until all are local; **Stop** ends the wait.
+* **Tests.** A reader test and an app test check that a database on disk
+  needs no download and that the download returns at once. Frontend tests
+  cover Download and Open, declining, and a stopped download. Dataless
+  files cannot be made in a test; the detection was checked on the Mega.

@@ -1,4 +1,4 @@
-use chess_workbench::tablebases::{Outcome, TablebaseStatus, Tablebases};
+use openfile::tablebases::{Outcome, TablebaseStatus, Tablebases};
 
 /// A folder of real Syzygy files, never committed: `SYZYGY_DIR`, if set.
 fn tables() -> Option<Tablebases> {

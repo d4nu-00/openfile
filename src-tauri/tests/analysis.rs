@@ -1,4 +1,4 @@
-use chess_workbench::{engine_commands::render_info, registry::Registry};
+use openfile::{engine_commands::render_info, registry::Registry};
 #[test]
 fn pv_conversion_uses_exact_root_and_stops_at_first_illegal_move() {
     let info = engine::AnalysisInfo {
@@ -44,11 +44,11 @@ fn analysis_input_is_derived_from_revisioned_document_tree() {
 }
 #[test]
 fn engine_settings_cannot_change_the_rules_of_standard_chess() {
-    assert!(chess_workbench::engine_commands::standard_option("UCI_Chess960", "true").is_err());
-    assert!(chess_workbench::engine_commands::standard_option("UCI_Variant", "atomic").is_err());
-    assert!(chess_workbench::engine_commands::standard_option("UCI_Chess960", "false").is_ok());
-    assert!(chess_workbench::engine_commands::standard_option("UCI_Variant", "chess").is_ok());
-    assert!(chess_workbench::engine_commands::standard_option("Threads", "2").is_ok());
+    assert!(openfile::engine_commands::standard_option("UCI_Chess960", "true").is_err());
+    assert!(openfile::engine_commands::standard_option("UCI_Variant", "atomic").is_err());
+    assert!(openfile::engine_commands::standard_option("UCI_Chess960", "false").is_ok());
+    assert!(openfile::engine_commands::standard_option("UCI_Variant", "chess").is_ok());
+    assert!(openfile::engine_commands::standard_option("Threads", "2").is_ok());
 }
 #[test]
 fn absent_principal_variation_is_distinct_from_supplied_invalid_variation() {
@@ -57,7 +57,7 @@ fn absent_principal_variation_is_distinct_from_supplied_invalid_variation() {
     else {
         panic!()
     };
-    let absent = serde_json::to_value(chess_workbench::engine_commands::render_info(
+    let absent = serde_json::to_value(openfile::engine_commands::render_info(
         absent, &root, "white",
     ))
     .unwrap();
@@ -67,7 +67,7 @@ fn absent_principal_variation_is_distinct_from_supplied_invalid_variation() {
     else {
         panic!()
     };
-    let invalid = serde_json::to_value(chess_workbench::engine_commands::render_info(
+    let invalid = serde_json::to_value(openfile::engine_commands::render_info(
         invalid, &root, "white",
     ))
     .unwrap();
@@ -85,7 +85,7 @@ fn mock_engine() -> Option<std::path::PathBuf> {
 }
 #[test]
 fn several_kibitzers_run_at_once_and_close_one_by_one() {
-    use chess_workbench::engine_commands::{EngineManager, MAX_KIBITZERS, probe};
+    use openfile::engine_commands::{EngineManager, MAX_KIBITZERS, probe};
     let Some(path) = mock_engine() else {
         panic!("mock-uci is missing: run `cargo test --workspace`");
     };

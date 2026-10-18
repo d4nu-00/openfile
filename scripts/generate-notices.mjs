@@ -42,7 +42,7 @@ function localNotices(directory) {
 }
 async function readUrl(url) {
   const response = await fetch(url, {
-    headers: { "User-Agent": "chess-workbench-notice-audit" },
+    headers: { "User-Agent": "openfile-notice-audit" },
     signal: AbortSignal.timeout(30000),
   });
   if (!response.ok) throw new Error(`${response.status} reading ${url}`);

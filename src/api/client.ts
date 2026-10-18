@@ -68,6 +68,8 @@ import type {
   TablebaseAnnotation,
   StartScreenData,
   FolderListing,
+  CloudStatus,
+  CloudProgress,
 } from "./types";
 
 /** A progress channel; one that drops the messages when nobody listens. */
@@ -194,6 +196,31 @@ export const backend = {
       "Games you save, replace or delete will change this database's files. ChessBase's own index files (.2lcd, .2lgd) are not updated; ChessBase's Check Integrity rebuilds them. Keep a backup of databases you care about.",
       { title: "Open database for editing", kind: "warning" },
     ),
+  /** The database's files that are only in iCloud (macOS; none elsewhere). */
+  cloudStatus: (path: string) => invoke<CloudStatus>("cloud_status", { path }),
+  confirmCloudDownload: (name: string, files: number, size: string) =>
+    ask(
+      `“${name}” is in iCloud Drive, and ${files} of its files (${size}) are not on this Mac: macOS removed them to save space. OpenFile cannot read the database until they are downloaded. Download them now and open the database?`,
+      {
+        title: "Download from iCloud",
+        kind: "info",
+        okLabel: "Download and Open",
+        cancelLabel: "Cancel",
+      },
+    ),
+  /** Resolves once every file is on this Mac; rejects when stopped. */
+  downloadCloudFiles: (
+    path: string,
+    requestId: string,
+    onProgress: (p: CloudProgress) => void,
+  ) =>
+    invoke<void>("download_cloud_files", {
+      path,
+      requestId,
+      events: channel(onProgress),
+    }),
+  cancelCloudDownload: (requestId: string) =>
+    invoke<void>("cancel_cloud_download", { requestId }),
   chooseConvertTarget: (name: string) =>
     save({
       title: "Convert to 2CBH",

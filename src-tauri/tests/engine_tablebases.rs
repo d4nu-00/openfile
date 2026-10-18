@@ -1,7 +1,7 @@
 //! The tablebase folder goes to engines as `SyzygyPath`. A test file of its
 //! own: the chosen folder is process-wide.
-use chess_workbench::tablebases::{Tablebases, configure_engine};
 use engine::{EngineSession, EngineSpec};
+use openfile::tablebases::{Tablebases, configure_engine};
 use std::time::Duration;
 
 fn mock_engine() -> std::path::PathBuf {

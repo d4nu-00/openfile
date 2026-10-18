@@ -2,7 +2,7 @@
 //! opened read-only, using the app's data folder for its player list.
 //!   prepare_against <db> <data folder> <"Last, First"> [black]
 use cbh_reader::name_list::NameKind;
-use chess_workbench::registry::Registry;
+use openfile::registry::Registry;
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

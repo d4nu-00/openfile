@@ -7,7 +7,7 @@ per-section review gates.
 
 ## Intended outcome
 
-Give Chess Workbench the look, vocabulary and command structure of ChessBase 18
+Give OpenFile the look, vocabulary and command structure of ChessBase 18
 while fixing what the user finds clunky about it. ChessBase users should
 recognise the colours, ribbon tabs, command names, tooltips and shortcuts. The
 window model is redesigned.

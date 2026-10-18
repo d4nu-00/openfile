@@ -588,6 +588,28 @@ export function mockApi(firstDatabase = 1) {
     }),
     chooseNewDatabase: vi.fn().mockResolvedValue("/synthetic/new.2cbh"),
     confirmEditing: vi.fn().mockResolvedValue(true),
+    cloudStatus: vi.fn().mockResolvedValue({ files: [], bytes: "0" }),
+    confirmCloudDownload: vi.fn().mockResolvedValue(true),
+    downloadCloudFiles: vi.fn(
+      async (
+        _path: string,
+        _request: string,
+        onProgress: (p: {
+          filesDone: number;
+          files: number;
+          bytesDone: string;
+          bytes: string;
+        }) => void,
+      ) => {
+        onProgress({
+          filesDone: 2,
+          files: 2,
+          bytesDone: "1500000000",
+          bytes: "1500000000",
+        });
+      },
+    ),
+    cancelCloudDownload: vi.fn().mockResolvedValue(undefined),
     createDatabase: vi.fn().mockImplementation(async (_path, requestId) => ({
       ...database,
       databaseId: `db-${nextDatabase++}`,

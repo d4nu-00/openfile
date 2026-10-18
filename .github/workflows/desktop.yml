@@ -46,7 +46,7 @@ jobs:
       - name: Rust tests and static checks
         run: |
           set -o pipefail
-          cargo test --workspace --locked 2>&1 | tee evidence/rust-tests.log
+          cargo test --workspace --locked --no-fail-fast 2>&1 | tee evidence/rust-tests.log
           cargo fmt --all --check 2>&1 | tee evidence/rust-format.log
           cargo clippy --workspace --all-targets --locked -- -D warnings 2>&1 | tee evidence/rust-clippy.log
       - name: Frontend and source checks
@@ -68,8 +68,8 @@ jobs:
           if-no-files-found: error
           path: |
             evidence/
-            target/release/chess-workbench
-            target/release/chess-workbench.exe
+            target/release/openfile
+            target/release/openfile.exe
             LICENSE
             THIRD_PARTY_NOTICES.md
             licenses/

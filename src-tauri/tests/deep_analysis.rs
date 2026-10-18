@@ -1,4 +1,4 @@
-use chess_workbench::{deep_analysis::DeepParams, documents::Edit, registry::Registry};
+use openfile::{deep_analysis::DeepParams, documents::Edit, registry::Registry};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// The mock engine copied as `mock-uci-legal`, which scores the legal moves
@@ -69,8 +69,22 @@ fn deep_analysis_builds_a_tree_that_goes_in_as_one_edit() {
     assert!(report.positions >= 7, "{}", report.positions);
     assert!(!report.lines.is_empty());
     assert!(!report.best.is_empty());
-    // White's best by the mock is the first legal move in UCI order.
-    assert_eq!(report.best[0], "a3");
+    // The mock scores White's first legal moves in UCI order 30, 10, -10,
+    // -30, ...; the window keeps those four. Progress arrives at most every
+    // 200 ms, so how much of the second iteration ran before the stop, and
+    // which of them its minimax prefers, depends on the machine's speed.
+    let kept = [
+        ("a3", "a2a3"),
+        ("a4", "a2a4"),
+        ("Na3", "b1a3"),
+        ("Nc3", "b1c3"),
+    ];
+    let (_, uci) = kept
+        .iter()
+        .find(|(san, _)| *san == report.best[0])
+        .unwrap_or_else(|| panic!("{:?}", report.best));
+    // The best line (in UCI) comes first.
+    assert_eq!(report.lines[0].moves[0], *uci);
     // Every line ends with a score comment.
     assert!(report.lines.iter().all(|l| l.comment.is_some()));
     let applied = r
