@@ -1,16 +1,16 @@
-# Newer ChessBase database format (2CBH family)
+# Newer database format (2CBH family)
 
 This note records the facts behind the `cbh-reader` support for the newer
 database family. The reader lives in `crates/cbh-reader/src/v2/` and is chosen
 by `Database::open` when the user opens a `.2cbh` file. The classic `.cbh`
 family uses the same `Database` type and API.
 
-Evidence comes from two kinds of work. Static analysis of CBase18.exe 18.1
+Evidence comes from two kinds of work. Static analysis of the reference binary 
 (SHA-256 `8d633b10…8e8dee`) used REA/Ghidra; the program was never run.
-Bounded reads of a private Mega Database 2025 copy confirmed the layouts. That
+Bounded reads of a private the test database copy confirmed the layouts. That
 copy holds both families under one name, and every shared entry was compared
 (see [validation](validation.md)). Addresses below are virtual addresses in
-that executable. No ChessBase code or resources were copied.
+that executable. No the reference app code or resources were copied.
 
 ## Files
 
@@ -55,7 +55,7 @@ marks a forfeit; with bit 2 set the display routine `0x140c41440` shows no
 result at all. That routine shows forfeits as `-:+`, `=:=` and `+:-`, and
 a forfeited line as `0-0`. A line shows the symbol of its evaluation NAG, or
 "Line" when there is none. The game-data dialog lists the same seven choices. In the
-classic Mega every code 0–7 occurs: 6,543 lines (most with moves), and
+classic test database every code 0–7 occurs: 6,543 lines (most with moves), and
 2,045 / 129 / 2,763 / 357 games with codes 4–7, nearly all without moves.
 Only lines carry a NAG; the values seen are evaluations 10–19 and 36, 40, 44,
 132, 138 and 146. The PGN `Result` tag keeps a forfeit's winner and is `*` for
@@ -63,7 +63,7 @@ lines and `0-0`.
 
 **Medals** (both families). A 16-bit word: classic big-endian at bytes
 37–38, 2CBH little-endian at bytes 130–131. The two agree in all 8,790
-records of the Mega sample that have medals.
+records of the test database sample that have medals.
 * Bit 15 is the **user medal**, which Mark Games toggles (`0x14013d510`,
   through the getter `0x1401ceb70` and setter `0x1401cf3b0` at +0x82).
 * The other bits are traced from the Medals dialog (template 112, class
@@ -94,11 +94,11 @@ records of the Mega sample that have medals.
   Control 1062 is Reset (724). The dialog edits a word handed to it (the
   move medal of "Set Medal", `ANNOMEDAL`). The game's medal word is read
   with the same bits, since bit 15 is the user medal in both. In the 2CBH
-  Mega sample, 62 records have medals, Endgame (22) and Best game (13)
+  test database sample, 62 records have medals, Endgame (22) and Best game (13)
   most often.
 
 **Packed ECO** (both families). Bits 7–15 hold 1–500 for A00–E99, and 0 means
-no code. The low seven bits are a ChessBase sub-classification that the reader
+no code. The low seven bits are a reference app sub-classification that the reader
 does not show. This was checked against the opening moves of 24,162 games: all
 310 B01 games begin 1.e4 d5, C42 games are Petrov lines and C34 games are
 King's Gambits.
@@ -181,7 +181,7 @@ The other lists:
 * titles: a LE32 count of (LE32 language, string) pairs, the titles of text
   entries. Not read yet;
 * annotators: empty in the sample. **2CBH annotator ids index the player
-  list.** Annotator 17 is the player "ChessBase", for example.
+  list.** Annotator 17 is the player "The reference app", for example.
 
 Every player, tournament, source and team reference in the sample matched the
 classic names, and so did every annotator. Classic CBC keeps annotators as
@@ -206,15 +206,15 @@ none. The rest of the record is not interpreted.
 
 ## Classic set-ups (corrections found here)
 
-* Every classic set-up in Mega Database 2025 has byte 0 = 1. cbh2pgn and libcbh
+* Every classic set-up in the test database has byte 0 = 1. cbh2pgn and libcbh
   both skip this byte, so values 0 and 1 are accepted.
 * A stored move number of 0 is read as 1.
-* An en-passant file that is impossible on the board is dropped, as ChessBase's
+* An en-passant file that is impossible on the board is dropped, as the reference app's
   own 2CBG copy does for entry 13409.
 
 ## Classic CBG encoding kinds and Chess960
 
-Evidence: CBase18.exe 18.1 (x64). `0x1401fb8f0` switches on a six-bit
+Evidence: the reference binary (x64). `0x1401fb8f0` switches on a six-bit
 encoding kind and picks a 256-byte table for it. The kind is the record
 header's top byte without the set-up bit `0x40`:
 
@@ -227,10 +227,10 @@ header's top byte without the set-up bit `0x40`:
 | 5 | `0x05` | `0x141974c10` | a two-byte word per move |
 
 Kinds 8–0x15 select further tables (`0x141975210`–`0x141976410`), probably
-for other variants. They were not studied, since the Mega holds none.
+for other variants. They were not studied, since the test database holds none.
 
 **Byte orders (kinds 4 and 0x0a).** `0x141974010` lists the standard byte
-of each move kind, in ChessBase's order. It equals cbh2pgn's encoder
+of each move kind, in the reference app's order. It equals cbh2pgn's encoder
 permutation. A record of kind 4 or 0x0a holds, for move kind *i* after *n*
 moves, the byte at *i + n* of its own table. The reader therefore finds a
 byte's index in that table, subtracts the move counter, and reads the
@@ -247,7 +247,7 @@ bytes of a two-byte move (token 0x29) are mapped the same way.
 6. Black's queen-side castling rook.
 
 Then two bytes hold a number from 0 to 959: the start position's number,
-which ChessBase's own "Chess 960-Position *n*" comments match (748 for
+which the reference app's own "Chess 960-Position *n*" comments match (748 for
 Adams–Leko, 811 for Leko–Adams). The moves start at byte 40.
 * Castling is a two-byte move whose source and target are both the king's
   castling square: g1 or c1 (g8, c8 for Black). It castles with that side's
@@ -273,7 +273,7 @@ bytes are read:
 
 The reader reads single lines only and refuses a word with 0x8000, because
 that bit's two meanings were not separated. In the one kind-1 record of the
-Mega, the upper four bits follow no pattern, so they are not read; all of
+test database, the upper four bits follow no pattern, so they are not read; all of
 its 77 moves are legal as one line. A record of just the four header bytes
 holds a game without moves.
 

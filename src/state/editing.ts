@@ -24,7 +24,7 @@ export interface Question {
 export function useEditing(
   w: Workbench,
   api: WorkbenchApi,
-  /** The most game tabs open at once (ChessBase's Maximum Board Windows). */
+  /** The most game tabs open at once (the reference app's Maximum Board Windows). */
   maxTabs: () => number = () => 8,
 ) {
   const [question, setQuestion] = useState<Question>();
@@ -97,7 +97,7 @@ export function useEditing(
   }
   /**
    * Saves the game into a database opened for editing: as a new entry
-   * (ChessBase "Save"), or over the entry it came from ("Replace").
+   * (the reference app "Save"), or over the entry it came from ("Replace").
    */
   async function saveToDatabase(mode: "save" | "replace"): Promise<boolean> {
     const d = w.current.current.document;
@@ -128,7 +128,7 @@ export function useEditing(
       try {
         result = await attempt();
       } catch (e) {
-        // Content ChessBase cannot store is found only while encoding.
+        // Content the reference app cannot store is found only while encoding.
         const code = (e as { code?: string })?.code;
         if (code !== "incompleteAnnotations" || acknowledged) throw e;
         if ((await ask("database")) !== "save") return false;
@@ -170,7 +170,7 @@ export function useEditing(
       setBusy(transition.current || editBusy.current);
     }
   }
-  /** Marks the selected entry deleted, or undeletes it (ChessBase "Delete"). */
+  /** Marks the selected entry deleted, or undeletes it (the reference app "Delete"). */
   async function toggleDeleted(ordinal: string) {
     const db = w.current.current.database;
     const at = w.rows.find((r) => r.ordinal === ordinal);
@@ -309,7 +309,7 @@ export function useEditing(
     w.setState((s) => addTab(s, slot));
     return true;
   }
-  /** Moves the preview's game into a tab of its own (ChessBase opens each
+  /** Moves the preview's game into a tab of its own (the reference app opens each
    * game in a new board window). */
   async function openPreview(): Promise<boolean> {
     const s = w.current.current;

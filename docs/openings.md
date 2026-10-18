@@ -2,12 +2,12 @@
 
 Status: implemented on branch `eco-classification` (2026-10-15). The
 direction was agreed in conversation: classify from open data only, never
-from ChessBase's files.
+from the reference app's files.
 
-Evidence is from CBase18.exe 18.1 (x64), analysed statically through an REA
+Evidence is from the reference binary (x64), analysed statically through an REA
 session (`analysis/deep-analysis/` in the research workspace).
 
-## What ChessBase does
+## What the reference app does
 
 | Command | Id | Run slot | Key | Message |
 |---|---|---|---|---|
@@ -16,7 +16,7 @@ session (`analysis/deep-analysis/` in the research workspace).
 | Set ECO Codes | `DBTOOLSSETECOCODE` (`DBToolsSetEcoCodeCmd`) | `0x140a1fe40` | none | "Write ECO codes into games" |
 
 * **The classifier** is a global object (`DAT_14228b748`), loaded from
-  ChessBase's own ECO file: the strings `Eco.cbcod` and `Eco.cod` sit at
+  the reference app's own ECO file: the strings `Eco.cbcod` and `Eco.cod` sit at
   `.rdata` file offsets 0x1274208 and 0x1274218. Its lookup (`0x140b54800`)
   copies the game, plays its main line up to a ply limit (object offset 0x6c,
   value not traced), then takes moves back until the position is in its
@@ -31,7 +31,7 @@ session (`analysis/deep-analysis/` in the research workspace).
   was not followed.
 * **The packed word** is at byte 128 of a 2CBH record (LE16) and in the
   classic record (BE16). Bits 7–15 hold 1–500 for A00–E99. The low seven
-  bits are ChessBase's sub-classification, whose meaning comes from its ECO
+  bits are the reference app's sub-classification, whose meaning comes from its ECO
   file (see [formats](formats.md)).
 
 **Not traced.** The format of `Eco.cod`/`Eco.cbcod`, the ply limit, how the
@@ -50,7 +50,7 @@ table, dedicated to the public domain under CC0 1.0:
   program. The licence text is in `licenses/chess-openings-CC0.txt` and the
   notice in `THIRD_PARTY_NOTICES.md`.
 
-No ChessBase file is read: no `Eco.cod`, no key file and no book. The names
+No file of the reference app is read: no `Eco.cod`, no key file and no book. The names
 are lichess's, e.g. "Petrov's Defense" for C42. Every line of the table
 replays legally; at first use each line's final position is indexed by a
 Zobrist hash of the board, side to move, castling rights and a legal en
@@ -60,7 +60,7 @@ passant square.
 
 * **Classification** (`chess_core::eco`) reads the main line from the
   standard start position, up to 60 plies or the first null move. It takes
-  the last position the table holds, as ChessBase takes the deepest known
+  the last position the table holds, as the reference app takes the deepest known
   position, so transpositions count. Set-ups and Chess960 games are not
   classified.
 * **Classify Opening** (Ctrl+Alt+C, game window, Report tab) shows the code,
@@ -75,10 +75,10 @@ passant square.
      50,000 with one sync each (`Writer::set_eco_many`). The opening tree's
      journal records the new file stamps.
   * **Only games without an ECO code** is on by default. The table agrees
-    with ChessBase's own codes for about three games in four (see below),
+    with the reference app's own codes for about three games in four (see below),
     so existing codes are kept unless the user unticks it.
   * A game whose main code is already the table's keeps its whole word,
-    ChessBase's sub-classification included. A new code is written with a
+    the reference app's sub-classification included. A new code is written with a
     sub-classification of 0.
   * Set-ups, games without moves and unreadable games keep their word.
 
@@ -91,21 +91,21 @@ passant square.
 Release build on the development Mac, through
 `cbh-reader/examples/eco.rs`, warm cache, read-only.
 
-| Database | Games | Time | Same main code as ChessBase | Differ: same letter | Not classified |
+| Database | Games | Time | Same main code as the reference app | Differ: same letter | Not classified |
 |---|---|---|---|---|---|
-| Mega 2025, 2CBH family | 24,759 | 0.26 s | 17,036 of 22,308 coded games (76.4 %) | 86.3 % | 2,451: 597 set-ups, 1,854 games without moves |
-| Mega 2025, classic | 11,149,379 | 188.5 s (8 workers) | 7,545,408 of 11,003,269 (68.6 %) | 75.9 % | 146,095; 15 unreadable (the 12 castling set-ups that PR #22 makes readable, and the three damaged records) |
+| The test database, 2CBH family | 24,759 | 0.26 s | 17,036 of 22,308 coded games (76.4 %) | 86.3 % | 2,451: 597 set-ups, 1,854 games without moves |
+| The test database, classic | 11,149,379 | 188.5 s (8 workers) | 7,545,408 of 11,003,269 (68.6 %) | 75.9 % | 146,095; 15 unreadable (the 12 castling set-ups that PR #22 makes readable, and the three damaged records) |
 
 Every standard game with at least one move in the 2CBH sample was
 classified. The differences come from the two tables: lichess's
-assignments are not ChessBase's, and ChessBase's sub-classified table is
+assignments are not the reference app's, and the reference app's sub-classified table is
 finer than five ECO volumes.
 
 # Opening Report
 
 Status: implemented on branch `opening-report` (2026-10-15).
 
-## What ChessBase does
+## What the reference app does
 
 **Opening Report** (`OPENINGREPORTBOARDCMD`, `OpeningReportBoardCmd`, run slot
 `0x1408e19d0`; "Create a detailed for the current board position", 50540;
@@ -172,13 +172,13 @@ progress and Stop.
   report says when more reach the position.
 * **Title:** the ECO code and name from the open table, and the line.
 * **Results:** White wins, draws and Black wins.
-* **History**, as ChessBase lays it out:
+* **History**, as the reference app lays it out:
   * under 10 games, every game;
   * otherwise the earliest game, the latest annotated game, the latest
     strong game when it is another, and the latest game when it is yet
     another;
   * games per year;
-  * over 50 games, the fashion index in ChessBase's bucket sizes: the
+  * over 50 games, the fashion index in the reference app's bucket sizes: the
     bucket's share of the position's games over its share of the
     database's games (100 = average). Buckets with fewer than 100 database
     games get no index, and the chart caps bars at 400. Both are the
@@ -186,13 +186,13 @@ progress and Stop.
     chart.
   * "Annotated" means the game has an annotator, and "strong" that both
     players are rated 2500 or more. Both are the workbench's choices, since
-    ChessBase's flags were not traced.
+    the reference app's flags were not traced.
   * The database's games per year are counted once per entry count (a
     parallel scan of the entry records) and kept for the session.
 * **Players:**
   * strong players by colour: rated 2500 or more, best first, up to 10 (the
     workbench's filter);
-  * ChessBase's "Other notable players" rule, by games.
+  * The reference app's "Other notable players" rule, by games.
 * **Moves.** Up to 20 move rows: from the opening tree when it covers the
   position, all games included, otherwise from the games read. "Played by"
   lists the five strongest players of each move.
@@ -211,8 +211,8 @@ with the app's own opening-tree cache.
 
 | Database | Position | Games | Time | Notes |
 |---|---|---|---|---|
-| 2CBH Mega | 1.e4 c5 | 1,523 | 4.5 s | no tree: Find Position over 24,783 entries; moves from the games read |
-| Classic Mega | Najdorf (5...a6) | 100,000 of more | 50.8 s, then 23.8 s warm | the first run counts the years of 11.15 M entries; moves from the tree; ten strong players by colour |
+| 2CBH test database | 1.e4 c5 | 1,523 | 4.5 s | no tree: Find Position over 24,783 entries; moves from the games read |
+| Classic test database | Najdorf (5...a6) | 100,000 of more | 50.8 s, then 23.8 s warm | the first run counts the years of 11.15 M entries; moves from the tree; ten strong players by colour |
 
 Most of the warm time goes to reading 100,000 entry summaries and 5,000
 games. The history of a truncated report covers the first 100,000 games in

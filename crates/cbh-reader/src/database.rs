@@ -17,7 +17,7 @@ pub struct EntrySummary {
     pub event: Option<String>,
     pub site: Option<String>,
     pub date: Option<String>,
-    /// As ChessBase shows it: `1-0`, `+:-` (forfeit), a line's evaluation…
+    /// As the reference app shows it: `1-0`, `+:-` (forfeit), a line's evaluation…
     pub result: Option<String>,
     /// The stored code, 0..=7 (see `header::pgn_result`).
     pub result_code: Option<u8>,

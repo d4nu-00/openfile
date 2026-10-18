@@ -6,7 +6,7 @@ const tiebreak = (v: number) =>
   Number.isInteger(v) ? String(v) : v.toFixed(2).replace(/0$/, "");
 
 /**
- * A tournament crosstable (ChessBase's Cross Table, T). A round robin has a
+ * A tournament crosstable (the reference app's Cross Table, T). A round robin has a
  * column per opponent; a Swiss tournament a column per round, naming the
  * opponent's place and colour. Each result opens its game.
  */

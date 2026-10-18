@@ -9,7 +9,7 @@ describe("database start screen", () => {
     const symbols = await within(screen).findByRole("listbox", {
       name: "My Databases symbols",
     });
-    const mega = within(symbols).getByRole("option", { name: /Mega/ });
+    const mega = within(symbols).getByRole("option", { name: /test database/ });
     expect(mega).toHaveTextContent("11,151,119 entries · CBH");
     // A database whose files are gone is shown dimmed and does not open.
     const gone = within(symbols).getByRole("option", { name: /Gone/ });
@@ -19,7 +19,7 @@ describe("database start screen", () => {
     await ui.user.dblClick(mega);
     await waitFor(() =>
       expect(ui.api.openDatabase).toHaveBeenCalledWith(
-        "/dbs/Mega.cbh",
+        "/dbs/test database.cbh",
         expect.any(String),
       ),
     );
@@ -35,20 +35,20 @@ describe("database start screen", () => {
     const ui = renderWorkbench({ clean: true, initialView: "database" });
     const screen = await ui.findByLabelText("Databases start screen");
     await ui.user.click(
-      await within(screen).findByRole("option", { name: /Mega/ }),
+      await within(screen).findByRole("option", { name: /test database/ }),
     );
     await ui.user.selectOptions(
       within(screen).getByLabelText("Database type"),
       "openings",
     );
     expect(ui.api.setDatabaseKind).toHaveBeenCalledWith(
-      "/dbs/Mega.cbh",
+      "/dbs/test database.cbh",
       "openings",
     );
     await ui.user.click(
       within(screen).getByRole("button", { name: "Remove Database Symbol" }),
     );
-    expect(ui.api.unpinDatabase).toHaveBeenCalledWith("/dbs/Mega.cbh");
+    expect(ui.api.unpinDatabase).toHaveBeenCalledWith("/dbs/test database.cbh");
 
     // Recent Databases: pin a database that is not in My Databases.
     await ui.user.click(

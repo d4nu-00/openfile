@@ -2,9 +2,9 @@
 
 Status: implemented on branch `player-statistics` (2026-10-14).
 
-## What ChessBase does
+## What the reference app does
 
-Evidence is from CBase18.exe 18.1 (x64), its command table, messages and
+Evidence is from the reference binary (x64), its command table, messages and
 dialog templates.
 
 | Command | Id | Default key | Message |
@@ -35,7 +35,7 @@ dialog templates.
 
 **Not traced:**
 * the opponent and tournament item formats and the Elo button's display;
-* whether the opening key is an ECO code or a ChessBase opening key (the
+* whether the opening key is an ECO code or a reference app opening key (the
   formatter `0x140c48890` was not followed);
 * the drawing of `CStatistik2DDialogEx`.
 
@@ -77,9 +77,9 @@ lookup.
 * A table of the score as **White**, as **Black** and in **Total**: N, +, =,
   −, points, score, Elo-Av and performance.
 * A **Years** table: the player's highest rating that year, games, score
-  and performance. This stands in for ChessBase's Elo button, whose display
+  and performance. This stands in for the reference app's Elo button, whose display
   was not traced.
-* Three lists side by side, each with ChessBase's buttons:
+* Three lists side by side, each with the reference app's buttons:
   * **opponents**: rating in the latest rated game between them, games,
     score; sorted by N, A-Z or Score;
   * **tournaments**: year, games, score, performance; sorted by Score, A-Z
@@ -99,7 +99,7 @@ dropped when the database is closed or changed.
 
 ## Measurements
 
-Release build on the development Mac (10 cores), classic Mega 2025
+Release build on the development Mac (10 cores), classic the test database
 (11,151,119 entries), warm cache, `cbh-reader/examples/player_stats.rs`:
 
 | Player | Games | Scan (8 threads) | Scoring and names |

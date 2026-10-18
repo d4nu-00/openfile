@@ -7,8 +7,8 @@ import type {
 } from "../api/types";
 
 /**
- * The workbench's words for ChessBase's bands; the boundaries are
- * ChessBase's, the words are not.
+ * The workbench's words for the reference app's bands; the boundaries are
+ * The reference app's, the words are not.
  */
 const scoreWords = [
   "far below expectation",
@@ -41,7 +41,7 @@ const word = (words: string[], band?: number) =>
 const points = (p: number) =>
   Number.isInteger(p) ? String(p) : `${Math.floor(p) || ""}½`;
 
-/** The sentences of a colour, as ChessBase's dossier writes them. */
+/** The sentences of a colour, as the reference app's dossier writes them. */
 function colourSentences(label: string, s: ColourStats) {
   const out: string[] = [];
   const verdict = word(scoreWords, s.scoreBand);
@@ -171,9 +171,9 @@ function Repertoire({ label, rows }: { label: string; rows: RepertoireRow[] }) {
 }
 
 /**
- * A player's dossier (ChessBase's `PLAYERDOSSIER`, Ctrl+Alt+D), from the
+ * A player's dossier (the reference app's `PLAYERDOSSIER`, Ctrl+Alt+D), from the
  * open database: the statistics, years, opponents, tournaments, repertoire
- * and notable games that ChessBase's dossier writes. ChessBase's
+ * and notable games that the reference app's dossier writes. The reference app's
  * biography and pictures need its player encyclopedia and are left out.
  */
 export function DossierDialog({
@@ -458,8 +458,8 @@ export function DossierDialog({
               onLoadGame={onLoadGame}
             />
             <p className="hint">
-              ChessBase's biography, pictures and rating history come from its
-              player encyclopedia and are not part of this dossier.
+              Biographies, pictures and rating histories need a player
+              encyclopedia and are not part of this dossier.
             </p>
           </div>
         )}

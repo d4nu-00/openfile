@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { AppSettings, InstalledEngine } from "../api/types";
 
 /**
- * ChessBase's Engine Management: the installed UCI engines, the default
+ * The reference app's Engine Management: the installed UCI engines, the default
  * engine (for Default Kibitzer, Alt+F2), and starting one as a kibitzer.
  * The list is kept in the app's settings.
  */

@@ -31,7 +31,7 @@ pub struct RawEntry {
     /// Stored main-line move count (classic byte 45, 2CBH byte 138).
     pub move_count: u8,
     /// The medal word: classic BE16 at byte 37, 2CBH LE16 at byte 130
-    /// (equal in all 8,790 Mega records that have one). Bit 15 is the user
+    /// (equal in all 8,790 test database records that have one). Bit 15 is the user
     /// medal of Mark Games.
     pub medals: u16,
     pub diagnostics: Vec<Diagnostic>,
@@ -155,7 +155,7 @@ pub(crate) fn year(value: u32) -> Option<u16> {
     (y != 0).then_some(y)
 }
 /// Packed ECO: bits 7-15 hold 1..=500 for A00..E99; 0 means none. The low
-/// seven bits are a ChessBase sub-classification and are not shown.
+/// seven bits are a reference app sub-classification and are not shown.
 pub(crate) fn eco(raw: u16) -> Option<String> {
     let code = raw >> 7;
     if code == 0 || code > 500 {

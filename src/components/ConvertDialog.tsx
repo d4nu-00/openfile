@@ -11,7 +11,7 @@ const gb = (bytes?: string | null) => {
 };
 
 /**
- * Convert to 2CBH (ChessBase's "Convert to free 2CBH format"): writes the
+ * Convert to 2CBH (the reference app's "Convert to free 2CBH format"): writes the
  * whole database, or the selected games, into a new 2CBH database. The
  * source is only read; the estimate must fit the target disk.
  */

@@ -78,7 +78,7 @@ impl Game {
         inside
     }
 
-    /// Deletes the variation containing `node` (ChessBase "Delete
+    /// Deletes the variation containing `node` (the reference app "Delete
     /// Variation"). Returns the move before the variation, now selected.
     pub fn delete_variation(&mut self, node: NodeId) -> Result<NodeId, CoreError> {
         let start = self
@@ -91,7 +91,7 @@ impl Game {
     }
 
     /// Makes the variation containing `node` the line it branches from
-    /// (ChessBase "Promote Variation"). Returns `node`.
+    /// (the reference app "Promote Variation"). Returns `node`.
     pub fn promote_variation(&mut self, node: NodeId) -> Result<NodeId, CoreError> {
         let start = self
             .variation_start(node)?
@@ -279,7 +279,7 @@ impl Game {
         Ok(())
     }
 
-    /// ChessBase's Insert Into Game (`INSERTVARIATIONINTOGAME`, "Insert moves
+    /// The reference app's Insert Into Game (`INSERTVARIATIONINTOGAME`, "Insert moves
     /// of variation into main line. Even number needed"): the variation that
     /// contains `node` becomes the line, and the moves it replaced, with
     /// their variations, continue after its last move. The variation must
@@ -316,7 +316,7 @@ impl Game {
         Ok(map[last as usize])
     }
 
-    /// ChessBase's Delete Commentary commands. Returns the new id of
+    /// The reference app's Delete Commentary commands. Returns the new id of
     /// `keep` (the selected move), or the nearest of its ancestors that
     /// remains.
     pub fn delete_commentary(
@@ -374,7 +374,7 @@ impl Game {
         }
     }
 
-    /// Removes every coloured square and arrow from the game (ChessBase
+    /// Removes every coloured square and arrow from the game (the reference app
     /// "Delete Colour Commentary").
     pub fn clear_marks(&mut self) {
         for n in &mut self.nodes {
@@ -450,7 +450,7 @@ impl Game {
     }
 }
 
-/// Kinds of commentary ChessBase deletes at once.
+/// Kinds of commentary the reference app deletes at once.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Commentary {

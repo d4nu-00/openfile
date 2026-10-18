@@ -1,7 +1,7 @@
 import { it, expect } from "vitest";
 import { toggleMark } from "../state/marks";
 
-it("adds, recolours and removes marks like ChessBase", () => {
+it("adds, recolours and removes marks like the reference app", () => {
   const empty = { squares: [], arrows: [] };
   const green = toggleMark(empty, { from: "e4", to: "e4", color: "G" });
   expect(green.squares).toEqual([{ color: "G", square: "e4" }]);

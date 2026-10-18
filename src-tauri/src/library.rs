@@ -21,7 +21,7 @@ pub struct DatabaseSymbol {
     pub path: PathBuf,
     pub name: String,
     pub folder: String,
-    /// One of ChessBase's database types; "unspecific" outside My Databases.
+    /// One of the reference app's database types; "unspecific" outside My Databases.
     pub kind: String,
     pub favorite: bool,
     pub exists: bool,
@@ -110,7 +110,7 @@ fn absolute(path: &Path) -> Result<(), AppError> {
 impl Settings {
     /// Notes that `path` was opened or created: first in Recent, and in My
     /// Databases unless it is there already ("Open a database and add symbol
-    /// to 'My ChessBase'", ChessBase message 50592).
+    /// to 'My the reference app's", the reference app message 50592).
     pub fn record_opened(&self, path: &Path) -> Result<(), AppError> {
         let path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
         absolute(&path)?;

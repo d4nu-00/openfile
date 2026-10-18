@@ -1,4 +1,4 @@
-//! Copying games between databases (ChessBase's Copy, Paste, Delete and
+//! Copying games between databases (the reference app's Copy, Paste, Delete and
 //! Select All in the database window). Copy remembers entries of the list;
 //! Paste appends them to a .2cbh database opened for editing.
 use crate::{
@@ -123,7 +123,7 @@ impl Registry {
     }
 
     /// Paste: appends the copied games to a database opened for editing.
-    /// Annotations that are not decoded or that ChessBase cannot store are
+    /// Annotations that are not decoded or that the reference app cannot store are
     /// left out and counted; the user agrees to that before pasting.
     pub fn paste_games(
         &self,
@@ -391,7 +391,7 @@ impl Registry {
     }
 
     /// Mark Games (`MARKGAME`, +): toggles the user medal of each selected
-    /// game, as ChessBase does.
+    /// game, as the reference app does.
     pub fn mark_rows(
         &self,
         database_id: String,

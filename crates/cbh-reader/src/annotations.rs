@@ -9,10 +9,10 @@
 //! * 2CBA uses line order: walk a line move by move, and right after a move
 //!   number its alternative variations completely before continuing.
 //!
-//! Both orders were established on Mega Database 2025. All 16,202 texts that
+//! Both orders were established on the test database. All 16,202 texts that
 //! occur once in their game land on the same move from either file.
 //!
-//! Type ids come from the annotation factory `0x1401a2ae0` in CBase18.exe 18.1.
+//! Type ids come from the annotation factory `0x1401a2ae0` in the reference binary.
 //! Classic record layouts come from the classic serializers (`0x140190020`
 //! text, `0x14018fdc0` symbols, `0x14018fd10` squares, `0x14018f310` arrows).
 //! 2CBA layouts come from each class's stream reader (vtable slot 4). Colour
@@ -53,7 +53,7 @@ pub enum Kind {
     /// (colour code, from, to) triples.
     Arrows(Vec<(u8, u8, u8)>),
     /// A critical position (type 0x18): 1 opening, 2 middlegame, 3 endgame,
-    /// as ChessBase's three commands set it (`0x1408e0cb0`, `0x1408e0c50`,
+    /// as the reference app's three commands set it (`0x1408e0cb0`, `0x1408e0c50`,
     /// `0x1408e0bf0`). Kept for searching; not shown.
     Critical(u8),
     /// A recognised type this reader does not represent.
@@ -80,9 +80,9 @@ const CP1252: [char; 32] = [
     '\u{90}', '‘', '’', '“', '”', '•', '–', '—', '˜', '™', 'š', '›', 'œ', '\u{9d}', 'ž', 'Ÿ',
 ];
 
-/// ChessBase marks text as UTF-8 when it is valid UTF-8 with non-ASCII bytes
+/// The reference app marks text as UTF-8 when it is valid UTF-8 with non-ASCII bytes
 /// (`SString::MayBeUTF8`); other text is read as Windows-1252. Text ends at
-/// the first NUL, as ChessBase's own 2CBA copy of Mega entry 7289 shows.
+/// the first NUL, as the reference app's own 2CBA copy of test database entry 7289 shows.
 pub fn decode_text(bytes: &[u8]) -> String {
     let bytes = &bytes[..bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len())];
     if !bytes.is_ascii()

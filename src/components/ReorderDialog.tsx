@@ -1,5 +1,5 @@
 /**
- * Reorder Variations asks first, as ChessBase does, whether the main line
+ * Reorder Variations asks first, as the reference app does, whether the main line
  * may change too ("Including the mainline?").
  */
 export function ReorderDialog({

@@ -322,8 +322,8 @@ export function demoApi(): WorkbenchApi {
     startScreen: async () => ({
       favorites: [
         {
-          path: "/demo/Mega Database.cbh",
-          name: "Mega Database",
+          path: "/demo/test database.cbh",
+          name: "test database",
           folder: "/demo",
           kind: "large",
           favorite: true,

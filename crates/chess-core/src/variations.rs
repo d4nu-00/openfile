@@ -1,4 +1,4 @@
-//! ChessBase's variation tools, as traced in CBase18.exe 18.1 (see
+//! The reference app's variation tools, as traced in the reference binary (see
 //! docs/game-window.md): Exchange Moves (`EXCHANGEMOVES`), Reorder
 //! Variations (`REORDERVARIATIONS`) and Clean up variations
 //! (`CLEANUPVARIATIONS`).
@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 impl Game {
     /// Size of the subtree from `node`: the node and every move after it,
-    /// variations included (ChessBase's measure, `0x140b4adb0`).
+    /// variations included (the reference app's measure, `0x140b4adb0`).
     fn subtree_size(&self, node: NodeId) -> usize {
         let mut n = 0;
         let mut stack = vec![node];
@@ -22,7 +22,7 @@ impl Game {
     /// Exchange Moves ("Replace moves of main line with variation",
     /// `0x140b5bc60`): on the first move of a variation, the variation
     /// becomes the line and the line's continuation takes the variation's
-    /// place. Elsewhere it fails, as ChessBase's "Can't replace moves."
+    /// place. Elsewhere it fails, as the reference app's "Can't replace moves."
     /// (1244). Returns the new id of `node`.
     pub fn exchange_moves(&mut self, node: NodeId) -> Result<NodeId, CoreError> {
         let parent = self
@@ -48,7 +48,7 @@ impl Game {
 
     /// Reorder Variations ("Rearrange deeply nested variations to minimize
     /// depth", `0x140b62270`), from `from` along its line: every variation
-    /// is reordered inside, and, with `main_line` (ChessBase's question
+    /// is reordered inside, and, with `main_line` (the reference app's question
     /// "Including the mainline?"), a variation larger than the line's
     /// continuation becomes the line. Returns the new id of `from`.
     pub fn reorder_variations(
@@ -98,7 +98,7 @@ impl Game {
 
     /// Clean up variations ("Clean up different move orders in a deeply
     /// annotated game", `0x1408e6d70`): the game is rebuilt from its lines,
-    /// main line first. As ChessBase's merge (`0x140b64c80`) does, each line
+    /// main line first. As the reference app's merge (`0x140b64c80`) does, each line
     /// is attached after the deepest of its positions that the rebuilt
     /// game already holds, by any move order; its moves before that
     /// position are dropped. Moves kept carry their annotations; comments

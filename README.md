@@ -1,7 +1,7 @@
 <div align="center">
   <img src="docs/media/logo.png" alt="OpenFile" width="88" />
   <h1>OpenFile</h1>
-  <p><strong>Your ChessBase databases, on any desktop, free and open source.</strong></p>
+  <p><strong>Your chess databases, on any desktop, free and open source.</strong></p>
   <p>
     <a href="#get-started">Get started</a> ·
     <a href="#what-it-does">Features</a> ·
@@ -20,12 +20,14 @@
 ![The game window: Morphy's Opera Game at 16.Qb8+, with comments, a variation, symbols, arrows and a coloured square](docs/media/hero.png)
 
 OpenFile is a desktop chess database app for macOS, Windows and Linux.
-It opens the databases you already have from ChessBase, the classic `.cbh`
-and ChessBase 18's `.2cbh`. You can browse, search, analyse and edit them in
-a fast, familiar window that looks and handles like ChessBase 18.
+It opens the databases you already have, in the classic `.cbh` format and
+the newer `.2cbh`. You can browse, search, analyse and edit them in a fast,
+familiar window that looks and handles like the desktop database software
+you may know.
 
-It is not affiliated with ChessBase GmbH. It reads and writes their file
-formats from your own files, reimplemented independently. No ChessBase code,
+OpenFile is an independent project, not affiliated with any chess software
+vendor. It reads and writes these file formats from your own files,
+reimplemented independently. No third-party code,
 artwork or games ship with it.
 
 ## What it does
@@ -35,11 +37,12 @@ artwork or games ship with it.
 | Open `.cbh` and `.2cbh` databases, even 11 million games | Any UCI engine, MultiPV, several kibitzers | Prepare against White or Black |
 | Sort, filter and search by game data, position, annotations, medals | Blunder check, deep analysis, analysis jobs | Player statistics and dossier |
 | Opening tree, reference search, crosstables | Syzygy tablebases in analysis and notation | Opening, tournament and error reports |
-| Edit games and write `.2cbh`; PGN in and out | Comments, symbols, arrows, variation tools | ChessBase's ribbon, shortcuts and themes |
+| Edit games and write `.2cbh`; PGN in and out | Comments, symbols, arrows, variation tools | A familiar ribbon, shortcuts and themes |
 
 Everything runs on your computer: no account, no network, nothing uploaded.
 See the [feature checklist](feature_checklist.md) for what is done and what
-is planned, mapped against ChessBase 18's ~180 features.
+is planned, mapped against the ~180 features of an established desktop
+database app.
 
 <details>
 <summary><strong>Explore the windows</strong> · Game list, search mask, dossier, dark theme</summary>
@@ -70,14 +73,14 @@ turns them into a database.
 <summary><strong>Everything in detail</strong></summary>
 
 - **Open your existing databases.** It reads the classic CBH family and
-  ChessBase 18's 2CBH family: games, variations, comments, symbols, arrows,
+  the newer 2CBH family: games, variations, comments, symbols, arrows,
   coloured squares and Chess960 games. It reads players, tournaments,
   annotators, sources and teams too. It was tested against the 11-million-game
-  classic Mega Database 2025 and a 2CBH copy of its first 24,783 games.
+  classic the test database and a 2CBH copy of its first 24,783 games.
 - **Fast on huge databases.** The game list scrolls the whole database, every
   row. Sort by any column in under a second on 11 million games, and jump
   straight to any entry.
-- **ChessBase muscle memory.** The ribbon has ChessBase's tabs, command names
+- **Familiar muscle memory.** The ribbon has the familiar tabs, command names
   and default shortcuts, and its White, Blue, Gray and Black themes. Press `/`
   to search every command. Several games open in tabs, plus board windows and
   layout presets.
@@ -268,17 +271,17 @@ outside iCloud Drive.
 
 </details>
 
-**Writing.** Databases are written only in ChessBase 18's `.2cbh` format, and
+**Writing.** Databases are written only in the `.2cbh` format, and
 only when you ask. **New** (Ctrl+X) creates a database; **Open for Editing**
 opens an existing `.2cbh` after a warning. **Save** (Ctrl+S) appends the game,
 **Replace** (Ctrl+R) overwrites the game it came from, and **Delete** marks
 games deleted. Classic `.cbh` databases always open read-only; without an
-editable database, Save writes PGN. ChessBase's Check Integrity rebuilds its
+editable database, Save writes PGN. A Check Integrity in other database software rebuilds its
 own index files after the workbench writes.
 
 **Faster searches and trees** (Maintenance tab). **Create Search Booster**
 speeds up position searches. **Create Opening Tree** feeds the Book and
-Reference panes; it takes about ten minutes for the 11-million-game Mega.
+Reference panes; it takes about ten minutes for the 11-million-game test database.
 
 ## Not there yet
 
@@ -286,7 +289,7 @@ Reference panes; it takes about ten minutes for the 11-million-game Mega.
 - Repertoire databases and repertoire reports.
 - Text entries, printing, diagram lists and HTML publishing.
 - Correspondence chess, and playing against an engine.
-- ChessBase's online services (cloud databases, Playchess, Let's Check) are
+- Vendor online services (cloud databases, playing servers, shared analysis) are
   out of scope. Open services such as Lichess are possible stand-ins.
 - Windows and Linux builds have not been tried on real machines.
 

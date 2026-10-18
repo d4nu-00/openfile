@@ -1,6 +1,6 @@
 //! Database maintenance that only reads: Check Integrity and Find Double
 //! Games. Both scan the whole database in parallel through their own read
-//! handles. See docs/maintenance.md for ChessBase's versions.
+//! handles. See docs/maintenance.md for the reference app's versions.
 use crate::{CbhError, Database, DatabaseFormat, EntryKind, header::RawEntry};
 use std::{collections::HashMap, sync::atomic::AtomicBool};
 
@@ -219,7 +219,7 @@ impl Database {
 
 // --- Find Double Games ---------------------------------------------------
 
-/// How names or moves are compared (ChessBase's Exact / Similar / Ignore).
+/// How names or moves are compared (the reference app's Exact / Similar / Ignore).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Compare {
@@ -228,7 +228,7 @@ pub enum Compare {
     Ignore,
 }
 
-/// Which game of a pair is marked (ChessBase's Decision).
+/// Which game of a pair is marked (the reference app's Decision).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Decision {
@@ -240,7 +240,7 @@ pub enum Decision {
     KeepBetter,
 }
 
-/// ChessBase's Kill Doubles settings (`KillDouble` section, dialog 894)
+/// The reference app's Kill Doubles settings (`KillDouble` section, dialog 894)
 /// that the workbench ports.
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -261,7 +261,7 @@ pub struct DoubleOptions {
 }
 
 impl Default for DoubleOptions {
-    /// ChessBase's defaults (`0x1407ab920`).
+    /// The reference app's defaults (`0x1407ab920`).
     fn default() -> Self {
         Self {
             decision: Decision::KeepBetter,
@@ -334,7 +334,7 @@ fn folded_names(db: &Database) -> Result<Names, CbhError> {
     Ok(names)
 }
 
-/// The completeness score of ChessBase's "keep better" (`0x140714c90`):
+/// The completeness score of the reference app's "keep better" (`0x140714c90`):
 /// annotations count 10, and every field that is filled in counts 1.
 fn completeness(r: &RawEntry, names: &Names, annotated: bool, longer: bool) -> u32 {
     let mut score = 10 * annotated as u32 + longer as u32;
@@ -471,7 +471,7 @@ impl Database {
         let Some((plies, moves, last)) = main_line(&game, None) else {
             return Ok(None);
         };
-        // As ChessBase compares only games of more than four plies.
+        // As the reference app compares only games of more than four plies.
         if plies < MIN_PLIES || plies.div_ceil(2) < options.min_moves as u32 {
             return Ok(None);
         }
@@ -596,7 +596,7 @@ impl Database {
     }
 }
 
-/// The game of a pair to mark, as ChessBase's decision (`0x140715720`)
+/// The game of a pair to mark, as the reference app's decision (`0x140715720`)
 /// chooses it; `None` keeps both.
 fn decide(a: &Fingerprint, b: &Fingerprint, o: &DoubleOptions) -> Option<u64> {
     let (first, second) = if a.ordinal < b.ordinal {

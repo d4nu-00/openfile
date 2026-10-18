@@ -141,7 +141,7 @@ fn the_report_covers_history_players_and_moves() {
     assert_eq!(with_tree.moves[0].games, 40);
     assert!(with_tree.moves[0].performance.is_some());
 
-    // Few games are listed, as in ChessBase.
+    // Few games are listed, as in the reference app.
     let d4 = r
         .opening_report(
             db,

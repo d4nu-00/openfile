@@ -49,7 +49,7 @@ pub struct Finding {
     pub line: Vec<String>,
 }
 
-/// An evaluation symbol for a move, as ChessBase's Tactical Analysis sets
+/// An evaluation symbol for a move, as the reference app's Tactical Analysis sets
 /// them (see docs/engines.md).
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -117,7 +117,7 @@ pub fn white_text(cp: i32, white_to_move: bool) -> String {
     }
 }
 
-/// ChessBase's evaluation symbol for a score from White's side
+/// The reference app's evaluation symbol for a score from White's side
 /// (`0x140b560c0`): +- above 1.60, ± above 0.70, ⩲ above 0.30, and the
 /// same for Black; = otherwise. Mates have none.
 pub fn evaluation_symbol(white_cp: i32) -> Option<u16> {
@@ -133,7 +133,7 @@ pub fn evaluation_symbol(white_cp: i32) -> Option<u16> {
     })
 }
 
-/// The NAGs ChessBase's Tactical Analysis writes as evaluations.
+/// The NAGs the reference app's Tactical Analysis writes as evaluations.
 pub const EVALUATION_NAGS: [u16; 8] = [10, 11, 14, 15, 16, 17, 18, 19];
 
 /// Evaluation symbols for the main line: a move gets the symbol of the
@@ -492,7 +492,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn evaluation_symbols_follow_chessbase() {
+    fn evaluation_symbols_follow_reference() {
         assert_eq!(evaluation_symbol(0), Some(11));
         assert_eq!(evaluation_symbol(30), Some(11));
         assert_eq!(evaluation_symbol(31), Some(14));

@@ -1,4 +1,4 @@
-//! ECO classification of a whole database (ChessBase's Set ECO Codes,
+//! ECO classification of a whole database (the reference app's Set ECO Codes,
 //! `DBTOOLSSETECOCODE`, "Write ECO codes into games"). Every game's main
 //! line is classified with the workbench's open table
 //! (`chess_core::eco`); the codes that should change are returned for the
@@ -23,7 +23,7 @@ pub struct EcoReport {
     /// New packed ECO words, by entry: (ordinal, word).
     pub changes: Vec<(u64, u16)>,
     /// Games whose code already has the computed main code; their
-    /// ChessBase sub-classification (low seven bits) is kept.
+    /// The reference app sub-classification (low seven bits) is kept.
     pub unchanged: u64,
     /// Games with another code, kept because of `only_missing`.
     pub kept: u64,

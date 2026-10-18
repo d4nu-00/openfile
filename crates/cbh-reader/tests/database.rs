@@ -163,7 +163,7 @@ fn classic_annotators_sources_and_teams_resolve() {
     table(
         "cbs",
         68,
-        &[(9, b"CBM 001"), (34, b"ChessBase"), (50, &date)],
+        &[(9, b"CBM 001"), (34, b"Publisher"), (50, &date)],
     );
     table("cbe", 72, &[(9, b"Metropolitan")]);
     // CBJ: LE32 version, record size and count; BE32 team ids from byte 32.
@@ -178,7 +178,7 @@ fn classic_annotators_sources_and_teams_resolve() {
     let e = &db.page(1, 3).unwrap().entries;
     assert_eq!(e[0].annotator.as_deref(), Some("Lasker,Emanuel"));
     assert_eq!(e[0].source.as_deref(), Some("CBM 001"));
-    assert_eq!(e[0].source_publisher.as_deref(), Some("ChessBase"));
+    assert_eq!(e[0].source_publisher.as_deref(), Some("Publisher"));
     assert_eq!(e[0].source_date.as_deref(), Some("1985.03.01"));
     assert_eq!(e[0].white_team.as_deref(), Some("Metropolitan"));
     assert_eq!(e[0].black_team, None);

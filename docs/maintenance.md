@@ -5,12 +5,12 @@ agreed in conversation. These commands rewrite the user's own 2CBH files,
 so they write to temporary files and swap them in. They never touch classic
 files.
 
-Evidence is from CBase18.exe 18.1 (x64), analysed statically through an REA
+Evidence is from the reference binary (x64), analysed statically through an REA
 session (`analysis/maintenance/` in the research workspace).
 
 ## Check Integrity
 
-### What ChessBase does
+### What the reference app does
 
 * **The command.** `CheckIntegrityCmd` (run slot `0x1408987b0`), "Check the
   technical integrity of all database files." (50453). It works through the
@@ -54,7 +54,7 @@ files, and the log line. The check reports only.
 
 ## Find Double Games
 
-### What ChessBase does
+### What the reference app does
 
 * **The command.** `RemoveDoublesCmd` (run slot `0x14089a160`) calls
   `0x1407ab920`, "Detect double games and mark one of each pair as deleted"
@@ -124,7 +124,7 @@ files, and the log line. The check reports only.
 opened for editing, of at most 2,000,000 entries. It marks one game of each
 pair deleted, at most 200,000 at once.
 
-* **Options**, ChessBase's except where noted:
+* **Options**, the reference app's except where noted:
   * Decision: first, second or keep better (the default);
   * Names: Exact, Similar or Ignore;
   * Moves: Exact or Similar;
@@ -147,14 +147,14 @@ pair deleted, at most 200,000 at once.
     longer game's plies, and ends where the longer game stands at that
     ply.
 
-  ChessBase's own position samples were not traced to the ply. A first
+  the reference app's own position samples were not traced to the ply. A first
   version that compared the positions after 20 and 40 plies paired games
   that merely shared an opening, so the workbench uses the end positions.
 * **Games left out.** Games of fewer than five plies, deleted games and
   text entries are never compared.
-* **The decision** follows ChessBase's rules above. "Annotated" means
+* **The decision** follows the reference app's rules above. "Annotated" means
   comments, symbols, coloured squares or arrows, or variations. "Keep
-  better" uses ChessBase's completeness score.
+  better" uses the reference app's completeness score.
 * **The result** lists the pairs as "Game 3 marked; game 2 kept". A game
   kept against one double but marked against another names the game that is
   finally kept.
@@ -170,14 +170,14 @@ fingerprints within about 200 MB.
 
 ## Remove Deleted Games
 
-### What ChessBase does
+### What the reference app does
 
 * **Commands.** "Remove Deleted Games" exists as `DBTOOLSPHYSICALDELETIONS`
   (`DBToolsPhysicalDeletionsCmd`, run slot `0x140a1fde0`) and as
   `REMOVEDELETEDGAMES` (50448, "Remove all games mark as deleted and reclaim
   disk space").
 * **Disk space** (`0x14012df90`). The current database size plus 384 KB
-  must be free. Otherwise ChessBase says "Not enough disk space. N MB
+  must be free. Otherwise the reference app says "Not enough disk space. N MB
   needed".
 * **The copy.** It then walks every entry ("Searching for deleted games",
   854). It collects the entries not marked deleted (bit 7 of the flags),
@@ -194,7 +194,7 @@ opened for editing, after a confirmation.
   records share is copied once.
   * Game records keep every byte except their two block offsets.
   * Text entries keep their 2CBG block. Bytes 16 onwards of a text record
-    are not a 2CBA offset; in the Mega, entry 989 holds 151 there.
+    are not a 2CBA offset; in the test database, entry 989 holds 151 there.
   * 2LID is copied unchanged, so name ids stay valid.
   * Unreferenced blocks, left behind by Replace, are dropped.
 * **Refused or stopped when:**
@@ -210,11 +210,11 @@ opened for editing, after a confirmation.
 
   A failed rename restores the backups. Backups left by an interrupted run
   stop the next run, so they are never overwritten.
-* **ChessBase's indexes** `.2lcd` and `.2lgd` are removed. ChessBase
+* **The reference app's indexes** `.2lcd` and `.2lgd` are removed. The reference app
   accepts them as absent, and its Check Integrity rebuilds them (see
   [writing](writing.md)). Other files beside the database that refer to
   game numbers are not updated, and the confirmation says so. Examples are
-  ChessBase's key files (`.cko`, `.cpo`) and search booster files.
+  the reference app's key files (`.cko`, `.cpo`) and search booster files.
 * **Afterwards:**
   * the writer and the read handles are opened again;
   * the sort orders, name lists and search results of the database are
@@ -231,14 +231,14 @@ Release build on the development Mac, through
 
 | Job | Database | Result | Time |
 |---|---|---|---|
-| Check Integrity | 2CBH Mega (24,783 entries) | no problems; 24 texts | 0.18 s |
-| Check Integrity | classic Mega (11,151,119 entries), before the set-up fix | 16 problems: 12 set-ups with impossible castling rights (e.g. entries 64687, 64740), two damaged move records, the known Chess960 record without a start position, one annotation record that does not parse | 133.8 s (8 workers) |
-| Check Integrity | classic Mega, after dropping impossible castling rights (2026-10-15) | 4 problems: the two damaged move records (3079389, absent piece ordinal; 7168922, no line terminator), the Chess960 record (489834), the annotation record (2455498) | 157.9 s (8 workers, with a Ghidra analysis running beside it) |
-| Find Double Games, defaults | 2CBH Mega | 4 doubles marked, 4 pairs kept | 0.64 s |
-| Find Double Games, Exact names and moves | 2CBH Mega | none | 0.23 s |
-| Remove Deleted Games | a copy of the 2CBH Mega with every tenth game marked | 2,476 removed, 22,307 kept, 39.9 → 37.9 MB, Check Integrity clean afterwards | 0.41 s |
+| Check Integrity | 2CBH test database (24,783 entries) | no problems; 24 texts | 0.18 s |
+| Check Integrity | classic test database (11,151,119 entries), before the set-up fix | 16 problems: 12 set-ups with impossible castling rights (e.g. entries 64687, 64740), two damaged move records, the known Chess960 record without a start position, one annotation record that does not parse | 133.8 s (8 workers) |
+| Check Integrity | classic test database, after dropping impossible castling rights (2026-10-15) | 4 problems: the two damaged move records (3079389, absent piece ordinal; 7168922, no line terminator), the Chess960 record (489834), the annotation record (2455498) | 157.9 s (8 workers, with a Ghidra analysis running beside it) |
+| Find Double Games, defaults | 2CBH test database | 4 doubles marked, 4 pairs kept | 0.64 s |
+| Find Double Games, Exact names and moves | 2CBH test database | none | 0.23 s |
+| Remove Deleted Games | a copy of the 2CBH test database with every tenth game marked | 2,476 removed, 22,307 kept, 39.9 → 37.9 MB, Check Integrity clean afterwards | 0.41 s |
 
-The doubles found in the 2CBH Mega look genuine:
+The doubles found in the 2CBH test database look genuine:
 * Bird–Smith from two sources, with the black player's first name only on
   one;
 * "Thomson" and "Thompson" against MacKenzie, twice;

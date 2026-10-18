@@ -4,9 +4,9 @@ Status: in progress on branch `game-list` (2026-10-13). The direction was agreed
 in conversation: scroll the whole list without pages, and sort by any column
 using a sort order the workbench keeps in its data folder.
 
-## What ChessBase does
+## What the reference app does
 
-Evidence is from CBase18.exe 18.1 (x64).
+Evidence is from the reference binary (x64).
 
 * **Sorting is a view.** `0x1402cb120` sorts the list window's items by a
   column index. It is bounded by the column count at `this+0xc0` and runs a
@@ -79,7 +79,7 @@ Entries that are not games sort first, with key 0.
 | Annotator, Source | Rank of the name |
 
 **Names.** Names are compared case-insensitively. Common Latin accents are
-removed first ("Ánand" sorts with "Anand"), and "ß" counts as "ss". ChessBase's
+removed first ("Ánand" sorts with "Anand"), and "ß" counts as "ss". The reference app's
 own collation was not traced.
 
 **Descending order.** It is the ascending order reversed, so equal keys
@@ -103,7 +103,7 @@ and the move file). The file is not used once those change. When the
 workbench saves into a database, it drops that database's sort, and the list
 sorts again, which rebuilds the file.
 
-**A changed name table goes unnoticed.** If ChessBase renames a player
+**A changed name table goes unnoticed.** If the reference app renames a player
 without touching the entry index, the order is not rebuilt. Rows still show
 the current names, but they may be out of order.
 
@@ -125,16 +125,16 @@ It is computed once per result and kept while the result is.
 ### Measurements
 
 Release build on the development Mac (10 cores, 16 GB; 8 threads). The
-example `cbh-reader/examples/sort.rs` was run on the private Mega Database
+example `cbh-reader/examples/sort.rs` was run on the private test database
 2025.
 
 | Database | Entries | Column | Build (warm) | Peak memory | File |
 |---|---|---|---|---|---|
-| Mega 2025, 2CBH family | 24,783 | White | 0.26 s | 8 MB | 99 KB |
-| Mega 2025, 2CBH family | 24,783 | Date | 0.06 s | 8 MB | 99 KB |
-| Mega 2025, classic | 11,151,119 | White | 0.84 s | 220 MB | 44.6 MB |
-| Mega 2025, classic | 11,151,119 | Date | 0.33 s | 188 MB | 44.6 MB |
-| Mega 2025, classic | 11,151,119 | Tournament | 0.67 s | 189 MB | 44.6 MB |
+| The test database, 2CBH family | 24,783 | White | 0.26 s | 8 MB | 99 KB |
+| The test database, 2CBH family | 24,783 | Date | 0.06 s | 8 MB | 99 KB |
+| The test database, classic | 11,151,119 | White | 0.84 s | 220 MB | 44.6 MB |
+| The test database, classic | 11,151,119 | Date | 0.33 s | 188 MB | 44.6 MB |
+| The test database, classic | 11,151,119 | Tournament | 0.67 s | 189 MB | 44.6 MB |
 
 **Cold cache.** The first run of the example took 44 s in all, almost
 entirely waiting on the disk while it opened the files and resolved the names
@@ -153,7 +153,7 @@ The database window's list has three tabs:
 | Players | `TOGGLETOURNPLAYERS` | Ctrl+Alt+P |
 | Tournaments | `TOGGLEPANETOURNAMENTS` | Ctrl+Alt+T |
 
-ChessBase shows these as panes of the database window.
+The reference app shows these as panes of the database window.
 
 **What a tab shows.** The Players and Tournaments tabs list every name that
 occurs in a game, alphabetically, using the collation of the sort orders.
@@ -204,7 +204,7 @@ pairings is a round robin: one column per opponent, results from the row
 player's side. Otherwise the table is Swiss: one column per round, giving the
 opponent's place, colour and result (e.g. "12w1"). Either layout can be
 chosen.
-* The Round robin button corresponds to ChessBase's `FORCEROUNDROBBIN`.
+* The Round robin button corresponds to the reference app's `FORCEROUNDROBBIN`.
 * Each result opens its game.
 
 **Columns.** Rank, name, Elo, the results, points, games, wins, two
@@ -219,7 +219,7 @@ tiebreaks and performance.
   2251–2275.
 
 **Evidence.**
-* The tiebreak names are ChessBase's. Its tiebreak table (`TiebreakType.cpp`,
+* The tiebreak names are the reference app's. Its tiebreak table (`TiebreakType.cpp`,
   `.rdata` around file offset `0x110f010`) lists:
   * Buchholz, Sum of Buchholz;
   * Median1/2 Buchholz, Cut1/2 Buchholz;
@@ -237,7 +237,7 @@ tiebreaks and performance.
   only the tiebreaks above. Choosing among the others is not implemented
   yet.
 
-**Measurements.** On the classic Mega (release, warm cache):
+**Measurements.** On the classic test database (release, warm cache):
 
 | Step | Result |
 |---|---|
@@ -258,14 +258,14 @@ the loaded game, open.
 * The backend still refuses to open the same files for reading and editing
   at once ("This database is already open; close it first").
 
-**Selection.** Selection follows ChessBase's database window:
+**Selection.** Selection follows the reference app's database window:
 * a click selects one game;
 * Ctrl-click (⌘ on macOS) adds or removes a game;
 * Shift-click extends to the game from the last one chosen;
 * Select All (`DBEDITSELECTALL`, Ctrl+A) selects the whole list.
 
 A selection is stored as ranges of rows. Selecting all 11 M rows of the
-classic Mega costs nothing until a command uses it.
+classic test database costs nothing until a command uses it.
 
 **Copy** (`DBEDITCOPY`, Ctrl+C) resolves the selection, or else the chosen
 row, to entry numbers. It follows the list's current order, search or sort,
@@ -277,7 +277,7 @@ database. It works only with a .2cbh database opened for editing.
   synced once. The paste shows progress and can be cancelled between
   batches.
 * Before it starts, the user agrees that annotations not decoded, or not
-  storable by ChessBase, are left out. The result counts the games affected.
+  storable by the reference app, are left out. The result counts the games affected.
 * Entries without readable moves are skipped and counted.
 * Pasting into the database the games came from is refused.
 * The target's opening tree records every pasted game in its journal and
@@ -296,17 +296,17 @@ does. It works only in a database opened for editing, on at most 50,000
 games at once.
 
 **Mark Games** (`MARKGAME`, +) toggles the user medal of every selected
-game, as ChessBase does (`MarkGamesCmd` → `0x1408d6140`, which calls
+game, as the reference app does (`MarkGamesCmd` → `0x1408d6140`, which calls
 `0x14013d510` for each game: medal word XOR `0x8000`).
-* A marked game shows a cyan dot beside its number. ChessBase calls it "a
+* A marked game shows a cyan dot beside its number. The reference app calls it "a
   user medal in cyan color" (50884).
-* The status repeats ChessBase's message 50885, "%d Games have been marked
+* The status repeats the reference app's message 50885, "%d Games have been marked
   or unmarked".
 * Medals are kept by Replace and travel with Paste and Convert to 2CBH.
 
 **Edit Game Data** (`DBTOOLSEDIT`, F2 in the list) sets the tournament
 (event and site), the annotator or the source of every selected game.
-* ChessBase's Set Tournament, Set Annotator and Set Source
+* The reference app's Set Tournament, Set Annotator and Set Source
   (`EditTournamentCmd`, `EditAnnotatorCmd`, `EditSourceCmd`) open their
   dialog with the first selected game's value. On OK they set that name for
   the whole selection: `InGridGameListWin` slots `0x420`, `0x440` and
@@ -317,7 +317,7 @@ game, as ChessBase does (`MarkGamesCmd` → `0x1408d6140`, which calls
 * Only the records' name ids are rewritten. Names are reused or added as
   when saving, and moves and annotations are not touched.
 * A new tournament gets the first selected game's date.
-* ChessBase's tournament details (type, place, category) and Set Game Title
+* The reference app's tournament details (type, place, category) and Set Game Title
   (the 2LID titles, not read) are not ported.
 
 Both work only in a database opened for editing. They handle at most 50,000
@@ -325,7 +325,7 @@ games at once, written in chunks of 2,000 with progress, and Stop between
 chunks. The selection stays after Mark Games, and after Edit Game Data
 unless the list is sorted.
 
-**Measurements.** Games of the classic Mega were copied into a new 2CBH file
+**Measurements.** Games of the classic test database were copied into a new 2CBH file
 in the scratch folder, the same way Paste does, by
 `cbh-reader/examples/copy_games.rs`:
 * 2,000 games in 1.0 s and 20,000 in 9.9 s, about 0.5 ms per game (warm
@@ -338,7 +338,7 @@ in the scratch folder, the same way Paste does, by
 
 ## Medals
 
-A game with any of ChessBase's other fifteen medals shows an amber dot
+A game with any of the reference app's other fifteen medals shows an amber dot
 after its number. Its tooltip names them, e.g. "Medals: Novelty, Endgame",
 in bit order (see [formats](formats.md) for the traced bits). The user
 medal keeps its cyan dot. Medals other than the user medal are shown only;

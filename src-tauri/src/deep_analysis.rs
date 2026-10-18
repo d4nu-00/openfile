@@ -1,4 +1,4 @@
-//! Deep Analysis: ChessBase's iterated tree analysis of one position (see
+//! Deep Analysis: the reference app's iterated tree analysis of one position (see
 //! docs/analysis.md). An engine of the user's analyses the tree's
 //! positions with several lines; lines within 70 centipawns of the best are
 //! followed, a little wider and deeper each iteration. The tree goes into
@@ -18,7 +18,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// ChessBase's score window: lines more than this below the best, or below
+/// The reference app's score window: lines more than this below the best, or below
 /// the line before them, are cut (`0x140b94da0` with 70, 70).
 pub const WINDOW: i32 = 70;
 /// Nodes in the tree at most; it stops growing then.
@@ -27,10 +27,10 @@ pub const MAX_NODES: usize = 400;
 pub const MAX_ITERATIONS: u32 = 30;
 /// Depth in plies at most.
 pub const MAX_DEPTH: usize = 12;
-/// Lines asked of the engine for one position at most (ChessBase keeps up
+/// Lines asked of the engine for one position at most (the reference app keeps up
 /// to 10).
 pub const MAX_LINES: usize = 10;
-/// ChessBase's base time: 4 s at the first iteration.
+/// The reference app's base time: 4 s at the first iteration.
 pub const BASE_MILLIS: u64 = 4_000;
 /// Moves of a line written at most.
 const MAX_LINE_MOVES: usize = 40;
@@ -46,7 +46,7 @@ pub struct DeepParams {
     /// Seconds; 0 runs until stopped.
     #[serde(default)]
     pub time_limit_secs: u64,
-    /// The first iteration's time per position, 4,000 ms as in ChessBase;
+    /// The first iteration's time per position, 4,000 ms as in the reference app;
     /// smaller values scale every time down (for tests).
     #[serde(default)]
     pub base_millis: Option<u64>,
@@ -81,9 +81,9 @@ pub struct Iteration {
     pub widths: [usize; 2],
 }
 
-/// ChessBase's schedule for iteration `i`: round(4 × 1.7^i) s per position,
+/// The reference app's schedule for iteration `i`: round(4 × 1.7^i) s per position,
 /// a depth of ⌊√(0.6 i) + 2.5⌋ plies and widths ⌊√(0.3 i) + 3.5⌋ and
-/// ⌊√(0.3 i) + 1.5⌋. `base` scales the time (4,000 for ChessBase's).
+/// ⌊√(0.3 i) + 1.5⌋. `base` scales the time (4,000 for the reference app's).
 pub fn iteration(i: u32, base: u64) -> Iteration {
     let seconds = (4.0 * 1.7f64.powi(i as i32)).round();
     let i = i as f64;
@@ -141,7 +141,7 @@ pub struct EngineLine {
     pub pv: Vec<String>,
 }
 
-/// How many of `lines` (best first) ChessBase keeps: it cuts where a line
+/// How many of `lines` (best first) the reference app keeps: it cuts where a line
 /// scores more than `best` below the first or more than `step` below the
 /// one before it.
 pub fn kept_lines(lines: &[EngineLine], best: i32, step: i32) -> usize {
@@ -285,7 +285,7 @@ impl Analyst for EngineAnalyst<'_> {
             }
         }
         let mut lines: Vec<EngineLine> = lines.into_values().collect();
-        // Lines arrive by MultiPV number; order them by score, as ChessBase
+        // Lines arrive by MultiPV number; order them by score, as the reference app
         // reads them, keeping the engine's order for equal scores.
         lines.sort_by_key(|l| std::cmp::Reverse(l.cp));
         if lines.is_empty() {
@@ -413,7 +413,7 @@ impl<'a, A: Analyst> Search<'a, A> {
             if let Some(limit) = self.time_limit
                 && i > 0
             {
-                // ChessBase stops once 80 % of the time has passed, or when
+                // The reference app stops once 80 % of the time has passed, or when
                 // the next iteration, predicted as the last one times its
                 // growth over the one before, would take over 125 % of it.
                 let limit = limit.as_secs_f64();
@@ -861,7 +861,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_schedule_follows_chessbase() {
+    fn the_schedule_follows_reference() {
         let it = |i| iteration(i, BASE_MILLIS);
         assert_eq!(
             it(0),

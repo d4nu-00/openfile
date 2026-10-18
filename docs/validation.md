@@ -73,7 +73,7 @@ Private reports and game exports remain outside the source repository.
 
 ## Newer-format cross-check (2026-10-13)
 
-The private Mega Database 2025 copy contains a classic family (11,151,119
+The private the test database copy contains a classic family (11,151,119
 entries) and a 2CBH family (24,783 entries) under the same name. Ordinal *n* in
 the 2CBH family corresponds to classic ordinal *n*, with reassigned name ids.
 
@@ -100,8 +100,8 @@ and an impossible en-passant file in entry 13409. Both are described in
 [compatibility](compatibility.md). The whole 2CBH comparison took under 10 s
 with a 1.4 ms maximum game load and about 10 MB read from the newer family.
 
-This establishes agreement between two ChessBase encodings of the same games.
-It does not cover 2CBH files written by other ChessBase versions, extended
+This establishes agreement between two encodings, by the reference app, of the same games.
+It does not cover 2CBH files written by other versions of the reference app, extended
 move tokens or 2CBA annotations.
 
 ## Annotation cross-check (2026-10-13)
@@ -117,7 +117,7 @@ before moves, NAGs, squares and arrows.
   nested size is not recovered. The 2CBA reader stops there and reports it;
   the classic CBA path decodes those games fully.
 * Classic entry 7289 has a text record that runs into the next record after a
-  NUL byte. ChessBase's own 2CBA copy ends the text at that NUL, and so does
+  NUL byte. The reference app's own 2CBA copy ends the text at that NUL, and so does
   the reader.
 
 Status counts: 8,017 games are fully represented. 564 are `partial`, because
@@ -147,20 +147,20 @@ The same comparison now also resolves annotators, sources and teams:
 The run took 14 s. Its output is kept outside the repository with the other
 comparison runs.
 
-The real macOS app was opened at a richly annotated Mega game (2CBH entry
+The real macOS app was opened at a richly annotated test database game (2CBH entry
 3763) using the command-line options described in the README. A WebKit
 snapshot taken in a debug build showed the decoded arrow and coloured square
 on the board, plus text before moves, comments and NAGs in the notation.
 
 ## Database writing (2026-10-13)
 
-Writing was checked against the Mega sample from two directions. Outputs stay
+Writing was checked against the test database sample from two directions. Outputs stay
 outside the repository.
 
 * **Move encoding.** The `encode_check` example re-encodes every 2CBH game of
   the sample from its decoded tree. 24,754 of 24,759 payloads are
-  byte-identical to ChessBase's own. This confirms the token table's
-  captured-piece order and ChessBase's chained variation markers. The other
+  byte-identical to the reference app's own. This confirms the token table's
+  captured-piece order and the reference app's chained variation markers. The other
   five are set-ups that store move number 0; the reader shows that as 1, and
   the writer stores 1.
 * **Write and read back.** The `write_sample` example copied games into new
@@ -173,7 +173,7 @@ outside the repository.
   * 5,000 games from the classic family, spread across all 11.15 million
     entries (every 2,203rd), all match, including classic set-ups and CBA
     annotations. One game holds two move symbols; the second goes to the free
-    position slot, as ChessBase stores $8 in the sample.
+    position slot, as the reference app stores $8 in the sample.
   * Two entries in each copy were replaced and marked deleted, and one was
     undeleted. Each read back as expected without changing the entry count.
 
@@ -188,13 +188,13 @@ Synthetic Rust tests cover:
 
 Frontend tests cover New, Open for Editing, Save, Replace and Delete.
 
-**Not yet verified:** opening these files in ChessBase itself. The files
-ChessBase needs are described in [writing](writing.md), with a checklist for
+**Not yet verified:** opening these files in the reference app itself. The files
+The reference app needs are described in [writing](writing.md), with a checklist for
 that test.
 
 ## Game-data search (2026-10-13)
 
-The `search` example ran whole-database searches on the Mega sample (release
+The `search` example ran whole-database searches on the test database sample (release
 build, warm cache):
 * Kasparov against Karpov, colours ignored: 193 games from the classic
   family's 11,151,119 entries in 4.3 s.
@@ -222,7 +222,7 @@ file. In the real app, Find Position on the Opera Game after 4...Bxf3 listed
 
 ## Opening tree (2026-10-13)
 
-The `tree` example built and queried trees on the Mega families (release
+The `tree` example built and queried trees on the test database families (release
 build, 8 decoding threads, development Mac with 10 cores and 16 GB):
 
 | Family | Build | File | Stored positions | Peak memory |
@@ -263,7 +263,7 @@ Annotation Palette and the paste fallback dialog.
 
 ## Game list: scrolling and sorting (2026-10-13)
 
-The `sort` example built sort orders on the Mega sample (release build, warm
+The `sort` example built sort orders on the test database sample (release build, warm
 cache, 8 threads). The classic family's 11,151,119 entries sorted by White in
 0.84 s, by Date in 0.33 s and by Tournament in 0.67 s. Each took 188–220 MB at
 peak and wrote a 44.6 MB file. The 2CBH family's 24,783 entries took
@@ -298,7 +298,7 @@ cover:
 
 ## Players, tournaments and crosstables (2026-10-13)
 
-The `names` example on the classic Mega (release, warm) listed 463,258
+The `names` example on the classic test database (release, warm) listed 463,258
 players in 0.58 s and 105,313 tournaments in 0.13 s. It found "Carlsen, M" in
 0.5 ms; Carlsen, Magnus has 6,925 games from 1999 to 2024. It built the
 crosstable of Tata Steel TOP 81st (Wijk aan Zee 2019, 10 players, 45 games,
@@ -326,7 +326,7 @@ hand: the winner's 7 points and SB 29.00 agree with the opponents' scores.
 `cbh-reader/examples/copy_games.rs` copies games the way Paste does, then
 reads every copy back and compares it. Into a new 2CBH file in the scratch
 folder, it copied:
-* 2,000 games of the classic Mega in 1.0 s;
+* 2,000 games of the classic test database in 1.0 s;
 * 20,000 games in 9.9 s, about 0.5 ms per game, warm.
 
 All copies matched their source in names, event, result and number of
@@ -355,7 +355,7 @@ open only one database.
 
 ## Opening games and drawing (2026-10-13)
 
-`src-tauri/examples/open_timing.rs` timed opening games of the classic Mega
+`src-tauri/examples/open_timing.rs` timed opening games of the classic test database
 in a release build: `load_entry` takes 0.3–0.8 ms on average, the book at
 most 4 ms and a tree-answered reference search at most 22 ms. A Find
 Position without a search booster, the reference pane's old fallback, took
@@ -384,7 +384,7 @@ mouse buttons.
 ## Game tabs (2026-10-13)
 
 **Tests.**
-* App tests cover the settings file: ChessBase's default of 8 tabs, checks
+* App tests cover the settings file: the reference app's default of 8 tabs, checks
   of the values, a round trip, and a damaged file read as the defaults
   without being overwritten. The document budget test now allows 16.
 * Frontend tests cover:
@@ -399,7 +399,7 @@ mouse buttons.
   * New Game opening a second tab;
   * the tab state functions.
 
-A debug build on the classic Mega opened entry 27878 at start, then ran
+A debug build on the classic test database opened entry 27878 at start, then ran
 Board Window: the snapshot shows both game tabs beside the database tab.
 
 ## Engines (2026-10-13)
@@ -420,7 +420,7 @@ Board Window: the snapshot shows both game tabs beside the database tab.
     Alt+F2 starting and removing it;
   * the earlier engine tests, now with kibitzers that start at once.
 
-A debug build on the classic Mega ran Default Kibitzer with Stockfish 17
+A debug build on the classic test database ran Default Kibitzer with Stockfish 17
 installed in a temporary settings file with `MultiPV` 3: the snapshot shows
 the pane analysing node 30 with its lines. The settings file was deleted
 afterwards.
@@ -461,11 +461,11 @@ Fine = 35), the "??" rule, the one edit, and a stopped check adding nothing.
 
 ## Names with figurines (2026-10-13)
 
-Of the classic Mega's 463,262 players, 362 name fields are not ASCII and
+Of the classic test database's 463,262 players, 362 name fields are not ASCII and
 some were not valid UTF-8; their bytes were 0xA4 (323), 0xA5 (289), 0xA3
 (111), 0xA6 (43), 0xA2 (10), 0xA0 (3) and 0xAA (1). The 0xA2–0xA6 names are
 opening lines ("1.b3 e5 2.?b2 ?c6 3.e3", "10...?b8"), where the bytes are
-the pieces K, Q, N, B, R of ChessBase's figurine fonts: "?b2" after b3 e5 is
+the pieces K, Q, N, B, R of the reference app's figurine fonts: "?b2" after b3 e5 is
 Bb2, "?c6" Nc6, "ed5 ?d5" Qd5, "?fd8" Rfd8, "?b1" Kb1. 0xA0 occurs in real
 names ("Rodrigo Pereira") as Windows-1252's no-break space. Classic names are
 now read as UTF-8 when valid, otherwise as Windows-1252 with 0xA2–0xA6 shown
@@ -474,7 +474,7 @@ opening line) is not known; it shows as "ª".
 
 ## Crosstables through a sort order (2026-10-14)
 
-`cbh-reader/examples/crosstable.rs` timed crosstables of the classic Mega
+`cbh-reader/examples/crosstable.rs` timed crosstables of the classic test database
 both ways (release, warm): the tournament of entry 27878 (18 players) took
 3.45–3.55 s by scanning the entry index and 4–9 ms through a sort order by
 Tournament; that of entry 5,000,000 (174 players) 3.46 s and 46 ms. The
@@ -492,7 +492,7 @@ stale.
 ## Player statistics (2026-10-14)
 
 `cbh-reader/examples/player_stats.rs` scored three players of the classic
-Mega (release, warm). Carlsen: 6,925 games found in 0.056–0.066 s by 8
+test database (release, warm). Carlsen: 6,925 games found in 0.056–0.066 s by 8
 threads and scored in 0.04–0.06 s. As White he has +2045 =1006 −464 (72 %,
 performance 2788); as Black +1551 =1222 −637 (63 %, 2724). Kasparov: 2,735
 games in 0.063 s; Nakamura: 9,288 in 0.063 s.
@@ -513,14 +513,14 @@ above E99, which now count as none.
 
 The measurements are in [search](search.md#measurements-classic-mega-2026-10-14).
 
-* **Parallel scans.** On the classic Mega the parallel game-data search, Find
+* **Parallel scans.** On the classic test database the parallel game-data search, Find
   Position and booster build returned the same results as before. The
   Ruy Lopez search found the same first hits (entries 231, 410, 412, 476,
   730, each at node 5). The Opera Game position gave the same 1,035 hits
   with and without the booster.
 * **Source reads.** The first parallel Find Position took 651 s for the
   Ruy Lopez. `time` showed more system time than user time, and on the 2CBH
-  Mega one worker spent 2.0 s in the kernel against 0.7 s of chess work.
+  test database one worker spent 2.0 s in the kernel against 0.7 s of chess work.
   Positional reads and a path check at most every 200 ms brought it to
   108 s. A per-read `fstat` was also tried: it cost 1.7× on eight workers
   and was dropped.
@@ -544,7 +544,7 @@ The measurements are in [search](search.md#measurements-classic-mega-2026-10-14)
 
 ## Chess960 and special CBG records (2026-10-14)
 
-A census of the classic Mega's CBG headers counted:
+A census of the classic test database's CBG headers counted:
 * 892 Chess960 records with a set-up (`0x4a`) and one without (`0x0a`);
 * 5 records with flag `0x04`, 4 with `0x05` and 2 with `0x01`.
 
@@ -574,7 +574,7 @@ A census of the classic Mega's CBG headers counted:
     Chess960 position and off after it, and that an engine without the
     option is refused.
 * **Real app.** A debug snapshot showed Leko–Adams replayed from the
-  classic Mega.
+  classic test database.
 
 ## Tablebases in the notation (2026-10-14)
 
@@ -607,7 +607,7 @@ A census of the classic Mega's CBG headers counted:
   * Type, Remove, Pin, folder listing, Add/Remove Folder Shortcut, Details
     and Folders work.
 * **Real app.** A debug snapshot used a temporary settings file holding both
-  Mega families, a missing database and the Mega's folder, and the file was
+  test database families, a missing database and the test database's folder, and the file was
   deleted afterwards. The screen showed 11,151,119 entries (CBH) and 24,783
   (2CBH), read from the header records alone. The first attempt was taken
   before the cold first header reads had finished, so the screen now says
@@ -616,10 +616,10 @@ A census of the classic Mega's CBG headers counted:
 ## Keyboard symbols and Tactical Analysis symbols (2026-10-14)
 
 * **Evidence.** The symbol popups, their order and the score-to-symbol
-  table were read from CBase18 18.1 statically. They are listed in
+  table were read from the reference binary statically. They are listed in
   [game window](game-window.md#annotation-symbols-from-the-keyboard) and
   [engines](engines.md#tactical-analysis-blunder-check).
-* **Mega check.** All 24,759 annotation blocks of the Mega's 2CBA file were
+* **test database check.** All 24,759 annotation blocks of the test database's 2CBA file were
   read once, with a scratch example that was not kept, to count symbols per
   slot. "Only move" is NAG 8 (34 games) and "=" mostly 11 (904 games,
   against 137 for 10). No game has Zugzwang.
@@ -636,7 +636,7 @@ A census of the classic Mega's CBG headers counted:
 ## Convert to 2CBH (2026-10-14)
 
 * **Measurements.** `cbh-reader/examples/convert.rs` converted three
-  50,000-entry slices of the classic Mega and the whole 2CBH Mega into the
+  50,000-entry slices of the classic test database and the whole 2CBH test database into the
   scratch folder. The outputs were deleted afterwards. Times, sizes and the
   estimate against the size written (1.11–1.57×) are in
   [conversion](conversion.md#measurements). Chess960 games (42 in the last
@@ -657,8 +657,8 @@ A census of the classic Mega's CBG headers counted:
 ## Database maintenance (2026-10-14)
 
 * **Measurements** (`cbh-reader/examples/maintain.rs`, release, warm):
-  * Check Integrity on the 2CBH Mega found no problems (0.18 s).
-  * On the classic Mega it took 133.8 s and found 16 problems in
+  * Check Integrity on the 2CBH test database found no problems (0.18 s).
+  * On the classic test database it took 133.8 s and found 16 problems in
     11,151,119 entries. 12 are set-ups whose castling rights the board
     does not allow, which the reader refused and earlier spot checks had
     not met. Two are damaged move records. One is the known Chess960
@@ -666,7 +666,7 @@ A census of the classic Mega's CBG headers counted:
     does not parse. (This first listed 14 castling set-ups: the example
     prints only the first five problems, and the two damaged move records
     were counted with them. The 2026-10-15 re-run below lists them all.)
-  * Find Double Games marked 4 games of the 2CBH Mega with the defaults.
+  * Find Double Games marked 4 games of the 2CBH test database with the defaults.
   * Remove Deleted Games on a scratch copy with every tenth game marked
     removed 2,476 entries in 0.41 s, and Check Integrity afterwards was
     clean. The copy was deleted. See [maintenance](maintenance.md#measurements).
@@ -694,7 +694,7 @@ A census of the classic Mega's CBG headers counted:
 
 ## Mark Games and selection edits (2026-10-15)
 
-* **Mega check.** The medal word at 2CBH bytes 130–131 equals classic
+* **test database check.** The medal word at 2CBH bytes 130–131 equals classic
   bytes 37–38 read big-endian in all 8,790 records of the first 24,783
   entries that have medals. The user medal (bit 15) is set in 11 games.
 * **App tests.**
@@ -705,7 +705,7 @@ A census of the classic Mega's CBG headers counted:
   * Moves are unchanged.
   * An empty request or a name with a line break is refused.
 * **Reader tests.** A conversion keeps each entry's medal word.
-* **Frontend tests.** "+" marks the Shift-selection and reports ChessBase's
+* **Frontend tests.** "+" marks the Shift-selection and reports the reference app's
   message. F2 opens the dialog, which sets only the ticked field for the
   same selection.
 
@@ -727,7 +727,7 @@ A census of the classic Mega's CBG headers counted:
 ## Deep Analysis and analysis jobs (2026-10-15)
 
 * **Unit tests** (`deep_analysis.rs`):
-  * ChessBase's schedule: 4 s, depth 2 and widths 3/1 at iteration 0; 7 s,
+  * The reference app's schedule: 4 s, depth 2 and widths 3/1 at iteration 0; 7 s,
     depth 3, 4/2 at iteration 1; 6,735 s, depth 5, 5/3 at iteration 14.
   * Time per position: half as much again at the root, 0.7 at the deepest
     ply, at least 3 s.
@@ -745,7 +745,7 @@ A census of the classic Mega's CBG headers counted:
   * A game open in a tab and a game changed since its job was added are
     skipped with their reasons. A Deep Analysis job goes in, and a
     restarted job runs once the tab is closed.
-  * ChessBase's minimum times (15 s, 30 s), the 1,000-job bound, Skip,
+  * The reference app's minimum times (15 s, 30 s), the 1,000-job bound, Skip,
     Remove, New analysis jobs, and refusal on a read-only database.
 * **Real engine** (`UCI_ENGINE=/opt/homebrew/bin/stockfish`, start
   position, 100 ms base and a 3 s limit): 2 iterations, 24 positions,
@@ -757,7 +757,7 @@ A census of the classic Mega's CBG headers counted:
     Cancel adds nothing.
   * Create analysis jobs sends the selection and the settings, then Start
     runs the queue.
-  * The time warning holds ChessBase's minimum.
+  * The time warning holds the reference app's minimum.
   * Add Analysis Job sends the board position; Restart sends its action.
 
 ## Opening classification (2026-10-15)
@@ -775,7 +775,7 @@ A census of the classic Mega's CBG headers counted:
     Queen's Gambit, a set-up, a Petrov after a variation) into B90, D35 and
     C42 changes, one unchanged and one unclassified;
   * "Only games without a code" keeps the wrong code;
-  * the written codes read back, and a ChessBase sub-classification on an
+  * the written codes read back, and a reference app sub-classification on an
     unchanged code survives;
   * a word beyond E99 is refused before anything is written;
   * a cancelled run returns nothing.
@@ -789,8 +789,8 @@ A census of the classic Mega's CBG headers counted:
     `setTags` edit with the code.
   * Set ECO Codes starts with "Only games without an ECO code" ticked and
     reports the counts.
-* **Measurements** on the Mega, read-only: see [openings](openings.md).
-  * 2CBH family: 24,759 games in 0.26 s, the same main code as ChessBase
+* **Measurements** on the test database, read-only: see [openings](openings.md).
+  * 2CBH family: 24,759 games in 0.26 s, the same main code as the reference app
     for 76.4 % of coded games.
   * Classic: 11.15 M games in 188.5 s with 8 workers, 68.6 %.
 
@@ -800,7 +800,7 @@ A census of the classic Mega's CBG headers counted:
   * 60 reach 1.e4, with results 10/20/30;
   * history: the earliest (1990) and latest (2019) games, years, and
     5-year fashion buckets against the database's years;
-  * players: the 2700 player as Black at 75 %, and ChessBase's notable
+  * players: the 2700 player as Black at 75 %, and the reference app's notable
     rule picking the two regular players over twenty one-game club players;
   * move rows from the games read (c5 40, e6 20, with "played by" and
     scores), then from the opening tree with performance once one is built;
@@ -810,8 +810,8 @@ A census of the classic Mega's CBG headers counted:
 * **Frontend test:** the report shows its title, line, results, history,
   year chart, players, moves with "played by", and the main line numbered
   after the position.
-* **Measurements:** see [openings](openings.md#measurements-1). The 2CBH Mega
-  report of 1.e4 c5 takes 4.5 s; the classic Mega's Najdorf takes 23.8 s
+* **Measurements:** see [openings](openings.md#measurements-1). The 2CBH test database
+  report of 1.e4 c5 takes 4.5 s; the classic test database's Najdorf takes 23.8 s
   warm.
 
 ## Variation tools and medal names (2026-10-15)
@@ -831,7 +831,7 @@ A census of the classic Mega's CBG headers counted:
 * **Reader test:** medal names by bit.
 * **Frontend tests:** the ribbon commands and the "Including the mainline?"
   question send their edits; a game's medals are named in the list.
-* **Mega check** (read-only): 62 medalled 2CBH records, mostly Endgame
+* **test database check** (read-only): 62 medalled 2CBH records, mostly Endgame
   (22) and Best game (13).
 
 ## Distribution and remaining acceptance
@@ -840,7 +840,7 @@ Git-tracked source paths are checked against an explicit allowlist. Private
 home paths, database families, extracted binaries, archives and unapproved
 PGN fixture names are rejected. The full locked external Rust dependency graph
 and runtime npm graph have recorded licenses and checksummed upstream notices;
-build outputs are excluded from source. No original ChessBase resources or
+build outputs are excluded from source. No original resources of the reference app or
 commercial game corpus is included. No engine is bundled.
 
 The committed CI matrix configures `windows-latest`, `macos-latest` and
@@ -855,7 +855,7 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
 
 ## Set-ups with impossible castling rights (2026-10-15)
 
-* **Finding.** Twelve classic Mega set-ups store castling rights that the
+* **Finding.** Twelve classic test database set-ups store castling rights that the
   board does not allow (entries 64687, 64740, 68207, 96531, 96535 and seven
   others): games taken up in the middle, mostly from 1934–1946, with K and k
   (bits 2 and 8, or 2 and 4) set while the kings stand on g1/g8 or elsewhere.
@@ -865,15 +865,15 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
   (`setup_game` in `cbh-reader/src/moves/setup.rs`, shared by classic and
   2CBG set-ups). Standard records are read as standard chess before
   Chess960, so a stored right is never taken for a Chess960 one. A
-  temporary counter over the whole classic Mega found no standard record
+  temporary counter over the whole classic test database found no standard record
   that only the Chess960 reading accepted, so no other game changes.
 * **Result.** All twelve now decode to their last move with plausible
   play. Check Integrity on the
-  classic Mega, release build, 8 workers, warm: 157.9 s with a Ghidra
+  classic test database, release build, 8 workers, warm: 157.9 s with a Ghidra
   analysis running beside it, 4 problems instead of 16, namely two damaged
   move records (3079389, 7168922), the Chess960 record without a start
   position (489834) and the annotation record (2455498).
-* **Not traced.** How ChessBase itself treats these rights: its 2CBH copies
+* **Not traced.** How the reference app itself treats these rights: its 2CBH copies
   of these games are outside the 24,783-entry 2CBH sample, and its set-up
   validation was not followed.
 * **Tests.** `setups.rs` builds set-ups with kings on g1/g8 and K, k set
@@ -882,7 +882,7 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
 
 ## Prepare against White or Black (2026-10-15)
 
-* **Measurements** on the classic Mega, read-only: see
+* **Measurements** on the classic test database, read-only: see
   [preparation](preparation.md#measurements). Player A with White: 3,515
   games, all readable; 14 repertoire lines.
 * **Tests.** Reader tests answer positions from kept main lines, follow the
@@ -897,7 +897,7 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
 
 * **Measurements** on both Megas, read-only: see
   [player dossier](player-dossier.md#measurements).
-* **Tests.** Reader tests check ChessBase's band tables, the per-colour
+* **Tests.** Reader tests check the reference app's band tables, the per-colour
   tally (score rounding, performance, game lengths, draws and quick draws,
   forfeits left out) and the score by rating band. An app test builds the
   dossier of a scratch 2CBH player: score bands by colour, quick draws,
@@ -906,13 +906,13 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
   Frontend tests open it with Ctrl+Alt+D, check the workbench's wording
   and that missing values show as nothing, list an opponent's games and
   load a mate.
-* **Real app.** A debug snapshot of a 446-game player of the 2CBH Mega
+* **Real app.** A debug snapshot of a 446-game player of the 2CBH test database
   showed "null%" for missing values; the dialogs (and Player statistic's
   score) now treat null as missing.
 
 ## Tournament report (2026-10-16)
 
-* **Measurements** on the classic Mega, read-only: see
+* **Measurements** on the classic test database, read-only: see
   [tournament report](tournament-report.md#measurements).
 * **Tests.** An app test reports a scratch 2CBH tournament of three players:
   rounds in order with the unnumbered game last, the earliest date, the
@@ -921,18 +921,18 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
   refuses entries out of range. Frontend tests open the report from the
   Tournaments list and from the Cross table, apply the round range, trim
   unknown date parts, list a round's games and load a game.
-* **Real app.** A debug snapshot of a 17-round match of the 2CBH Mega showed
+* **Real app.** A debug snapshot of a 17-round match of the 2CBH test database showed
   dates as "1905.??.??"; unknown parts are now left out.
 
 ## Error Report (2026-10-16)
 
-* **Measurements** with Stockfish 17 on the classic Mega, read-only: see
+* **Measurements** with Stockfish 17 on the classic test database, read-only: see
   [error report](error-report.md#measurements). The first version's
-  estimates were 400–700 points low; tracing showed ChessBase divides the
+  estimates were 400–700 points low; tracing showed the reference app divides the
   plain losses by weights of at least 2 for ordinary moves, and the
   corrected version came within 82–292 points on three strong players'
   latest games.
-* **Tests.** Unit tests check ChessBase's Blunder Elo curve, the error
+* **Tests.** Unit tests check the reference app's Blunder Elo curve, the error
   value, the bands, severity, distribution, transitions, phase and opponent
   strength. An app test runs `mock-uci legal` over a scratch 2CBH: one
   player's moves or both sides', a game without the player skipped, losses,
@@ -942,7 +942,7 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
 
 ## Annotation and medal search (2026-10-16)
 
-* **Measurements** on the classic Mega, read-only: see
+* **Measurements** on the classic test database, read-only: see
   [search](search.md#annotations-and-medals-tabs-2026-10-16). Each search
   took about 1 s, reading only the annotation records of annotated games.
 * **Tests.** A reader test writes a scratch 2CBH with texts, symbols,
@@ -955,7 +955,7 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
 
 ## Databases in iCloud Drive (2026-10-18)
 
-* **The report.** Opening the classic Mega "took forever". The backend's
+* **The report.** Opening the classic test database "took forever". The backend's
   open (`src-tauri/examples/open_timing.rs`, release build) had not returned
   after ten minutes. A stack sample showed it blocked in `pread` with no CPU
   time, reading a name table's header.
@@ -971,11 +971,11 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
 * **The change.** `cbh_reader::companions::not_downloaded` lists the files
   opening would read that are dataless; `stat` reports the flag
   (`SF_DATALESS`) without starting a download (82 ms cold, 0.4 ms warm on
-  the Mega; `cbh-reader/examples/cloud.rs`). Before opening, the frontend
+  the test database; `cbh-reader/examples/cloud.rs`). Before opening, the frontend
   asks; **Download and Open** requests each file with `brctl download` (or
   a one-byte read) and waits, reporting finished files and bytes in the
   status bar, until all are local; **Stop** ends the wait.
 * **Tests.** A reader test and an app test check that a database on disk
   needs no download and that the download returns at once. Frontend tests
   cover Download and Open, declining, and a stopped download. Dataless
-  files cannot be made in a test; the detection was checked on the Mega.
+  files cannot be made in a test; the detection was checked on the test database.

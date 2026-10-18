@@ -109,7 +109,7 @@ function Bars({
 
 /**
  * Opening Report: what the database says about the board position, after
- * ChessBase's report (title, history, players, moves, main line).
+ * The reference app's report (title, history, players, moves, main line).
  */
 export function OpeningReportDialog({
   report,
@@ -253,8 +253,8 @@ export function OpeningReportDialog({
                   </>
                 )}
                 <p className="hint">
-                  Not in this report: ChessBase's plans, "You should play"
-                  recommendations, critical lines, opening keys and photos.
+                  Not in this report: plans, "You should play" recommendations,
+                  critical lines, opening keys and photos.
                 </p>
               </>
             )}

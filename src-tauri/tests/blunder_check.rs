@@ -57,7 +57,7 @@ fn moves_losing_the_threshold_are_found_and_annotated_in_one_edit() {
     let f = &report.findings[0];
     assert_eq!((f.node, f.loss), (1, 34));
     assert_eq!((f.best.as_str(), f.played.as_str()), ("+0.17", "-0.17"));
-    // Every position is "=" for ChessBase's symbols, so none changes.
+    // Every position is "=" for the reference app's symbols, so none changes.
     assert!(report.evaluations.is_empty());
     // A larger threshold, or only Black's moves, finds nothing.
     let none = r

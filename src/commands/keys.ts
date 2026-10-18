@@ -1,4 +1,4 @@
-/** ChessBase-style shortcut strings ("Ctrl+Shift+K", "Alt+F2", "+"). */
+/** reference-app-style shortcut strings ("Ctrl+Shift+K", "Alt+F2", "+"). */
 export const isMac =
   typeof navigator !== "undefined" &&
   /Mac|iPhone|iPad/.test(navigator.platform);
@@ -30,7 +30,7 @@ const macReserved = new Set(["Ctrl+W", "Ctrl+Q", "Ctrl+H", "Ctrl+M"]);
 
 export function matches(shortcut: string, event: KeyboardEvent) {
   const { mods, key } = split(shortcut);
-  // ChessBase's Ctrl is the platform command key; accept either on all hosts.
+  // The reference app's Ctrl is the platform command key; accept either on all hosts.
   const ctrl = event.ctrlKey || event.metaKey;
   if (mods.has("Ctrl") !== ctrl) return false;
   if (mods.has("Alt") !== event.altKey) return false;

@@ -15,7 +15,7 @@ const TITLES: Record<SymbolSlot, string> = {
 };
 
 /**
- * The popup ChessBase shows when a symbol key is typed in the game window:
+ * The popup the reference app shows when a symbol key is typed in the game window:
  * "!" or "?" for move symbols, "=" for evaluations, "$" for prefixes. The
  * first entry, "(none)", clears the group. Arrow keys and Enter choose,
  * Escape closes.

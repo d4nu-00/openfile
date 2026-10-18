@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { BlunderParams, InstalledEngine } from "../api/types";
 
-/** ChessBase's thresholds, in centipawns (`0x14042bf80`). */
+/** the reference app's thresholds, in centipawns (`0x14042bf80`). */
 export const thresholds = { fine: 35, medium: 55, coarse: 150 } as const;
 
 /**
@@ -50,7 +50,7 @@ export function BlunderCheckDialog({
         onSubmit={(e) => {
           e.preventDefault();
           if (valid && engine && !running)
-            // As ChessBase: Time × 500 ms for each position.
+            // As the reference app: Time × 500 ms for each position.
             onStart(
               {
                 engine,

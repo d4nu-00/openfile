@@ -1,8 +1,8 @@
-//! Player dossier (ChessBase's `PLAYERDOSSIER`): the statistics ChessBase's
+//! Player dossier (the reference app's `PLAYERDOSSIER`): the statistics the reference app's
 //! dossier writes about a player, from the player's games. See
 //! docs/player-dossier.md.
 //!
-//! ChessBase counts only games with a normal result (1-0, ½-½, 0-1) here;
+//! The reference app counts only games with a normal result (1-0, ½-½, 0-1) here;
 //! the band tables are its own (`.rdata` `0x1411f7880`, `0x1411f78b0`,
 //! `0x1411f78d0`).
 use crate::{CbhError, Database, player_stats::PlayerGame, prepare::map_games, tree::DP};
@@ -10,7 +10,7 @@ use std::sync::atomic::AtomicBool;
 
 /// The score bands (`0x140839cf0`): the player's score less 55 % with White
 /// or 45 % with Black, in percentage points. Band 0 is the worst, 3 is
-/// about as expected and 6 the best. ChessBase's words for the bands are
+/// about as expected and 6 the best. The reference app's words for the bands are
 /// its own text and are not used; the dialog words them itself.
 pub const SCORE_BANDS: [i32; 8] = [-100, -20, -8, -2, 2, 8, 20, 100];
 /// Average length in moves (`0x140838f90`): band 0 is the shortest, 3
@@ -24,13 +24,13 @@ pub const QUICK_DRAW_MOVES: u8 = 20;
 /// Games whose last position is read for mates at most: the latest.
 pub const MAX_MATE_GAMES: usize = 20_000;
 
-/// The band of `bands` holding `value`, as ChessBase looks it up: `low <=
+/// The band of `bands` holding `value`, as the reference app looks it up: `low <=
 /// value < high`; None outside the table.
 pub fn band(bands: &[i32], value: i32) -> Option<usize> {
     bands.windows(2).position(|w| w[0] <= value && value < w[1])
 }
 
-/// What ChessBase tallies for a group of games (`0x140838a30`).
+/// What the reference app tallies for a group of games (`0x140838a30`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct Tally {
     white_wins: u32,
@@ -51,7 +51,7 @@ pub struct ColourStats {
     pub white_wins: u32,
     pub draws: u32,
     pub black_wins: u32,
-    /// The player's score in percent, rounded as ChessBase does; with one
+    /// The player's score in percent, rounded as the reference app does; with one
     /// colour only.
     pub score: Option<u32>,
     /// Its band in [`SCORE_BANDS`].
@@ -167,7 +167,7 @@ pub fn colour_stats(games: &[&PlayerGame], white: Option<bool>) -> ColourStats {
 }
 
 /// The player's score by the opponent's rating, in bands of 50 from 1000 to
-/// 2999, as ChessBase tallies it (`0x1408369a0`); bands without games are
+/// 2999, as the reference app tallies it (`0x1408369a0`); bands without games are
 /// left out.
 pub fn rating_bands(games: &[PlayerGame]) -> Vec<RatingBand> {
     let mut bands = [(0u32, 0u32); 40];
@@ -258,7 +258,7 @@ mod tests {
     }
 
     #[test]
-    fn bands_follow_chessbase_s_tables() {
+    fn bands_follow_reference_tables() {
         assert_eq!(band(&SCORE_BANDS, -55), Some(0));
         assert_eq!(band(&SCORE_BANDS, 0), Some(3));
         assert_eq!(band(&SCORE_BANDS, 8), Some(5));

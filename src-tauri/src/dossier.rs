@@ -1,5 +1,5 @@
 //! Player dossier (`PLAYERDOSSIER`; see docs/player-dossier.md): the
-//! sections of ChessBase's dossier that the user's database can supply.
+//! sections of the reference app's dossier that the user's database can supply.
 //! The player's games are kept like the player statistics', so the rows of
 //! its lists open their games.
 use crate::{

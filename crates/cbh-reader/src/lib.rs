@@ -26,7 +26,7 @@ pub mod v2;
 pub use database::*;
 pub use error::CbhError;
 pub use limits::ReadLimits;
-/// The PGN tag that keeps a ChessBase result PGN cannot express: a forfeit
+/// The PGN tag that keeps a reference app result PGN cannot express: a forfeit
 /// ("+:-", "=:=", "-:+") or "0-0".
 pub const RESULT_TAG: &str = "CBResult";
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]

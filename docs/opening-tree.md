@@ -5,12 +5,12 @@ conversation: build the tree from the user's own databases, store it in the
 app's data folder like the search booster, and answer the reference search
 from it.
 
-## What ChessBase shows
+## What the reference app shows
 
-ChessBase's book pane (game window, `OPENBOOK` Ctrl+F12, `TOGGLEBOOKPANE`
+The reference app's book pane (game window, `OPENBOOK` Ctrl+F12, `TOGGLEBOOKPANE`
 Ctrl+Shift+F12 for the extra pane outside the notation tabs) lists the moves
 of the current position. The column headers are plain strings in
-CBase18.exe 18.1, added in this order by the code at `0x1409aef30`:
+The reference binary, added in this order by the code at `0x1409aef30`:
 
 | Header | String VA | Shown |
 |---|---|---|
@@ -73,7 +73,7 @@ and their games did not reach the position over the board.
   are considered. A position repeated within one game counts once.
 * **Which positions are stored.** Only positions that the main lines of at
   least 5 games reach are stored. This keeps the file small: in a 446,000-game
-  sample of the classic Mega, requiring 5 games instead of 2 cut the stored
+  sample of the classic test database, requiring 5 games instead of 2 cut the stored
   positions from 590,829 to 153,847 but the stored game references only from
   7.9 M to 6.8 M.
 * **What is stored.** For each stored position and each next move: games,
@@ -109,13 +109,13 @@ leading to the current node.
    too many games would need replaying, the reference search falls back to
    Find Position (with the search booster when there is one). Without a
    booster, a database of more than 200,000 entries is not scanned until
-   the user asks (**Search all games**): on the classic Mega such a scan takes
+   the user asks (**Search all games**): on the classic test database such a scan takes
    23 minutes (see [game window](game-window.md)). The book pane says the
    position is not in the tree.
 
 **Known gap.** A game that reaches an unstored position by another move order
 is not found in step 2. Checked against a full scan of every main line, 2,965
-of 3,000 random lines from the 2CBH Mega were exact. The rest missed such
+of 3,000 random lines from the 2CBH test database were exact. The rest missed such
 transposed games or started from set-up positions, and no answer listed a
 wrong game. Find Position (Hard Disk) always searches every game, variations
 included.
@@ -128,7 +128,7 @@ Position when there is no tree. Every move starts a new request; the previous
 one is cancelled, so a slow fallback search never holds up the board. Opening
 a game from the list selects the position found.
 
-The reference database is the open database. ChessBase's separate reference
+The reference database is the open database. The reference app's separate reference
 database setting is not implemented yet.
 
 ## Saving into a database with a tree
@@ -149,8 +149,8 @@ threads). Details are in [validation](validation.md).
 
 | Database | Games | Build | Tree file | Stored positions |
 |---|---|---|---|---|
-| Mega 2025, 2CBH family | 24,759 | 3.3 s | 0.8 MB | 8,085 |
-| Mega 2025, classic | 11,148,461 | 9 min 45 s | 686 MB | 3,576,062 |
+| The test database, 2CBH family | 24,759 | 3.3 s | 0.8 MB | 8,085 |
+| The test database, classic | 11,148,461 | 9 min 45 s | 686 MB | 3,576,062 |
 
 The classic build peaked at 0.8 GB of memory. Its temporary file of packed
 main lines (about 1.3 GB, estimated from its record size of 6 bytes plus 2 per move) is deleted at the end. A stored position is answered

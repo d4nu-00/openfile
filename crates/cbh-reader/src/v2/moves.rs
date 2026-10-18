@@ -302,7 +302,7 @@ impl Reader<'_> {
 /// Set-up start: `0xfffb`, move number, side to move (low byte, 1 = Black)
 /// with castling rights (high byte, classic bit order), a word that is zero in
 /// every sample, one placement token per piece, then `0xfffc` and the tree.
-/// Matches the classic 28-byte setups of all 597 shared Mega Database games.
+/// Matches the classic 28-byte setups of all 597 shared test database games.
 fn setup(words: &[u16]) -> Result<(Game, usize), CbhError> {
     let controls = words.get(1..4).ok_or(CbhError::Truncated)?;
     let (number, turn, extra) = (controls[0], controls[1], controls[2]);

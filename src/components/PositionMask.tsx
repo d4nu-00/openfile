@@ -68,7 +68,7 @@ function PieceIcon({ piece }: { piece: string }) {
 }
 
 /**
- * The search mask's position tab, after ChessBase's dialog 314: three
+ * The search mask's position tab, after the reference app's dialog 314: three
  * boards ('Look for', 'Or', 'Exclude'), mirroring and a move window. With
  * Exact position, the 'Look for' board is searched as a whole position.
  */
@@ -147,7 +147,7 @@ export function PositionMask({
     setBoard(name, squares);
   }
 
-  // White's pieces in one row, Black's in the next, as ChessBase's palette.
+  // White's pieces in one row, Black's in the next, as the reference app's palette.
   const palette = [...PALETTE, ...PALETTE.map((p) => p.toLowerCase())].filter(
     (p) => !(exact && p.toLowerCase() === "x"),
   );
@@ -219,7 +219,7 @@ export function PositionMask({
             type="checkbox"
             checked={exact}
             onChange={(e) =>
-              // Patterns start with either side to move, as ChessBase's.
+              // Patterns start with either side to move, as the reference app's.
               setOption(
                 e.target.checked
                   ? { exact: true }
@@ -323,7 +323,7 @@ export function PositionMask({
             </label>
             <label
               className="mask-check"
-              title="ChessBase's sacrifice test was not traced"
+              title="The sacrifice test is not available yet"
             >
               <input type="checkbox" disabled />
               Sacrifice

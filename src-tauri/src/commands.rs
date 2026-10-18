@@ -70,7 +70,7 @@ pub struct EntryDto {
     /// Marked with the user medal (Mark Games).
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub marked: bool,
-    /// ChessBase's other medals of the game, by name.
+    /// The reference app's other medals of the game, by name.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub medals: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

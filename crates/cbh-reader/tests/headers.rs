@@ -77,7 +77,7 @@ fn text_record_does_not_expose_game_fields() {
     assert!(r.moves_offset.is_none());
 }
 #[test]
-fn forfeits_and_lines_use_chessbase_result_strings() {
+fn forfeits_and_lines_use_the_stored_result_strings() {
     use cbh_reader::header::pgn_result;
     for (code, evaluation, shown, pgn) in [
         (0, 0, "0-1", "0-1"),

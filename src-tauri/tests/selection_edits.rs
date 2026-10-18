@@ -50,7 +50,7 @@ fn mark_games_toggles_the_user_medal_of_the_selection() {
         .unwrap();
     assert_eq!((all.changed.as_str(), all.marked.as_str()), ("3", "3"));
     assert_eq!(steps.last(), Some(&(3, 3)));
-    // Each game toggles on its own, as in ChessBase.
+    // Each game toggles on its own, as in the reference app.
     let some = r
         .mark_rows(db.clone(), vec![range(2, 3)], |_, _| {})
         .unwrap();
@@ -85,7 +85,7 @@ fn edit_game_data_sets_names_of_the_selection() {
             names(serde_json::json!({
                 "tournament": ["Wijk aan Zee", "Tata Steel"],
                 "annotator": "",
-                "source": ["Mega 2025", "ChessBase"]
+                "source": ["Big Database", "Publisher"]
             })),
             |_, _| {},
         )
@@ -95,7 +95,7 @@ fn edit_game_data_sets_names_of_the_selection() {
     for row in &e[..2] {
         assert_eq!(row["event"], "Tata Steel");
         assert_eq!(row["site"], "Wijk aan Zee");
-        assert_eq!(row["source"], "Mega 2025");
+        assert_eq!(row["source"], "Big Database");
         assert!(row.get("annotator").is_none());
     }
     assert_eq!(e[2]["event"], "Club");

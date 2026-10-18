@@ -18,7 +18,7 @@ supported. So are:
 
 see [formats](formats.md#classic-cbg-encoding-kinds-and-chess960).
 
-In the classic Mega, all 892 Chess960 games with a set-up decode (77,149
+In the classic test database, all 892 Chess960 games with a set-up decode (77,149
 moves, variations included), and so do all 11 special records. The one
 Chess960 record without a start position is refused. The following return
 an unsupported status without a partial game:
@@ -32,20 +32,20 @@ writes it for Chess960. They cannot be saved to 2CBH yet: 2CBG's encoding of
 Chess960 was not traced, and the 2CBH sample has no Chess960 game to check
 it against. Saving one is refused, and Paste leaves them out and counts
 them.
-Setup control byte 0 must be 0 or 1. Every Mega Database 2025 setup stores 1,
+Setup control byte 0 must be 0 or 1. Every the test database setup stores 1,
 and cbh2pgn and libcbh both skip the byte. Byte 1's upper three bits and byte
 2's upper four bits must be zero; other values return `unsupportedSetup`. The turn bit is `0x10`,
 en-passant file is the low four bits (0 absent, 1–8 a–h), and castling rights
 use low bits 1/Q, 2/K, 4/q, 8/k. Move number 0 is read as 1. An en-passant file that is impossible on the board
-is dropped, matching ChessBase's own 2CBG copy of the same game. A castling
+is dropped, matching the reference app's own 2CBG copy of the same game. A castling
 right whose king or rook is off its standard square is dropped too, one right
-at a time; the rest are kept. Twelve set-ups of the classic Mega need this
+at a time; the rest are kept. Twelve set-ups of the classic test database need this
 (entries 64687, 64740, 68207, 96531, 96535 and seven others). They are games
 taken up in the middle, with the kings already castled or moved but K and k
 still set, and all twelve then decode to their last move. A set-up is always
 tried as stored first. A standard record is read as standard chess before
 Chess960, so a stored right is never taken for a Chess960 one; no game of the
-classic Mega relied on that. How ChessBase itself treats such rights was not
+classic test database relied on that. How the reference app itself treats such rights was not
 traced: its copies of these games are outside the 2CBH sample. 2CBG set-ups
 follow the same rule. The occupancy stream is file-major and MSB-first, with
 standard chess position validation.
@@ -77,7 +77,7 @@ PGN import and export carry text before moves and `[%csl]`/`[%cal]` marks.
 
 Classic name tables (players, tournaments, annotators, sources, teams) are
 read as UTF-8 when valid, otherwise as Windows-1252; the bytes 0xA2–0xA6,
-pieces in ChessBase's figurine fonts, show as ♔ ♕ ♘ ♗ ♖ (see
+pieces in the reference app's figurine fonts, show as ♔ ♕ ♘ ♗ ♖ (see
 [validation](validation.md#names-with-figurines-2026-10-13)).
 Multimedia and proprietary cloud services are not supported.
 
@@ -92,13 +92,13 @@ In the newer family, the following are refused or not read:
   never partially loaded.
 
 Title lists (2LID) and the other CBJ fields are not read. Result codes 3–7 are
-shown as ChessBase shows them: lines with their evaluation symbol or "Line",
+shown as the reference app shows them: lines with their evaluation symbol or "Line",
 and forfeits as `+:-`, `-:+`, `=:=` and `0-0`. PGN export keeps a forfeit's
 winner and writes `*` for lines and `0-0`. Codes above 7 are reported as
 uninterpreted.
 
 **Packed ECO** is decoded in both families. Bits 7–15 hold 1–500 for A00–E99,
-and the ChessBase sub-classification in the low seven bits is not shown. The
+and the reference app sub-classification in the low seven bits is not shown. The
 formula was verified against the opening moves of 24,162 games.
 
 Local validation on 2026-10-11 compared 238 unique selected entries against the
@@ -119,10 +119,10 @@ with an explicit command. Games can then be saved, replaced and marked
 deleted; see [writing](writing.md):
 * Moves, game data, players, tournaments, annotators and sources are written.
 * So are text before and after moves, symbols, squares and arrows.
-* Teams, ChessBase's index files (`.2lcd`, `.2lgd`) and several list fields
+* Teams, the reference app's index files (`.2lcd`, `.2lgd`) and several list fields
   (hash, timestamps, material) are not written.
 * Saving a game whose original annotations are not decoded, or that holds
-  content ChessBase cannot store, needs the same acknowledgement as PGN
+  content the reference app cannot store, needs the same acknowledgement as PGN
   export.
 
 PGN saving writes an independent file and requires that acknowledgement when
@@ -135,45 +135,45 @@ separately; an unsupported game is not silently flattened into a partial game.
 Local UCI engine analysis covers standard chess and Chess960. A Chess960
 position is sent with `UCI_Chess960` set to true, and only to engines that
 offer that option. Other variant rules cannot be enabled. Deep Analysis
-follows ChessBase's traced schedule with one engine, and the analysis jobs
+follows the reference app's traced schedule with one engine, and the analysis jobs
 queue replaces games of a 2CBH database opened for editing with their
-analysis; ChessBase's jobs files are not read or written (see
+analysis; the reference app's jobs files are not read or written (see
 [analysis](analysis.md)). ECO codes come from the open lichess opening table
-(CC0), not from ChessBase's `Eco.cod`, and agree with ChessBase's own codes
-for about 69–76 % of the Mega's games; Set ECO Codes keeps existing codes by
+(CC0), not from the reference app's `Eco.cod`, and agree with the reference app's own codes
+for about 69–76 % of the test database's games; Set ECO Codes keeps existing codes by
 default and never writes a sub-classification (see [openings](openings.md)).
-The opening report ports ChessBase's history, players, moves and main line,
+The opening report ports the reference app's history, players, moves and main line,
 but not its plans, recommendations or opening keys. Prepare against White or Black
 shows the player's games of one colour, their repertoire lines and their
-tree in the Book pane; ChessBase's game window mode for them and its
+tree in the Book pane; the reference app's game window mode for them and its
 rating formula were not traced (see [preparation](preparation.md)). The
-player dossier ports ChessBase's statistics, verdict bands, years,
+player dossier ports the reference app's statistics, verdict bands, years,
 opponents, tournaments and repertoire; medal games stand in for its
 "spectacular games", mates are found by replaying decisive games, and the
 biography, pictures and rating history of its player encyclopedia are left
 out (see [player dossier](player-dossier.md)). The tournament report lists the
-crosstable's games round by round with ChessBase's round range and two
+crosstable's games round by round with the reference app's round range and two
 columns; its HTML page, German headings and per-round PGN files are not
 ported (see [tournament report](tournament-report.md)). The Error Report analyses
-the selected games with the user's UCI engine to ChessBase's depths and
-applies ChessBase's Blunder Elo curve to an error value formed as
-ChessBase forms it, but without its engine's complexity and deep-search
+the selected games with the user's UCI engine to the reference app's depths and
+applies the reference app's Blunder Elo curve to an error value formed as
+The reference app forms it, but without its engine's complexity and deep-search
 weights; the estimate is approximate (see [error report](error-report.md)). The search mask's Annotations
 and Medals tabs search texts, symbols, colours, training, multimedia, pawn
 structures, piece paths, critical positions, variations and medals; how
-ChessBase combines several symbols or medals was not traced (see
+The reference app combines several symbols or medals was not traced (see
 [search](search.md)). Engines and private databases are
 separate user-provided files. The first workbench does not yet implement
-ChessBase's full search/indexing, its own opening book files (.ctg and trees),
-training, multimedia, cloud services or lossless writing of every ChessBase
-annotation type. The workbench's opening tree and reference search are built
+The reference app's full search/indexing, its own opening book files (.ctg and trees),
+training, multimedia, cloud services or lossless writing of every annotation type of the
+reference app. The workbench's opening tree and reference search are built
 from the user's own databases into the app's data folder (see
 [opening tree](opening-tree.md)). They count main lines only, store positions
 reached by at least five games within 60 half-moves, and may miss a game that
 transposes into a rarer position. The game list scrolls the whole database
 and sorts by any column, from sort orders kept in the same folder (see
 [game list](game-list.md)). It sorts names by its own collation: case is
-folded and common accents removed. ChessBase's own collation was not traced.
+folded and common accents removed. The reference app's own collation was not traced.
 Its Fix Sort Order and Sort Database, which rewrite the files, are not
 implemented.
 
@@ -187,11 +187,11 @@ Check Integrity reads any database and reports what cannot be read; it
 repairs nothing. In a .2cbh database opened for editing, Find Double Games
 marks doubles deleted, and Remove Deleted Games rewrites the files without
 deleted entries, copying the other entries' data byte for byte. It removes
-ChessBase's `.2lcd`/`.2lgd` indexes for ChessBase to rebuild (see
+The reference app's `.2lcd`/`.2lgd` indexes for the reference app to rebuild (see
 [maintenance](maintenance.md)).
 
 Games can be copied from any open database and pasted into a .2cbh database
-opened for editing. Annotations that are not decoded, or that ChessBase
+opened for editing. Annotations that are not decoded, or that the reference app
 cannot store, are left out and counted, as when a single game is saved. PGN
 cannot express forfeits or "0-0". Loaded games keep such results in a
 `CBResult` tag, which the writer stores again and PGN exports carry. macOS native operation is verified locally;

@@ -26,7 +26,7 @@ describe("tournament report", () => {
     ).toBeVisible();
     expect(within(dialog).getByText(/White scores 50\.0%/)).toBeVisible();
 
-    // ChessBase's round range.
+    // The reference app's round range.
     await ui.user.clear(within(dialog).getByLabelText("First round"));
     await ui.user.type(within(dialog).getByLabelText("First round"), "2");
     expect(

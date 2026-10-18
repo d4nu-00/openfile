@@ -1,4 +1,4 @@
-//! Tournament crosstables (ChessBase's Cross Table, `DBTOOLSCROSSTABLE`, and
+//! Tournament crosstables (the reference app's Cross Table, `DBTOOLSCROSSTABLE`, and
 //! Show Crosstable, `SHOWCROSSTABLE`). See docs/game-list.md.
 use crate::{
     CbhError, Database, EntryKind,

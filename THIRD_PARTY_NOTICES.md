@@ -19,9 +19,10 @@ Chess piece images are the "cburnett" set by Colin M.L. Burnett, licensed
 GPL-2.0-or-later, as distributed in lichess-org/lila (public/piece/cburnett).
 They are embedded unmodified in src/board/pieces.ts.
 
-The interface follows ChessBase 18's command vocabulary, ribbon grouping,
-default shortcuts and theme colours, recorded through local interoperability
-research. No ChessBase icon, bitmap, font, text resource or code is included;
+The interface follows the command vocabulary, ribbon grouping, default
+shortcuts and theme colours of established chess database software, recorded
+through local interoperability research. No third-party icon, bitmap, font,
+text resource or code is included;
 icons come from Lucide and are tinted with recreated theme colours.
 
 Classic CBG token tables and algorithm details are adapted from cbh2pgn,

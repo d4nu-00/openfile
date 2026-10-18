@@ -1,6 +1,6 @@
 //! Error Report (`BLUNDER_REPORT`; see docs/error-report.md): an engine of
 //! the user's analyses the selected games to a fixed depth, and the losses of
-//! the counted moves give the error value, ChessBase's Blunder Elo curve and
+//! the counted moves give the error value, the reference app's Blunder Elo curve and
 //! the workbench's blunder statistics.
 use crate::{
     blunder_check::{MATE, evaluate_to},
@@ -20,15 +20,15 @@ use std::{
 
 /// Games analysed at most.
 pub const MAX_GAMES: usize = 1_000;
-/// Plies of each main line analysed, as ChessBase cuts games off.
+/// Plies of each main line analysed, as the reference app cuts games off.
 pub const MAX_PLIES: usize = 120;
-/// ChessBase's depths for Quick and Slower (`0x1407a82b0`).
+/// The reference app's depths for Quick and Slower (`0x1407a82b0`).
 pub const QUICK_DEPTH: u32 = 9;
 pub const SLOW_DEPTH: u32 = 12;
 /// The longest search of one position, in milliseconds.
 const QUICK_CAP: u64 = 2_000;
 const SLOW_CAP: u64 = 6_000;
-/// Losses are clamped to this, as ChessBase does.
+/// Losses are clamped to this, as the reference app does.
 pub const MAX_LOSS: i32 = 400;
 /// Counted moves needed for a Blunder Elo.
 pub const MIN_MOVES: u32 = 20;
@@ -42,7 +42,7 @@ pub struct ErrorReportParams {
     pub engine: PathBuf,
     #[serde(default)]
     pub options: BTreeMap<String, String>,
-    /// ChessBase's "Slower (top games)": depth 12 instead of 9.
+    /// The reference app's "Slower (top games)": depth 12 instead of 9.
     pub slower: bool,
     /// Count this player's moves; both sides when none.
     pub player: Option<u32>,
@@ -159,7 +159,7 @@ pub struct SelectionPlayer {
     pub games: u32,
 }
 
-/// ChessBase's Blunder Elo for error value `e` and `plies` analysed per game
+/// The reference app's Blunder Elo for error value `e` and `plies` analysed per game
 /// (`0x1404705d0`), without its slope term.
 pub fn blunder_elo(e: f64, plies: f64) -> i32 {
     let base = if e < 15.0 {
@@ -185,13 +185,13 @@ pub fn band(cp: i32) -> usize {
     }
 }
 
-/// The weight of an ordinary move: ChessBase gives 1 + max(1, complexity /
+/// The weight of an ordinary move: the reference app gives 1 + max(1, complexity /
 /// 100) (`0x1404035c0`, "CPLX"); without its complexity this is the least.
 pub const ORDINARY: f64 = 2.0;
 /// The weight of a recapture ("RECAPT").
 pub const RECAPTURE: f64 = 0.2;
 
-/// The error value as ChessBase forms it (`0x14046f140`): the sum of the
+/// The error value as the reference app forms it (`0x14046f140`): the sum of the
 /// losses over the sum of the weights, moves of weight 0 left out.
 pub fn error_value(records: &[MoveRecord]) -> Option<f64> {
     let counted = records.iter().filter(|r| r.weight > 0.0);
@@ -618,7 +618,7 @@ mod tests {
     }
 
     #[test]
-    fn blunder_elo_follows_chessbase_s_curve() {
+    fn blunder_elo_follows_reference_curve() {
         // e = 10: 1.16 × 100 − 730 + 3141.5 = 2527.5; 80 plies: −20.
         assert_eq!(blunder_elo(10.0, 80.0), 2510);
         // e = 18: 3110 − 963 = 2147; 100 plies: +20.

@@ -11,7 +11,7 @@ export function clock(ms: number) {
 }
 
 /**
- * Deep Analysis: ChessBase's iterated tree analysis of the board position.
+ * Deep Analysis: the reference app's iterated tree analysis of the board position.
  * The tree grows each iteration until stopped or out of time; Stop keeps
  * it and adds it to the game as one edit, Cancel discards it.
  */

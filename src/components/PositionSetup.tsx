@@ -74,7 +74,7 @@ function toFen(s: Setup): string {
 }
 
 /**
- * ChessBase's Position Setup (S): place pieces, then start a new game from
+ * The reference app's Position Setup (S): place pieces, then start a new game from
  * the position. The workbench checks the position when the game is made.
  */
 export function PositionSetup({

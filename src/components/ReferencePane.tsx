@@ -10,7 +10,7 @@ const sources = {
 };
 
 /**
- * Games of the open database that reach the current board (ChessBase's
+ * Games of the open database that reach the current board (the reference app's
  * reference search). It follows the board; opening a game selects the
  * position found.
  */

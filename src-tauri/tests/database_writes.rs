@@ -59,7 +59,7 @@ fn created_databases_take_saves_replacements_and_deletions() {
         .read_page(db.database_id.clone(), "1".into(), 10, "p".into())
         .unwrap();
     assert!(page.entries[0].deleted);
-    // After Save, the document is linked to its new entry, as in ChessBase;
+    // After Save, the document is linked to its new entry, as in the reference app;
     // a PGN document that was never saved has no entry to replace.
     assert!(r.replace_game(doc, "0".into(), false).is_ok());
     let fresh = pgn_document(&r, &d, "1. c4 *\n");

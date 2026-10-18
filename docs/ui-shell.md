@@ -1,4 +1,4 @@
-# ChessBase-style workbench shell
+# reference-app-style workbench shell
 
 Date: 2026-10-12
 Status: Implemented on branch `ui-shell` (2026-10-12). Direction agreed in
@@ -7,17 +7,17 @@ per-section review gates.
 
 ## Intended outcome
 
-Give OpenFile the look, vocabulary and command structure of ChessBase 18
-while fixing what the user finds clunky about it. ChessBase users should
+Give OpenFile the look, vocabulary and command structure of the reference app
+while fixing what the user finds clunky about it. The reference app users should
 recognise the colours, ribbon tabs, command names, tooltips and shortcuts. The
 window model is redesigned.
 
-What the user said: port ChessBase's UI using REA; it is clunky; take the
+What the user said: port the reference app's UI using REA; it is clunky; take the
 "familiar + modern" direction with layout A; match its colours.
 
 Assumptions: existing features stay as they are (CBH browse, replay, edit, PGN,
 UCI analysis). Commands without a backend appear but are disabled and labelled.
-Visual assets are recreated, not copied. ChessBase bitmaps, icon PNGs and fonts
+Visual assets are recreated, not copied. The reference app bitmaps, icon PNGs and fonts
 never enter the product tree, matching the existing distribution audit.
 
 ## Evidence sources (REA and static resources)
@@ -26,7 +26,7 @@ never enter the product tree, matching the existing distribution audit.
 |---|---|
 | `Messages/*.inc` + `Messages/English/*.strings` | Enum ordinal → `M_*` symbol → English label/tooltip (`M_MN_*`, `M_TX_*`, `M_TAB_*`) |
 | Ribbon icon PNG names (`{Theme}_{Command}{size}`) | 358 command identifiers and per-theme icon tint |
-| REA/Ghidra on `CBase18.exe` | Ribbon category/panel/button construction, theme defaults, accent colours, keyboard defaults |
+| REA/Ghidra on `the reference binary` | Ribbon category/panel/button construction, theme defaults, accent colours, keyboard defaults |
 
 Recovered so far (research output in `analysis/ui/`, outside the product tree):
 
@@ -50,7 +50,7 @@ command names are facts about the interface; they are not copied artwork.
 ## Layout (A: list + live preview)
 
 ```
-┌ title/tab strip: [Mega 2025] [Ding – Gukesh]          ⌘K ┐
+┌ title/tab strip: [the test database] [Ding – Gukesh]          ⌘K ┐
 ├ ribbon tabs: Home · Insert · Board · Engine · View · Help ┤
 ├ ribbon panel: grouped large/small command buttons       ┤
 ├──────────── database tab ───────────────────────────────┤
@@ -67,26 +67,26 @@ command names are facts about the interface; they are not copied artwork.
   There is one game tab, because the frontend state holds one document.
   Multiple simultaneous game tabs require a multi-document state refactor
   and are follow-up work.
-* ChessBase binds Ctrl+K to Add Kibitzer, so command search uses `/` and
+* The reference app binds Ctrl+K to Add Kibitzer, so command search uses `/` and
   Ctrl+Shift+Space instead of ⌘K.
 
 ## Command system
 
 A single typed catalogue (`src/commands/catalogue.ts`) defines each command: id
-(ChessBase command identifier), label, tooltip, ribbon tab and group,
+(the reference app command identifier), label, tooltip, ribbon tab and group,
 shortcut, `when` (enabled predicate) and `run`. The ribbon, ⌘K palette,
-keyboard handler and tooltips all read from it. Unimplemented ChessBase commands
+keyboard handler and tooltips all read from it. Unimplemented the reference app commands
 are left unbound; the ribbon disables them and the palette lists them as “Not yet
 available”.
 
 ## Theme
 
 CSS custom properties per theme (`white` default, `blue`, `gray`, `black`),
-modelled on ChessBase 18's BCG Office-2016-family styles. Icon tint tokens use
-the sampled ChessBase values (white: navy `#2e5583`, blue: crimson `#b2262d`,
+modelled on the reference app's BCG Office-2016-family styles. Icon tint tokens use
+the sampled the reference app values (white: navy `#2e5583`, blue: crimson `#b2262d`,
 gray: teal `#156172`, black: orange `#dc6e3a`). Icons come from an open
-outline icon set tinted with the theme token, giving the ChessBase visual
-language without its artwork. Board defaults follow the recovered ChessBase 2D
+outline icon set tinted with the theme token, giving the reference app visual
+language without its artwork. Board defaults follow the recovered the reference app 2D
 board colours where REA finds them.
 
 ## Error handling

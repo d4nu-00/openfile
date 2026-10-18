@@ -60,9 +60,9 @@ function ContextTable({
 }
 
 /**
- * Error Report (ChessBase's `BLUNDER_REPORT`, key B): an engine analyses
- * the selected games to ChessBase's depth (Quick 9, Slower 12), and the
- * counted moves' losses give the error value, ChessBase's Blunder Elo
+ * Error Report (the reference app's `BLUNDER_REPORT`, key B): an engine analyses
+ * the selected games to the reference app's depth (Quick 9, Slower 12), and the
+ * counted moves' losses give the error value, the reference app's Blunder Elo
  * curve and the workbench's blunder statistics.
  */
 export function ErrorReportDialog({
@@ -236,8 +236,8 @@ export function ErrorReportDialog({
                 {r.pliesPerGame != null
                   ? `, ${fixed(r.pliesPerGame, 0)} plies per game`
                   : ""}
-                . The estimate follows ChessBase's curve and varies a lot with
-                few games.
+                . The estimate follows a fixed rating curve and varies a lot
+                with few games.
               </p>
             </section>
             <div className="error-columns">

@@ -1,4 +1,4 @@
-//! Remove Deleted Games (ChessBase's `DBTOOLSPHYSICALDELETIONS`): rewrites a
+//! Remove Deleted Games (the reference app's `DBTOOLSPHYSICALDELETIONS`): rewrites a
 //! 2CBH family without the entries marked deleted. The kept entries' 2CBG
 //! and 2CBA blocks are copied byte for byte, so nothing is decoded or lost;
 //! 2LID is copied unchanged. The new files are written beside the family and
@@ -20,7 +20,7 @@ use std::{
 
 /// Records read at once.
 const CHUNK: u64 = 4096;
-/// ChessBase's indexes over 2LID; they are removed, and ChessBase's Check
+/// The reference app's indexes over 2LID; they are removed, and the reference app's Check
 /// Integrity rebuilds them ("Rebuild control structures", `0x1401576a0`).
 pub const INDEXES: [&str; 2] = ["2lcd", "2lgd"];
 

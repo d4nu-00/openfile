@@ -706,7 +706,7 @@ describe("source distribution boundary", () => {
     expect(allowedSourcePath("../analysis/classic-sample-games.pgn")).toBe(
       false,
     );
-    expect(allowedSourcePath("fixtures/Mega Database 2025.cbh")).toBe(false);
+    expect(allowedSourcePath("fixtures/the test database.cbh")).toBe(false);
     expect(allowedSourcePath("crates/cbh-reader/src/header.rs")).toBe(true);
   });
 });
@@ -741,7 +741,7 @@ defaults:
 | Analysis workbench         | 11-13 | Configure a local UCI engine and analyse the selected position reliably                       |
 | Verified first deliverable | 14    | Actual native builds on all three OS families and evidence-backed compatibility documentation |
 
-Do not stop at an earlier milestone and describe the approved first deliverable as complete. Conversely, do not hold back a working local app solely because external native runners are unavailable: deliver it with those checks explicitly outstanding. Full ChessBase feature equivalence remains the later stages in the approved spec.
+Do not stop at an earlier milestone and describe the approved first deliverable as complete. Conversely, do not hold back a working local app solely because external native runners are unavailable: deliver it with those checks explicitly outstanding. Full the reference app feature equivalence remains the later stages in the approved spec.
 
 ## Plan self-review and requirement mapping
 

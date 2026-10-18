@@ -194,7 +194,7 @@ fn the_queue_is_bounded_and_needs_an_editable_database() {
         lines: 1,
         seconds: 15,
     };
-    // ChessBase's minimum times.
+    // The reference app's minimum times.
     assert!(
         r.add_analysis_jobs(
             db.clone(),

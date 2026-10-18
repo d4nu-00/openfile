@@ -9,8 +9,8 @@ const pct = (s: StatScore) => (s.percent == null ? "" : `${s.percent}%`);
 const score = (v?: number) => (v == null ? "" : `${v.toFixed(0)}%`);
 
 /**
- * Prepare against White or Black (ChessBase's `PREPARE_WHITE`,
- * `PREPARE_BLACK`): the player's games with one colour. ChessBase opens a
+ * Prepare against White or Black (the reference app's `PREPARE_WHITE`,
+ * `PREPARE_BLACK`): the player's games with one colour. The reference app opens a
  * game window on them; the workbench shows what they hold, can show their
  * tree in the Book pane, list them and load the last one.
  */

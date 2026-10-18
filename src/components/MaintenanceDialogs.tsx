@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { DoubleCompare, DoubleOptions } from "../api/types";
 
-/** ChessBase's defaults for Kill Doubles (`0x1407ab920`). */
+/** the reference app's defaults for Kill Doubles (`0x1407ab920`). */
 export const defaultDoubleOptions: DoubleOptions = {
   decision: "keepBetter",
   names: "similar",
@@ -45,7 +45,7 @@ function Choice<T extends string>({
 }
 
 /**
- * Find Double Games: ChessBase's Kill Doubles dialog (894) as far as it is
+ * Find Double Games: the reference app's Kill Doubles dialog (894) as far as it is
  * ported. One game of each pair of doubles is marked deleted.
  */
 export function DoublesDialog({

@@ -3,9 +3,9 @@
 Status: implemented on branch `game-tabs` (2026-10-13). The direction was
 agreed in conversation; the user asked to proceed without review gates.
 
-## What ChessBase does
+## What the reference app does
 
-Evidence is from CBase18.exe 18.1 (x64), its command table and messages.
+Evidence is from the reference binary (x64), its command table and messages.
 
 | Command | Id | Default key | Message |
 |---|---|---|---|
@@ -46,7 +46,7 @@ Evidence is from CBase18.exe 18.1 (x64), its command table and messages.
 * **Default Kibitzer** (Alt+F2) starts the default engine, or removes it when
   it runs. Without a default engine it opens Engine Management.
 * **Infinite Analysis** starts or stops the pane used last; it no longer has
-  Alt+F2, which is ChessBase's key for Default Kibitzer.
+  Alt+F2, which is the reference app's key for Default Kibitzer.
 
 ### Lines
 
@@ -66,7 +66,7 @@ says that it computes one line only.
   is legal.
 * A pasted line ends with a text comment holding the score from White's
   side and the depth, e.g. `+0.35/22` or `+M3/30`. This is the workbench's
-  form, chosen because ChessBase's own evaluation annotation is not decoded;
+  form, chosen because the reference app's own evaluation annotation is not decoded;
   it is plain text in 2CBH and PGN.
 
 ### Engine Management
@@ -91,7 +91,7 @@ are sent as standard chess, which plays the same. Users cannot set
 
 ## Syzygy tablebases
 
-ChessBase has "Use Tablebases" (message 737) and a "Tablebases" page (2554);
+The reference app has "Use Tablebases" (message 737) and a "Tablebases" page (2554);
 its own access goes through `TBAccess.dll`, which was not studied.
 
 * The user chooses a folder of Syzygy files (`.rtbw`, `.rtbz`) in Options.
@@ -109,9 +109,9 @@ its own access goes through `TBAccess.dll`, which was not studied.
 * Positions with castling rights, or with more pieces than the largest
   table, are reported as such.
 
-### What ChessBase does with tablebases
+### What the reference app does with tablebases
 
-Evidence: CBase18.exe 18.1.
+Evidence: the reference binary.
 * Its Options keep Syzygy and Nalimov folders (`TablebaseOptions`,
   settings key `V_TABLEBASES`; strings "Syzygy (GUI)" and "Syzygy (Engine)").
 * It hands the Syzygy folder to engines with `setoption name SyzygyPath
@@ -121,14 +121,14 @@ Evidence: CBase18.exe 18.1.
 * The search mask's Material tab (dialog 328) has a "Tablebase" checkbox
   (1090).
 
-No ChessBase command annotates a game from the tables, and how ChessBase
+No the reference app command annotates a game from the tables, and how the reference app
 shows tablebase results in the notation was not traced.
 
 ### Engines and the notation (workbench)
 
 * **SyzygyPath.** Each engine that offers `SyzygyPath` is pointed at the
   chosen folder when it starts. That covers kibitzers and Tactical
-  Analysis, as in ChessBase. Engines without the option are left as they
+  Analysis, as in the reference app. Engines without the option are left as they
   are.
 * **Tablebase Annotation** (Analysis ribbon, a workbench command) reads the
   main line, at most 1,000 moves:
@@ -144,7 +144,7 @@ shows tablebase results in the notation was not traced.
 
 ## Tactical Analysis (Blunder Check)
 
-### What ChessBase does
+### What the reference app does
 
 Tactical Analysis (`TACTICAL_ANALYSIS`, Ctrl+Alt+Shift+U, "Detect Blunders
 and small tactics in the game") keeps its settings in
@@ -194,7 +194,7 @@ is its message for a clean game.
 * **Without a change of symbol** and without a verbal comment, the job sets
   the prefix symbol 142 ("better is") through `0x1403f9590`. Which node it
   lands on was not established.
-* **Store evaluations** stores ChessBase's own evaluation annotation
+* **Store evaluations** stores the reference app's own evaluation annotation
   (`0x1401a7b10`), not text.
 * **Erase old annotations** also sets the annotator to "Tactical Analysis
   6.4 (Ns)" (format `"%s %s (%ds)"`, with the time in seconds).
@@ -209,13 +209,13 @@ is its message for a clean game.
   One example is "was the only good move." The choice is partly random
   (`0x140ea40d0`).
 
-How ChessBase marks a played main-line move "?" or "??" was not found. No
+How the reference app marks a played main-line move "?" or "??" was not found. No
 "??" literal is used by the job's code, so the symbols are probably set as
 numbers through a path not followed.
 
 ### Workbench
 
-* The dialog has ChessBase's **Time [s]** (default 3, 1 to 120; the engine
+* The dialog has the reference app's **Time [s]** (default 3, 1 to 120; the engine
   gets Time × 500 ms for each position), **Threshold** Fine/Medium/Coarse
   (0.35, 0.55, 1.50 pawns) and **Store evaluations** (off). It adds a choice
   of sides (both by default) and of engine: an installed one, or a file.
@@ -233,7 +233,7 @@ numbers through a path not followed.
   * the engine's line, up to 16 moves, as a variation ending with its score
     and depth (`+0.30/20`);
   * with Store evaluations, the score after the move as text.
-* **Evaluation symbols follow ChessBase.** A checked move gets the symbol of
+* **Evaluation symbols follow the reference app.** A checked move gets the symbol of
   the position after it when that differs from the symbol before it, using
   the table above. A symbol that repeats the previous one on the line is
   left out.
@@ -241,17 +241,17 @@ numbers through a path not followed.
     or 14–19).
   * It does not replace another position symbol, such as "with attack". A
     move with one is left as it is.
-  * Unlike ChessBase, existing repeated symbols are not removed.
+  * Unlike the reference app, existing repeated symbols are not removed.
 * All of it is one edit, so Undo removes it. If the game changed while the
   check ran, nothing is added.
 * **The workbench's own parts.** The ?/?? rule is the workbench's own, since
-  ChessBase's was not traced. So are the score as text, which stands in for
-  ChessBase's evaluation annotation, and the variation's score comment.
+  the reference app's was not traced. So are the score as text, which stands in for
+  the reference app's evaluation annotation, and the variation's score comment.
   Verbal comments, the "better is" prefix, Erase old annotations, Training,
   Blunder categories, the engine benchmark and the database mode are not
   ported.
 
 ## Deep Analysis and analysis jobs
 
-See [analysis](analysis.md): ChessBase's Deep Analysis schedule, as traced,
+See [analysis](analysis.md): the reference app's Deep Analysis schedule, as traced,
 and the analysis jobs queue.

@@ -1,11 +1,11 @@
 # Searching databases
 
-This note fixes how the workbench searches whole databases. ChessBase's search
+This note fixes how the workbench searches whole databases. The reference app's search
 mask (`OPEN_SEARCHMASK`, dialog resource 310) has tabs for game data,
 position, material and more. The field names below follow its game-data tab,
-dialog resource **311** in CBase18.exe 18.1. Earlier versions of this note
+dialog resource **311** in the reference binary. Earlier versions of this note
 called it 1031, which is the resource's language (German), not its number.
-Nothing here reads or writes ChessBase's own search files (Search Booster
+Nothing here reads or writes the reference app's own search files (Search Booster
 `.cit`/`.cib`, `.cbtt`); sources stay read-only.
 
 ## Game data
@@ -34,7 +34,7 @@ Text entries never match. Deleted games match unless the filter excludes them.
 1079, style `0x50010003`) beside one number field (1023) with an up-down
 (1024), in the column of the upper Elo bound. The workbench reads it as a
 maximum rating difference. This reading follows the layout and was not
-confirmed in ChessBase's code. The tab has no source field.
+confirmed in the reference app's code. The tab has no source field.
 
 **Final position and text.** Mate, Stalem. and Check are controls 1074–1076;
 Full Text and NOT are 1022 and 1081. A game is read only once it passes every
@@ -43,7 +43,7 @@ other field:
   is tested;
 * for text, only its annotation record is read.
 
-Two things were not traced: whether ChessBase reads the main line's end or a
+Two things were not traced: whether the reference app reads the main line's end or a
 stored flag, and whether its Check includes mate. The workbench's choices are
 in the table above.
 
@@ -56,7 +56,7 @@ in the table above.
 
 ## Annotations and Medals tabs (2026-10-16)
 
-ChessBase's search mask (dialog 310) has, besides game data and position,
+The reference app's search mask (dialog 310) has, besides game data and position,
 an **Annotations** tab (dialog 343, class `CAnnoMaskDialog`, vtable
 `0x1411e1b58`) and a **Medals** tab (dialog 312). `Search text`
 (`GENERALSEARCH`, kc 597, no key) has no traced action. The workbench opens
@@ -88,14 +88,14 @@ keeps it (`Kind::Critical`).
 checked bits. This is read from the entry index, without reading the game.
 
 **Combining.** Every criterion set must hold, as for the game-data tab. How
-ChessBase combines its criteria (any or all symbols, any or all medals) was
+The reference app combines its criteria (any or all symbols, any or all medals) was
 not traced; these are the workbench's choices. As with Full Text, only the
 annotation record of a game that passes the other fields is read.
 
 **Not ported:** Deleted (1115, 0x12fd8) and Position (1054, 0x12fdc),
 whose meaning was not traced, and the Chess960 number (2380, 0x13018).
 
-**Measurements** (classic Mega, 11,151,119 entries, release build, warm,
+**Measurements** (classic test database, 11,151,119 entries, release build, warm,
 `cbh-reader/examples/search.rs`):
 
 | Search | Hits | Time |
@@ -126,14 +126,14 @@ pages through it in place of the whole database.
 
 ## Position search
 
-The search mask's Position tab is ChessBase's pattern search: three boards,
+The search mask's Position tab is the reference app's pattern search: three boards,
 mirroring and a move window. See [position search](position-search.md). This
 section covers Find Position, and the exact search that the tab shares with
 it.
 
 Find Position (game window, Find Position › Hard Disk) looks for the board
 and side to move of the current position. Castling rights, en passant and
-move numbers are ignored, as in ChessBase. It looks through every game,
+move numbers are ignored, as in the reference app. It looks through every game,
 including variations. Each hit records the first node showing the
 position, so the game opens there.
 
@@ -161,7 +161,7 @@ work is split across up to 8 workers like the game-data search. A worker
 stops once the ranges before it hold 100,000 hits, since its own hits would
 be dropped.
 
-## Measurements (classic Mega, 2026-10-14)
+## Measurements (classic test database, 2026-10-14)
 
 Release build on the 10-core development Mac, warm cache, 11,151,119
 entries. Timed with `cbh-reader/examples/search.rs` and `position.rs`.
@@ -188,5 +188,5 @@ cursor. Now:
 * the path is checked at most every 200 ms;
 * every operation still starts with a full check.
 
-On the 2CBH Mega a full Find Position went from 2.73 s to 0.65 s on one
+On the 2CBH test database a full Find Position went from 2.73 s to 0.65 s on one
 worker, and to 0.17 s on eight.

@@ -1,5 +1,5 @@
 //! The workbench's own settings, kept as JSON in the app's config folder:
-//! the most game tabs (ChessBase's "Maximum Board Windows"), the engines
+//! the most game tabs (the reference app's "Maximum Board Windows"), the engines
 //! the user installed, the tablebase folder, and the start screen's lists
 //! (see docs/start-screen.md).
 use crate::commands::AppError;
@@ -12,7 +12,7 @@ use std::{
 
 /// Settings files larger than this are not read.
 const MAX_BYTES: u64 = 256 * 1024;
-/// ChessBase allows 1 to 8 board windows, 8 by default (`MaxGameWins`).
+/// The reference app allows 1 to 8 board windows, 8 by default (`MaxGameWins`).
 pub const MAX_GAME_TABS: u8 = 8;
 pub const MAX_ENGINES: usize = 32;
 const MAX_NAME: usize = 128;
@@ -20,7 +20,7 @@ const MAX_ENGINE_OPTIONS: usize = 128;
 pub const MAX_RECENT: usize = 16;
 pub const MAX_FAVORITES: usize = 200;
 pub const MAX_FOLDERS: usize = 50;
-/// ChessBase's database types (messages 50027–50046), as icon names.
+/// The reference app's database types (messages 50027–50046), as icon names.
 pub const DATABASE_KINDS: [&str; 20] = [
     "unspecific",
     "work",

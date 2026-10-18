@@ -1,4 +1,4 @@
-//! Tournament report (ChessBase's `TournamentReport`): the crosstable's games
+//! Tournament report (the reference app's `TournamentReport`): the crosstable's games
 //! round by round, with each round's date, the standings after it and the
 //! tournament's results. See docs/tournament-report.md.
 use crate::{CbhError, Database, crosstable::Crosstable, sort::SortOrder};
@@ -14,7 +14,7 @@ pub struct ReportGame {
     pub ordinal: u64,
     pub white: usize,
     pub black: usize,
-    /// "1-0", "1/2-1/2", "0-1", or a forfeit as ChessBase writes it.
+    /// "1-0", "1/2-1/2", "0-1", or a forfeit as the reference app writes it.
     pub result: String,
     pub moves: u8,
 }

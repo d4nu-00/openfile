@@ -5,7 +5,7 @@ fn settings_default_check_and_round_trip() {
     let d = tempfile::tempdir().unwrap();
     let s = Settings::default();
     s.set_dir(&d.path().join("config"));
-    // Nothing saved yet: ChessBase's default of 8 game tabs.
+    // Nothing saved yet: the reference app's default of 8 game tabs.
     assert_eq!(s.load(), AppSettings::default());
     assert_eq!(s.load().max_game_tabs, 8);
 

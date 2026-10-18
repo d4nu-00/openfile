@@ -18,7 +18,7 @@ export interface EntrySummary {
   deleted: boolean;
   /** Marked with the user medal (Mark Games), shown in cyan. */
   marked?: boolean;
-  /** ChessBase's other medals (Best game, Novelty, Endgame, …). */
+  /** the reference app's other medals (Best game, Novelty, Endgame, …). */
   medals?: string[];
   white?: string;
   black?: string;
@@ -453,7 +453,7 @@ export interface Crosstable {
 export interface ErrorReportParams {
   engine: string;
   options: Record<string, string>;
-  /** ChessBase's "Slower (top games)": depth 12 instead of 9. */
+  /** the reference app's "Slower (top games)": depth 12 instead of 9. */
   slower: boolean;
   /** Count this player's moves; both sides when null. */
   player: number | null;
@@ -821,14 +821,14 @@ export interface BlunderReport {
   cancelled: boolean;
   checked: number;
   findings: BlunderFinding[];
-  /** ChessBase's evaluation symbols where the evaluation changes. */
+  /** the reference app's evaluation symbols where the evaluation changes. */
   evaluations: { node: number; nag: number }[];
   revision: string;
 }
 /** One line of an analysis result, from the analysed position. */
 export interface LineItem {
   moves: string[];
-  /** ChessBase's evaluation symbol for the last move. */
+  /** the reference app's evaluation symbol for the last move. */
   evaluation?: number;
   /** The score and depth as text, e.g. "+0.35/20". */
   comment?: string;
@@ -861,7 +861,7 @@ export interface DeepReport {
   best: string[];
   score?: string;
 }
-/** ChessBase's job types: Analysis (1) and Deep Analysis (2). */
+/** the reference app's job types: Analysis (1) and Deep Analysis (2). */
 export type JobKind =
   | { type: "analysis"; lines: number; seconds: number }
   | { type: "deep"; seconds: number };
@@ -985,7 +985,7 @@ export interface InstalledEngine {
 }
 /** The workbench's settings, kept in its config folder. */
 export interface AppSettings {
-  /** ChessBase's "Maximum Board Windows": 1 to 8, 8 by default. */
+  /** the reference app's "Maximum Board Windows": 1 to 8, 8 by default. */
   maxGameTabs: number;
   engines: InstalledEngine[];
   defaultEngine?: string;
@@ -1035,7 +1035,7 @@ export interface IntegrityReport {
   cancelled: boolean;
 }
 export type DoubleCompare = "exact" | "similar" | "ignore";
-/** ChessBase's Kill Doubles options that the workbench ports. */
+/** the reference app's Kill Doubles options that the workbench ports. */
 export interface DoubleOptions {
   decision: "first" | "second" | "keepBetter";
   names: DoubleCompare;
@@ -1121,7 +1121,7 @@ export interface DatabaseSymbol {
   path: string;
   name: string;
   folder: string;
-  /** One of ChessBase's 20 database types. */
+  /** One of the reference app's 20 database types. */
   kind: string;
   favorite: boolean;
   exists: boolean;
