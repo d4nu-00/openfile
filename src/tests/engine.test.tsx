@@ -535,3 +535,56 @@ it("annotates the game from the tablebases as one edit", async () => {
     ),
   ).toBeVisible();
 });
+it("runs Centipawn Analysis and adds its texts as one edit", async () => {
+  const ui = renderWorkbench();
+  await ui.user.keyboard("{Control>}{Alt>}{Shift>}z{/Shift}{/Alt}{/Control}");
+  const dialog = await ui.findByRole("dialog", { name: "Centipawn Analysis" });
+  const start = within(dialog).getByRole("button", { name: "Start" });
+  expect(start).toBeDisabled();
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "Other engine…" }),
+  );
+  const seconds = within(dialog).getByLabelText("Seconds");
+  await ui.user.clear(seconds);
+  await ui.user.type(seconds, "2");
+  expect(within(dialog).getByText("1.5 s per position")).toBeVisible();
+  await ui.user.click(start);
+  await waitFor(() =>
+    expect(ui.api.centipawnAnalysis).toHaveBeenCalledWith(
+      "doc-1",
+      {
+        engine: "/synthetic/mock-engine",
+        options: {},
+        seconds: 2,
+        everyMove: false,
+      },
+      expect.any(Function),
+    ),
+  );
+  await waitFor(() =>
+    expect(ui.api.editDocument).toHaveBeenCalledWith(
+      "doc-1",
+      {
+        kind: "addAnalysis",
+        items: [
+          { node: 0, comment: "Centipawn Analysis after ply 10", line: [] },
+          { node: 1, comment: "Mistake (−1.2)", line: [] },
+        ],
+      },
+      "0",
+    ),
+  );
+  const loss = await within(dialog).findByRole("table", {
+    name: "Centipawn loss",
+  });
+  expect(within(loss).getByText("18")).toBeVisible();
+  expect(within(loss).getByText("40")).toBeVisible();
+  const kinds = within(dialog).getByRole("table", {
+    name: "Moves by category",
+  });
+  expect(within(kinds).getByText("Mistake")).toBeVisible();
+  expect(within(kinds).queryByText("Inaccuracy")).toBeNull();
+  expect(
+    await ui.findByText("Centipawn Analysis: average loss White 18, Black 40"),
+  ).toBeVisible();
+});

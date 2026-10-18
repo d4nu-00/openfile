@@ -1015,6 +1015,14 @@ const list: CommandMeta[] = [
     views: db,
   },
   {
+    id: "centipawn-analysis",
+    label: "Centipawn Analysis",
+    tip: "Compares the game's moves with an engine's and counts the centipawns each side lost",
+    icon: Gauge,
+    keys: "Ctrl+Alt+Shift+Z",
+    views: game,
+  },
+  {
     id: "tactical-analysis",
     label: "Tactical Analysis",
     tip: "Detect Blunders and small tactics in the game",
@@ -1486,7 +1494,11 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
         },
         {
           label: "Tactical Analysis",
-          items: [L("tactical-analysis"), S("tablebase-annotation")],
+          items: [
+            L("tactical-analysis"),
+            S("centipawn-analysis"),
+            S("tablebase-annotation"),
+          ],
         },
         {
           label: "Engine lines",
