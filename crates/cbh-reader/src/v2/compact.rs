@@ -254,7 +254,11 @@ pub fn compact(
         records.write_all(&next.to_le_bytes())?;
         records.sync_all()?;
         std::fs::copy(path.with_extension("2lid"), temp.with_extension("2lid"))?;
-        File::open(temp.with_extension("2lid"))?.sync_all()?;
+        // Windows flushes only a handle opened for writing.
+        OpenOptions::new()
+            .write(true)
+            .open(temp.with_extension("2lid"))?
+            .sync_all()?;
         report.bytes_after = family_bytes(&temp);
         Ok(report)
     })();
