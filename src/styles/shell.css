@@ -697,6 +697,16 @@ kbd {
 .move.var {
   color: var(--notation-var);
 }
+/* Critical positions: opening moves are the repertoire's "blue" moves. */
+.move[data-critical="1"] {
+  background: var(--notation-critical-opening);
+}
+.move[data-critical="2"] {
+  background: var(--notation-critical-middlegame);
+}
+.move[data-critical="3"] {
+  background: var(--notation-critical-endgame);
+}
 .move:hover:not(:disabled) {
   background: var(--row-hover);
 }
@@ -2191,4 +2201,76 @@ kbd {
   border: 1px solid var(--pane-border);
   padding: 4px 8px;
   margin: 6px 0;
+}
+
+/* Generate Repertoire and the Repertoire Report */
+.modal.repertoire {
+  width: min(760px, 96vw);
+  max-width: min(760px, 96vw);
+  max-height: 90vh;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  cursor: default;
+}
+.modal.repertoire.report {
+  width: min(960px, 96vw);
+  max-width: min(960px, 96vw);
+  height: min(680px, 90vh);
+}
+.repertoire .repertoire-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  flex: 1;
+}
+.repertoire fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--grid-line);
+  padding: 6px 10px;
+}
+.repertoire .check-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.repertoire .folder-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.repertoire .folder-row input {
+  flex: 1;
+  min-width: 0;
+}
+.repertoire .repertoire-topics {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.repertoire .repertoire-topics h3 {
+  font-size: 1em;
+  margin: 10px 0 4px;
+}
+.repertoire .repertoire-position {
+  margin: 0 0 8px 8px;
+}
+.repertoire .repertoire-position .prepare-line {
+  cursor: default;
+  background: var(--notation-critical-opening);
+  padding: 1px 4px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.repertoire .repertoire-position ul {
+  margin: 2px 0 0;
+  padding-left: 18px;
+}
+.repertoire .repertoire-position li {
+  cursor: default;
+}
+.repertoire .repertoire-position li:hover {
+  background: var(--row-hover);
 }

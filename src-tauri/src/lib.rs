@@ -17,6 +17,7 @@ pub mod names;
 pub mod openings;
 pub mod prepare;
 pub mod registry;
+pub mod repertoire;
 pub mod save;
 pub mod searches;
 pub mod settings;
@@ -164,6 +165,7 @@ pub fn run() {
         .manage(settings::Settings::default())
         .manage(std::sync::Arc::new(blunder_check::BlunderJobs::default()))
         .manage(std::sync::Arc::new(error_report::ErrorReportJobs::default()))
+        .manage(std::sync::Arc::new(repertoire::RepertoireJobs::default()))
         .manage(std::sync::Arc::new(deep_analysis::DeepJobs::default()))
         .manage(std::sync::Arc::new(tablebases::Tablebases::default()))
         .manage(ExitPolicy::default())
@@ -225,6 +227,10 @@ pub fn run() {
             error_report::error_report,
             error_report::cancel_error_report,
             error_report::selection_players,
+            repertoire::frequent_players,
+            repertoire::generate_repertoire,
+            repertoire::repertoire_report,
+            repertoire::cancel_repertoire,
             commands::copy_rows,
             commands::clip_size,
             commands::paste_games,

@@ -28,6 +28,8 @@ pub const SQUARES: u16 = 0x04;
 pub const ARROWS: u16 = 0x05;
 pub const TEXT_ALT: u16 = 0x20;
 pub const TEXT_BEFORE: u16 = 0x82;
+/// A critical position: one byte, 1 opening, 2 middlegame, 3 endgame.
+pub const CRITICAL: u16 = 0x18;
 
 /// Classic language byte for each 2CBA language index. Index 7 (byte 0) is
 /// "no language"; indices 0, 1 and 2 (English, German, French) are confirmed
@@ -500,7 +502,8 @@ pub fn apply(game: &mut Game, parsed: Parsed, order: Order) -> (DataStatus, Vec<
                 }
             }
             Kind::Other(ty) => *other.entry(ty).or_default() += 1,
-            Kind::Critical(_) => *other.entry(0x18).or_default() += 1,
+            Kind::Critical(kind @ 1..=3) => node.critical = Some(kind),
+            Kind::Critical(_) => *other.entry(CRITICAL).or_default() += 1,
         }
     }
     if omitted_text > 0 {

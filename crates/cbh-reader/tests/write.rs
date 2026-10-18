@@ -32,8 +32,8 @@ fn walk(g: &Game) -> Vec<String> {
         let n = &g.nodes[id as usize];
         let path = format!("{path} {}", n.uci.as_deref().unwrap_or("-"));
         out.push(format!(
-            "{path} {:?} {:?} {:?} {:?} {:?}",
-            n.comments, n.pre_comments, n.nags, n.squares, n.arrows
+            "{path} {:?} {:?} {:?} {:?} {:?} {:?}",
+            n.comments, n.pre_comments, n.nags, n.squares, n.arrows, n.critical
         ));
         for &c in n.children.iter().rev() {
             stack.push((c, path.clone()));
@@ -56,6 +56,10 @@ fn annotated() -> Game {
         from: "d7".into(),
         to: "d5".into(),
     });
+    // 2.Nf3 is a repertoire ("blue") move, 2.f4 a critical middlegame one.
+    g.nodes[3].critical = Some(1);
+    let f4 = g.nodes[2].children[1] as usize;
+    g.nodes[f4].critical = Some(2);
     g
 }
 

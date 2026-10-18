@@ -126,8 +126,8 @@ fn one_language_is_kept_with_neutral_text() {
 
 #[test]
 fn unsupported_and_unsized_types_are_reported() {
-    // A critical position (one byte, kept for searching) is not shown; a game
-    // quotation stops parsing.
+    // A critical position (one byte) is kept on its move; a game quotation
+    // stops parsing.
     let payload = [
         group(0, &[vec![0x18, 0, 2]]),
         group(1, &[vec![0x13, 0, 9, 9, 9]]),
@@ -141,8 +141,9 @@ fn unsupported_and_unsized_types_are_reported() {
     let mut g = game();
     let (status, notes) = apply(&mut g, parsed, Order::Line);
     assert_eq!(status, DataStatus::Partial);
+    assert_eq!(g.nodes[1].critical, Some(2));
     let codes: Vec<_> = notes.iter().map(|d| d.code.as_str()).collect();
-    assert_eq!(codes, ["unsupportedAnnotation", "annotationsStopped"]);
+    assert_eq!(codes, ["annotationsStopped"]);
 }
 
 #[test]

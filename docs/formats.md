@@ -288,7 +288,8 @@ The type ids come from the annotation factory `0x1401a2ae0`:
 | `0x03` | Up to three symbols as PGN NAG numbers: move, position, prefix | Yes |
 | `0x04`, `0x05` | Coloured squares (colour, square) and arrows (colour, from, to) | Yes |
 | `0x84`, `0x85` | Squares and arrows shown before the move | No |
-| `0x07` time, `0x09` training, `0x13` game quotation, `0x14` pawn structure, `0x15` piece path, `0x18` critical position, `0x22` medal, `0x23` variation colour, `0x26` evaluation profile, others | Various | No, counted in a diagnostic |
+| `0x18` | Critical position: one byte, 1 opening (the repertoire's "blue" move), 2 middlegame, 3 endgame | Yes, read and written (see [repertoire](repertoire.md)) |
+| `0x07` time, `0x09` training, `0x13` game quotation, `0x14` pawn structure, `0x15` piece path, `0x22` medal, `0x23` variation colour, `0x26` evaluation profile, others | Various | No, counted in a diagnostic |
 
 **Positions.** Position −1 is the start of the game. Position *k* is the
 (k+1)-th move, but the two files count moves in different orders:
@@ -317,6 +318,7 @@ a LE16 type followed by that class's stream data (vtable slot 4):
 * text: flags, language index and a LE32-length string;
 * symbols: three bytes;
 * squares and arrows: a LE32-length byte string with the classic data.
+* critical position: one byte (1–3); other values are counted as not shown.
 
 The payload ends with position `0x7fffffff`. Training (`0x09`), game quotation
 (`0x13`) and correspondence (`0x19`) entries nest further structures. The

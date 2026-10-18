@@ -157,8 +157,8 @@ fn cbh(r: &Registry, d: &tempfile::TempDir) -> String {
     h[9] = 2;
     h[46] = 1;
     h[73] = 2;
-    // Annotations at CBA offset 1: one critical-position mark, which the
-    // reader does not represent, so the export needs an acknowledgement.
+    // Annotations at CBA offset 1: one critical-position mark, which PGN
+    // cannot hold, so the export needs an acknowledgement.
     h[51..55].copy_from_slice(&1u32.to_be_bytes());
     fs::write(d.path().join("read-only.cbh"), h).unwrap();
     fs::write(d.path().join("read-only.cbg"), [0, 0, 0, 7, 0xff, 0, 0x0e]).unwrap();

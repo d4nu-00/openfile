@@ -599,6 +599,12 @@ impl Registry {
                     "Some original database annotations are not decoded; acknowledge their omission before exporting",
                 ));
             }
+            if !allow_incomplete && d.game.nodes.iter().any(|n| n.critical.is_some()) {
+                return Err(AppError::new(
+                    "incompleteAnnotations",
+                    "PGN cannot hold critical position marks; acknowledge their omission before exporting",
+                ));
+            }
             (d.game.clone(), d.revision, d.source_paths.clone())
         };
         save::reject_source_destination(&path, &sources)?;

@@ -35,6 +35,12 @@ export const nagSymbols: Record<number, string> = {
   146: "N",
 };
 const nagText = (n: number) => nagSymbols[n] ?? `$${n}`;
+/** Critical position marks (annotation 0x18), by kind. */
+const criticalTitle: Record<number, string> = {
+  1: "Critical opening position (repertoire move)",
+  2: "Critical middlegame position",
+  3: "Critical endgame position",
+};
 
 type Token =
   | { kind: "move"; node: GameNode; depth: number; number?: string }
@@ -239,6 +245,12 @@ export function NotationTree({
                   <button
                     ref={t.node.id === selection ? current : undefined}
                     className={t.depth ? "move var" : "move main"}
+                    data-critical={t.node.critical}
+                    title={
+                      t.node.critical
+                        ? criticalTitle[t.node.critical]
+                        : undefined
+                    }
                     aria-current={t.node.id === selection ? "step" : undefined}
                     onClick={() => onSelect(t.node.id)}
                   >

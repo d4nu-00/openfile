@@ -221,10 +221,12 @@ fn nag_slot(nag: u16) -> usize {
 const MAX_TEXT: usize = 0xfff0;
 
 /// Encodes a game's annotations as a 2CBA payload in line order: per node,
-/// text before, symbols, text after, squares, arrows. Text is UTF-8 with no
+/// text before, symbols, text after, squares, arrows, critical position. Text is UTF-8 with no
 /// language (index 7).
 pub fn encode_annotations(game: &Game) -> (Vec<u8>, Omitted) {
-    use crate::annotations::{ARROWS, NEUTRAL_LANGUAGE, Order, SQUARES, SYMBOLS, TEXT_AFTER};
+    use crate::annotations::{
+        ARROWS, CRITICAL, NEUTRAL_LANGUAGE, Order, SQUARES, SYMBOLS, TEXT_AFTER,
+    };
     use crate::annotations::{TEXT_BEFORE, positions};
     let mut omitted = Omitted::default();
     let mut out = vec![];
@@ -326,6 +328,17 @@ pub fn encode_annotations(game: &Game) -> (Vec<u8>, Omitted) {
                 entries.extend(data);
                 count += 1;
             }
+        }
+        match node.critical {
+            Some(kind @ 1..=3) => {
+                entries.extend(CRITICAL.to_le_bytes());
+                entries.push(kind);
+                count += 1;
+            }
+            Some(kind) => omitted
+                .notes
+                .push(format!("Critical position kind {kind} is not storable")),
+            None => {}
         }
         if count > 0 {
             out.extend(position.to_le_bytes());

@@ -158,7 +158,12 @@ ported (see [tournament report](tournament-report.md)). The Error Report analyse
 the selected games with the user's UCI engine to the reference app's depths and
 applies the reference app's Blunder Elo curve to an error value formed as
 The reference app forms it, but without its engine's complexity and deep-search
-weights; the estimate is approximate (see [error report](error-report.md)). The search mask's Annotations
+weights; the estimate is approximate (see [error report](error-report.md)). Generate Repertoire writes
+White and Black repertoire databases as new 2CBH files from the open
+database, with the reference app's merge and marking rules; its clustering
+is replaced by the ECO table's entries, and the Repertoire Report takes each
+game's deepest marked position (see [repertoire](repertoire.md)). Critical
+position annotations (0x18) are read, written and shown. The search mask's Annotations
 and Medals tabs search texts, symbols, colours, training, multimedia, pawn
 structures, piece paths, critical positions, variations and medals; how
 The reference app combines several symbols or medals was not traced (see

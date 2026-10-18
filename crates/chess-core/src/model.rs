@@ -28,6 +28,10 @@ pub struct Node {
     /// Coloured arrows shown on the position after the move.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub arrows: Vec<ArrowMark>,
+    /// The reference app's critical position mark on the move (annotation
+    /// 0x18): 1 opening (the "blue" repertoire move), 2 middlegame, 3 endgame.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub critical: Option<u8>,
 }
 /// Mark colours use the PGN `[%csl]`/`[%cal]` letters: G green, Y yellow,
 /// R red, B blue, and the further the reference app letters C and O.
@@ -97,6 +101,7 @@ impl Game {
                 pre_comments: vec![],
                 squares: vec![],
                 arrows: vec![],
+                critical: None,
             }],
         })
     }
@@ -199,6 +204,7 @@ impl Game {
             pre_comments: vec![],
             squares: vec![],
             arrows: vec![],
+            critical: None,
         });
         self.nodes[parent as usize].children.push(id);
         Ok(id)

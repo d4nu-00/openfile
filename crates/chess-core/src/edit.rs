@@ -253,6 +253,7 @@ impl Game {
                         pre_comments: vec![],
                         squares: vec![],
                         arrows: vec![],
+                        critical: None,
                     },
                 );
                 n.id = map[o as usize];
