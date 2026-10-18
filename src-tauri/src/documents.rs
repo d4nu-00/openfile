@@ -98,6 +98,16 @@ pub enum Edit {
         commentary: chess_core::edit::Commentary,
         node: u32,
     },
+    /// Sets or removes the training question on a move; `moves` gives the
+    /// answers' moves in SAN or UCI (see `Game::set_training`).
+    SetTraining {
+        node: u32,
+        training: Option<Box<chess_core::training::Training>>,
+        #[serde(default)]
+        moves: Vec<Option<String>>,
+    },
+    /// The reference app's Delete Training Commentary: every question.
+    ClearTraining,
     /// Engine annotations of several moves at once (Blunder Check).
     AddAnalysis {
         items: Vec<AnalysisItem>,
@@ -491,6 +501,14 @@ impl Registry {
             Edit::DeleteCommentary { commentary, node } => {
                 selected = Some(d.game.delete_commentary(commentary, node)?)
             }
+            Edit::SetTraining {
+                node,
+                training,
+                moves,
+            } => d.game.set_training(node, training.map(|t| *t), &moves)?,
+            Edit::ClearTraining => {
+                d.game.clear_training();
+            }
             Edit::AddAnalysis { items } => add_analysis(&mut d.game, items)?,
             Edit::AddLines { parent, lines } => add_lines(&mut d.game, parent, &lines)?,
             Edit::AppendLine {
@@ -603,10 +621,15 @@ impl Registry {
                     "Some original database annotations are not decoded; acknowledge their omission before exporting",
                 ));
             }
-            if !allow_incomplete && d.game.nodes.iter().any(|n| n.critical.is_some()) {
+            if !allow_incomplete
+                && d.game
+                    .nodes
+                    .iter()
+                    .any(|n| n.critical.is_some() || n.training.is_some())
+            {
                 return Err(AppError::new(
                     "incompleteAnnotations",
-                    "PGN cannot hold critical position marks; acknowledge their omission before exporting",
+                    "PGN cannot hold critical position marks or training questions; acknowledge their omission before exporting",
                 ));
             }
             (d.game.clone(), d.revision, d.source_paths.clone())

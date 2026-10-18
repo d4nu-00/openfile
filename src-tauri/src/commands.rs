@@ -182,6 +182,13 @@ pub struct GameNode {
     /// 3 endgame.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub critical: Option<u8>,
+    /// A training question about the position before the move.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub training: Option<Box<chess_core::training::Training>>,
+    /// Each move answer in SAN in that position; None for a stored move
+    /// that is not legal there.
+    #[serde(rename = "trainingMoves", skip_serializing_if = "Vec::is_empty")]
+    pub training_moves: Vec<Option<String>>,
 }
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -207,6 +214,8 @@ impl GameView {
                 squares: n.squares.clone(),
                 arrows: n.arrows.clone(),
                 critical: n.critical,
+                training: n.training.clone(),
+                training_moves: vec![],
             })
             .collect();
         let mut seen = vec![false; nodes.len()];
@@ -219,6 +228,15 @@ impl GameView {
                 return Err(AppError::new("invalidNode", "Invalid game tree"));
             }
             seen[id as usize] = true;
+            if let Some(t) = &node.training
+                && t.kind == chess_core::training::TrainingKind::MoveInput
+            {
+                node.training_moves = t
+                    .answers
+                    .iter()
+                    .map(|a| answer_san(&before, a.from, a.to))
+                    .collect();
+            }
             let after = if let Some(uci) = &node.uci {
                 node.san = Some(if uci == "0000" {
                     "--".into()
@@ -247,6 +265,31 @@ impl GameView {
             nodes,
         })
     }
+}
+/// A training answer's squares (0-based, file-major) as a legal move in
+/// `pos`, in SAN; a promotion is to a queen.
+fn answer_san(pos: &shakmaty::Chess, from: u8, to: u8) -> Option<String> {
+    use shakmaty::{File, Move, Position, Rank, Role, Square};
+    let square = |c: u8| {
+        (c < 64)
+            .then(|| Square::from_coords(File::new(u32::from(c / 8)), Rank::new(u32::from(c % 8))))
+    };
+    let (from, to) = (square(from)?, square(to)?);
+    let moves = pos.legal_moves();
+    let m = moves
+        .iter()
+        .filter(|m| {
+            m.from() == Some(from)
+                && match m {
+                    Move::Castle { king, rook } => {
+                        let file = if rook > king { File::G } else { File::C };
+                        to == Square::from_coords(file, king.rank())
+                    }
+                    other => other.to() == to,
+                }
+        })
+        .max_by_key(|m| m.promotion() == Some(Role::Queen))?;
+    Some(SanPlus::from_move(pos.clone(), *m).to_string())
 }
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
