@@ -889,6 +889,34 @@ export function demoApi(): WorkbenchApi {
         })),
       };
     },
+    filteredOpeningTree: async (_db, line, requestId) => {
+      if (!hits)
+        throw { code: "noSearch", message: "No current search result" };
+      const legal = (demoLegal[line.moves.length] ?? []).slice(0, 3);
+      const counts = [140, 45, 15];
+      const total = hits.length;
+      return {
+        requestId,
+        status: "filtered" as const,
+        games: total,
+        ended: 0,
+        sampledHits: total,
+        totalHits: total,
+        moves: legal.map((uci, i) => ({
+          uci,
+          san: uci,
+          games: counts[i],
+          share: (counts[i] * 100) / total,
+          score: 61 - i * 8,
+          draws: 28 + i * 4,
+          averageElo: 2490 - i * 55,
+          performance: 2530 - i * 65,
+          firstYear: 1950 + i * 5,
+          lastYear: 2024 - i,
+        })),
+      };
+    },
+    cancelFilteredOpeningTree: async () => {},
     referenceSearch: async (_db, _line, requestId) => ({
       requestId,
       hits: "12",

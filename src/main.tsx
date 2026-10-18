@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { isTauri } from "@tauri-apps/api/core";
 import { App } from "./App";
+import { emptyFilter } from "./api/types";
 import type { WorkbenchApi } from "./api/client";
 import type { WorkbenchState } from "./state/workbench";
 
@@ -12,6 +13,7 @@ async function start() {
   if (import.meta.env.DEV && !isTauri()) {
     api = (await import("./dev/demoApi")).demoApi();
     // ?demo&view=game&entry=11&node=33&theme=black opens a ready-made preview.
+    // Add &search to preview a matching game list and its filtered opening tree.
     const q = new URLSearchParams(location.search);
     if (q.has("theme"))
       localStorage.setItem("workbench.theme", q.get("theme")!);
@@ -27,7 +29,25 @@ async function start() {
         Number(q.get("node") ?? 0),
         "demo",
       );
-      initialState = { database, document, position };
+      const search = q.has("search")
+        ? await api.searchGames(
+            database.databaseId,
+            emptyFilter(),
+            "demo-search",
+          )
+        : undefined;
+      initialState = {
+        database,
+        document,
+        position,
+        ...(search && {
+          search: {
+            hits: search.hits,
+            truncated: search.truncated,
+            label: "Sample games",
+          },
+        }),
+      };
       initialView = q.get("view") === "game" ? "game" : "database";
     }
   }
