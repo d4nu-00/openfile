@@ -166,7 +166,9 @@ game's deepest marked position (see [repertoire](repertoire.md)). Critical
 position annotations (0x18) are read, written and shown. Centipawn
 Analysis applies the Error Report's pass to the shown game after its
 opening, with the reference app's categories where a UCI engine allows them
-(see [centipawn analysis](centipawn-analysis.md)). The search mask's Annotations
+(see [centipawn analysis](centipawn-analysis.md)). Training questions (0x09)
+are read from CBA and 2CBA, written to 2CBA, shown and edited (see
+[training](training.md)). The search mask's Annotations
 and Medals tabs search texts, symbols, colours, training, multimedia, pawn
 structures, piece paths, critical positions, variations and medals; how
 The reference app combines several symbols or medals was not traced (see

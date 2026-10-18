@@ -194,7 +194,7 @@ Names in backticks are the reference app's command ids, for traceability.
 
 ## 11. Training
 
-- [ ] P2 🟢 Training annotations: questions with hints and points (`ANNOTRAINING`, `CREATETRAINING`)
+- [x] P2 🟢 Training annotations: questions with hints and points (`ANNOTRAINING`, `CREATETRAINING`) *(type 0x09 traced and decoded in CBA and 2CBA: move input or multiple choice, seconds, score, question, wrong-answer text, two hints in 7 languages with board marks, answers with points and feedback; answer squares are 0-based on the position before the move, all 3,687 answers of the classic test database legal; read, written to 2CBA (all 2,304 games round-trip) and shown in the notation; Training Annotation (Ctrl+Alt+M) edits a question one language at a time, Delete Training Commentary removes them; PGN export asks first; asking the questions is Replay Training; see [training](docs/training.md))*
 - [ ] P2 🟢 Replay training: guess the move, graded by engine or theory (ReplayTraining messages)
 - [ ] P2 🟢 Calculation training (`CALCULATION_TRAINING`, `CALC_CHECK_LEGAL`, `CALC_CHECK_ENGINE`)
 - [ ] P3 🟢 Tactics training from positions (`TRAINING_TACTICS`, `TACTICS_FIGHT`)
