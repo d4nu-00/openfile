@@ -137,6 +137,7 @@ export function NotationTree({
   startFen,
   folded,
   onUnfold,
+  onTraining,
 }: {
   nodes: GameNode[];
   selection: number;
@@ -145,6 +146,8 @@ export function NotationTree({
   /** Branch nodes whose variations are folded (the reference app's Fold). */
   folded?: ReadonlySet<number>;
   onUnfold?: (id: number) => void;
+  /** Opens the training question on a move. */
+  onTraining?: (id: number) => void;
 }) {
   const tokens = useMemo(
     () => notationTokens(nodes, startFen, folded),
@@ -256,6 +259,16 @@ export function NotationTree({
                   >
                     {t.node.san ?? t.node.uci}
                   </button>
+                  {t.node.training && (
+                    <button
+                      type="button"
+                      className="training-chip"
+                      title="Training question about the position before this move"
+                      onClick={() => onTraining?.(t.node.id)}
+                    >
+                      Training
+                    </button>
+                  )}
                   {t.node.nags.length > 0 && (
                     <span className="nag">
                       {t.node.nags.map(nagText).join("")}

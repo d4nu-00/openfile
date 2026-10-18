@@ -2268,3 +2268,61 @@ kbd {
 .repertoire .repertoire-position li:hover {
   background: var(--row-hover);
 }
+
+/* Training annotations */
+.training-chip {
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.8em;
+  padding: 0 5px;
+  margin: 0 3px;
+  cursor: pointer;
+}
+.modal.training {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: min(720px, calc(100vw - 32px));
+  max-height: 92vh;
+  overflow: auto;
+  cursor: default;
+  gap: 8px;
+}
+.training .training-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.training .training-row input[type="number"] {
+  width: 70px;
+}
+.training .training-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.training .training-field textarea {
+  resize: vertical;
+  font: inherit;
+}
+.training .training-answers input {
+  width: 100%;
+  min-width: 0;
+}
+.training .training-answers td.num input {
+  width: 60px;
+}
+.training fieldset.segmented {
+  display: flex;
+  gap: 14px;
+  border: 0;
+  padding: 0;
+}
+.training fieldset.segmented label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

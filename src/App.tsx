@@ -31,6 +31,7 @@ import type {
   Dossier,
   TournamentReport,
   ErrorReport,
+  GameNode,
   SelectionPlayer,
   SortColumn,
 } from "./api/types";
@@ -48,6 +49,7 @@ import { EngineManagement } from "./components/EngineManagement";
 import { TablebasePane } from "./components/TablebasePane";
 import { BlunderCheckDialog } from "./components/BlunderCheckDialog";
 import { CentipawnDialog } from "./components/CentipawnDialog";
+import { TrainingDialog } from "./components/TrainingDialog";
 import { DeepAnalysisDialog } from "./components/DeepAnalysisDialog";
 import { ClassifyDialog, SetEcoDialog } from "./components/OpeningDialogs";
 import { OpeningReportDialog } from "./components/OpeningReportDialog";
@@ -172,6 +174,8 @@ export function App({
   const k = useKibitzers(api, state, settings, saveSettings);
   const [enginesOpen, setEnginesOpen] = useState(false);
   /** Tactical Analysis: open, its progress while running, its error. */
+  /** The move whose training question is being edited, and any error. */
+  const [training, setTraining] = useState<{ node: number; error?: string }>();
   /** The document Centipawn Analysis runs on. */
   const [centipawn, setCentipawn] = useState<string>();
   const [blunder, setBlunder] = useState<{
@@ -1979,6 +1983,14 @@ export function App({
       run: () => void createJobs(),
       enabled: !!state.database?.writable && w.rowCount > 0,
     },
+    "training-annotation": {
+      run: () => selected !== 0 && setTraining({ node: selected }),
+      enabled: !!state.document?.documentId && selected !== 0,
+    },
+    "delete-training": {
+      run: () => void e.edit({ kind: "clearTraining" }),
+      enabled: !!game?.nodes.some((n) => n.training),
+    },
     "centipawn-analysis": {
       run: () =>
         state.document?.documentId && setCentipawn(state.document.documentId),
@@ -2307,6 +2319,10 @@ export function App({
       startFen={game.startFen}
       folded={folded}
       onUnfold={(id) => setFold(id, false)}
+      onTraining={(id) => {
+        void w.selectNode(id);
+        setTraining({ node: id });
+      }}
     />
   ) : (
     <div className="empty-state">
@@ -2949,6 +2965,32 @@ export function App({
           onClose={() => setBlunder(undefined)}
         />
       )}
+      {training && game?.nodes[training.node] && (
+        <TrainingDialog
+          node={game.nodes[training.node]}
+          moveText={moveLabel(game.nodes, training.node)}
+          error={training.error}
+          onSave={(t, moves) =>
+            void e
+              .edit({
+                kind: "setTraining",
+                node: training.node,
+                training: t,
+                moves,
+              })
+              .then((result) =>
+                result === null
+                  ? setTraining({
+                      ...training,
+                      error:
+                        "The question could not be saved: check the answers' moves.",
+                    })
+                  : setTraining(undefined),
+              )
+          }
+          onClose={() => setTraining(undefined)}
+        />
+      )}
       {centipawn && (
         <CentipawnDialog
           api={api}
@@ -3378,4 +3420,18 @@ export function App({
       )}
     </div>
   );
+}
+
+/** "2.Nf3" or "2...Nf6" for a node, counting plies from the start. */
+function moveLabel(nodes: GameNode[], id: number): string {
+  let ply = 0;
+  for (
+    let at = nodes[id]?.parent;
+    at !== undefined && nodes[at]?.parent !== undefined;
+    at = nodes[at]?.parent
+  )
+    ply++;
+  const n = nodes[id];
+  const number = Math.floor(ply / 2) + 1;
+  return `${number}${ply % 2 ? "..." : "."}${n?.san ?? n?.uci ?? ""}`;
 }

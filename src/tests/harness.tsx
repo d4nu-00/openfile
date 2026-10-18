@@ -187,6 +187,11 @@ export function mockApi(firstDatabase = 1) {
         } else if (edit.kind === "setPreComments") {
           game.nodes[edit.node].preComments = edit.comments;
           revision++;
+        } else if (edit.kind === "setTraining") {
+          const n = game.nodes[edit.node];
+          n.training = edit.training ?? undefined;
+          n.trainingMoves = edit.training ? edit.moves : undefined;
+          revision++;
         } else if (edit.kind === "setMarks") {
           game.nodes[edit.node].squares = edit.squares;
           game.nodes[edit.node].arrows = edit.arrows;
