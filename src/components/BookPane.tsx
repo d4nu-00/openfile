@@ -198,8 +198,10 @@ export function BookPane({
                   <td className="num">{games.format(m.games)}</td>
                   <td className="num">{percent(m.share)}</td>
                   <td className="score">
-                    <ResultBar move={m} />
-                    <span>{percent(m.score)}</span>
+                    <span className="score-content">
+                      <ResultBar move={m} />
+                      <span>{percent(m.score)}</span>
+                    </span>
                   </td>
                   <td className="num">
                     {m.draws === undefined || m.draws === null

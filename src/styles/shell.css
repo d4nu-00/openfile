@@ -1020,6 +1020,10 @@ kbd {
 .book-list tbody tr {
   cursor: pointer;
 }
+.book-list {
+  display: block;
+  overflow: auto;
+}
 .book-move {
   border: 0;
   background: transparent;
@@ -1027,8 +1031,8 @@ kbd {
   font-weight: 600;
   color: var(--notation-move);
 }
-.book-list .score {
-  display: flex;
+.book-list .score-content {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   font-variant-numeric: tabular-nums;

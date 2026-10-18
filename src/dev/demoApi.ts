@@ -255,6 +255,34 @@ export function demoApi(): WorkbenchApi {
     return order.filter((o) => keep.has(o));
   };
   let nodes: GameNode[] = structuredClone(demoNodes) as unknown as GameNode[];
+  const bookMoves = (moves: string[]) => {
+    if (moves.length === 0)
+      return [
+        { uci: "e2e4", san: "e4" },
+        { uci: "d2d4", san: "d4" },
+        { uci: "g1f3", san: "Nf3" },
+        { uci: "c2c4", san: "c4" },
+        { uci: "b1c3", san: "Nc3" },
+      ];
+    if (moves.length === 1 && moves[0] === "e2e4")
+      return [
+        { uci: "e7e5", san: "e5" },
+        { uci: "c7c5", san: "c5" },
+        { uci: "e7e6", san: "e6" },
+      ];
+    let node = nodes[0];
+    for (const uci of moves) {
+      const next = node.children
+        .map((id) => nodes[id])
+        .find((n) => n.uci === uci);
+      if (!next) return [];
+      node = next;
+    }
+    return node.children.flatMap((id) => {
+      const { uci, san } = nodes[id];
+      return uci && san ? [{ uci, san }] : [];
+    });
+  };
   let revision = 0;
   let timer: ReturnType<typeof setInterval> | undefined;
   const game = (e: EntrySummary) => ({
@@ -867,7 +895,7 @@ export function demoApi(): WorkbenchApi {
     cancelOpeningTree: async () => {},
     deleteOpeningTree: async () => {},
     openingTree: async (_db, line, requestId) => {
-      const legal = (demoLegal[line.moves.length] ?? []).slice(0, 5);
+      const legal = bookMoves(line.moves).slice(0, 5);
       const counts = [1200, 640, 310, 95, 12];
       const total = counts.slice(0, legal.length).reduce((a, b) => a + b, 0);
       return {
@@ -875,9 +903,9 @@ export function demoApi(): WorkbenchApi {
         status: "tree" as const,
         games: total,
         ended: 0,
-        moves: legal.map((uci, i) => ({
+        moves: legal.map(({ uci, san }, i) => ({
           uci,
-          san: uci,
+          san,
           games: counts[i],
           share: (counts[i] * 100) / total,
           score: 55 - i * 3,
@@ -892,7 +920,7 @@ export function demoApi(): WorkbenchApi {
     filteredOpeningTree: async (_db, line, requestId) => {
       if (!hits)
         throw { code: "noSearch", message: "No current search result" };
-      const legal = (demoLegal[line.moves.length] ?? []).slice(0, 3);
+      const legal = bookMoves(line.moves).slice(0, 3);
       const counts = [140, 45, 15];
       const total = hits.length;
       return {
@@ -902,9 +930,9 @@ export function demoApi(): WorkbenchApi {
         ended: 0,
         sampledHits: total,
         totalHits: total,
-        moves: legal.map((uci, i) => ({
+        moves: legal.map(({ uci, san }, i) => ({
           uci,
-          san: uci,
+          san,
           games: counts[i],
           share: (counts[i] * 100) / total,
           score: 61 - i * 8,
