@@ -220,12 +220,121 @@ fn nag_slot(nag: u16) -> usize {
 
 const MAX_TEXT: usize = 0xfff0;
 
+/// A training entry's stream data (`0x140190a10`'s inverse): two presence
+/// bytes, the kind as LE32, then the item (`0x140b94920` and the kind's
+/// writer). Strings have an LE32 length.
+fn training(t: &chess_core::training::Training, out: &mut Vec<u8>, omitted: &mut Omitted) {
+    use chess_core::training::TrainingKind;
+    out.extend([1, 1]);
+    out.extend(t.kind.code().to_le_bytes());
+    out.extend(t.seconds.to_le_bytes());
+    out.extend(t.score.to_le_bytes());
+    for b in [&t.question, &t.wrong, &t.help[0], &t.help[1]] {
+        training_block(b, out, omitted);
+    }
+    let answers = &t.answers[..t.answers.len().min(255)];
+    if answers.len() < t.answers.len() {
+        omitted
+            .notes
+            .push("A training question has more than 255 answers".into());
+    }
+    out.push(answers.len() as u8);
+    for a in answers {
+        match t.kind {
+            TrainingKind::MoveInput => {
+                out.extend([a.from, a.to, a.extra, a.points]);
+                training_block(&a.feedback, out, omitted);
+            }
+            TrainingKind::MultipleChoice => {
+                out.push(a.points);
+                training_block(&a.choice, out, omitted);
+                training_block(&a.feedback, out, omitted);
+            }
+        }
+    }
+}
+
+/// A training text block: an LE16 count, then per string its slot, index
+/// and LE32-length string, in slot order (languages, then arrows in slot 7
+/// and squares in slot 8).
+fn training_block(b: &chess_core::training::Block, out: &mut Vec<u8>, omitted: &mut Omitted) {
+    use chess_core::training::{ARROW_SLOT, SQUARE_SLOT};
+    let mut strings: Vec<(u8, u8, Vec<u8>)> = b
+        .texts
+        .iter()
+        .filter(|t| !t.text.is_empty())
+        .map(|t| (t.language, t.index, t.text.as_bytes().to_vec()))
+        .collect();
+    let arrows: Vec<u8> = b
+        .arrows
+        .iter()
+        .filter_map(|m| {
+            match (
+                color_code(m.color),
+                square_code(&m.from),
+                square_code(&m.to),
+            ) {
+                (Some(c), Some(f), Some(t)) => Some([c, f, t]),
+                _ => {
+                    omitted.notes.push(format!(
+                        "Arrow {}{}{} is not storable",
+                        m.color, m.from, m.to
+                    ));
+                    None
+                }
+            }
+        })
+        .flatten()
+        .collect();
+    let squares: Vec<u8> = b
+        .squares
+        .iter()
+        .filter_map(|m| match (color_code(m.color), square_code(&m.square)) {
+            (Some(c), Some(s)) => Some([c, s]),
+            _ => {
+                omitted.notes.push(format!(
+                    "Square mark {}{} is not storable",
+                    m.color, m.square
+                ));
+                None
+            }
+        })
+        .flatten()
+        .collect();
+    if !arrows.is_empty() {
+        strings.push((ARROW_SLOT, 0, arrows));
+    }
+    if !squares.is_empty() {
+        strings.push((SQUARE_SLOT, 0, squares));
+    }
+    strings.extend(b.other.iter().map(|r| (r.slot, r.index, r.bytes.clone())));
+    strings.sort_by_key(|(slot, index, _)| (*slot, *index));
+    strings.dedup_by_key(|(slot, index, _)| (*slot, *index));
+    strings.retain(|(_, _, bytes)| {
+        let fits = bytes.len() <= MAX_TEXT;
+        if !fits {
+            omitted.notes.push(format!(
+                "A training text of {} bytes exceeds 0xfff0",
+                bytes.len()
+            ));
+        }
+        fits
+    });
+    out.extend((strings.len() as u16).to_le_bytes());
+    for (slot, index, bytes) in strings {
+        out.extend([slot, index]);
+        out.extend((bytes.len() as u32).to_le_bytes());
+        out.extend(bytes);
+    }
+}
+
 /// Encodes a game's annotations as a 2CBA payload in line order: per node,
-/// text before, symbols, text after, squares, arrows, critical position. Text is UTF-8 with no
+/// text before, symbols, text after, squares, arrows, training, critical
+/// position. Text is UTF-8 with no
 /// language (index 7).
 pub fn encode_annotations(game: &Game) -> (Vec<u8>, Omitted) {
     use crate::annotations::{
-        ARROWS, CRITICAL, NEUTRAL_LANGUAGE, Order, SQUARES, SYMBOLS, TEXT_AFTER,
+        ARROWS, CRITICAL, NEUTRAL_LANGUAGE, Order, SQUARES, SYMBOLS, TEXT_AFTER, TRAINING,
     };
     use crate::annotations::{TEXT_BEFORE, positions};
     let mut omitted = Omitted::default();
@@ -328,6 +437,11 @@ pub fn encode_annotations(game: &Game) -> (Vec<u8>, Omitted) {
                 entries.extend(data);
                 count += 1;
             }
+        }
+        if let Some(t) = &node.training {
+            entries.extend(TRAINING.to_le_bytes());
+            training(t, &mut entries, &mut omitted);
+            count += 1;
         }
         match node.critical {
             Some(kind @ 1..=3) => {

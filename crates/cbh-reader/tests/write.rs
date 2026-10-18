@@ -32,8 +32,8 @@ fn walk(g: &Game) -> Vec<String> {
         let n = &g.nodes[id as usize];
         let path = format!("{path} {}", n.uci.as_deref().unwrap_or("-"));
         out.push(format!(
-            "{path} {:?} {:?} {:?} {:?} {:?} {:?}",
-            n.comments, n.pre_comments, n.nags, n.squares, n.arrows, n.critical
+            "{path} {:?} {:?} {:?} {:?} {:?} {:?} {:?}",
+            n.comments, n.pre_comments, n.nags, n.squares, n.arrows, n.critical, n.training
         ));
         for &c in n.children.iter().rev() {
             stack.push((c, path.clone()));
@@ -60,6 +60,43 @@ fn annotated() -> Game {
     g.nodes[3].critical = Some(1);
     let f4 = g.nodes[2].children[1] as usize;
     g.nodes[f4].critical = Some(2);
+    // A multiple-choice question on 1...e5 with an arrow in its hint.
+    use chess_core::training::{Answer, Block, Text, Training, TrainingKind};
+    let text = |t: &str| Block {
+        texts: vec![Text {
+            language: 0,
+            index: 0,
+            text: t.into(),
+        }],
+        ..Default::default()
+    };
+    let mut hint = text("Look at f7.");
+    hint.arrows.push(ArrowMark {
+        color: 'G',
+        from: "c4".into(),
+        to: "f7".into(),
+    });
+    g.nodes[2].training = Some(Box::new(Training {
+        kind: TrainingKind::MultipleChoice,
+        seconds: 120,
+        score: 5,
+        question: text("Which plan?"),
+        wrong: text("No."),
+        help: [hint, Block::default()],
+        answers: vec![
+            Answer {
+                points: 5,
+                choice: text("Attack f7"),
+                feedback: text("Yes."),
+                ..Default::default()
+            },
+            Answer {
+                points: 0,
+                choice: text("Push h4"),
+                ..Default::default()
+            },
+        ],
+    }));
     g
 }
 

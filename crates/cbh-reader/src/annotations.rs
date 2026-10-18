@@ -30,6 +30,8 @@ pub const TEXT_ALT: u16 = 0x20;
 pub const TEXT_BEFORE: u16 = 0x82;
 /// A critical position: one byte, 1 opening, 2 middlegame, 3 endgame.
 pub const CRITICAL: u16 = 0x18;
+/// A training question: a presence flag, the item's kind and the item.
+pub const TRAINING: u16 = 0x09;
 
 /// Classic language byte for each 2CBA language index. Index 7 (byte 0) is
 /// "no language"; indices 0, 1 and 2 (English, German, French) are confirmed
@@ -58,6 +60,8 @@ pub enum Kind {
     /// as the reference app's three commands set it (`0x1408e0cb0`, `0x1408e0c50`,
     /// `0x1408e0bf0`). Kept for searching; not shown.
     Critical(u8),
+    /// A training question (type 0x09), see docs/training.md.
+    Training(Box<chess_core::training::Training>),
     /// A recognised type this reader does not represent.
     Other(u16),
 }
@@ -200,6 +204,10 @@ pub fn parse_classic(bytes: &[u8], ordinal: u64) -> Result<Parsed, CbhError> {
             ARROWS => triples(data).ok_or_else(|| CbhError::Decode("Uneven arrow list".into()))?,
             SYMBOLS => return Err(CbhError::Decode("Long CBA symbol record".into())),
             0x18 if !data.is_empty() => Kind::Critical(data[0]),
+            TRAINING => match classic_training(data)? {
+                Some(t) => Kind::Training(Box::new(t)),
+                None => Kind::Other(TRAINING),
+            },
             other => Kind::Other(other),
         };
         parsed.entries.push(Entry { position, kind });
@@ -303,6 +311,20 @@ pub fn parse_new(payload: &[u8]) -> Result<Parsed, CbhError> {
                     Kind::Other(ty)
                 }
                 0x18 => Kind::Critical(c.u8()?),
+                // Two presence bytes (`0x140190a10`, `0x140b93fa0`), the kind
+                // as LE32, then the item; an item of an unknown kind cannot be
+                // sized.
+                TRAINING => {
+                    if c.u8()? == 0 || c.u8()? == 0 {
+                        continue;
+                    }
+                    let code = c.u32()?;
+                    let Some(kind) = chess_core::training::TrainingKind::from_code(code) else {
+                        parsed.stopped_at = Some((position, ty));
+                        return Ok(parsed);
+                    };
+                    Kind::Training(Box::new(training_item(&mut c, kind, false)?))
+                }
                 0x27 => {
                     c.u16()?;
                     Kind::Other(ty)
@@ -354,6 +376,153 @@ pub fn parse_new(payload: &[u8]) -> Result<Parsed, CbhError> {
         }
     }
     Ok(parsed)
+}
+
+/// A classic CBA training record's data (`0x140b92060`): an LE16 presence
+/// word, the kind, the item's LE16 length (counting itself), then the item
+/// with LE16-length strings. None for no item or an unknown kind.
+fn classic_training(data: &[u8]) -> Result<Option<chess_core::training::Training>, CbhError> {
+    let mut c = Cursor { bytes: data, at: 0 };
+    if c.u16()? == 0 {
+        return Ok(None);
+    }
+    let Some(kind) = chess_core::training::TrainingKind::from_code(u32::from(c.u8()?)) else {
+        return Ok(None);
+    };
+    let _length = c.u16()?;
+    let t = training_item(&mut c, kind, true)?;
+    if c.at != data.len() {
+        return Err(CbhError::Decode(
+            "CBA training record has trailing data".into(),
+        ));
+    }
+    Ok(Some(t))
+}
+
+/// Strings of one training text block at most (9 slots × 2).
+const MAX_BLOCK_STRINGS: u16 = 18;
+
+/// A training item (`0x140b94030` and the kind's reader): seconds, score,
+/// four text blocks, then the answers. Strings have an LE16 length in CBA
+/// and an LE32 length in 2CBA.
+fn training_item(
+    c: &mut Cursor,
+    kind: chess_core::training::TrainingKind,
+    classic: bool,
+) -> Result<chess_core::training::Training, CbhError> {
+    use chess_core::training::{Answer, Training, TrainingKind};
+    let seconds = c.u32()? as i32;
+    let score = c.u16()? as i16;
+    let question = training_block(c, classic)?;
+    let wrong = training_block(c, classic)?;
+    let help = [training_block(c, classic)?, training_block(c, classic)?];
+    let count = c.u8()?;
+    let mut answers = Vec::with_capacity(count as usize);
+    for _ in 0..count {
+        answers.push(match kind {
+            TrainingKind::MoveInput => {
+                let b = c.take(4)?;
+                let (from, to, extra, points) = (b[0], b[1], b[2], b[3]);
+                Answer {
+                    from,
+                    to,
+                    extra,
+                    points,
+                    feedback: training_block(c, classic)?,
+                    ..Default::default()
+                }
+            }
+            TrainingKind::MultipleChoice => {
+                let points = c.u8()?;
+                let choice = training_block(c, classic)?;
+                Answer {
+                    points,
+                    choice,
+                    feedback: training_block(c, classic)?,
+                    ..Default::default()
+                }
+            }
+        });
+    }
+    Ok(Training {
+        kind,
+        seconds,
+        score,
+        question,
+        wrong,
+        help,
+        answers,
+    })
+}
+
+/// A training text block: a count, then per string its slot (0–6 a
+/// language, 7 arrows, 8 coloured squares), its index and the string.
+fn training_block(c: &mut Cursor, classic: bool) -> Result<chess_core::training::Block, CbhError> {
+    use chess_core::training::{ARROW_SLOT, Block, RawString, SQUARE_SLOT, Text};
+    let count = c.u16()?;
+    if count > MAX_BLOCK_STRINGS {
+        return Err(CbhError::Decode(format!(
+            "Training text block of {count} strings"
+        )));
+    }
+    let mut block = Block::default();
+    for _ in 0..count {
+        let slot = c.u8()?;
+        let index = c.u8()?;
+        let bytes = if classic {
+            let length = c.u16()? as usize;
+            c.take(length)?
+        } else {
+            c.string()?
+        };
+        let raw = || RawString {
+            slot,
+            index,
+            bytes: bytes.to_vec(),
+        };
+        match (slot, index) {
+            (0..=6, 0..=1) => block.texts.push(Text {
+                language: slot,
+                index,
+                text: decode_text(bytes),
+            }),
+            (ARROW_SLOT, 0) => {
+                let marks: Option<Vec<ArrowMark>> = bytes
+                    .chunks(3)
+                    .map(|t| {
+                        (t.len() == 3).then_some(())?;
+                        Some(ArrowMark {
+                            color: color(t[0])?,
+                            from: square(t[1])?,
+                            to: square(t[2])?,
+                        })
+                    })
+                    .collect();
+                match marks {
+                    Some(m) => block.arrows.extend(m),
+                    None => block.other.push(raw()),
+                }
+            }
+            (SQUARE_SLOT, 0) => {
+                let marks: Option<Vec<SquareMark>> = bytes
+                    .chunks(2)
+                    .map(|t| {
+                        (t.len() == 2).then_some(())?;
+                        Some(SquareMark {
+                            color: color(t[0])?,
+                            square: square(t[1])?,
+                        })
+                    })
+                    .collect();
+                match marks {
+                    Some(m) => block.squares.extend(m),
+                    None => block.other.push(raw()),
+                }
+            }
+            _ => block.other.push(raw()),
+        }
+    }
+    Ok(block)
 }
 
 fn color(code: u8) -> Option<char> {
@@ -503,6 +672,7 @@ pub fn apply(game: &mut Game, parsed: Parsed, order: Order) -> (DataStatus, Vec<
             }
             Kind::Other(ty) => *other.entry(ty).or_default() += 1,
             Kind::Critical(kind @ 1..=3) => node.critical = Some(kind),
+            Kind::Training(t) => node.training = Some(t),
             Kind::Critical(_) => *other.entry(CRITICAL).or_default() += 1,
         }
     }
