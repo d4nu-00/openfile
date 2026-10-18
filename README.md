@@ -1,100 +1,127 @@
-# Chess Workbench
+<div align="center">
+  <img src="docs/media/logo.png" alt="Chess Workbench" width="88" />
+  <h1>Chess Workbench</h1>
+  <p><strong>Your ChessBase databases, on any desktop, free and open source.</strong></p>
+  <p>
+    <a href="#get-started">Get started</a> ·
+    <a href="#what-it-does">Features</a> ·
+    <a href="#use">Use</a> ·
+    <a href="#documentation">Docs</a> ·
+    <a href="feature_checklist.md">Feature checklist</a>
+  </p>
+  <p>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue" alt="GPL-3.0-or-later" /></a>
+    <img src="https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-lightgrey" alt="macOS, Windows, Linux" />
+    <img src="https://img.shields.io/badge/built%20with-Rust%20%C2%B7%20Tauri%20%C2%B7%20React-orange" alt="Built with Rust, Tauri and React" />
+    <img src="https://img.shields.io/badge/works-offline-success" alt="Works offline" />
+  </p>
+</div>
 
-**Your ChessBase databases, on any desktop, free and open source.**
+![The game window: Morphy's Opera Game at 16.Qb8+, with comments, a variation, symbols, arrows and a coloured square](docs/media/hero.png)
 
 Chess Workbench is a desktop chess database app for macOS, Windows and Linux.
-It opens the databases you already have from ChessBase, the classic `.cbh` and
-the newer `.2cbh` formats. You can browse, search, analyse and edit them in a
-fast, familiar window that looks and handles like ChessBase 18. It is built
-with Rust, React and Tauri, works entirely offline, and is licensed
-GPL-3.0-or-later.
+It opens the databases you already have from ChessBase, the classic `.cbh`
+and ChessBase 18's `.2cbh`. You can browse, search, analyse and edit them in
+a fast, familiar window that looks and handles like ChessBase 18.
 
 It is not affiliated with ChessBase GmbH. It reads and writes their file
-formats from the user's own files, reimplemented independently. No
-ChessBase code, artwork or games ship with it.
+formats from your own files, reimplemented independently. No ChessBase code,
+artwork or games ship with it.
 
-## Why use it
+## What it does
+
+| Browse | Analyse | Prepare |
+| :--- | :--- | :--- |
+| Open `.cbh` and `.2cbh` databases, even 11 million games | Any UCI engine, MultiPV, several kibitzers | Prepare against White or Black |
+| Sort, filter and search by game data, position, annotations, medals | Blunder check, deep analysis, analysis jobs | Player statistics and dossier |
+| Opening tree, reference search, crosstables | Syzygy tablebases in analysis and notation | Opening, tournament and error reports |
+| Edit games and write `.2cbh`; PGN in and out | Comments, symbols, arrows, variation tools | ChessBase's ribbon, shortcuts and themes |
+
+Everything runs on your computer: no account, no network, nothing uploaded.
+See the [feature checklist](feature_checklist.md) for what is done and what
+is planned, mapped against ChessBase 18's ~180 features.
+
+<details>
+<summary><strong>Explore the windows</strong> · Game list, search mask, dossier, dark theme</summary>
+
+<table>
+  <tr>
+    <td><img src="docs/media/list.png" alt="The database window: game list and game board" width="100%" /></td>
+    <td><img src="docs/media/search.png" alt="The search mask's game data tab" width="100%" /></td>
+  </tr>
+  <tr><td align="center">Database window</td><td align="center">Search mask</td></tr>
+  <tr>
+    <td><img src="docs/media/annotations.png" alt="The search mask's Annotations tab: texts, symbols and annotation kinds" width="100%" /></td>
+    <td><img src="docs/media/dossier.png" alt="A player dossier: statistics, tournaments, opponents, repertoire and mates" width="100%" /></td>
+  </tr>
+  <tr><td align="center">Annotation search</td><td align="center">Player dossier</td></tr>
+</table>
+
+<img src="docs/media/dark.png" alt="The Black theme: Edward Lasker's king hunt against Thomas, London 1912, at 18.Kd2#" width="100%" />
+
+The screenshots show eight classic games from 1851–1912, with comments
+written for this README: [docs/media/showcase.pgn](docs/media/showcase.pgn).
+`cargo run -p cbh-reader --example pgn_to_2cbh -- docs/media/showcase.pgn Classics.2cbh`
+turns them into a database.
+
+</details>
+
+<details>
+<summary><strong>Everything in detail</strong></summary>
 
 - **Open your existing databases.** It reads the classic CBH family and
-  ChessBase 18's 2CBH family: games, variations, comments, symbols, arrows
-  and coloured squares. It reads players, tournaments, annotators, sources
-  and teams too. It was tested against the 11-million-game classic Mega
-  Database 2025 and a 2CBH copy of its first 24,783 games.
-- **Fast on huge databases.**
-  - **Scrolling.** The game list scrolls the whole database, every row.
-  - **Sorting.** Sort by any column (player, rating, result, ECO,
-    tournament, round, date…) in under a second on 11 million games.
-  - **Go to entry.** Jump straight to any game in the current list.
+  ChessBase 18's 2CBH family: games, variations, comments, symbols, arrows,
+  coloured squares and Chess960 games. It reads players, tournaments,
+  annotators, sources and teams too. It was tested against the 11-million-game
+  classic Mega Database 2025 and a 2CBH copy of its first 24,783 games.
+- **Fast on huge databases.** The game list scrolls the whole database, every
+  row. Sort by any column in under a second on 11 million games, and jump
+  straight to any entry.
 - **ChessBase muscle memory.** The ribbon has ChessBase's tabs, command names
-  and default shortcuts, and its White, Blue, Gray and Black themes. Press
-  `/` to search every command.
-- **Search.** The search mask covers players, colours, wins only, tournament,
-  annotator, Elo ranges and differences, year, ECO, length and result.
-  - **Quick Filter** searches the whole database by any words.
-  - **Find Position** finds every game that reaches the board. An optional
-    search booster index makes it much faster.
-- **Opening tree and reference search.** Build an opening tree from your own
-  games. The Book pane shows games, score, draw rate, average rating,
-  performance and the year last played for every move. The Reference pane
-  follows your board through the database.
-- **Players, tournaments and crosstables.** Every player and tournament is
-  listed with game counts and years, and a click opens their games. Round-robin
-  and Swiss crosstables show Sonneborn-Berger, Buchholz, performance and FIDE
-  category; each result opens its game.
-- **Edit and write.**
-  - **Editing.** Enter moves and variations, promote and delete lines, add
-    comments and symbols, edit game data, set up positions. Up to 100 edits
-    can be undone.
-  - **Saving.** Save, replace or delete games in `.2cbh` databases.
-  - **Several databases.** Keep several open at once, select games with
-    Ctrl/Shift-click, and copy and paste them between databases.
-- **Engine analysis.** Plug in any UCI engine, such as Stockfish. Configure its
-  options and get MultiPV lines with depth, nodes and scores.
+  and default shortcuts, and its White, Blue, Gray and Black themes. Press `/`
+  to search every command. Several games open in tabs, plus board windows and
+  layout presets.
+- **Search.** The search mask's game data tab covers players, colours, wins
+  only, tournament, annotator, Elo, year, ECO, length, result, final position
+  and full text. Its Annotations and Medals tabs find texts, symbols, colours,
+  training, critical positions and medals. **Find Position** and pattern
+  searches find every game that reaches a board, faster with a search booster.
+- **Opening tree and reference search.** The Book pane shows games, score,
+  draw rate, average rating, performance and the year last played for every
+  move. The Reference pane follows your board through the database. Games are
+  classified by ECO.
+- **Players and tournaments.** Every player and tournament is listed with
+  game counts and years. Player statistics, dossiers and **Prepare against
+  White/Black** show a player's results, opponents and repertoire. Round-robin
+  and Swiss crosstables show tiebreaks, performance and FIDE category.
+- **Reports.** Opening reports, tournament reports with round-by-round
+  standings, and an error report that estimates a player's strength from their
+  mistakes.
+- **Edit and write.** Enter moves and variations, promote, fold and reorder
+  lines, add comments, symbols, arrows and coloured squares, edit game data and
+  set up positions, with up to 100 undo steps. Save, replace, delete and mark
+  games in `.2cbh` databases, convert `.cbh` to `.2cbh`, copy games between
+  databases, check integrity, remove deleted games and find doubles.
+- **Engines.** Plug in any UCI engine, such as Stockfish, and manage several.
+  MultiPV lines with depth, nodes and scores; paste engine moves into the
+  notation. Blunder check and tactical analysis annotate a game; deep
+  analysis and analysis jobs run unattended. Syzygy tablebases answer
+  endgames.
 - **PGN in and out.** Import PGN collections, and export or copy games as PGN.
-- **Private and safe.**
-  - **Offline.** It needs no account or network, and nothing is uploaded.
-  - **Read-only by default.** A database is only written when you open it
-    for editing.
-  - **Own folder.** The app keeps its indexes (search booster, opening tree,
-    sort orders, name lists) in its own data folder, never beside your
-    files.
+- **Private and safe.** A database is only written when you open it for
+  editing. The app keeps its indexes (search booster, opening tree, sort
+  orders, name lists) in its own data folder, never beside your files.
 
-See the [feature checklist](feature_checklist.md) for what is done and what is
-planned, mapped against ChessBase 18's ~180 features.
+</details>
 
-## Install
+## Get started
 
-### Status
-
-There are no published downloads yet. Today you build it from source (below).
+There are no published downloads yet. Today you build it from source.
 
 | Platform | Status |
 |---|---|
 | macOS on Apple Silicon | Built and used daily |
 | Windows, Linux | Should build the same way; not yet verified on real machines |
-
-The repository has a CI workflow that builds all three platforms, but it has
-not run yet.
-
-### What a release will look like
-
-Tauri, the app framework, produces the native package for each platform. It
-has to be built on that platform; cross-compiling is not supported, so a CI
-matrix does it.
-
-| Platform | You download | How you install it |
-|---|---|---|
-| macOS | `Chess Workbench.dmg`, holding `Chess Workbench.app` | Open the `.dmg` and drag the app into Applications. Apple Silicon and Intel need separate builds, or one universal build. |
-| Windows | `Chess Workbench_x.y.z_x64-setup.exe` (NSIS) or `.msi` | Run the installer. It uses Microsoft Edge WebView2, which Windows 10 and 11 already have; the installer can fetch it if not. |
-| Linux | `.AppImage`, `.deb` or `.rpm` | Make the AppImage executable and run it, or install the package with your package manager. It needs WebKitGTK 4.1. |
-
-**Unsigned builds.** Until the builds are signed, the operating system will
-warn the first time you open the app:
-- **macOS.** Right-click the app and choose **Open**, or use **System
-  Settings › Privacy & Security › Open Anyway**. Signing and notarising
-  needs an Apple Developer ID.
-- **Windows.** SmartScreen shows "Windows protected your PC". Choose **More
-  info › Run anyway**. A code-signing certificate removes this.
 
 ### Build from source
 
@@ -113,10 +140,22 @@ npm run tauri -- build
 ```
 
 That builds the app and every package your platform supports, under
-`target/release/bundle/`:
-- **macOS:** `macos/Chess Workbench.app` and `dmg/…`;
-- **Windows:** `nsis/…-setup.exe` and `msi/…`;
-- **Linux:** `appimage/`, `deb/` and `rpm/`.
+`target/release/bundle/`: `macos/Chess Workbench.app` and `dmg/…` on macOS,
+`nsis/…-setup.exe` and `msi/…` on Windows, `appimage/`, `deb/` and `rpm/` on
+Linux. A database named on the command line opens at start, optionally at an
+entry:
+
+```sh
+chess-workbench "My Games.2cbh" --entry 42
+```
+
+Then add an engine: **Add Kibitzer** (Ctrl+K) picks any UCI engine
+executable; none is bundled. Homebrew installs Stockfish at
+`/opt/homebrew/bin/stockfish` (in the macOS file picker, press ⌘⇧G to type
+that path).
+
+<details>
+<summary><strong>Development builds, executable only, and future releases</strong></summary>
 
 For just the executable, without installers:
 
@@ -124,29 +163,39 @@ For just the executable, without installers:
 npm run tauri -- build --no-bundle -- --locked
 ```
 
-The executable is `target/release/chess-workbench` (`.exe` on Windows). A
-database named on the command line opens at start, optionally at an entry:
-
-```sh
-chess-workbench "My Games.2cbh" --entry 42
-```
+The executable is `target/release/chess-workbench` (`.exe` on Windows).
 
 For development, `npm run tauri -- dev` runs a debug build with hot reload.
 `npm run dev` alone serves the interface in a browser with a demo backend
 (`/?demo&view=game&entry=11&node=24&theme=black` opens a ready-made game).
-Don't use `tauri dev --release`: release builds only load their bundled pages,
-so that window stays white.
+Don't use `tauri dev --release`: release builds only load their bundled
+pages, so that window stays white.
+
+**What a release will look like.** Tauri produces the native package for each
+platform. It has to be built on that platform, so a CI matrix does it; the
+repository's workflow builds all three but has not run yet.
+
+| Platform | You download | How you install it |
+|---|---|---|
+| macOS | `Chess Workbench.dmg`, holding `Chess Workbench.app` | Open the `.dmg` and drag the app into Applications. Apple Silicon and Intel need separate builds, or one universal build. |
+| Windows | `Chess Workbench_x.y.z_x64-setup.exe` (NSIS) or `.msi` | Run the installer. It uses Microsoft Edge WebView2, which Windows 10 and 11 already have. |
+| Linux | `.AppImage`, `.deb` or `.rpm` | Make the AppImage executable and run it, or install the package. It needs WebKitGTK 4.1. |
+
+Until the builds are signed, the operating system warns the first time you
+open the app. On macOS, right-click the app and choose **Open**; on Windows,
+choose **More info › Run anyway** in SmartScreen.
+
+</details>
 
 ## Use
 
 **Opening a database.** Choose **Open Database** (Ctrl+O; Ctrl means ⌘ on
-macOS) and pick a `.cbh` or `.2cbh` file. Keep its companion files beside
-it with the same name: `.cbg` holds moves, `.cbp`/`.cbt` names, `.cba`
+macOS) and pick a `.cbh` or `.2cbh` file. Keep its companion files beside it
+with the same name: `.cbg` holds moves, `.cbp`/`.cbt` names, `.cba`
 annotations. Anything missing or not understood is reported, never guessed.
-Each open database gets a tab.
 
-**The database window** has three lists: **Games**, **Players** and
-**Tournaments**.
+<details>
+<summary><strong>The database window</strong> · Games, Players and Tournaments</summary>
 
 | To | Do |
 |---|---|
@@ -159,60 +208,64 @@ Each open database gets a tab.
 | Search | **Filter Games** (Ctrl+F) opens the search mask; **Reset Filter** shows everything again |
 | Crosstable | **Cross Table** (T) for the chosen or loaded game's tournament |
 
-**The game window** has the board, the notation and the engine.
+</details>
+
+<details>
+<summary><strong>The game window</strong> · Board, notation and engine</summary>
 
 | To | Do |
 |---|---|
 | Replay moves | Left/Right, Home and End |
 | Jump to a move | Click it in the notation |
 | Add a move | Click a piece, then its destination |
+| Draw arrows and squares | Right-click a square or right-drag an arrow (or Alt with the left button); green, Shift for red, Ctrl for yellow |
 | Edit game data | F2 |
 | Add symbols | Annotation palette, Ctrl+Alt+S |
 | Undo | Ctrl+Z |
 | Flip the board | Ctrl+F |
 | Load the next or previous game of the list | F11 / Ctrl+F11 |
 | Opening book | **Book** tab (Ctrl+F12) |
+| Engine analysis | **Infinite Analysis** (Alt+F2) |
 | Find the position in the database | **Find Position › Hard Disk** |
 
-**Writing.** Databases are written only in ChessBase 18's `.2cbh` format, and
-only when you ask:
-- **New** (Ctrl+X) creates a database.
-- **Open for Editing** opens an existing `.2cbh` after a warning.
-- **Save** (Ctrl+S) appends the game to it, **Replace** (Ctrl+R) overwrites the
-  game it came from, and **Delete** marks games deleted.
+</details>
 
-Classic `.cbh` databases always open read-only. Without an editable database,
-Save writes PGN. Unsaved edits are guarded with Save/Discard/Cancel. See
-[docs/writing.md](docs/writing.md); ChessBase's Check Integrity rebuilds its
+**Writing.** Databases are written only in ChessBase 18's `.2cbh` format, and
+only when you ask. **New** (Ctrl+X) creates a database; **Open for Editing**
+opens an existing `.2cbh` after a warning. **Save** (Ctrl+S) appends the game,
+**Replace** (Ctrl+R) overwrites the game it came from, and **Delete** marks
+games deleted. Classic `.cbh` databases always open read-only; without an
+editable database, Save writes PGN. ChessBase's Check Integrity rebuilds its
 own index files after the workbench writes.
 
-**Engines.** **Add Kibitzer** (Ctrl+K) picks any UCI engine executable. No
-engine is bundled.
-- **Stockfish.** Homebrew installs it at `/opt/homebrew/bin/stockfish`. In the
-  macOS file picker, press ⌘⇧G to type that path.
-- **Analysis.** **Infinite Analysis** (Alt+F2) starts and stops it.
-
-**Faster searches and trees** (Maintenance tab):
-- **Create Search Booster** speeds up position searches.
-- **Create Opening Tree** feeds the Book and Reference panes. It takes about
-  ten minutes for the 11-million-game Mega.
-
-See [docs/search.md](docs/search.md), [docs/opening-tree.md](docs/opening-tree.md)
-and [docs/game-list.md](docs/game-list.md).
+**Faster searches and trees** (Maintenance tab). **Create Search Booster**
+speeds up position searches. **Create Opening Tree** feeds the Book and
+Reference panes; it takes about ten minutes for the 11-million-game Mega.
 
 ## Not there yet
 
-- Several games open at once in tabs.
-- Drawing arrows and squares with the mouse.
-- Engine management and several engines at once.
-- Tablebases, blunder check and training.
-- Reports, printing and publishing.
-- Chess960 games.
+- Training: training annotations, replay and calculation training.
+- Repertoire databases and repertoire reports.
+- Text entries, printing, diagram lists and HTML publishing.
+- Correspondence chess, and playing against an engine.
 - ChessBase's online services (cloud databases, Playchess, Let's Check) are
   out of scope. Open services such as Lichess are possible stand-ins.
+- Windows and Linux builds have not been tried on real machines.
 
 [Compatibility](docs/compatibility.md) lists exactly what is read, written
 and reported as unsupported.
+
+## Documentation
+
+| Need | Start here |
+|---|---|
+| What is done and planned | [Feature checklist](feature_checklist.md) · [Compatibility](docs/compatibility.md) |
+| Databases and files | [Formats](docs/formats.md) · [Writing](docs/writing.md) · [Conversion](docs/conversion.md) · [Maintenance](docs/maintenance.md) |
+| Lists and search | [Game list](docs/game-list.md) · [Search](docs/search.md) · [Position search](docs/position-search.md) |
+| Openings | [Opening tree](docs/opening-tree.md) · [Openings](docs/openings.md) |
+| Games and engines | [Game window](docs/game-window.md) · [Engines](docs/engines.md) · [Analysis](docs/analysis.md) |
+| Players and reports | [Player statistics](docs/player-statistics.md) · [Dossier](docs/player-dossier.md) · [Preparation](docs/preparation.md) · [Tournament report](docs/tournament-report.md) · [Error report](docs/error-report.md) |
+| Design | [Design](docs/design.md) · [UI shell](docs/ui-shell.md) · [Validation](docs/validation.md) |
 
 ## Verify
 
@@ -226,12 +279,15 @@ npm run build
 npm run check:distribution
 ```
 
-**The source audit.** It checks Git-tracked files against an explicit
-allowlist, rejects private or proprietary file families and home paths, and
-verifies the locked dependency inventory and notice hashes. Stage new product
-files before auditing them. Builds, private validation reports, external
-engines, commercial games and extracted application resources never enter the
-source. [Validation](docs/validation.md) records what was measured and tested.
+<details>
+<summary><strong>The source audit and dependency notices</strong></summary>
+
+The source audit checks Git-tracked files against an explicit allowlist,
+rejects private or proprietary file families and home paths, and verifies the
+locked dependency inventory and notice hashes. Stage new product files before
+auditing them. Builds, private validation reports, external engines,
+commercial games and extracted application resources never enter the source.
+[Validation](docs/validation.md) records what was measured and tested.
 
 After dependency changes, regenerate the notice inventory, review it, then
 rerun the audit:
@@ -245,6 +301,8 @@ The optional private corpus comparator needs python-chess, a separately
 obtained pinned MIT reference, and explicit external
 database/observation/report paths. Proprietary test games and local research
 are never product fixtures.
+
+</details>
 
 ## License
 

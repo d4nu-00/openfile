@@ -88,6 +88,9 @@ export function allowedSourcePath(candidate) {
     return true;
   if (candidate.startsWith("docs/") && documents.has(candidate.slice(5)))
     return true;
+  // README screenshots and the public-domain games they show.
+  if (/^docs\/media\/[a-z0-9-]+\.png$/.test(candidate)) return true;
+  if (candidate === "docs/media/showcase.pgn") return true;
   // The open ECO table (lichess-org/chess-openings, CC0).
   if (/^crates\/chess-core\/data\/eco\/[a-e]\.tsv$/.test(candidate))
     return true;
