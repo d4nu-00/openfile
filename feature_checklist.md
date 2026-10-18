@@ -92,11 +92,16 @@ Names in backticks are the reference app's command ids, for traceability.
 - [ ] P2 🟢 Manoeuvre search (piece routes) and attack/defence patterns
 - [ ] P3 🟢 Game phase and structural theme filters
 - [ ] P2 🟢 Save and load search masks (`SAVE_SEARCHMASK`)
-- [x] P1 🟢 Filter the list from the search mask (`DBTOOLSSEARCH`) *(Ctrl+F searches the whole database; Quick Filter matches words against names, tournament, ECO, year and result across the whole database)*
+- [x] P1 🟢 Quick search expressions: combine player and colour, event/site tags, results, year and ECO ranges, Elo comparisons and excluded terms in the game-list filter. *(Up to 16 terms; quoted values, `!` exclusions, inclusive ranges, average-Elo comparisons and alternative positive results. Invalid expressions fail visibly; the existing indexed scan, cancellation and paging remain. See [search](docs/search.md#quick-filter-expressions).)*
+- [ ] P2 🟢 Refine the current search result or add matches to it, with a clear choice between searching all games, searching within results and adding to results.
+- [ ] P2 🟢 Interactive search preview: show a cancellable, approximate match count while choosing criteria, before the full search runs.
+- [ ] P2 🟢 Suggest matching player, event and site names as search criteria are typed.
+- [x] P1 🟢 Filter the list from the search mask (`DBTOOLSSEARCH`) *(Ctrl+F searches the whole database; Quick Filter accepts words and combined expressions across the whole database.)*
 - [ ] P2 🟢 Search white/black games of a player, games with the same players (`INSTALLWHITESUBSET`, `FIND_PREDECESSORS`)
 - [ ] P2 🟢 Similar endgames, structures, moves, tactics and patterns (`SIMILAR_ENDGAMES`, `SIMILAR_STRUCTURES`, `SIMILAR_MOVES`, `AR_TACTICS`, `SimilarPattern`)
 - [ ] P2 🟡 Online database search; Lichess's opening explorer API could stand in (`FINDONLINEDBBOARD`, `FindOnlineDB`)
 - [ ] P3 🟢 Print search results (`PRINTSEARCHRESULT`)
+- [ ] P2 🟢 Rank and filter games by quality: good-game criteria, tactical beauty, average player strength and recency-weighted theoretical value; show sortable quality columns.
 
 ## 5. Board and replay
 
@@ -153,6 +158,8 @@ Names in backticks are the reference app's command ids, for traceability.
 - [ ] P2 🟢 Analyse threat, lock engine, next best / search better (`ANALYSETHREAT`, `LOCKENGINE`, `NEXTBEST`, `SEARCHBETTER`)
 - [x] P2 🟢 Analysis jobs queue (`NEW_ANALYSIS_JOBS`, `ADD_ANALYSIS_JOB`, `OPEN_ANALYSIS_JOBS`) *(also `CREATE_CORR_ANALYSIS_JOBS`; the reference app's Analysis and Deep Analysis job types and minimum times, for games of a 2CBH opened for editing; each result replaces its game ("Merge result with original game"); at most 1,000 jobs, with Stop and progress. The queue lasts for the session: the reference app's jobs file is not read or written; see [analysis](docs/analysis.md))*
 - [ ] P2 🟢 Evaluation profile graph (`TOGGLEEVPROFILE`)
+- [ ] P2 🟢 Instant background analysis when a game loads, with an evaluation profile that follows the notation and lets the user jump to critical moves.
+- [ ] P3 🟢 Engine analysis history: retain score, depth, principal variation and time as the engine revises its choice, with a compact/current view toggle.
 - [ ] P3 🟢 Assisted analysis: engine help on hover (`ASSISTED_ANALYSIS`)
 - [ ] P3 🟢 Position measurements: Plan Explorer, piece values, heat maps, mobility, attackers/defenders (`POSITION_INFO`)
 - [ ] P3 🟢 Position tutor: classifying moves and motifs (`NOTASHOWPOSTUTOR`)
@@ -163,6 +170,10 @@ Names in backticks are the reference app's command ids, for traceability.
 
 - [x] P1 🟢 Opening tree from the user's own databases: moves, frequency, score and Elo (`OPENBOOK`, `TOGGLEBOOKPANE`) *(Create Opening Tree builds it into the app data folder; Book tab and extra pane with N, share, %, =%, Av, Perf and last played; main lines only; journal keeps it current across the workbench's own saves; see docs/opening-tree.md)*
 - [x] P1 🟢 Reference database search for the current position (`TOGGLEREFERENCEPANE`, `FINDREFDBBOARD`, `AutoSearchDB`) *(Reference tab and pane follow the board, from the opening tree or Find Position; stale searches are cancelled; the reference database is the open database, a separate reference database setting is not implemented)*
+- [ ] P1 🟢 Filter reference move statistics by Elo, year and a transparent good-game rule; compare a player's move choices with the full reference set.
+- [ ] P2 🟢 Reference insights for the current line: popularity over time, recent strong-player variations and likely endgame types.
+- [ ] P2 🟢 Switch opening-tree sources between the database, current game-list filter and local books, preserving the position and making each source clear.
+- [ ] P2 🟢 Build opening reference statistics from selected games, not only the whole database or a saved search.
 - [ ] P2 🟢 Opening books: import games or books, copy lines, save the tree (`BOOKIMPORTGAMES`, `BOOKIMPORTBOOK`, `COPYLINETOBOOK`, `SAVETREE`)
 - [x] P2 🟢 Opening classification with ECO and opening keys (`CLASSIFYGAME`, `ClassifyOpening`) *(ECO only, from the open lichess table (CC0) instead of the reference app's Eco.cod: Classify Opening (Ctrl+Alt+C) with Set ECO, and Set ECO Codes (`DBTOOLSSETECOCODE`) for a 2CBH opened for editing, cancellable with progress, keeping existing codes by default. The table gives the reference app's main code for 76 % of the 2CBH test database's coded games. Opening keys (`.cko`) are not ported; see [openings](docs/openings.md))*
 - [x] P2 🟢 Opening report from a database (`OpeningReport`) *(the reference app's sections as traced: title with ECO, results, history (earliest/latest annotated/latest strong/latest games, games per year, fashion index in the reference app's bucket sizes), strong and other notable players (the reference app's rule), move rows with "played by" from the tree or the strongest games, and the main line (≥ 3 games); cancellable with progress, at most 100,000 games. Plans, "You should play", critical lines and opening keys are not ported; see [openings](docs/openings.md))*
@@ -183,6 +194,7 @@ Names in backticks are the reference app's command ids, for traceability.
 - [ ] P3 🟢 Style report (`STYLE_REPORT`)
 - [ ] P3 🟢 Game overview and theme classification (`OVERVIEWBOARD`, `THEMECLASSIFYBOARD`)
 - [ ] P3 🟢 Piece probability and piece first-move statistics (`DBTOOLSPIECEPROBABILITY`, `DBTOOLSPIECEFIRSTMOVE`)
+- [ ] P3 🟢 Endgame classification summaries: sortable endgame types per game and comparisons between a player's or opening's endgames and the reference database.
 - [ ] P3 🟢 Player map (`SHOWMAP`)
 
 ## 10. Players and preparation
@@ -198,6 +210,7 @@ Names in backticks are the reference app's command ids, for traceability.
 - [ ] P2 🟢 Replay training: guess the move, graded by engine or theory (ReplayTraining messages)
 - [ ] P2 🟢 Calculation training (`CALCULATION_TRAINING`, `CALC_CHECK_LEGAL`, `CALC_CHECK_ENGINE`)
 - [ ] P3 🟢 Tactics training from positions (`TRAINING_TACTICS`, `TACTICS_FIGHT`)
+- [ ] P2 🟢 Harvest training positions from selected games with a local engine, creating a reviewable tactics database with questions and progress.
 - [ ] P3 🟢 Opening and dynamic hints (`OPENING_HINTS`, `DYNAMIC_HINTS`)
 - [ ] P3 🟢 Full tree replay of a repertoire (`FullTreeReplay`)
 - [ ] P3 🔴 Daily tactics and online play-out (`TOGGLE_DAILYTACTICS`, `PLAY_IN_FRITZONLINE`)
@@ -212,6 +225,8 @@ Names in backticks are the reference app's command ids, for traceability.
 - [ ] P3 🟢 Animated GIF and MP4 of a game (`SAVEANIMGIF`, `SAVEMP4`)
 - [ ] P3 🟢 QR code for a game (`EXPORT_GAME_TO_QRCODE`, `COPY_GAME_TO_QRCODE`)
 - [ ] P3 🟢 E-mail selected games or databases (`MAILGAMES`, `EMAILSELECTEDDB`)
+- [ ] P3 🟢 Speak moves and text comments during replay, and keep notation usable with an active screen reader.
+- [ ] P3 🟢 Enter moves and basic game controls by voice.
 - [ ] P3 🔴 Publish games online and Chess Media System video (`GENERATESILVERLIGHTREADER`, `STREAMING`, `ENCODER`)
 
 ## 13. Correspondence chess
@@ -248,6 +263,7 @@ Names in backticks are the reference app's command ids, for traceability.
 - [ ] P2 🟢 Save and load layouts (`SAVELAYOUT`, `LOADLAYOUT`)
 - [ ] P2 🟢 Options dialog (`SETOPTIONS`) and customisable shortcuts (`CUSTOMIZE`) *(partial: Options (Ctrl+Alt+O) has the Limits page, kept in the app's config folder)*
 - [ ] P2 🟢 Navigation history back/forward (`HISTORYBACK`, `HISTORYFORWARD`)
+- [ ] P2 🟢 Rapid game-entry mode that carries tournament metadata into the next game and makes variation choices explicit.
 - [ ] P3 🟢 Minimise ribbon and quick-access toolbar *(minimise done; no quick-access toolbar)*
 - [ ] P3 🟢 Full screen and window arrangements (`VIEWFULLSCREEN`, `WINDOWTOP2VERTICAL`)
 - [ ] P3 🟢 Localisation: the reference app ships 10 UI languages; the app needs its own translations
@@ -260,8 +276,10 @@ reference app's command table.
 
 - [x] P2 🟢 Opening tree from the current search result, with move statistics for only the matching games, a clear indication when a large result is sampled, and a way back to the full database tree. *(Book pane toggle; reads main lines of up to 50,000 retained hits, shows the scanned and total counts, follows transpositions, and cancels obsolete queries; see [opening tree](docs/opening-tree.md#search-result-tree))*
 - [ ] P2 🟢 Autosaved work database and session recovery for unfinished games and analysis, without writing to the user's source database.
+- [ ] P2 🟢 Searchable daily game history with periodic recovery snapshots for unsaved analysis.
+- [ ] P3 🟢 Import history for each database, with a warning before importing the same source again.
 - [ ] P2 🟡 Open a PGN URL as a live collection, refresh it, and merge new moves while preserving local comments and variations.
 - [ ] P2 🟢 Import ChessBase CBV archives into a new 2CBH database, with bounded extraction and clear diagnostics for unsupported entries.
-- [ ] P2 🟢 Coached practice against a local engine: adjustable or adaptive strength, selected opening or current-position starts, hints and mistake warnings, and a local play history.
+- [ ] P2 🟢 Coached practice against a local engine: adjustable or adaptive strength, selected opening or current-position starts, hints and mistake warnings, realistic weaker play, a local rating profile and play history.
 - [ ] P3 🟢 Engine matches from the start position or a set of test positions, with clocks, reversed colours, saved results and adjudication.
 - [ ] P3 🟢 Optional move-quality cues while entering a move, from available local opening data or an engine, without revealing them during training by default.

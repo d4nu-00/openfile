@@ -256,7 +256,71 @@ struct Compiled {
     tournaments: Option<HashSet<u32>>,
     annotators: Option<HashSet<u32>>,
     eco: Option<(u16, u16)>,
-    words: Vec<Word>,
+    words: Vec<QuickTerm>,
+}
+
+struct QuickTerm {
+    kind: QuickKind,
+    negated: bool,
+    needle: String,
+}
+
+enum QuickKind {
+    Any(Word),
+    White(HashSet<u32>),
+    Black(HashSet<u32>),
+    Event(HashSet<u32>),
+    Site(HashSet<u32>),
+    Result(Vec<u8>),
+    Eco(u16, u16),
+    Year(u16, u16),
+    AverageElo {
+        threshold: u16,
+        greater: bool,
+        inclusive: bool,
+    },
+}
+
+impl QuickTerm {
+    fn positive_result(&self) -> bool {
+        !self.negated && matches!(&self.kind, QuickKind::Result(_))
+    }
+
+    fn matches(&self, r: &RawEntry) -> bool {
+        let has = |set: &HashSet<u32>, id: Option<u32>| id.is_some_and(|id| set.contains(&id));
+        let found = match &self.kind {
+            QuickKind::Any(word) => word.matches(r),
+            QuickKind::White(ids) => has(ids, r.white_id),
+            QuickKind::Black(ids) => has(ids, r.black_id),
+            QuickKind::Event(ids) | QuickKind::Site(ids) => has(ids, r.tournament_id),
+            QuickKind::Result(codes) => r.result_code.is_some_and(|code| codes.contains(&code)),
+            QuickKind::Eco(from, to) => {
+                let code = r.eco_raw.map_or(0, |e| e >> 7);
+                code >= *from && code <= *to
+            }
+            QuickKind::Year(from, to) => r.year.is_some_and(|y| y >= *from && y <= *to),
+            QuickKind::AverageElo {
+                threshold,
+                greater,
+                inclusive,
+            } => {
+                let (Some(w), Some(b)) = (r.white_elo, r.black_elo) else {
+                    return false;
+                };
+                if w == 0 || b == 0 {
+                    return false;
+                }
+                let sum = u32::from(w) + u32::from(b);
+                let bound = u32::from(*threshold) * 2;
+                if *greater {
+                    sum > bound || (*inclusive && sum == bound)
+                } else {
+                    sum < bound || (*inclusive && sum == bound)
+                }
+            }
+        };
+        found != self.negated
+    }
 }
 
 /// What one quick-filter word matches.
@@ -268,8 +332,6 @@ struct Word {
     sources: HashSet<u32>,
     eco: Option<(u16, u16)>,
     year: Option<u16>,
-    /// Stored result codes.
-    results: Vec<u8>,
 }
 
 impl Word {
@@ -285,7 +347,6 @@ impl Word {
                 code >= from && code <= to
             })
             || self.year.is_some_and(|y| r.year == Some(y))
-            || r.result_code.is_some_and(|c| self.results.contains(&c))
     }
 }
 
@@ -312,6 +373,148 @@ fn eco_prefix(word: &str) -> Option<(u16, u16)> {
         }
     };
     Some((letter + lo + 1, letter + hi + 1))
+}
+
+/// Keep quoted values together, including `Event:"World Championship"`.
+fn quick_tokens(text: &str) -> Result<Vec<String>, CbhError> {
+    let mut tokens = Vec::new();
+    let mut token = String::new();
+    let mut quoted = false;
+    let mut started = false;
+    for ch in text.chars() {
+        match ch {
+            '"' => {
+                quoted = !quoted;
+                started = true;
+            }
+            c if c.is_whitespace() && !quoted => {
+                if started {
+                    tokens.push(std::mem::take(&mut token));
+                    started = false;
+                }
+            }
+            c => {
+                token.push(c);
+                started = true;
+            }
+        }
+    }
+    if quoted {
+        return Err(CbhError::InvalidQuery("Unclosed quote".into()));
+    }
+    if started {
+        tokens.push(token);
+    }
+    if tokens.len() > 16 {
+        return Err(CbhError::InvalidQuery("Use at most 16 search terms".into()));
+    }
+    Ok(tokens)
+}
+
+fn quick_term(token: &str) -> Result<QuickTerm, CbhError> {
+    let (negated, value) = match token.strip_prefix('!') {
+        Some(value) => (true, value),
+        None => (false, token),
+    };
+    if value.is_empty() {
+        return Err(CbhError::InvalidQuery("Empty search term".into()));
+    }
+    let value_lower = value.to_lowercase();
+    let mut needle = value_lower.clone();
+    let invalid = || CbhError::InvalidQuery(format!("{token}"));
+    let kind = if let Some(codes) = result_codes(&value_lower) {
+        QuickKind::Result(codes)
+    } else if value.starts_with('>') || value.starts_with('<') {
+        let rest = &value[1..];
+        let greater = value.starts_with('>');
+        let (inclusive, number) = match rest.strip_prefix('=') {
+            Some(n) => (true, n),
+            None => (false, rest),
+        };
+        let threshold = number.parse::<u16>().map_err(|_| invalid())?;
+        QuickKind::AverageElo {
+            threshold,
+            greater,
+            inclusive,
+        }
+    } else if let Some((field, name)) = value.split_once(':') {
+        if name.is_empty() {
+            return Err(invalid());
+        }
+        needle = name.to_lowercase();
+        match field.to_ascii_lowercase().as_str() {
+            "white" => QuickKind::White(HashSet::new()),
+            "black" => QuickKind::Black(HashSet::new()),
+            "event" => QuickKind::Event(HashSet::new()),
+            "site" => QuickKind::Site(HashSet::new()),
+            _ => return Err(invalid()),
+        }
+    } else if let Some(name) = value.strip_prefix('-') {
+        if name.is_empty() {
+            return Err(invalid());
+        }
+        needle = name.to_lowercase();
+        QuickKind::Black(HashSet::new())
+    } else if let Some(name) = value.strip_suffix('-') {
+        if name.is_empty() {
+            return Err(invalid());
+        }
+        needle = name.to_lowercase();
+        QuickKind::White(HashSet::new())
+    } else if let Some((from, to)) = value.split_once('-') {
+        if let (Some(a), Some(b)) = (eco_index(from), eco_index(to)) {
+            if a > b {
+                return Err(invalid());
+            }
+            QuickKind::Eco(a, b)
+        } else if from.len() == 4
+            && to.len() == 4
+            && from.bytes().all(|b| b.is_ascii_digit())
+            && to.bytes().all(|b| b.is_ascii_digit())
+        {
+            let a = from.parse::<u16>().map_err(|_| invalid())?;
+            let b = to.parse::<u16>().map_err(|_| invalid())?;
+            if a > b {
+                return Err(invalid());
+            }
+            QuickKind::Year(a, b)
+        } else if eco_prefix(&from.to_lowercase()).is_some()
+            || (from.len() == 4 && from.bytes().all(|b| b.is_ascii_digit()))
+        {
+            return Err(invalid());
+        } else {
+            QuickKind::Any(Word::from_text(&value_lower))
+        }
+    } else {
+        QuickKind::Any(Word::from_text(&value_lower))
+    };
+    Ok(QuickTerm {
+        kind,
+        negated,
+        needle,
+    })
+}
+
+impl Word {
+    fn from_text(needle: &str) -> Self {
+        Self {
+            eco: eco_prefix(needle),
+            year: (needle.len() == 4)
+                .then(|| needle.parse().ok())
+                .flatten()
+                .filter(|y| *y > 0),
+            ..Self::default()
+        }
+    }
+}
+
+fn result_codes(needle: &str) -> Option<Vec<u8>> {
+    match needle {
+        "1-0" => Some(vec![2, 6]),
+        "0-1" => Some(vec![0, 4]),
+        "1/2-1/2" | "½-½" | "1/2" | "½" | "=" => Some(vec![1, 5]),
+        _ => None,
+    }
 }
 
 impl GameFilter {
@@ -402,7 +605,13 @@ impl GameFilter {
                 return false;
             }
         }
-        c.words.iter().all(|w| w.matches(r))
+        let results = c.words.iter().filter(|term| term.positive_result());
+        let has_result = c.words.iter().any(|term| term.positive_result());
+        (!has_result || results.into_iter().any(|term| term.matches(r)))
+            && c.words
+                .iter()
+                .filter(|term| !term.positive_result())
+                .all(|term| term.matches(r))
     }
 }
 
@@ -477,62 +686,71 @@ impl Database {
         Ok(Some(set))
     }
 
-    /// Compiles the quick filter's words; at most 8 are used.
-    fn words(&self, text: &str) -> Result<Vec<Word>, CbhError> {
-        let needles: Vec<String> = text
-            .split_whitespace()
-            .map(|w| w.to_lowercase())
-            .take(8)
-            .collect();
-        let mut words: Vec<Word> = needles
+    /// Compiles quick-filter terms before the entry-index scan.
+    fn words(&self, text: &str) -> Result<Vec<QuickTerm>, CbhError> {
+        let mut words: Vec<QuickTerm> = quick_tokens(text)?
             .iter()
-            .map(|n| Word {
-                eco: eco_prefix(n),
-                year: (n.len() == 4)
-                    .then(|| n.parse().ok())
-                    .flatten()
-                    .filter(|y| *y > 0),
-                results: match n.as_str() {
-                    "1-0" => vec![2, 6],
-                    "0-1" => vec![0, 4],
-                    "1/2-1/2" | "½-½" | "1/2" | "½" | "=" => vec![1, 5],
-                    _ => vec![],
-                },
-                ..Word::default()
-            })
-            .collect();
-        if needles.is_empty() {
+            .map(|token| quick_term(token))
+            .collect::<Result<_, _>>()?;
+        if words.is_empty() {
             return Ok(words);
         }
         let contains = |hay: &str, needle: &str| hay.to_lowercase().contains(needle);
         self.names_each_player(&mut |id, last, first| {
-            for (w, n) in words.iter_mut().zip(&needles) {
-                if contains(last, n) || contains(first, n) {
-                    w.players.insert(id);
+            for term in &mut words {
+                if contains(last, &term.needle)
+                    || contains(first, &term.needle)
+                    || (term.needle.contains(',')
+                        && contains(&format!("{last}, {first}"), &term.needle))
+                {
+                    match &mut term.kind {
+                        QuickKind::Any(w) => {
+                            w.players.insert(id);
+                        }
+                        QuickKind::White(ids) | QuickKind::Black(ids) => {
+                            ids.insert(id);
+                        }
+                        _ => {}
+                    }
                 }
             }
             true
         })?;
         self.names_each_tournament(&mut |id, event, site| {
-            for (w, n) in words.iter_mut().zip(&needles) {
-                if contains(event, n) || contains(site, n) {
-                    w.tournaments.insert(id);
+            for term in &mut words {
+                match &mut term.kind {
+                    QuickKind::Any(w)
+                        if contains(event, &term.needle) || contains(site, &term.needle) =>
+                    {
+                        w.tournaments.insert(id);
+                    }
+                    QuickKind::Event(ids) if contains(event, &term.needle) => {
+                        ids.insert(id);
+                    }
+                    QuickKind::Site(ids) if contains(site, &term.needle) => {
+                        ids.insert(id);
+                    }
+                    _ => {}
                 }
             }
             true
         })?;
         self.names_each_annotator(&mut |id, name| {
-            for (w, n) in words.iter_mut().zip(&needles) {
-                if contains(name, n) {
-                    w.annotators.insert(id);
+            for term in &mut words {
+                if let QuickKind::Any(w) = &mut term.kind {
+                    if contains(name, &term.needle) {
+                        w.annotators.insert(id);
+                    }
                 }
             }
             true
         })?;
         self.names_each_source(&mut |id, title| {
-            for (w, n) in words.iter_mut().zip(&needles) {
-                if contains(title, n) {
-                    w.sources.insert(id);
+            for term in &mut words {
+                if let QuickKind::Any(w) = &mut term.kind {
+                    if contains(title, &term.needle) {
+                        w.sources.insert(id);
+                    }
                 }
             }
             true

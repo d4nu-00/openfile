@@ -2560,7 +2560,7 @@ export function App({
                   >
                     <input
                       aria-label="Filter games"
-                      placeholder="Quick filter: player, tournament, ECO, year, result…"
+                      placeholder="Try Kasparov- B10-B17, Site:London, >2400…"
                       value={filter}
                       autoFocus
                       onChange={(ev) => setFilter(ev.target.value)}
@@ -2571,8 +2571,11 @@ export function App({
                         }
                       }}
                     />
-                    <span className="hint">
-                      Enter searches the whole database
+                    <span
+                      className="hint"
+                      title={'Combine terms; -Karpov means Black, 2001-2011 is a year range, Event:"World Championship" matches a phrase. Positive results such as 1-0 and 0-1 are alternatives.'}
+                    >
+                      Enter searches all games · Use ! to exclude a term
                     </span>
                   </form>
                 )}

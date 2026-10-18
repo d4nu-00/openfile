@@ -30,6 +30,41 @@ A filter combines any of these fields; every given field must match:
 
 Text entries never match. Deleted games match unless the filter excludes them.
 
+### Quick filter expressions
+
+The compact game-list filter uses the same indexed, parallel game-data scan. It
+accepts up to 16 terms. Ordinary words still match names, tournament or site,
+annotator, source, ECO, year or result; separate terms combine with AND.
+
+| Example | Meaning |
+|---|---|
+| `Kasparov- 1985` | White player name contains Kasparov, in 1985 |
+| `-Karpov B10-B17` | Black player name contains Karpov, ECO B10 through B17 |
+| `Event:"World Championship"` | Event contains the quoted phrase |
+| `Site:London` | Site contains London |
+| `2001-2011` | Inclusive year range |
+| `>2400`, `<=2200` | Average of both players' Elo values; both ratings required |
+| `!1/2`, `!Site:London` | Exclude a result or a site |
+| `1-0 0-1` | Either decisive result; positive result terms form one OR group |
+
+`White:` and `Black:` are alternatives to the name suffix and prefix. Quotes
+keep spaces within any term. Empty values, reversed ranges, unclosed quotes,
+invalid rating comparisons and more than 16 terms return an `invalidQuery`
+error; no terms are discarded. Negated terms combine with the other criteria.
+The quick filter remains a whole-database search, and it can be combined with
+criteria already set in the full search mask.
+
+**Native evidence and boundary.** REA 6.1 with Ghidra 12.1.4 traced the
+`Filter List` string in the supplied `CBase18.exe` (SHA-256
+`8d633b10ad97bd9f8fbbc33a89c279397850ca759c8375093deda4a9485e8dee`):
+string `0x14120d160`, references at `0x1408af9c4`, `0x1408af9cb`,
+`0x1408b1bc5` and `0x1408b1bcc`. The shipped command resources identify
+`M_KC_FILTERLIST` (489), `M_KC_FILTER_BY_NAME` (640),
+`M_KC_FILTER_BY_BLACK` (642) and `M_KC_FILTER_BY_WHITE` (643). This supports
+the presence of list filtering and colour-specific player filters. It does
+not establish an expression parser or its grammar in that executable; the
+quick syntax above is the workbench's own design.
+
 **Difference.** In dialog 311, "&Difference:" is an auto-checkbox (control
 1079, style `0x50010003`) beside one number field (1023) with an up-down
 (1024), in the column of the upper Elo bound. The workbench reads it as a

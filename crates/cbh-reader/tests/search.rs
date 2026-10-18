@@ -214,6 +214,94 @@ fn quick_filter_words_must_each_match_a_field() {
     assert!(hits(&mut db, text("müller nowhere")).is_empty());
 }
 
+#[test]
+fn quick_filter_expressions_scope_names_and_database_fields() {
+    let (_d, mut db) = db();
+    let query = |text: &str| GameFilter {
+        text: text.into(),
+        ..Default::default()
+    };
+    assert_eq!(hits(&mut db, query("müller-")), [1, 3]);
+    assert_eq!(hits(&mut db, query("-müller")), [2]);
+    assert_eq!(hits(&mut db, query("müller- 2024")), [1]);
+    assert_eq!(hits(&mut db, query("White:\"Müller, Jörg\"")), [1]);
+    assert_eq!(hits(&mut db, query("Site:Oslo")), [2, 3]);
+    assert_eq!(hits(&mut db, query("Event:\"Club Open\"")), [1]);
+    assert_eq!(hits(&mut db, query("B80-B99")), [2]);
+    assert_eq!(hits(&mut db, query("1999-2023")), [2, 3]);
+    assert_eq!(hits(&mut db, query(">2200")), [1, 2]);
+    assert!(hits(&mut db, query("<2200")).is_empty());
+    assert!(hits(&mut db, query("!>2200")).is_empty());
+    assert_eq!(hits(&mut db, query("!rapid")), [1]);
+    assert_eq!(hits(&mut db, query("rapid !1/2")), [2]);
+    assert_eq!(hits(&mut db, query("rapid 1-0 1/2")), [2, 3]);
+    assert_eq!(hits(&mut db, query(">2200 !rapid")), [1]);
+}
+
+#[test]
+fn malformed_quick_filter_expressions_fail_instead_of_dropping_terms() {
+    let (_d, mut db) = db();
+    for text in [
+        "B99-B10",
+        "B9-B10",
+        "2024-1999",
+        "Event:\"Club Open",
+        ">abc",
+        "\"\"",
+    ] {
+        let filter = GameFilter {
+            text: text.into(),
+            ..Default::default()
+        };
+        assert!(
+            db.search(&filter, 100, &AtomicBool::new(false), |_| {})
+                .is_err(),
+            "{text}"
+        );
+    }
+    let filter = GameFilter {
+        text: (1..=17)
+            .map(|n| format!("word{n}"))
+            .collect::<Vec<_>>()
+            .join(" "),
+        ..Default::default()
+    };
+    assert!(
+        db.search(&filter, 100, &AtomicBool::new(false), |_| {})
+            .is_err()
+    );
+}
+
+#[test]
+fn result_terms_do_not_match_unrelated_header_text() {
+    let d = tempfile::tempdir().unwrap();
+    let path = d.path().join("Result.2cbh");
+    let game = parse_pgn(
+        br#"[Event "1-0 Cup"]
+[White "A"]
+[Black "B"]
+[Result "1/2-1/2"]
+
+1. e4 e5 1/2-1/2"#,
+        &GameLimits::default(),
+    )
+    .unwrap();
+    let mut w = Writer::create(&path).unwrap();
+    w.append_all(&game).unwrap();
+    drop(w);
+    let mut db = Database::open(&path, ReadLimits::default()).unwrap();
+    assert!(
+        hits(
+            &mut db,
+            GameFilter {
+                text: "1-0".into(),
+                ..Default::default()
+            }
+        )
+        .is_empty()
+    );
+}
+
 /// Games ending in mate, stalemate, check and quietly, some with comments.
 const ENDINGS: &str = r#"[White "Mate, A"]
 [Black "B"]

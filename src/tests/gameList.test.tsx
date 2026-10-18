@@ -160,6 +160,20 @@ describe("list and search", () => {
     expect(await screen.findByText("2 of 401 entries found")).toBeVisible();
   });
 
+  it("explains and submits a compound quick filter", async () => {
+    const ui = renderWorkbench({ initialView: "database" });
+    await ui.user.click(screen.getByRole("button", { name: "Quick Filter" }));
+    expect(screen.getByText(/Use ! to exclude a term/)).toBeVisible();
+    await ui.user.type(screen.getByLabelText("Filter games"), "Site:Oslo !1/2");
+    await ui.user.keyboard("{Enter}");
+    expect(ui.api.searchGames).toHaveBeenCalledWith(
+      "db-1",
+      expect.objectContaining({ text: "Site:Oslo !1/2" }),
+      expect.any(String),
+      expect.any(Function),
+    );
+  });
+
   it("loads the next game of the list, not the next entry", async () => {
     const ui = renderWorkbench({ initialView: "database" });
     await ui.user.keyboard("{Control>}f{/Control}");

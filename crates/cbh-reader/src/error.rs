@@ -14,6 +14,8 @@ pub enum CbhError {
     UnsupportedSetup(String),
     #[error("Read limit exceeded")]
     LimitExceeded,
+    #[error("Invalid search expression: {0}")]
+    InvalidQuery(String),
     #[error("Ambiguous companion filename")]
     AmbiguousCompanion,
     #[error("Invalid game data: {0}")]
@@ -33,6 +35,7 @@ impl CbhError {
             Self::Unsupported(_) => "unsupportedEncoding",
             Self::UnsupportedSetup(_) => "unsupportedSetup",
             Self::LimitExceeded => "limitExceeded",
+            Self::InvalidQuery(_) => "invalidQuery",
             Self::AmbiguousCompanion => "ambiguousCompanion",
             Self::Decode(_) => "corrupt",
             Self::Io(_) => "io",
