@@ -32,6 +32,10 @@ pub struct Node {
     /// 0x18): 1 opening (the "blue" repertoire move), 2 middlegame, 3 endgame.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub critical: Option<u8>,
+    /// A training question about the position after the move (annotation
+    /// 0x09).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub training: Option<Box<crate::training::Training>>,
 }
 /// Mark colours use the PGN `[%csl]`/`[%cal]` letters: G green, Y yellow,
 /// R red, B blue, and the further the reference app letters C and O.
@@ -102,6 +106,7 @@ impl Game {
                 squares: vec![],
                 arrows: vec![],
                 critical: None,
+                training: None,
             }],
         })
     }
@@ -205,6 +210,7 @@ impl Game {
             squares: vec![],
             arrows: vec![],
             critical: None,
+            training: None,
         });
         self.nodes[parent as usize].children.push(id);
         Ok(id)

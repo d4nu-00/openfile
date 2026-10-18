@@ -1042,6 +1042,14 @@ const list: CommandMeta[] = [
     label: "Training Annotation",
     tip: "Insert a training question",
     icon: GraduationCap,
+    keys: "Ctrl+Alt+M",
+    views: game,
+  },
+  {
+    id: "delete-training",
+    label: "Delete Training Commentary",
+    tip: "Delete all training commentary",
+    icon: GraduationCap,
     views: game,
   },
   {
@@ -1514,7 +1522,10 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
     {
       label: "Training",
       groups: [
-        { label: "Training", items: [L("training-annotation"), L("hints")] },
+        {
+          label: "Training",
+          items: [L("training-annotation"), S("delete-training"), L("hints")],
+        },
       ],
     },
     {

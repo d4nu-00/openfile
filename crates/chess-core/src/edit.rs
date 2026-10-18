@@ -254,6 +254,7 @@ impl Game {
                         squares: vec![],
                         arrows: vec![],
                         critical: None,
+                        training: None,
                     },
                 );
                 n.id = map[o as usize];
@@ -384,6 +385,74 @@ impl Game {
         }
     }
 
+    /// Sets or removes the training question on move `node`, which asks
+    /// about the position before the move. `moves` gives, per answer, a move
+    /// in SAN or UCI in that position, replacing its stored squares (None
+    /// keeps them). A question without text is removed.
+    pub fn set_training(
+        &mut self,
+        node: NodeId,
+        training: Option<crate::training::Training>,
+        moves: &[Option<String>],
+    ) -> Result<(), CoreError> {
+        let parent = self
+            .nodes
+            .get(node as usize)
+            .ok_or(CoreError::InvalidNode)?
+            .parent
+            .ok_or(CoreError::InvalidNode)?;
+        let training = match training {
+            Some(mut t) if !t.question.is_empty() => {
+                t.check()?;
+                if moves.len() > t.answers.len() {
+                    return Err(CoreError::LimitExceeded);
+                }
+                if t.kind == crate::training::TrainingKind::MoveInput
+                    && moves.iter().any(Option::is_some)
+                {
+                    let pos = self.chess_position(parent)?;
+                    for (answer, text) in t.answers.iter_mut().zip(moves) {
+                        let Some(text) = text else { continue };
+                        let m = parse_move(&pos, text)?;
+                        let (from, to) = match m {
+                            shakmaty::Move::Castle { king, rook } => {
+                                let file = if rook > king {
+                                    shakmaty::File::G
+                                } else {
+                                    shakmaty::File::C
+                                };
+                                (king, shakmaty::Square::from_coords(file, king.rank()))
+                            }
+                            other => (
+                                other
+                                    .from()
+                                    .ok_or_else(|| CoreError::IllegalMove(text.clone()))?,
+                                other.to(),
+                            ),
+                        };
+                        // Squares are 0-based and file-major.
+                        let code = |s: shakmaty::Square| (s.file() as u8) * 8 + s.rank() as u8;
+                        answer.from = code(from);
+                        answer.to = code(to);
+                    }
+                }
+                Some(Box::new(t))
+            }
+            _ => None,
+        };
+        self.nodes[node as usize].training = training;
+        Ok(())
+    }
+
+    /// Removes every training question from the game (the reference app's
+    /// "Delete Training Commentary"); returns how many there were.
+    pub fn clear_training(&mut self) -> usize {
+        self.nodes
+            .iter_mut()
+            .filter_map(|n| n.training.take())
+            .count()
+    }
+
     /// Replaces the game data. Tag names are PGN symbols; values are one
     /// line. SetUp and FEN follow the start position and are kept as they
     /// are; empty values remove a tag, except the seven required ones.
@@ -508,4 +577,19 @@ fn strip_engine_commands(text: &str) -> String {
     }
     out.push_str(rest);
     out.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// A move in SAN or UCI in `pos`.
+fn parse_move(pos: &shakmaty::Chess, text: &str) -> Result<shakmaty::Move, CoreError> {
+    let text = text.trim();
+    let illegal = || CoreError::IllegalMove(text.to_string());
+    if let Ok(san) = text.parse::<shakmaty::san::SanPlus>()
+        && let Ok(m) = san.san.to_move(pos)
+    {
+        return Ok(m);
+    }
+    text.parse::<shakmaty::uci::UciMove>()
+        .map_err(|_| illegal())?
+        .to_move(pos)
+        .map_err(|_| illegal())
 }

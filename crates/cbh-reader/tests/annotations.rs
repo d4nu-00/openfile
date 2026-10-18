@@ -171,3 +171,93 @@ fn text_encodings() {
     assert_eq!(decode_text("Löwe".as_bytes()), "Löwe");
     assert_eq!(decode_text(b"Lehner, \x00garbage"), "Lehner, ");
 }
+
+/// A move-input training item with one answer: question in English and
+/// German, a hint with a red square, and the answer 1...e5 (0-based squares
+/// e7 = 4·8+6 = 38, e5 = 36) worth 10 points with English feedback.
+fn training_item(classic: bool) -> Vec<u8> {
+    let string = |out: &mut Vec<u8>, slot: u8, bytes: &[u8]| {
+        out.extend([slot, 0]);
+        if classic {
+            out.extend((bytes.len() as u16).to_le_bytes());
+        } else {
+            out.extend((bytes.len() as u32).to_le_bytes());
+        }
+        out.extend(bytes);
+    };
+    let mut b = 300u32.to_le_bytes().to_vec();
+    b.extend(10u16.to_le_bytes());
+    // Question.
+    b.extend(2u16.to_le_bytes());
+    string(&mut b, 0, b"How does Black answer?");
+    string(&mut b, 1, b"Wie antwortet Schwarz?");
+    // Wrong: none. Help 1: a text and a red square on e5 (1-based 37).
+    b.extend(0u16.to_le_bytes());
+    b.extend(2u16.to_le_bytes());
+    string(&mut b, 0, b"Take the centre.");
+    string(&mut b, 8, &[4, 37]);
+    // Help 2: none.
+    b.extend(0u16.to_le_bytes());
+    b.push(1);
+    b.extend([38, 36, 0, 10]);
+    b.extend(1u16.to_le_bytes());
+    string(&mut b, 0, b"Right.");
+    b
+}
+
+#[test]
+fn classic_training_records_are_read() {
+    let item = training_item(true);
+    let mut data = 1u16.to_le_bytes().to_vec();
+    data.push(1);
+    data.extend(((item.len() + 2) as u16).to_le_bytes());
+    data.extend(&item);
+    let bytes = classic_record(5, &[(0, 0x09, &data)]);
+    let parsed = parse_classic(&bytes, 5).unwrap();
+    let Kind::Training(t) = &parsed.entries[0].kind else {
+        panic!("{:?}", parsed.entries[0].kind);
+    };
+    assert_eq!((t.seconds, t.score), (300, 10));
+    assert_eq!(t.question.text(0), Some("How does Black answer?"));
+    assert_eq!(t.question.text(1), Some("Wie antwortet Schwarz?"));
+    assert_eq!(t.help[0].squares[0].square, "e5");
+    assert_eq!(t.help[0].squares[0].color, 'R');
+    let a = &t.answers[0];
+    assert_eq!(
+        (
+            chess_core::training::square_name(a.from).as_deref(),
+            chess_core::training::square_name(a.to).as_deref(),
+            a.points
+        ),
+        (Some("e7"), Some("e5"), 10)
+    );
+    assert_eq!(a.feedback.text(0), Some("Right."));
+    // It goes on the node of 1.e4 and leaves the game complete.
+    let mut g = game();
+    let (status, notes) = apply(&mut g, parsed, Order::Stream);
+    assert_eq!(status, DataStatus::Available, "{notes:?}");
+    assert!(g.nodes[1].training.is_some());
+}
+
+#[test]
+fn training_entries_no_longer_stop_2cba_parsing() {
+    let mut entry = 0x09u16.to_le_bytes().to_vec();
+    entry.extend([1, 1]);
+    entry.extend(1u32.to_le_bytes());
+    entry.extend(training_item(false));
+    let payload = [
+        group(0, &[entry]),
+        group(1, &[text_entry(0x02, 0, "after")]),
+    ]
+    .concat();
+    let parsed = parse_new(&payload).unwrap();
+    assert_eq!(parsed.stopped_at, None);
+    assert_eq!(parsed.entries.len(), 2);
+    assert!(matches!(parsed.entries[0].kind, Kind::Training(_)));
+    // An unknown kind still cannot be sized.
+    let mut odd = 0x09u16.to_le_bytes().to_vec();
+    odd.extend([1, 1]);
+    odd.extend(7u32.to_le_bytes());
+    let parsed = parse_new(&group(0, &[odd])).unwrap();
+    assert_eq!(parsed.stopped_at, Some((0, 0x09)));
+}

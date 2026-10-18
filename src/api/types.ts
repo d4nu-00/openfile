@@ -59,6 +59,41 @@ export interface GameNode {
   /** Critical position mark: 1 opening (a repertoire move), 2 middlegame,
    * 3 endgame. */
   critical?: number;
+  /** A training question about the position before the move. */
+  training?: Training;
+  /** Each move answer in SAN in that position (null when not legal). */
+  trainingMoves?: (string | null)[];
+}
+/** Training annotations (docs/training.md). */
+export interface TrainingText {
+  /** 0..6: en, de, fr, es, it, nl, pt. */
+  language: number;
+  index?: number;
+  text: string;
+}
+export interface TrainingBlock {
+  texts: TrainingText[];
+  squares?: SquareMark[];
+  arrows?: ArrowMark[];
+  /** Strings the workbench keeps without showing. */
+  other?: { slot: number; index: number; bytes: number[] }[];
+}
+export interface TrainingAnswer {
+  from?: number;
+  to?: number;
+  extra?: number;
+  points: number;
+  choice?: TrainingBlock;
+  feedback?: TrainingBlock;
+}
+export interface Training {
+  kind: "moveInput" | "multipleChoice";
+  seconds: number;
+  score: number;
+  question: TrainingBlock;
+  wrong?: TrainingBlock;
+  help?: [TrainingBlock, TrainingBlock];
+  answers: TrainingAnswer[];
 }
 /** Colours use the PGN [%csl]/[%cal] letters: G, Y, R, B, C, O. */
 export interface SquareMark {
@@ -190,6 +225,14 @@ export type Edit =
         lineComment?: string;
       }[];
     }
+  | {
+      kind: "setTraining";
+      node: NodeId;
+      training: Training | null;
+      /** Per answer, its move in SAN or UCI; null keeps the stored one. */
+      moves?: (string | null)[];
+    }
+  | { kind: "clearTraining" }
   | { kind: "appendLine"; parent: NodeId; moves: string[]; comment?: string }
   | { kind: "addLines"; parent: NodeId; lines: LineItem[] }
   | { kind: "undo" }

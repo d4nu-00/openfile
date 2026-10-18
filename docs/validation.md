@@ -1022,3 +1022,23 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
   the classic test database read-only in 39–50 s each (about 0.77 s per
   position). Average losses were 8–63 cp per side.
 
+## Training annotations (2026-10-18)
+
+* **Tests.**
+  * Reader tests build a classic record and a 2CBA entry from the traced
+    layout. A 2CBA entry no longer stops parsing; an unknown kind still
+    does.
+  * A 2CBH round trip keeps a multiple-choice question with an arrow in its
+    hint.
+  * Unit tests cover the 0-based squares and `set_training`: SAN and UCI
+    answers, an illegal answer, the start, and removal.
+  * An app test edits a question, saves it to a 2CBH and reads it back,
+    checks the PGN export's refusal, clears it and undoes the clearing.
+  * A frontend test adds, reopens and deletes a question.
+* **The test database.** `training_check` over the classic test database's
+  2,304 games with training:
+  * all 3,122 questions read, and all 3,687 move answers are legal with
+    0-based squares (26 with 1-based);
+  * every game round-trips through 2CBA;
+  * the game also in the 2CBH sample agrees.
+

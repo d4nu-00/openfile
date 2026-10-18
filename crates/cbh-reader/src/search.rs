@@ -168,7 +168,7 @@ impl AnnotationQuery {
             && (!self.colours
                 || any(&|k| matches!(k, Kind::Squares(_) | Kind::Arrows(_)))
                 || other(&[0x84, 0x85]))
-            && (!self.training || other(&[0x09]))
+            && (!self.training || any(&|k| matches!(k, Kind::Training(_))) || other(&[0x09]))
             && (!self.multimedia || other(&[0x10, 0x11, 0x12]))
             && (!self.pawn_structure || other(&[0x14]))
             && (!self.piece_path || other(&[0x15]))
