@@ -979,3 +979,27 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
   needs no download and that the download returns at once. Frontend tests
   cover Download and Open, declining, and a stopped download. Dataless
   files cannot be made in a test; the detection was checked on the test database.
+
+## Generate Repertoire and the Repertoire Report (2026-10-18)
+
+* **Tests.**
+  * The reader's unit tests cover the name split, the marked move's
+    parity, merging two games of one code with a single mark, and splitting
+    a code of 18 games by table entry.
+  * A 2CBH round trip keeps critical marks of kind 1 and 2.
+  * An app test generates both databases from a scratch 2CBH, reopens the
+    White one (one game, ECO B90, names from the table, 6.Be3 marked),
+    refuses to overwrite, and reports three games at the marked position,
+    the strongest first, and lists them.
+  * Frontend tests cover the dialog flow and the notation's critical marks.
+* **The test database.** Release build, `src-tauri/examples/generate_repertoire.rs`,
+  the classic test database read-only and warm, player A (6,925 games):
+  * Generating took 1.14 s: 468 White and 462 Black repertoire games.
+  * The reports took 25–38 s each over the latest 2,000,000 games.
+  * The scratch output was deleted afterwards.
+* **Two corrections from that run:**
+  * Set-up games were replayed from the standard start, which put 86 lines
+    under wrong codes. `uci_lines` now keeps standard starts only.
+  * Taking the first marked position in repertoire order, as the reference
+    app does, left 32 of 400 White topics with games. Taking the deepest
+    gives 400.
