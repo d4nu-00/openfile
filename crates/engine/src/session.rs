@@ -304,6 +304,7 @@ pub struct EngineSession {
 }
 impl EngineSession {
     pub fn spawn(spec: EngineSpec, timeout: Duration) -> Result<Self, EngineError> {
+        crate::launch::check_program(&spec.executable)?;
         let mut s = Self {
             spec,
             handshake_timeout: timeout,
@@ -321,7 +322,9 @@ impl EngineSession {
             events: VecDeque::new(),
             closed: false,
         };
-        s.launch()?;
+        if let Err(e) = s.launch() {
+            return Err(crate::launch::explain_failure(&s.spec.executable, e));
+        }
         Ok(s)
     }
     fn launch(&mut self) -> Result<(), EngineError> {

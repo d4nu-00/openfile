@@ -832,6 +832,12 @@ kbd {
 .analysis-pane [role="alert"] {
   color: var(--danger);
 }
+/* Errors may carry a command to copy on its own line (a blocked engine). */
+[role="alert"] {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
 
 /* Status bar */
 .status-bar {

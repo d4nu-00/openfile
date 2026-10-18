@@ -14,4 +14,10 @@ pub enum EngineError {
     Timeout(String),
     #[error("Engine process exited")]
     Exited,
+    /// The system stopped the program (a quarantined download on macOS).
+    #[error("{0}")]
+    Blocked(String),
+    /// The chosen path is a folder, not a program.
+    #[error("{0}")]
+    NotAProgram(String),
 }
