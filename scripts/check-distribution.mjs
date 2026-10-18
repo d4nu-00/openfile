@@ -83,6 +83,11 @@ export function allowedSourcePath(candidate) {
       "src-tauri/tauri.conf.json",
       "src-tauri/capabilities/main.json",
       "src-tauri/icons/icon.png",
+      "src-tauri/icons/32x32.png",
+      "src-tauri/icons/128x128.png",
+      "src-tauri/icons/128x128@2x.png",
+      "src-tauri/icons/icon.icns",
+      "src-tauri/icons/icon.ico",
     ].includes(candidate)
   )
     return true;
@@ -91,6 +96,9 @@ export function allowedSourcePath(candidate) {
   // README screenshots and the public-domain games they show.
   if (/^docs\/media\/[a-z0-9-]+\.png$/.test(candidate)) return true;
   if (candidate === "docs/media/showcase.pgn") return true;
+  // Release notes, one per tag.
+  if (/^docs\/releases\/v[0-9]+\.[0-9]+\.[0-9]+\.md$/.test(candidate))
+    return true;
   // The open ECO table (lichess-org/chess-openings, CC0).
   if (/^crates\/chess-core\/data\/eco\/[a-e]\.tsv$/.test(candidate))
     return true;
@@ -105,6 +113,7 @@ export function allowedSourcePath(candidate) {
       "licenses/chess-openings-CC0.txt",
       "licenses/dependencies.json",
       ".github/workflows/desktop.yml",
+      ".github/workflows/release.yml",
     ].includes(candidate)
   )
     return true;
