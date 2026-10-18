@@ -808,7 +808,16 @@ impl Database {
     /// moves cannot be replayed.
     pub fn main_line(&self, ordinal: u64, plies: usize) -> Result<Option<GameLine>, CbhError> {
         let raw = self.raw_chunk(ordinal, 1)?.remove(0);
-        let Some(game) = self.moves_of(&raw)? else {
+        self.line_of(&raw, plies)
+    }
+
+    /// The main line of the entry `raw`, as [`Database::main_line`] reads it.
+    pub(crate) fn line_of(
+        &self,
+        raw: &crate::header::RawEntry,
+        plies: usize,
+    ) -> Result<Option<GameLine>, CbhError> {
+        let Some(game) = self.moves_of(raw)? else {
             return Ok(None);
         };
         let Some((start, moves)) = line_moves(&game, plies.saturating_add(1)) else {
@@ -825,7 +834,7 @@ impl Database {
             },
         );
         Ok(Some(GameLine {
-            stats: GameStats::of(&raw),
+            stats: GameStats::of(raw),
             positions: line,
         }))
     }

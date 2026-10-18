@@ -16,6 +16,7 @@ pub mod pattern;
 pub mod player_stats;
 pub mod position;
 pub mod prepare;
+pub mod repertoire;
 pub mod scan;
 pub mod search;
 pub mod sort;
