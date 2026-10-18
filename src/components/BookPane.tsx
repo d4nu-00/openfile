@@ -31,6 +31,7 @@ const sources = {
   notInTree: "",
   tooMany: "",
   noTree: "",
+  filtered: "Search results",
 };
 
 /**
@@ -46,6 +47,10 @@ export function BookPane({
   building,
   prepared,
   onLeavePrepared,
+  searchAvailable = false,
+  searchTruncated = false,
+  scope = "database",
+  onScopeChange,
 }: {
   book: BookState;
   hasDatabase: boolean;
@@ -58,6 +63,10 @@ export function BookPane({
   prepared?: string;
   /** Returns to the database's opening tree. */
   onLeavePrepared?: () => void;
+  searchAvailable?: boolean;
+  searchTruncated?: boolean;
+  scope?: "database" | "search";
+  onScopeChange?: (scope: "database" | "search") => void;
 }) {
   const tree = book.tree;
   let message: string | undefined;
@@ -76,11 +85,35 @@ export function BookPane({
     message =
       "Too many games to follow past the stored positions; use Find Position.";
   else if (tree && tree.games === 0)
-    message = "No game of this database reaches this position.";
+    message = prepared
+      ? "No game in this preparation reaches this position."
+      : scope === "search"
+        ? "No game in this search result reaches this position."
+        : "No game of this database reaches this position.";
   return (
     <div className="book-pane" aria-label="Opening book">
       <div className="pane-header">
         <strong>Book</strong>
+        {searchAvailable && onScopeChange && (
+          <span className="book-scope" role="group" aria-label="Book source">
+            <button
+              type="button"
+              className={scope === "database" ? "active" : ""}
+              aria-pressed={scope === "database"}
+              onClick={() => onScopeChange("database")}
+            >
+              Database tree
+            </button>
+            <button
+              type="button"
+              className={scope === "search" ? "active" : ""}
+              aria-pressed={scope === "search"}
+              onClick={() => onScopeChange("search")}
+            >
+              Search results
+            </button>
+          </span>
+        )}
         {prepared && (
           <span className="book-prepared">
             {prepared}{" "}
@@ -105,6 +138,15 @@ export function BookPane({
           </span>
         )}
         {book.loading && <span className="hint">Updating…</span>}
+        {tree?.status === "filtered" && (
+          <span className="hint">
+            {games.format(tree.sampledHits ?? 0)} of{" "}
+            {games.format(tree.totalHits ?? 0)} search hits scanned
+          </span>
+        )}
+        {tree?.status === "filtered" && searchTruncated && (
+          <span className="hint">Search stopped at its limit</span>
+        )}
       </div>
       {message ? (
         <div className="empty-state">

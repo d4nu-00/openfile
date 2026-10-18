@@ -252,3 +252,16 @@ Names in backticks are the reference app's command ids, for traceability.
 - [ ] P3 🟢 Full screen and window arrangements (`VIEWFULLSCREEN`, `WINDOWTOP2VERTICAL`)
 - [ ] P3 🟢 Localisation: the reference app ships 10 UI languages; the app needs its own translations
 - [ ] P3 🟢 Help and shortcut overview (`HELPHELP`, `VIEWSHORTCUTS`)
+
+## 17. Additional OpenFile workflows
+
+These are independent additions to the workbench. They are not mapped to the
+reference app's command table.
+
+- [x] P2 🟢 Opening tree from the current search result, with move statistics for only the matching games, a clear indication when a large result is sampled, and a way back to the full database tree. *(Book pane toggle; reads main lines of up to 50,000 retained hits, shows the scanned and total counts, follows transpositions, and cancels obsolete queries; see [opening tree](docs/opening-tree.md#search-result-tree))*
+- [ ] P2 🟢 Autosaved work database and session recovery for unfinished games and analysis, without writing to the user's source database.
+- [ ] P2 🟡 Open a PGN URL as a live collection, refresh it, and merge new moves while preserving local comments and variations.
+- [ ] P2 🟢 Import ChessBase CBV archives into a new 2CBH database, with bounded extraction and clear diagnostics for unsupported entries.
+- [ ] P2 🟢 Coached practice against a local engine: adjustable or adaptive strength, selected opening or current-position starts, hints and mistake warnings, and a local play history.
+- [ ] P3 🟢 Engine matches from the start position or a set of test positions, with clocks, reversed colours, saved results and adjudication.
+- [ ] P3 🟢 Optional move-quality cues while entering a move, from available local opening data or an engine, without revealing them during training by default.

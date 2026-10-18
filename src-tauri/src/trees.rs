@@ -25,11 +25,55 @@ const MAX_FOLLOW: usize = 5_000;
 const AUTO_SEARCH_ENTRIES: u64 = 200_000;
 /// Moves accepted in a line.
 const MAX_LINE: usize = 1_000;
+/// Keep filtered lookups responsive even when the search has millions of hits.
+const MAX_FILTERED_TREE_HITS: usize = 50_000;
 
 /// An opening tree with its own read handle on the database.
 pub struct OpenTree {
     tree: OpeningTree,
     db: cbh_reader::Database,
+}
+
+#[cfg(test)]
+mod cancellation_tests {
+    use super::*;
+
+    #[test]
+    fn old_request_cannot_cancel_new_filtered_query() {
+        let registry = Registry::default();
+        let cancel = Arc::new(AtomicBool::new(false));
+        registry
+            .lock()
+            .unwrap()
+            .filtered_tree_cancels
+            .insert("db".into(), ("new".into(), cancel.clone()));
+        registry
+            .cancel_filtered_opening_tree("db".into(), "old".into())
+            .unwrap();
+        assert!(!cancel.load(Ordering::Relaxed));
+        registry
+            .cancel_filtered_opening_tree("db".into(), "new".into())
+            .unwrap();
+        assert!(cancel.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn closing_database_cancels_filtered_query() {
+        let dir = tempfile::tempdir().unwrap();
+        let registry = Registry::default();
+        let id = registry
+            .create_database(dir.path().join("Q.2cbh"), "t".into())
+            .unwrap()
+            .database_id;
+        let cancel = Arc::new(AtomicBool::new(false));
+        registry
+            .lock()
+            .unwrap()
+            .filtered_tree_cancels
+            .insert(id.clone(), ("query".into(), cancel.clone()));
+        registry.close_database(id).unwrap();
+        assert!(cancel.load(Ordering::Relaxed));
+    }
 }
 
 /// A position given as a line: the start position and the moves from it.
@@ -53,6 +97,8 @@ pub enum TreeStatus {
     TooMany,
     /// The database has no current opening tree.
     NoTree,
+    /// Statistics from the current search result's main lines.
+    Filtered,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -83,6 +129,10 @@ pub struct TreeResponse {
     /// Of those, games that end in it.
     pub ended: u64,
     pub moves: Vec<TreeMove>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sampled_hits: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_hits: Option<u64>,
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -280,6 +330,8 @@ impl Registry {
             games: 0,
             ended: 0,
             moves: vec![],
+            sampled_hits: None,
+            total_hits: None,
         };
         let Some(open) = self.open_tree(&database_id)? else {
             return Ok(response);
@@ -304,6 +356,98 @@ impl Registry {
         };
         fill_moves(&mut response, &pos, &answer.moves);
         Ok(response)
+    }
+
+    /// Move statistics for the current search result at the board position.
+    /// The first 50,000 hits are scanned; the response makes that bound visible.
+    pub fn filtered_opening_tree(
+        &self,
+        database_id: String,
+        line: Line,
+        request_id: String,
+    ) -> Result<TreeResponse, AppError> {
+        let (pos, hashes, _) = replay(&line)?;
+        let target = *hashes
+            .last()
+            .ok_or_else(|| AppError::new("bounds", "The line has no position"))?;
+        let (hits, cancel) = {
+            let mut state = self.lock()?;
+            let hits = state
+                .searches
+                .get(&database_id)
+                .cloned()
+                .ok_or_else(|| AppError::new("noSearch", "No current search result"))?;
+            let cancel = Arc::new(AtomicBool::new(false));
+            if let Some((_, old)) = state
+                .filtered_tree_cancels
+                .insert(database_id.clone(), (request_id.clone(), cancel.clone()))
+            {
+                old.store(true, Ordering::Relaxed);
+            }
+            (hits, cancel)
+        };
+        let total = hits.ordinals.len();
+        let sampled = total.min(MAX_FILTERED_TREE_HITS);
+        let db = match self.own_handle(&database_id) {
+            Ok(db) => db,
+            Err(error) => {
+                let mut state = self.lock()?;
+                if state
+                    .filtered_tree_cancels
+                    .get(&database_id)
+                    .is_some_and(|(_, active)| Arc::ptr_eq(active, &cancel))
+                {
+                    state.filtered_tree_cancels.remove(&database_id);
+                }
+                return Err(error);
+            }
+        };
+        let stats = db.stats_of_games(&hits.ordinals[..sampled], target, &cancel);
+        let mut state = self.lock()?;
+        let current = state
+            .filtered_tree_cancels
+            .get(&database_id)
+            .is_some_and(|(_, active)| Arc::ptr_eq(active, &cancel));
+        if current {
+            state.filtered_tree_cancels.remove(&database_id);
+        }
+        if cancel.load(Ordering::Relaxed)
+            || !current
+            || !state
+                .searches
+                .get(&database_id)
+                .is_some_and(|active| Arc::ptr_eq(active, &hits))
+        {
+            return Err(AppError::new(
+                "cancelled",
+                "Filtered tree query was superseded",
+            ));
+        }
+        drop(state);
+        let mut response = TreeResponse {
+            request_id,
+            status: TreeStatus::Filtered,
+            games: 0,
+            ended: 0,
+            moves: vec![],
+            sampled_hits: Some(sampled as u64),
+            total_hits: Some(total as u64),
+        };
+        fill_moves(&mut response, &pos, &stats?);
+        Ok(response)
+    }
+
+    pub fn cancel_filtered_opening_tree(
+        &self,
+        database_id: String,
+        request_id: String,
+    ) -> Result<(), AppError> {
+        if let Some((active_id, cancel)) = self.lock()?.filtered_tree_cancels.get(&database_id) {
+            if *active_id == request_id {
+                cancel.store(true, Ordering::Relaxed);
+            }
+        }
+        Ok(())
     }
 
     /// Lists the games reaching the line's last position: from the opening

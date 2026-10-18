@@ -120,6 +120,22 @@ transposed games or started from set-up positions, and no answer listed a
 wrong game. Find Position (Hard Disk) always searches every game, variations
 included.
 
+## Search-result tree
+
+The Book pane can switch between the database's saved opening tree and the
+current search result. The latter does not need a saved tree: it reads the
+matching games' main lines and counts the next move at the board position.
+It also finds a position reached by a different move order. Searches made
+from the search mask, a player or tournament list, or a report can supply
+the result. Switching searches or positions discards obsolete answers.
+
+To keep a broad search responsive, at most the first 50,000 hits are read.
+The pane shows the exact number scanned and the number of retained search
+hits, and says when the search itself stopped at its hit limit. Move counts
+from a sampled result describe that sample, not the whole database. The
+query reads the database through a separate handle and can be cancelled
+when the position or pane changes.
+
 ## Reference search
 
 The Reference pane lists the games that reach the current board, in entry

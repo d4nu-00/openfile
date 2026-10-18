@@ -1964,6 +1964,26 @@ kbd {
   font-size: 12px;
   color: var(--accent, var(--text-muted));
 }
+.book-pane .pane-header {
+  flex-wrap: wrap;
+}
+.book-scope {
+  display: inline-flex;
+  gap: 2px;
+}
+.book-scope button {
+  padding: 2px 6px;
+  border: 1px solid var(--pane-border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: inherit;
+}
+.book-scope button.active {
+  background: var(--accent);
+  color: white;
+}
 @media (max-width: 760px) {
   .prepare .prepare-lists {
     grid-template-columns: 1fr;

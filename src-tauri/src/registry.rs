@@ -39,6 +39,8 @@ pub(crate) struct State {
     pub(crate) trees: HashMap<String, Arc<Mutex<crate::trees::OpenTree>>>,
     /// Running opening tree builds.
     pub(crate) tree_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    /// Running queries against the current search result.
+    pub(crate) filtered_tree_cancels: HashMap<String, (String, Arc<std::sync::atomic::AtomicBool>)>,
     /// The reference search result of each database, and its running search.
     pub(crate) references: HashMap<String, Arc<crate::searches::Hits>>,
     pub(crate) reference_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
@@ -366,6 +368,9 @@ impl Registry {
         state.name_lists.retain(|(db, _), _| *db != id);
         state.player_games.remove(&id);
         state.preparations.remove(&id);
+        if let Some((_, cancel)) = state.filtered_tree_cancels.remove(&id) {
+            cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
         for cancels in [
             &mut state.prepare_cancels,
             &mut state.dossier_cancels,

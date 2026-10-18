@@ -164,3 +164,65 @@ fn tree_answers_and_follows_saves() {
     r.delete_opening_tree(id.clone()).unwrap();
     assert!(!r.has_tree(&id).unwrap());
 }
+
+#[test]
+fn filtered_tree_counts_only_matching_games_at_a_transposition() {
+    let d = tempfile::tempdir().unwrap();
+    let r = Registry::default();
+    let db = r
+        .create_database(d.path().join("F.2cbh"), "c".into())
+        .unwrap();
+    let id = db.database_id;
+    save_all(
+        &r,
+        &d,
+        &id,
+        "[Result \"1-0\"]\n\n1. Nf3 d5 2. d4 Nf6 3. c4 1-0\n\n[Result \"0-1\"]\n\n1. d4 d5 2. Nf3 Nf6 3. e3 0-1\n\n[Result \"1-0\"]\n\n1. e4 e5 1-0\n\n",
+    );
+    assert_eq!(
+        r.filtered_opening_tree(id.clone(), line(&[]), "missing".into())
+            .unwrap_err()
+            .code,
+        "noSearch"
+    );
+    r.show_entries(id.clone(), vec!["1".into(), "2".into()], "s".into())
+        .unwrap();
+    let at = r
+        .filtered_opening_tree(
+            id.clone(),
+            line(&["d2d4", "d7d5", "g1f3", "g8f6"]),
+            "f".into(),
+        )
+        .unwrap();
+    assert_eq!((at.games, at.ended), (2, 0));
+    assert_eq!((at.sampled_hits, at.total_hits), (Some(2), Some(2)));
+    assert_eq!(at.moves.len(), 2);
+    let mut moves: Vec<_> = at.moves.iter().map(|m| m.san.as_str()).collect();
+    moves.sort_unstable();
+    assert_eq!(moves, ["c4", "e3"]);
+
+    r.show_entries(id.clone(), vec![], "s".into()).unwrap();
+    let empty = r.filtered_opening_tree(id, line(&[]), "f".into()).unwrap();
+    assert_eq!((empty.games, empty.moves.len()), (0, 0));
+}
+
+#[test]
+fn filtered_tree_reports_when_a_large_result_is_sampled() {
+    let d = tempfile::tempdir().unwrap();
+    let r = Registry::default();
+    let db = r
+        .create_database(d.path().join("L.2cbh"), "c".into())
+        .unwrap();
+    let id = db.database_id;
+    save_all(&r, &d, &id, "[Result \"1-0\"]\n\n1. e4 1-0\n\n");
+    // Repeated entry ids make the boundary cheap to set up; the regular
+    // search path supplies distinct ids in actual use.
+    r.show_entries(id.clone(), vec!["1".into(); 50_001], "s".into())
+        .unwrap();
+    let response = r.filtered_opening_tree(id, line(&[]), "f".into()).unwrap();
+    assert_eq!(
+        (response.sampled_hits, response.total_hits),
+        (Some(50_000), Some(50_001))
+    );
+    assert_eq!(response.games, 50_000);
+}

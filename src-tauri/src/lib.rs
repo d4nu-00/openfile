@@ -195,6 +195,8 @@ pub fn run() {
             commands::cancel_opening_tree,
             commands::delete_opening_tree,
             commands::opening_tree,
+            commands::filtered_opening_tree,
+            commands::cancel_filtered_opening_tree,
             commands::reference_search,
             commands::cancel_reference,
             commands::read_reference_page,

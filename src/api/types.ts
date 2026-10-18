@@ -743,7 +743,8 @@ export interface Line {
   startFen: string;
   moves: string[];
 }
-export type TreeStatus = "tree" | "line" | "notInTree" | "tooMany" | "noTree";
+export type TreeStatus =
+  "tree" | "line" | "notInTree" | "tooMany" | "noTree" | "filtered";
 export interface TreeMove {
   uci: string;
   san: string;
@@ -765,6 +766,10 @@ export interface TreeResponse {
   /** Games that end in the position. */
   ended: number;
   moves: TreeMove[];
+  /** Number of search hits scanned, present for a filtered tree. */
+  sampledHits?: number;
+  /** Number of hits in the current search result. */
+  totalHits?: number;
 }
 export interface TreeProgress {
   stage: "reading" | "sorting";

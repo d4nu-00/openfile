@@ -58,6 +58,7 @@ export function usePositionPanes(
    * tree; a new key (another player or colour) asks again.
    */
   prepared?: string,
+  bookScope: "database" | "search" = "database",
 ) {
   const db = state.database;
   const game = state.document?.game;
@@ -82,12 +83,15 @@ export function usePositionPanes(
   useEffect(() => {
     if (!active.book || !db || !line) return;
     const request = gates.book.begin();
-    setBook((b) => ({ ...b, loading: true }));
+    setBook({ loading: true });
+    const filtered = bookScope === "search" && !!state.search && !prepared;
     const timer = setTimeout(async () => {
       try {
         const tree = prepared
           ? await api.preparedTree(db.databaseId, line, request)
-          : await api.openingTree(db.databaseId, line, request);
+          : filtered
+            ? await api.filteredOpeningTree(db.databaseId, line, request)
+            : await api.openingTree(db.databaseId, line, request);
         if (gates.book.accept(tree.requestId))
           setBook({ loading: false, tree });
       } catch (e) {
@@ -95,9 +99,16 @@ export function usePositionPanes(
           setBook({ loading: false, error: explain(e) });
       }
     }, SETTLE_MS);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      gates.book.begin();
+      if (filtered)
+        void api
+          .cancelFilteredOpeningTree(db.databaseId, request)
+          .catch(() => {});
+    };
     // The database object changes when its tree is built or deleted.
-  }, [active.book, db, key, prepared]);
+  }, [active.book, db, key, prepared, bookScope, state.search]);
 
   useEffect(() => {
     if (!active.reference || !db || !line) return;

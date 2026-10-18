@@ -411,6 +411,14 @@ export const backend = {
     invoke<void>("delete_opening_tree", { databaseId }),
   openingTree: (databaseId: string, line: Line, requestId: string) =>
     invoke<TreeResponse>("opening_tree", { databaseId, line, requestId }),
+  filteredOpeningTree: (databaseId: string, line: Line, requestId: string) =>
+    invoke<TreeResponse>("filtered_opening_tree", {
+      databaseId,
+      line,
+      requestId,
+    }),
+  cancelFilteredOpeningTree: (databaseId: string, requestId: string) =>
+    invoke<void>("cancel_filtered_opening_tree", { databaseId, requestId }),
   referenceSearch: (
     databaseId: string,
     line: Line,

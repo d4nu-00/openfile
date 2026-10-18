@@ -1,8 +1,113 @@
 import { describe, it, expect } from "vitest";
-import { waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import { BookPane } from "../components/BookPane";
 import { renderWorkbench } from "./harness";
 
 describe("opening book", () => {
+  it("describes an empty preparation as a preparation", () => {
+    render(
+      <BookPane
+        book={{
+          loading: false,
+          tree: {
+            requestId: "p",
+            status: "tree",
+            games: 0,
+            ended: 0,
+            moves: [],
+          },
+        }}
+        hasDatabase
+        hasLine
+        onPlay={() => {}}
+        prepared="Against White"
+        scope="search"
+      />,
+    );
+    expect(
+      screen.getByText("No game in this preparation reaches this position."),
+    ).toBeVisible();
+  });
+
+  it("shows moves from the current search and can return to the database tree", async () => {
+    const ui = renderWorkbench({
+      search: { hits: "3", truncated: false, label: "Selected games" },
+    });
+    await ui.user.click(ui.getByRole("tab", { name: "Book" }));
+    const book = await ui.findByLabelText("Opening book");
+    await ui.user.click(
+      within(book).getByRole("button", { name: "Search results" }),
+    );
+    expect(
+      await within(book).findByText(/2 games.*Search results/),
+    ).toBeVisible();
+    expect(within(book).getByText("3 of 3 search hits scanned")).toBeVisible();
+    await ui.user.click(
+      within(book).getByRole("button", { name: "Database tree" }),
+    );
+    expect(
+      await within(book).findByText(/10 games.*Opening tree/),
+    ).toBeVisible();
+  });
+
+  it("labels a sampled and truncated search result", async () => {
+    const ui = renderWorkbench({
+      search: { hits: "60000", truncated: true, label: "Large search" },
+    });
+    ui.api.filteredOpeningTree.mockImplementation(
+      async (_db, _line, requestId) => ({
+        requestId,
+        status: "filtered",
+        games: 42,
+        ended: 0,
+        sampledHits: 50000,
+        totalHits: 60000,
+        moves: [],
+      }),
+    );
+    await ui.user.click(ui.getByRole("tab", { name: "Book" }));
+    const book = await ui.findByLabelText("Opening book");
+    await ui.user.click(
+      within(book).getByRole("button", { name: "Search results" }),
+    );
+    expect(
+      await within(book).findByText("50,000 of 60,000 search hits scanned"),
+    ).toBeVisible();
+    expect(within(book).getByText(/Search stopped at its limit/)).toBeVisible();
+  });
+
+  it("does not show an old filtered answer after returning to the database tree", async () => {
+    const ui = renderWorkbench({ search: { hits: "3", truncated: false } });
+    let finish!: (value: unknown) => void;
+    ui.api.filteredOpeningTree.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await ui.user.click(ui.getByRole("tab", { name: "Book" }));
+    const book = await ui.findByLabelText("Opening book");
+    await ui.user.click(
+      within(book).getByRole("button", { name: "Search results" }),
+    );
+    await waitFor(() => expect(ui.api.filteredOpeningTree).toHaveBeenCalled());
+    const requestId = ui.api.filteredOpeningTree.mock.calls.at(-1)![2];
+    await ui.user.click(
+      within(book).getByRole("button", { name: "Database tree" }),
+    );
+    expect(ui.api.cancelFilteredOpeningTree).toHaveBeenCalledWith(
+      "db-1",
+      requestId,
+    );
+    expect(
+      await within(book).findByText(/10 games.*Opening tree/),
+    ).toBeVisible();
+    finish({ requestId, status: "filtered", games: 99, ended: 0, moves: [] });
+    await waitFor(() =>
+      expect(within(book).queryByText(/99 games/)).toBeNull(),
+    );
+  });
+
   it("lists the moves of the position and plays them", async () => {
     const ui = renderWorkbench();
     await ui.user.click(ui.getByRole("tab", { name: "Book" }));

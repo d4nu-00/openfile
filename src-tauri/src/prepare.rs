@@ -333,6 +333,8 @@ impl Registry {
             games: 0,
             ended: 0,
             moves: vec![],
+            sampled_hits: None,
+            total_hits: None,
         };
         let Ok(prepared) = self.prepared(&database_id) else {
             return Ok(response);

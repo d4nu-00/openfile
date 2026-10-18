@@ -267,6 +267,7 @@ export function App({
     white: boolean;
     label: string;
   }>();
+  const [bookScope, setBookScope] = useState<"database" | "search">("database");
   /** The start screen (My Databases): shown when asked, or with no database. */
   const [startOpen, setStartOpen] = useState(false);
   const [showFolders, setShowFolders] = useState(true);
@@ -334,6 +335,7 @@ export function App({
       reference: inGame && (notationTab === "reference" || extraReference),
     },
     bookPrepared && `${bookPrepared.playerId}:${bookPrepared.white}`,
+    bookScope,
   );
   const title = game
     ? `${game.tags.White ?? "?"} — ${game.tags.Black ?? "?"}`
@@ -1514,6 +1516,14 @@ export function App({
       onPlay={playBookMove}
       onCreate={() => void w.createTree()}
       building={w.treeBuild && `Building the opening tree: ${w.treeBuild}`}
+      searchAvailable={!!state.search && !bookPrepared}
+      searchTruncated={!!state.search?.truncated}
+      scope={
+        bookScope === "search" && state.search && !bookPrepared
+          ? "search"
+          : "database"
+      }
+      onScopeChange={setBookScope}
       prepared={bookPrepared?.label}
       onLeavePrepared={() => {
         if (!bookPrepared) return;

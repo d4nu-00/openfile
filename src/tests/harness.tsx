@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { App } from "../App";
 import { backend } from "../api/client";
+import type { ActiveSearch } from "../state/workbench";
 import type {
   GameResponse,
   PositionResponse,
@@ -715,6 +716,20 @@ export function mockApi(firstDatabase = 1) {
             ]
           : [],
     })),
+    filteredOpeningTree: vi
+      .fn()
+      .mockImplementation(async (_db, _line, requestId) => ({
+        requestId,
+        status: "filtered",
+        games: 2,
+        ended: 0,
+        sampledHits: 3,
+        totalHits: 3,
+        moves: [
+          { uci: "e2e4", san: "e4", games: 2, share: 100, score: 75, draws: 0 },
+        ],
+      })),
+    cancelFilteredOpeningTree: vi.fn().mockResolvedValue(undefined),
     referenceSearch: vi
       .fn()
       .mockImplementation(async (_db, _line, requestId) => ({
@@ -1541,11 +1556,13 @@ export function renderWorkbench({
   clean = false,
   position,
   initialView = clean ? "database" : "game",
+  search,
 }: {
   dirty?: boolean;
   clean?: boolean;
   position?: PositionResponse;
   initialView?: "database" | "game";
+  search?: ActiveSearch;
 } = {}) {
   const api = mockApi(clean ? 1 : 2);
   const user = userEvent.setup();
@@ -1558,6 +1575,7 @@ export function renderWorkbench({
           ? undefined
           : {
               database,
+              search,
               document: selected,
               position: position ?? {
                 requestId: "initial",
