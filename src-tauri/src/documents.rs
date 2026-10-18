@@ -169,9 +169,13 @@ fn add_analysis(game: &mut chess_core::Game, items: Vec<AnalysisItem>) -> Result
             .nodes
             .get(item.node as usize)
             .ok_or_else(|| AppError::new("invalidNode", "Unknown node"))?;
-        let parent = n
-            .parent
-            .ok_or_else(|| AppError::new("invalidNode", "The start has no move"))?;
+        // The start takes a comment only (a summary before the first move).
+        let parent = n.parent;
+        if parent.is_none()
+            && (item.nag.is_some() || item.evaluation.is_some() || !item.line.is_empty())
+        {
+            return Err(AppError::new("invalidNode", "The start has no move"));
+        }
         if let Some(nag) = item.nag
             && !n.nags.iter().any(|g| (1..=6).contains(g))
         {
@@ -183,7 +187,7 @@ fn add_analysis(game: &mut chess_core::Game, items: Vec<AnalysisItem>) -> Result
             set_evaluation(&mut next, item.node, nag)?;
         }
         push(&mut next, item.node, item.comment)?;
-        if !item.line.is_empty() {
+        if let (Some(parent), false) = (parent, item.line.is_empty()) {
             let last = next.append_line(parent, &item.line, &chess_core::GameLimits::default())?;
             push(&mut next, last, item.line_comment)?;
         }

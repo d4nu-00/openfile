@@ -333,6 +333,109 @@ fn san(position: &Chess, uci: &str) -> Option<String> {
     Some(SanPlus::from_move(position.clone(), m).to_string())
 }
 
+/// One position's evaluation for the side to move, and the engine's best
+/// move there.
+pub(crate) type LineEval = Option<(i32, Option<String>)>;
+
+/// Evaluates the positions `line[i]` (after `moves[..i]` from `start_fen`)
+/// whose `needed[i]` is set, each to `depth` or for `cap` milliseconds at
+/// most; `each` is called after every position. None when cancelled. A
+/// set-up the engine refuses at its first position gives no evaluations.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn evaluate_line(
+    session: &mut EngineSession,
+    start_fen: &str,
+    moves: &[String],
+    line: &[Chess],
+    needed: &[bool],
+    cap: u64,
+    depth: Option<u32>,
+    cancel: &AtomicBool,
+    tag: &str,
+    mut each: impl FnMut(),
+) -> Result<Option<Vec<LineEval>>, AppError> {
+    let mut evals = vec![None; line.len()];
+    for i in 0..line.len() {
+        if !needed[i] {
+            continue;
+        }
+        let request = AnalysisRequest {
+            request_id: format!("{tag}-{i}"),
+            start_fen: start_fen.to_string(),
+            history: moves[..i].to_vec(),
+            root_turn: if line[i].turn().is_white() {
+                "white"
+            } else {
+                "black"
+            }
+            .into(),
+        };
+        match evaluate_to(session, request, &line[i], cap, depth, cancel) {
+            Ok(Some(e)) => evals[i] = Some((e.cp, e.pv.first().cloned())),
+            Ok(None) => return Ok(None),
+            Err(e) if e.code == "engine" && evals.iter().all(Option::is_none) => break,
+            Err(e) => return Err(e),
+        }
+        each();
+    }
+    Ok(Some(evals))
+}
+
+/// Move `i`'s loss as the Error Report counts it.
+pub(crate) struct MoveLoss {
+    /// Centipawns, 0..=[`MAX_LOSS`]; 0 for the engine's best move.
+    pub loss: i32,
+    pub weight: f64,
+    /// The mover's evaluation before and after the move, clamped to mate.
+    pub before: i32,
+    pub after: i32,
+    /// The engine's best move before it (UCI).
+    pub best: Option<String>,
+}
+
+/// The loss of `moves[i]` from the evaluations of the positions before and
+/// after it; None when either is missing.
+pub(crate) fn move_loss(
+    line: &[Chess],
+    moves: &[String],
+    evals: &[LineEval],
+    i: usize,
+) -> Option<MoveLoss> {
+    let (Some((before, best)), Some((next, _))) = (&evals[i], &evals[i + 1]) else {
+        return None;
+    };
+    let (before, after) = (*before, -*next);
+    let loss = if best.as_deref() == Some(moves[i].as_str()) {
+        0
+    } else {
+        (before.clamp(-MATE, MATE) - after.clamp(-MATE, MATE)).clamp(0, MAX_LOSS)
+    };
+    let only = line[i].legal_moves().len() == 1;
+    let recapture = i > 0 && {
+        let last = UciMove::from_ascii(moves[i - 1].as_bytes())
+            .ok()
+            .and_then(|u| u.to_move(&line[i - 1]).ok());
+        let this = UciMove::from_ascii(moves[i].as_bytes())
+            .ok()
+            .and_then(|u| u.to_move(&line[i]).ok());
+        matches!((last, this), (Some(l), Some(t))
+            if l.is_capture() && t.is_capture() && l.to() == t.to())
+    };
+    Some(MoveLoss {
+        loss,
+        weight: if only {
+            0.0
+        } else if recapture {
+            RECAPTURE
+        } else {
+            ORDINARY
+        },
+        before: before.clamp(-MATE, MATE),
+        after: after.clamp(-MATE, MATE),
+        best: best.clone(),
+    })
+}
+
 impl Registry {
     /// The players of the selection, most games first (at most 10).
     pub fn selection_players(
@@ -479,39 +582,28 @@ impl Registry {
                         before || after
                     })
                     .collect();
-                let mut evals = vec![None; line.len()];
-                for i in 0..line.len() {
-                    if !needed[i] {
-                        continue;
-                    }
-                    let request = AnalysisRequest {
-                        request_id: format!("error-{ordinal}-{i}"),
-                        start_fen: game.start_fen.clone(),
-                        history: moves[..i].to_vec(),
-                        root_turn: if line[i].turn().is_white() {
-                            "white"
-                        } else {
-                            "black"
-                        }
-                        .into(),
-                    };
-                    match evaluate_to(&mut session, request, &line[i], cap, Some(depth), cancel) {
-                        Ok(Some(e)) => evals[i] = Some((e.cp, e.pv.first().cloned())),
-                        Ok(None) => {
-                            let mut report = summarize(&records, games, plies, &ratings);
-                            report.cancelled = true;
-                            report.depth = depth;
-                            report.truncated = truncated;
-                            report.skipped = skipped;
-                            report.player = player_name.clone();
-                            return Ok(report);
-                        }
-                        // A set-up the engine refuses: the game is skipped.
-                        Err(e) if e.code == "engine" && evals.iter().all(Option::is_none) => break,
-                        Err(e) => return Err(e),
-                    }
-                    positions += 1;
-                }
+                let tag = format!("error-{ordinal}");
+                let Some(evals) = evaluate_line(
+                    &mut session,
+                    &game.start_fen,
+                    &moves,
+                    &line,
+                    &needed,
+                    cap,
+                    Some(depth),
+                    cancel,
+                    &tag,
+                    || positions += 1,
+                )?
+                else {
+                    let mut report = summarize(&records, games, plies, &ratings);
+                    report.cancelled = true;
+                    report.depth = depth;
+                    report.truncated = truncated;
+                    report.skipped = skipped;
+                    report.player = player_name.clone();
+                    return Ok(report);
+                };
                 if evals.iter().all(Option::is_none) {
                     skipped += 1;
                     continue;
@@ -532,25 +624,8 @@ impl Registry {
                     if !counts(white) {
                         continue;
                     }
-                    let (Some((before, best)), Some((next, _))) = (&evals[i], &evals[i + 1]) else {
+                    let Some(m) = move_loss(&line, &moves, &evals, i) else {
                         continue;
-                    };
-                    let (before, after) = (*before, -*next);
-                    let loss = if best.as_deref() == Some(moves[i].as_str()) {
-                        0
-                    } else {
-                        (before.clamp(-MATE, MATE) - after.clamp(-MATE, MATE)).clamp(0, MAX_LOSS)
-                    };
-                    let only = line[i].legal_moves().len() == 1;
-                    let recapture = i > 0 && {
-                        let last = UciMove::from_ascii(moves[i - 1].as_bytes())
-                            .ok()
-                            .and_then(|u| u.to_move(&line[i - 1]).ok());
-                        let this = UciMove::from_ascii(moves[i].as_bytes())
-                            .ok()
-                            .and_then(|u| u.to_move(&line[i]).ok());
-                        matches!((last, this), (Some(l), Some(t))
-                            if l.is_capture() && t.is_capture() && l.to() == t.to())
                     };
                     let (mine, theirs) = if white {
                         (summary.white_elo, summary.black_elo)
@@ -563,17 +638,11 @@ impl Registry {
                         ply: i as u16,
                         white,
                         san: san(&line[i], &moves[i]).unwrap_or_else(|| moves[i].clone()),
-                        best: best.as_deref().and_then(|b| san(&line[i], b)),
-                        loss,
-                        weight: if only {
-                            0.0
-                        } else if recapture {
-                            RECAPTURE
-                        } else {
-                            ORDINARY
-                        },
-                        before: before.clamp(-MATE, MATE),
-                        after: after.clamp(-MATE, MATE),
+                        best: m.best.as_deref().and_then(|b| san(&line[i], b)),
+                        loss: m.loss,
+                        weight: m.weight,
+                        before: m.before,
+                        after: m.after,
                         phase: phase(&line[i], i),
                         opponent: strength(mine, theirs),
                     });
