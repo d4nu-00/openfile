@@ -178,6 +178,10 @@ pub struct GameNode {
     pub squares: Vec<chess_core::SquareMark>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub arrows: Vec<chess_core::ArrowMark>,
+    /// Critical position mark: 1 opening (a repertoire move), 2 middlegame,
+    /// 3 endgame.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub critical: Option<u8>,
 }
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -202,6 +206,7 @@ impl GameView {
                 pre_comments: n.pre_comments.clone(),
                 squares: n.squares.clone(),
                 arrows: n.arrows.clone(),
+                critical: n.critical,
             })
             .collect();
         let mut seen = vec![false; nodes.len()];
