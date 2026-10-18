@@ -70,6 +70,10 @@ import type {
   FolderListing,
   CloudStatus,
   CloudProgress,
+  FrequentPlayer,
+  GeneratedRepertoire,
+  RepertoireProgress,
+  RepertoireReport,
 } from "./types";
 
 /** A progress channel; one that drops the messages when nobody listens. */
@@ -683,6 +687,54 @@ export const backend = {
   removeFolderShortcut: (folder: string) =>
     invoke<void>("remove_folder_shortcut", { folder }),
   chooseFolder: () => open({ directory: true, title: "Add a folder shortcut" }),
+  chooseRepertoireFolder: () =>
+    open({
+      directory: true,
+      title: "Choose the folder for the repertoire databases",
+    }),
+  chooseRepertoireDatabase: (white: boolean) =>
+    open({
+      multiple: false,
+      title: `Choose the ${white ? "White" : "Black"} repertoire database`,
+      filters: [{ name: "Chess databases", extensions: ["cbh", "2cbh"] }],
+    }),
+  /** The database's most frequent players (the Players list must be open). */
+  frequentPlayers: (databaseId: string) =>
+    invoke<FrequentPlayer[]>("frequent_players", { databaseId }),
+  /** Generate Repertoire; undefined when cancelled. */
+  generateRepertoire: async (
+    databaseId: string,
+    players: number[],
+    folder: string,
+    onProgress: (p: RepertoireProgress) => void,
+  ) => {
+    const events = new Channel<RepertoireProgress>();
+    events.onmessage = onProgress;
+    return (
+      (await invoke<GeneratedRepertoire | null>("generate_repertoire", {
+        databaseId,
+        players,
+        folder,
+        events,
+      })) ?? undefined
+    );
+  },
+  /** Repertoire Report White/Black over the database. */
+  repertoireReport: (
+    databaseId: string,
+    repertoire: string,
+    onProgress: (p: RepertoireProgress) => void,
+  ) => {
+    const events = new Channel<RepertoireProgress>();
+    events.onmessage = onProgress;
+    return invoke<RepertoireReport>("repertoire_report", {
+      databaseId,
+      repertoire,
+      events,
+    });
+  },
+  cancelRepertoire: (databaseId: string) =>
+    invoke<void>("cancel_repertoire", { databaseId }),
   chooseTablebaseFolder: () =>
     open({ directory: true, title: "Choose the folder of Syzygy tablebases" }),
   blunderCheck: (

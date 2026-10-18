@@ -56,6 +56,9 @@ export interface GameNode {
   preComments?: string[];
   squares?: SquareMark[];
   arrows?: ArrowMark[];
+  /** Critical position mark: 1 opening (a repertoire move), 2 middlegame,
+   * 3 endgame. */
+  critical?: number;
 }
 /** Colours use the PGN [%csl]/[%cal] letters: G, Y, R, B, C, O. */
 export interface SquareMark {
@@ -1157,4 +1160,66 @@ export interface CloudProgress {
   files: number;
   bytesDone: string;
   bytes: string;
+}
+
+/** Generate Repertoire and the Repertoire Report (docs/repertoire.md). */
+export interface RepertoireProgress {
+  stage: "games" | "lines" | "writing" | "repertoire" | "scan";
+  done: string;
+  total: string;
+}
+export interface FrequentPlayer {
+  id: number;
+  name?: string | null;
+  games: number;
+}
+export interface RepertoireSide {
+  white: boolean;
+  /** The database written; null when the side has no repertoire game. */
+  path?: string | null;
+  games: number;
+  read: number;
+  truncated: boolean;
+  repertoireGames: number;
+  merged: number;
+  unclassified: number;
+  rare: number;
+  cut: number;
+}
+export interface GeneratedRepertoire {
+  players: string[];
+  sides: RepertoireSide[];
+}
+export interface HitGame {
+  ordinal: string;
+  white?: string | null;
+  black?: string | null;
+  whiteElo?: number | null;
+  blackElo?: number | null;
+  year?: number | null;
+  result?: string | null;
+}
+export interface PositionHits {
+  text: string;
+  fen: string;
+  games: number;
+  ordinals: string[];
+  top: HitGame[];
+}
+export interface RepertoireTopic {
+  name: string;
+  eco?: string | null;
+  positions: PositionHits[];
+}
+export interface RepertoireReport {
+  repertoire: string;
+  repertoireGames: number;
+  repertoireTruncated: boolean;
+  positions: number;
+  scanned: string;
+  scanTruncated: boolean;
+  matched: string;
+  topics: RepertoireTopic[];
+  positionsTruncated: boolean;
+  cancelled: boolean;
 }

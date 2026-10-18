@@ -308,7 +308,21 @@ const list: CommandMeta[] = [
   {
     id: "generate-repertoire",
     label: "Generate Repertoire",
-    tip: "Create a repertoire database",
+    tip: "Generates Repertoire databases for White/Black from your own games",
+    icon: ListTree,
+    views: db,
+  },
+  {
+    id: "repertoire-report-white",
+    label: "Repertoire Report White",
+    tip: "The games of this database that reach your White repertoire's positions",
+    icon: ListTree,
+    views: db,
+  },
+  {
+    id: "repertoire-report-black",
+    label: "Repertoire Report Black",
+    tip: "The games of this database that reach your Black repertoire's positions",
     icon: ListTree,
     views: db,
   },
@@ -1273,6 +1287,8 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
           items: [
             L("opening-reference"),
             L("generate-repertoire"),
+            S("repertoire-report-white"),
+            S("repertoire-report-black"),
             L("error-report"),
           ],
         },

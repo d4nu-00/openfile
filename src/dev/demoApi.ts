@@ -619,6 +619,16 @@ export function demoApi(): WorkbenchApi {
       };
     },
     cancelPreparation: async () => {},
+    chooseRepertoireFolder: async () => null,
+    chooseRepertoireDatabase: async () => null,
+    frequentPlayers: async () => [],
+    generateRepertoire: async () => {
+      throw { code: "unsupported", message: "Not available in the demo" };
+    },
+    repertoireReport: async () => {
+      throw { code: "unsupported", message: "Not available in the demo" };
+    },
+    cancelRepertoire: async () => {},
     playerDossier: async (_db, playerId, onProgress) => {
       onProgress({ stage: "mates", done: "1", total: "1" });
       const stats = demoStatistics(playerId);

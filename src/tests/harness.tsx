@@ -8,6 +8,7 @@ import type {
   PositionResponse,
   EntrySummary,
   AppSettings,
+  RepertoireProgress,
 } from "../api/types";
 export const startFen =
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -1107,6 +1108,91 @@ export function mockApi(firstDatabase = 1) {
         },
       ),
     cancelPreparation: vi.fn().mockResolvedValue(undefined),
+    chooseRepertoireFolder: vi.fn().mockResolvedValue("/synthetic/rep"),
+    chooseRepertoireDatabase: vi
+      .fn()
+      .mockResolvedValue("/synthetic/rep/Repertoire White.2cbh"),
+    frequentPlayers: vi.fn().mockResolvedValue([
+      { id: 7, name: "Alpha, A", games: 5 },
+      { id: 8, name: "Bravo, B", games: 3 },
+    ]),
+    generateRepertoire: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          players: number[],
+          folder: string,
+          onProgress: (p: RepertoireProgress) => void,
+        ) => {
+          onProgress({ stage: "lines", done: "1", total: "2" });
+          const side = (white: boolean) => ({
+            white,
+            path: `${folder}/Repertoire ${white ? "White" : "Black"}.2cbh`,
+            games: 3,
+            read: 3,
+            truncated: false,
+            repertoireGames: white ? 1 : 0,
+            merged: white ? 2 : 0,
+            unclassified: 0,
+            rare: 1,
+            cut: 0,
+          });
+          const black = { ...side(false), path: null };
+          return {
+            players: players.map((id) => (id === 7 ? "Alpha, A" : "?")),
+            sides: [side(true), black],
+          };
+        },
+      ),
+    repertoireReport: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          repertoire: string,
+          onProgress: (p: RepertoireProgress) => void,
+        ) => {
+          onProgress({ stage: "scan", done: "5", total: "10" });
+          return {
+            repertoire: repertoire.split("/").pop(),
+            repertoireGames: 1,
+            repertoireTruncated: false,
+            positions: 1,
+            scanned: "10",
+            scanTruncated: false,
+            matched: "2",
+            topics: [
+              {
+                name: "Sicilian Defense (Najdorf Variation, English Attack)",
+                eco: "B90",
+                positions: [
+                  {
+                    text: "1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 a6 6.Be3",
+                    fen: "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N1B3/PPP2PPP/R2QKB1R b KQkq - 1 6",
+                    games: 2,
+                    ordinals: ["2", "1"],
+                    top: [
+                      {
+                        ordinal: "2",
+                        white: "Delta, D",
+                        black: "Echo, E",
+                        whiteElo: 2700,
+                        blackElo: 2700,
+                        year: 2020,
+                        result: "1-0",
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+            positionsTruncated: false,
+            cancelled: false,
+          };
+        },
+      ),
+    cancelRepertoire: vi.fn().mockResolvedValue(undefined),
     playerDossier: vi
       .fn()
       .mockImplementation(

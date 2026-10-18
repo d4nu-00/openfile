@@ -79,6 +79,10 @@ import { StartScreen, type StartView } from "./views/StartScreen";
 import { CrosstableDialog } from "./components/CrosstableDialog";
 import { PlayerStatisticsDialog } from "./components/PlayerStatisticsDialog";
 import { PrepareDialog } from "./components/PrepareDialog";
+import {
+  GenerateRepertoireDialog,
+  RepertoireReportDialog,
+} from "./components/RepertoireDialogs";
 import { DossierDialog } from "./components/DossierDialog";
 import { TournamentReportDialog } from "./components/TournamentReportDialog";
 import { ErrorReportDialog } from "./components/ErrorReportDialog";
@@ -225,6 +229,12 @@ export function App({
     players?: { id: number; name?: string }[];
   }>();
   /** Prepare against White or Black: the dialog's player and result. */
+  /** Generate Repertoire, or a Repertoire Report of one colour. */
+  const [repertoire, setRepertoire] = useState<
+    { databaseId: string; report?: { white: boolean } } | undefined
+  >();
+  /** Repertoire databases generated or chosen in this session. */
+  const repertoirePaths = useRef<{ white?: string; black?: string }>({});
   const [prep, setPrep] = useState<{
     databaseId: string;
     playerId: number;
@@ -1837,6 +1847,30 @@ export function App({
         crossTournament !== undefined && openCrosstable(crossTournament),
       enabled: !!state.database && crossTournament !== undefined,
     },
+    "generate-repertoire": {
+      run: () =>
+        state.database &&
+        setRepertoire({ databaseId: state.database.databaseId }),
+      enabled: !!state.database,
+    },
+    "repertoire-report-white": {
+      run: () =>
+        state.database &&
+        setRepertoire({
+          databaseId: state.database.databaseId,
+          report: { white: true },
+        }),
+      enabled: !!state.database,
+    },
+    "repertoire-report-black": {
+      run: () =>
+        state.database &&
+        setRepertoire({
+          databaseId: state.database.databaseId,
+          report: { white: false },
+        }),
+      enabled: !!state.database,
+    },
     "error-report": {
       run: () => openErrorReport(),
       enabled: !!state.database && w.rowCount > 0,
@@ -3104,6 +3138,46 @@ export function App({
             if (dossier.progress) void api.cancelDossier(dossier.databaseId);
             setDossier(undefined);
           }}
+        />
+      )}
+      {repertoire && !repertoire.report && (
+        <GenerateRepertoireDialog
+          api={api}
+          databaseId={repertoire.databaseId}
+          onGenerated={(result) => {
+            for (const side of result.sides)
+              if (side.path)
+                repertoirePaths.current[side.white ? "white" : "black"] =
+                  side.path;
+          }}
+          onOpen={(path) => {
+            setRepertoire(undefined);
+            void w.openDatabase(path);
+          }}
+          onClose={() => setRepertoire(undefined)}
+        />
+      )}
+      {repertoire?.report && (
+        <RepertoireReportDialog
+          api={api}
+          databaseId={repertoire.databaseId}
+          white={repertoire.report.white}
+          initialPath={
+            repertoire.report.white
+              ? repertoirePaths.current.white
+              : repertoirePaths.current.black
+          }
+          onListGames={(p) => {
+            setRepertoire(undefined);
+            showList("games");
+            void w.showEntries(p.ordinals, `Repertoire: ${p.text}`);
+          }}
+          onLoadGame={(ordinal) => {
+            setRepertoire(undefined);
+            setListTab("games");
+            void e.openEntry(ordinal);
+          }}
+          onClose={() => setRepertoire(undefined)}
         />
       )}
       {prep && (

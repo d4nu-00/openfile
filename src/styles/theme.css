@@ -41,6 +41,9 @@
   --notation-comment: #1b6d2f;
   --notation-current-bg: #2e5583;
   --notation-current-fg: #ffffff;
+  --notation-critical-opening: #cfe0fb;
+  --notation-critical-middlegame: #fbe3c4;
+  --notation-critical-endgame: #d6efd2;
   --board-light: #eeeed2;
   --board-dark: #8ca2ad;
   --board-frame: #5f6b73;
@@ -138,6 +141,9 @@
   --notation-comment: #8fd19e;
   --notation-current-bg: #dc6e3a;
   --notation-current-fg: #111111;
+  --notation-critical-opening: #23406b;
+  --notation-critical-middlegame: #5a3d17;
+  --notation-critical-endgame: #234a27;
   --board-frame: #1a1a1a;
   color-scheme: dark;
 }
