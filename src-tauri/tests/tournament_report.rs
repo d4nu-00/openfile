@@ -1,5 +1,5 @@
 use cbh_reader::name_list::NameKind;
-use chess_workbench::registry::Registry;
+use openfile::registry::Registry;
 
 #[test]
 fn tournament_report_lists_rounds_standings_and_results() {

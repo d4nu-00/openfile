@@ -1,4 +1,4 @@
-use chess_workbench::{
+use openfile::{
     analysis_jobs::{JobKind, JobStatus, RunParams},
     clipboard::RowRange,
     registry::Registry,
@@ -51,7 +51,7 @@ fn database(r: &Registry, d: &tempfile::TempDir, games: &[&str]) -> String {
     db.database_id
 }
 
-fn run(r: &Registry, engine: std::path::PathBuf) -> chess_workbench::analysis_jobs::RunReport {
+fn run(r: &Registry, engine: std::path::PathBuf) -> openfile::analysis_jobs::RunReport {
     r.run_analysis_jobs(
         &RunParams {
             engine,

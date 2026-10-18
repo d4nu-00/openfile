@@ -3,7 +3,7 @@
 //! timings and the estimate only.
 //!   error_report <db> <data folder> <"Last, First"> <engine> <games> [slower]
 use cbh_reader::{name_list::NameKind, player_stats::Group};
-use chess_workbench::{clipboard::RowRange, error_report::ErrorReportParams, registry::Registry};
+use openfile::{clipboard::RowRange, error_report::ErrorReportParams, registry::Registry};
 use std::{sync::atomic::AtomicBool, time::Instant};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

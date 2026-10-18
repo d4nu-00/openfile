@@ -68,8 +68,8 @@ jobs:
           if-no-files-found: error
           path: |
             evidence/
-            target/release/chess-workbench
-            target/release/chess-workbench.exe
+            target/release/openfile
+            target/release/openfile.exe
             LICENSE
             THIRD_PARTY_NOTICES.md
             licenses/

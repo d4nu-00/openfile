@@ -1,4 +1,4 @@
-use chess_workbench::{
+use openfile::{
     registry::Registry,
     trees::{Line, ReferenceSource, TreeStatus},
 };

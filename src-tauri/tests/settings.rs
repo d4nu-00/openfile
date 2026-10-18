@@ -1,4 +1,4 @@
-use chess_workbench::settings::{AppSettings, InstalledEngine, Settings};
+use openfile::settings::{AppSettings, InstalledEngine, Settings};
 
 #[test]
 fn settings_default_check_and_round_trip() {
@@ -57,4 +57,17 @@ fn settings_default_check_and_round_trip() {
     std::fs::write(&file, "{ not json").unwrap();
     assert_eq!(s.load(), AppSettings::default());
     assert_eq!(std::fs::read_to_string(&file).unwrap(), "{ not json");
+}
+
+#[test]
+fn the_old_folder_moves_once() {
+    let d = tempfile::tempdir().unwrap();
+    let (old, new) = (d.path().join("old"), d.path().join("new"));
+    std::fs::create_dir_all(old.join("opening-trees")).unwrap();
+    openfile::move_old_folder(&old, &new);
+    assert!(new.join("opening-trees").is_dir() && !old.exists());
+    // An existing new folder is never replaced.
+    std::fs::create_dir_all(&old).unwrap();
+    openfile::move_old_folder(&old, &new);
+    assert!(old.exists() && new.join("opening-trees").is_dir());
 }

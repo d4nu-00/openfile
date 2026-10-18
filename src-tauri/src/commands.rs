@@ -272,7 +272,7 @@ pub struct PositionResponse {
 
 use crate::registry::Registry;
 use std::{path::PathBuf, sync::Arc};
-async fn blocking<T: Send + 'static>(
+pub(crate) async fn blocking<T: Send + 'static>(
     f: impl FnOnce() -> Result<T, AppError> + Send + 'static,
 ) -> Result<T, AppError> {
     tauri::async_runtime::spawn_blocking(f)

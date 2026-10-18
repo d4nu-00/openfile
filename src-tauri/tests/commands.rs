@@ -1,4 +1,4 @@
-use chess_workbench::{commands::DiagnosticDto, registry::Registry};
+use openfile::{commands::DiagnosticDto, registry::Registry};
 fn family() -> tempfile::TempDir {
     let d = tempfile::tempdir().unwrap();
     let mut h = vec![0u8; 92];
@@ -118,7 +118,7 @@ fn registry_budgets_reject_excess_handles() {
 }
 #[test]
 fn startup_arguments_name_a_database_and_entry() {
-    use chess_workbench::Startup;
+    use openfile::Startup;
     let parse = |args: &[&str]| Startup::parse(args.iter().map(|s| s.to_string()));
     let s = parse(&["-psn_0_123", "/data/My Games.2cbh", "--entry", "42"]);
     assert_eq!(s.path.as_deref(), Some("/data/My Games.2cbh"));

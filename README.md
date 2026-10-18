@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="docs/media/logo.png" alt="Chess Workbench" width="88" />
-  <h1>Chess Workbench</h1>
+  <img src="docs/media/logo.png" alt="OpenFile" width="88" />
+  <h1>OpenFile</h1>
   <p><strong>Your ChessBase databases, on any desktop, free and open source.</strong></p>
   <p>
     <a href="#get-started">Get started</a> ·
@@ -19,7 +19,7 @@
 
 ![The game window: Morphy's Opera Game at 16.Qb8+, with comments, a variation, symbols, arrows and a coloured square](docs/media/hero.png)
 
-Chess Workbench is a desktop chess database app for macOS, Windows and Linux.
+OpenFile is a desktop chess database app for macOS, Windows and Linux.
 It opens the databases you already have from ChessBase, the classic `.cbh`
 and ChessBase 18's `.2cbh`. You can browse, search, analyse and edit them in
 a fast, familiar window that looks and handles like ChessBase 18.
@@ -132,11 +132,11 @@ anything that goes wrong.
 The builds are not signed by Apple or Microsoft yet, so your system warns you
 the first time you open the app.
 
-**macOS.** Open the `.dmg` and drag **Chess Workbench** into
+**macOS.** Open the `.dmg` and drag **OpenFile** into
 **Applications**. On the first launch, macOS says it cannot verify the app:
 1. Click **Done** (not Move to Trash).
 2. Open **System Settings › Privacy & Security**, scroll down to
-   **Security**, and click **Open Anyway** next to "Chess Workbench was
+   **Security**, and click **Open Anyway** next to "OpenFile was
    blocked". Confirm with your password.
 
 You only need to do this once. On macOS 14 and earlier, right-clicking the
@@ -145,7 +145,7 @@ damaged and can't be opened", that is the download quarantine, not a broken
 file. Run this once in Terminal, then open the app normally:
 
 ```sh
-xattr -dr com.apple.quarantine "/Applications/Chess Workbench.app"
+xattr -dr com.apple.quarantine "/Applications/OpenFile.app"
 ```
 
 **Windows.** If SmartScreen shows "Windows protected your PC", click **More
@@ -178,13 +178,13 @@ npm run tauri -- build
 ```
 
 That builds the app and every package your platform supports, under
-`target/release/bundle/`: `macos/Chess Workbench.app` and `dmg/…` on macOS,
+`target/release/bundle/`: `macos/OpenFile.app` and `dmg/…` on macOS,
 `nsis/…-setup.exe` and `msi/…` on Windows, `appimage/`, `deb/` and `rpm/` on
 Linux. A database named on the command line opens at start, optionally at an
 entry:
 
 ```sh
-chess-workbench "My Games.2cbh" --entry 42
+openfile "My Games.2cbh" --entry 42
 ```
 
 <details>
@@ -196,7 +196,7 @@ For just the executable, without installers:
 npm run tauri -- build --no-bundle -- --locked
 ```
 
-The executable is `target/release/chess-workbench` (`.exe` on Windows).
+The executable is `target/release/openfile` (`.exe` on Windows).
 
 For development, `npm run tauri -- dev` runs a debug build with hot reload.
 `npm run dev` alone serves the interface in a browser with a demo backend
@@ -221,6 +221,16 @@ the SmartScreen warning.
 macOS) and pick a `.cbh` or `.2cbh` file. Keep its companion files beside it
 with the same name: `.cbg` holds moves, `.cbp`/`.cbt` names, `.cba`
 annotations. Anything missing or not understood is reported, never guessed.
+
+**Databases in iCloud Drive.** With "Optimize Mac Storage" on, macOS
+removes the contents of files in iCloud Drive (such as `~/Documents`) when
+space runs low, and downloads them again when they are read. A large
+database can then take minutes, or for ever when iCloud cannot download,
+before it opens. OpenFile checks first: it says how much of the database is
+only in iCloud and offers **Download and Open**, with progress in the status
+bar; **Stop** ends the wait. To keep a database on your Mac for good,
+right-click its folder in Finder and choose **Keep Downloaded**, or keep it
+outside iCloud Drive.
 
 <details>
 <summary><strong>The database window</strong> · Games, Players and Tournaments</summary>

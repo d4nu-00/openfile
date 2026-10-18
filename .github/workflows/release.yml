@@ -35,7 +35,7 @@ jobs:
             --jq ".[] | select(.tag_name == \"${TAG}\") | .id" | head -n1)
           if [ -z "$id" ]; then
             id=$(gh api "repos/${GITHUB_REPOSITORY}/releases" \
-              -f tag_name="${TAG}" -f name="Chess Workbench ${TAG}" \
+              -f tag_name="${TAG}" -f name="OpenFile ${TAG}" \
               -F draft=true -F body=@"$notes" --jq .id)
           fi
           echo "id=$id" >> "$GITHUB_OUTPUT"

@@ -99,7 +99,7 @@ const list: CommandMeta[] = [
   {
     id: "open-pgn",
     label: "Open PGN",
-    tip: "Open a PGN file (workbench)",
+    tip: "Open a PGN file (OpenFile)",
     icon: FileText,
     views: both,
   },
@@ -114,7 +114,7 @@ const list: CommandMeta[] = [
   {
     id: "open-database-edit",
     label: "Open for Editing",
-    tip: "Open a .2cbh database so games can be saved into it (workbench)",
+    tip: "Open a .2cbh database so games can be saved into it (OpenFile)",
     icon: FolderOpen,
     views: both,
   },
@@ -243,14 +243,14 @@ const list: CommandMeta[] = [
   {
     id: "quick-filter",
     label: "Quick Filter",
-    tip: "Filter the loaded page by any text (workbench)",
+    tip: "Filter the loaded page by any text (OpenFile)",
     icon: Search,
     views: db,
   },
   {
     id: "reset-filter",
     label: "Reset Filter",
-    tip: "Show all games of the database again (workbench)",
+    tip: "Show all games of the database again (OpenFile)",
     icon: X,
     views: db,
   },
@@ -441,7 +441,7 @@ const list: CommandMeta[] = [
   {
     id: "previous-page",
     label: "Previous page",
-    tip: "Show the previous 200 entries (workbench)",
+    tip: "Show the previous 200 entries (OpenFile)",
     icon: ChevronsLeft,
     keys: "PageUp",
     views: db,
@@ -449,7 +449,7 @@ const list: CommandMeta[] = [
   {
     id: "next-page",
     label: "Next page",
-    tip: "Show the next 200 entries (workbench)",
+    tip: "Show the next 200 entries (OpenFile)",
     icon: ChevronsRight,
     keys: "PageDown",
     views: db,
@@ -551,7 +551,7 @@ const list: CommandMeta[] = [
   {
     id: "save-pgn",
     label: "Save PGN",
-    tip: "Save this game to a PGN file (workbench)",
+    tip: "Save this game to a PGN file (OpenFile)",
     icon: FileText,
     views: game,
   },
@@ -593,14 +593,14 @@ const list: CommandMeta[] = [
   {
     id: "create-opening-tree",
     label: "Create Opening Tree",
-    tip: "Build the opening tree of this database for the book and the reference search (workbench)",
+    tip: "Build the opening tree of this database for the book and the reference search (OpenFile)",
     icon: ListTree,
     views: db,
   },
   {
     id: "delete-opening-tree",
     label: "Delete Opening Tree",
-    tip: "Delete this database's opening tree (workbench)",
+    tip: "Delete this database's opening tree (OpenFile)",
     icon: Trash2,
     views: db,
   },
@@ -960,7 +960,7 @@ const list: CommandMeta[] = [
   {
     id: "classify-opening",
     label: "Classify Opening",
-    tip: "Show the ECO code and opening name of the current game (workbench table)",
+    tip: "Show the ECO code and opening name of the current game (OpenFile table)",
     icon: BookOpen,
     keys: "Ctrl+Alt+C",
     views: game,
@@ -1011,7 +1011,7 @@ const list: CommandMeta[] = [
   {
     id: "tablebase-annotation",
     label: "Tablebase Annotation",
-    tip: "Mark moves that give away a win or a draw, from the endgame tablebases (workbench)",
+    tip: "Mark moves that give away a win or a draw, from the endgame tablebases (OpenFile)",
     icon: Gauge,
     views: game,
   },
@@ -1091,7 +1091,7 @@ const list: CommandMeta[] = [
   {
     id: "command-search",
     label: "Search commands",
-    tip: "Find any command by name (workbench)",
+    tip: "Find any command by name (OpenFile)",
     icon: Search,
     keys: "Ctrl+Shift+Space",
     views: both,

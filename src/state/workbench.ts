@@ -241,6 +241,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
   const rowCount = countRows(state);
   /** Progress of a running opening tree build. */
   const [treeBuild, setTreeBuild] = useState<string>();
+  /** The request of a running iCloud download, for Stop. */
+  const [cloudDownload, setCloudDownload] = useState<string>();
   const gates = useRef({
     database: new SelectionGate(),
     page: new SelectionGate(),
@@ -269,6 +271,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     return openWith(async (request) => {
       const path = chosen ?? (await api.chooseDatabase());
       if (typeof path !== "string" || !gates.database.accept(request)) return;
+      if (!(await fromCloud(path, request))) return;
       setStatus("Opening database…");
       return api.openDatabase(path, request);
     });
@@ -289,6 +292,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
         return;
       }
       if (!(await api.confirmEditing())) return;
+      if (!(await fromCloud(path, request))) return;
       setStatus("Opening database…");
       // A database is never open for reading and writing at once; the
       // backend refuses while the same files are open in another tab.
@@ -310,6 +314,43 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
       setStatus("Creating database…");
       return api.createDatabase(path, request);
     });
+  }
+  /**
+   * Downloads the database's files that macOS keeps only in iCloud, after
+   * asking: opening it would otherwise wait for them without progress.
+   * False when the user declines or another open supersedes this one;
+   * Stop rejects.
+   */
+  async function fromCloud(path: string, request: string) {
+    const cloud = await api.cloudStatus(path);
+    if (cloud.files.length === 0) return true;
+    const name = path
+      .split(/[\\/]/)
+      .pop()!
+      .replace(/\.[^.]*$/, "");
+    const ok = await api.confirmCloudDownload(
+      name,
+      cloud.files.length,
+      size(cloud.bytes),
+    );
+    if (!ok || !gates.database.accept(request)) return false;
+    setCloudDownload(request);
+    setStatus(`Downloading “${name}” from iCloud…`);
+    try {
+      await api.downloadCloudFiles(path, request, (p) => {
+        if (gates.database.accept(request))
+          setStatus(
+            `Downloading “${name}” from iCloud: ${size(p.bytesDone)} of ${size(p.bytes)}, ${p.filesDone} of ${p.files} files`,
+          );
+      });
+    } finally {
+      setCloudDownload(undefined);
+    }
+    return gates.database.accept(request);
+  }
+  function cancelCloudDownload() {
+    if (cloudDownload)
+      void api.cancelCloudDownload(cloudDownload).catch(() => {});
   }
   async function openWith(
     opener: (request: string) => Promise<OpenDatabaseResponse | undefined>,
@@ -970,6 +1011,8 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     createBooster,
     deleteBooster,
     treeBuild,
+    cloudDownload,
+    cancelCloudDownload,
     createTree,
     deleteTree,
     cancelTree,
@@ -984,4 +1027,17 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     selectNode,
     focusGame,
   };
+}
+
+/** Bytes as a short size, e.g. "1.5 GB". */
+function size(bytes: string) {
+  const n = Number(bytes);
+  const units = ["bytes", "KB", "MB", "GB", "TB"];
+  let i = 0;
+  let v = n;
+  while (v >= 1000 && i < units.length - 1) {
+    v /= 1000;
+    i++;
+  }
+  return i === 0 ? `${n} bytes` : `${v.toFixed(1)} ${units[i]}`;
 }

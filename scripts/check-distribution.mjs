@@ -88,6 +88,7 @@ export function allowedSourcePath(candidate) {
       "src-tauri/icons/128x128@2x.png",
       "src-tauri/icons/icon.icns",
       "src-tauri/icons/icon.ico",
+      "src-tauri/icons/icon.svg",
     ].includes(candidate)
   )
     return true;

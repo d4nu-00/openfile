@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">OpenFile</title>
+  <desc id="desc">A folded document with a simple four-square chessboard.</desc>
+  <rect width="512" height="512" rx="112" fill="#20342D"/>
+  <path fill="#F4F0DE" d="M147 72h160l75 75v267c0 16-13 29-29 29H147c-16 0-29-13-29-29V101c0-16 13-29 29-29z"/>
+  <path fill="#A4B9A5" d="M307 72v57c0 10 8 18 18 18h57z"/>
+  <path fill="#20342D" d="M158 183h98v98h-98zm98 98h98v98h-98z"/>
+  <path fill="#A4B9A5" d="M256 183h98v98h-98zm-98 98h98v98h-98z"/>
+</svg>

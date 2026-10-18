@@ -363,6 +363,10 @@ export function demoApi(): WorkbenchApi {
     setSettings: async (next) => (settings = structuredClone(next)),
     chooseNewDatabase: async () => null,
     confirmEditing: async () => false,
+    cloudStatus: async () => ({ files: [], bytes: "0" }),
+    confirmCloudDownload: async () => false,
+    downloadCloudFiles: async () => {},
+    cancelCloudDownload: async () => {},
     searchGames: async (_db, _filter, requestId) => {
       hits = all().filter((n) => n % 12 === 1);
       return {

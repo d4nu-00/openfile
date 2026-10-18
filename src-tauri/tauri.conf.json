@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Chess Workbench",
+  "productName": "OpenFile",
   "version": "0.1.0",
-  "identifier": "org.chessworkbench.desktop",
+  "identifier": "org.openfile.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Chess Workbench",
+        "title": "OpenFile",
         "width": 1280,
         "height": 850,
         "minWidth": 850,

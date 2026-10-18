@@ -1,3 +1,3 @@
 fn main() {
-    chess_workbench::run();
+    openfile::run();
 }

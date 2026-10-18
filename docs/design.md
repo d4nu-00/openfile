@@ -19,7 +19,7 @@ compatibility target, including its scale of more than eleven million entries.
 
 Assumptions: local desktop use comes first; offline access is essential; the
 original database is kept read-only; user changes are saved as PGN in this first
-stage. The working name is “Chess Workbench”; naming is not a dependency for
+stage. The app is named OpenFile (first called “Chess Workbench”); naming is not a dependency for
 implementation. GPL-3.0-or-later is the proposed project license, subject to an
 explicit dependency and attribution check before publishing source.
 

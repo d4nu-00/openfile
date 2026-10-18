@@ -1,4 +1,4 @@
-use chess_workbench::registry::Registry;
+use openfile::registry::Registry;
 
 #[test]
 fn searches_page_through_hits_and_clear() {

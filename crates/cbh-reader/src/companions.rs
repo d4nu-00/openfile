@@ -100,3 +100,55 @@ pub fn choose_candidate<'a>(
     }
     Ok(found)
 }
+
+/// The files `Database::open` reads from a classic database.
+pub(crate) const CLASSIC_READ: &[&str] = &[
+    "cbh", "cbg", "cbp", "cbt", "cba", "cbc", "cbs", "cbe", "cbj",
+];
+
+/// A file of a database whose contents are not on this computer, such as
+/// a file in iCloud Drive that macOS removed to save space ("Optimize Mac
+/// Storage"). Reading it waits until macOS has downloaded the whole file.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CloudFile {
+    pub path: PathBuf,
+    pub bytes: u64,
+}
+
+/// The files of the database at `path` that opening it would read but
+/// that are not on this computer yet. `stat` reports this without
+/// starting a download. Always empty outside macOS.
+pub fn not_downloaded(path: &Path) -> Result<Vec<CloudFile>, CbhError> {
+    let files = CompanionSet::discover(path)?;
+    let read: Vec<&str> = match files.format {
+        crate::DatabaseFormat::Classic => CLASSIC_READ.to_vec(),
+        crate::DatabaseFormat::New => crate::v2::names::DECODED_COMPANIONS.to_vec(),
+    };
+    let mut missing = vec![];
+    for extension in read {
+        let Some(file) = files.get(extension) else {
+            continue;
+        };
+        let Ok(meta) = std::fs::metadata(file) else {
+            continue;
+        };
+        if is_dataless(&meta) {
+            missing.push(CloudFile {
+                path: file.to_path_buf(),
+                bytes: meta.len(),
+            });
+        }
+    }
+    Ok(missing)
+}
+
+#[cfg(target_os = "macos")]
+fn is_dataless(meta: &std::fs::Metadata) -> bool {
+    use std::os::macos::fs::MetadataExt;
+    // SF_DATALESS in <sys/stat.h>.
+    meta.st_flags() & 0x4000_0000 != 0
+}
+#[cfg(not(target_os = "macos"))]
+fn is_dataless(_: &std::fs::Metadata) -> bool {
+    false
+}

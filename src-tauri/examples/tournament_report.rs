@@ -3,7 +3,7 @@
 //! orders. Prints counts only.
 //!   tournament_report <db> <data folder> <tournament name prefix>
 use cbh_reader::name_list::NameKind;
-use chess_workbench::registry::Registry;
+use openfile::registry::Registry;
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

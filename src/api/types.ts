@@ -1144,3 +1144,17 @@ export interface FolderListing {
   symbols: DatabaseSymbol[];
   truncated: boolean;
 }
+
+/** A database's files that macOS removed to iCloud to save space. */
+export interface CloudStatus {
+  /** File names still in iCloud only. */
+  files: string[];
+  /** Their size in bytes, as a decimal string. */
+  bytes: string;
+}
+export interface CloudProgress {
+  filesDone: number;
+  files: number;
+  bytesDone: string;
+  bytes: string;
+}

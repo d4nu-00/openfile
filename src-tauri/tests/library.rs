@@ -1,4 +1,4 @@
-use chess_workbench::{registry::Registry, settings::Settings};
+use openfile::{registry::Registry, settings::Settings};
 
 #[test]
 fn opening_records_recent_and_my_databases_and_folders_list_databases() {
@@ -83,7 +83,7 @@ fn opening_records_recent_and_my_databases_and_folders_list_databases() {
 
 #[test]
 fn lists_are_bounded_and_checked() {
-    use chess_workbench::settings::{AppSettings, FavoriteDatabase};
+    use openfile::settings::{AppSettings, FavoriteDatabase};
     for bad in [
         AppSettings {
             recent_databases: (0..17).map(|i| format!("/db/{i}.cbh").into()).collect(),

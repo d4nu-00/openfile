@@ -1,6 +1,7 @@
 pub mod analysis_jobs;
 pub mod blunder_check;
 pub mod clipboard;
+pub mod cloud;
 pub mod commands;
 pub mod convert;
 pub mod database_writes;
@@ -28,7 +29,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Emitter, Manager};
 #[derive(Default)]
 pub struct ExitPolicy(AtomicBool);
-/// What the command line asked to open: `chess-workbench [database] [--entry N]`.
+/// What the command line asked to open: `openfile [database] [--entry N]`.
 /// `--node N` (debug builds only) also selects a node, for previews.
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -77,6 +78,16 @@ impl Startup {
         startup
     }
 }
+/// The bundle identifier before the app was renamed OpenFile.
+const OLD_IDENTIFIER: &str = "org.chessworkbench.desktop";
+
+/// Moves the app's folder from its old name, when only the old one exists,
+/// so caches and settings survive the rename. Failure leaves both alone.
+pub fn move_old_folder(old: &std::path::Path, new: &std::path::Path) {
+    if old.is_dir() && !new.exists() {
+        let _ = std::fs::rename(old, new);
+    }
+}
 /// Handed to the frontend once, so a reload does not reopen the file. The
 /// snapshot destination stays here until the frontend reports it is ready.
 #[derive(Default)]
@@ -101,7 +112,7 @@ pub fn run() {
                         &tauri::menu::MenuItem::with_id(
                             app,
                             "guarded-quit",
-                            "Quit Chess Workbench",
+                            "Quit OpenFile",
                             true,
                             Some("CmdOrCtrl+Q"),
                         )?,
@@ -117,7 +128,18 @@ pub fn run() {
             }
         })
         .manage(std::sync::Arc::new(registry::Registry::default()))
+        .manage(std::sync::Arc::new(cloud::CloudDownloads::default()))
         .setup(|app| {
+            // The app was first called Chess Workbench: move its folders once.
+            for base in [app.path().data_dir(), app.path().config_dir()]
+                .into_iter()
+                .flatten()
+            {
+                move_old_folder(
+                    &base.join(OLD_IDENTIFIER),
+                    &base.join(&app.config().identifier),
+                );
+            }
             // Search boosters and opening trees (in a sibling folder) are the
             // app's own files, never beside a source.
             if let Ok(dir) = app.path().app_data_dir() {
@@ -153,6 +175,9 @@ pub fn run() {
             engine_commands::EngineManager::default(),
         ))
         .invoke_handler(tauri::generate_handler![
+            cloud::cloud_status,
+            cloud::download_cloud_files,
+            cloud::cancel_cloud_download,
             commands::open_database,
             commands::create_database,
             commands::save_game,
@@ -273,7 +298,7 @@ pub fn run() {
                 .build(),
         )
         .build(tauri::generate_context!())
-        .expect("Cannot build workbench")
+        .expect("Cannot build OpenFile")
         .run(|app, event| {
             if matches!(event, tauri::RunEvent::Exit) {
                 let _ = app

@@ -2,7 +2,7 @@
 //! using the app's data folder for its player list. Prints counts only.
 //!   player_dossier <db> <data folder> <"Last, First">
 use cbh_reader::name_list::NameKind;
-use chess_workbench::registry::Registry;
+use openfile::registry::Registry;
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

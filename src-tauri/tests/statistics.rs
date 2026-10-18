@@ -1,5 +1,5 @@
 use cbh_reader::{name_list::NameKind, player_stats::Group};
-use chess_workbench::registry::Registry;
+use openfile::registry::Registry;
 
 #[test]
 fn player_statistics_score_a_player_and_open_a_row_s_games() {

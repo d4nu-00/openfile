@@ -1,4 +1,4 @@
-use chess_workbench::{deep_analysis::DeepParams, documents::Edit, registry::Registry};
+use openfile::{deep_analysis::DeepParams, documents::Edit, registry::Registry};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// The mock engine copied as `mock-uci-legal`, which scores the legal moves

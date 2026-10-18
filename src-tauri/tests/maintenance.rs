@@ -1,4 +1,4 @@
-use chess_workbench::registry::Registry;
+use openfile::registry::Registry;
 
 /// A database opened for editing with games by White's name; Bravo's and
 /// Charlie's are the same game.
