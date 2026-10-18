@@ -79,6 +79,15 @@ default. Options changed in a kibitzer of an installed engine are kept and
 applied the next time it starts. At most 32 engines are kept; paths must be
 absolute.
 
+**When an engine does not start**, the error says why where it can tell:
+* A folder chosen in place of the program names the programs inside it.
+* On macOS, a program downloaded with a browser carries the system's
+  quarantine attribute. If it is not notarized (engine releases usually are
+  not), macOS kills it as it starts, before the UCI handshake. When a start
+  fails that way and the file has the attribute, the error says so and gives
+  the `xattr -d com.apple.quarantine` command that allows it. The workbench
+  never removes the attribute itself.
+
 ## Chess960
 
 A position whose castling rooks stand off their standard squares is a
