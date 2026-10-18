@@ -74,7 +74,9 @@ export function allowedSourcePath(candidate) {
   )
     return true;
   if (/^src\/[a-zA-Z0-9_./-]+\.(?:ts|tsx|css)$/.test(candidate)) return true;
-  if (/^src-tauri\/(?:src|tests|examples)\/[a-zA-Z0-9_/-]+\.rs$/.test(candidate))
+  if (
+    /^src-tauri\/(?:src|tests|examples)\/[a-zA-Z0-9_/-]+\.rs$/.test(candidate)
+  )
     return true;
   if (
     [
@@ -93,6 +95,10 @@ export function allowedSourcePath(candidate) {
   )
     return true;
   if (candidate.startsWith("docs/") && documents.has(candidate.slice(5)))
+    return true;
+  if (
+    candidate === "docs/superpowers/plans/2026-10-18-filtered-opening-tree.md"
+  )
     return true;
   // README screenshots and the public-domain games they show.
   if (/^docs\/media\/[a-z0-9-]+\.png$/.test(candidate)) return true;

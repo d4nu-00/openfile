@@ -32,6 +32,7 @@ describe("source distribution boundary", () => {
       "licenses/cbh2pgn-MIT.txt",
       "tests/fixtures/synthetic-start.pgn",
       "docs/compatibility.md",
+      "docs/superpowers/plans/2026-10-18-filtered-opening-tree.md",
       ".github/workflows/desktop.yml",
     ])
       expect(allowedSourcePath(path), path).toBe(true);
@@ -40,6 +41,7 @@ describe("source distribution boundary", () => {
       "src/surprise.zip",
       "tests/fixtures/unknown.pgn",
       "docs/commercial.pgn",
+      "docs/superpowers/plans/unreviewed.md",
       "src-tauri/gen/schema.json",
     ])
       expect(allowedSourcePath(path), path).toBe(false);
