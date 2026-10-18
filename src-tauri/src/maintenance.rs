@@ -104,7 +104,7 @@ impl Registry {
     }
 
     /// Find Double Games: finds the doubles and marks one of each pair
-    /// deleted, as ChessBase's decision chooses it.
+    /// deleted, as the reference app's decision chooses it.
     pub fn find_double_games(
         &self,
         database_id: String,

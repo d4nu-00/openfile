@@ -1,20 +1,20 @@
 # Writing databases
 
-This note fixes how the workbench creates and changes ChessBase databases. It
-covers ChessBase's `NEWDATABASE`, `SAVEGAME`, `REPLACEGAME` and marking games
+This note fixes how the workbench creates and changes databases in these formats. It
+covers the reference app's `NEWDATABASE`, `SAVEGAME`, `REPLACEGAME` and marking games
 deleted. Reading is described in [formats](formats.md). Addresses are virtual
-addresses in CBase18.exe 18.1, which was analysed statically and never run.
+addresses in the reference binary, which was analysed statically and never run.
 
 ## Target format: 2CBH
 
 The workbench writes only the newer **2CBH family**:
-* It is ChessBase 18's own family, and ChessBase offers to convert databases
+* It is the reference app's own family, and the reference app offers to convert databases
   to it ("Convert to free 2CBH format").
-* Its reader is complete for games, and both encodings of the Mega sample
+* Its reader is complete for games, and both encodings of the test database sample
   agree.
 * Its name lists are fixed slots addressed by id, so there is no sorted tree
   to keep balanced. Classic CBP/CBT/CBC/CBS/CBE records sit in AVL trees, and
-  those trees depend on ChessBase's collation.
+  those trees depend on the reference app's collation.
 
 Classic CBH databases stay read-only. Converting them is a separate feature.
 
@@ -24,7 +24,7 @@ Classic CBH databases stay read-only. Converting them is a separate feature.
 |---|---|---|
 | `.2cbh` | Header record and one 192-byte record per game | Create path `0x14019a0e0`, setters `0x1401cef60`, `0x1401cf2c0`, `0x1401cf150` |
 | `.2cbg` | 12-byte header, one block of type `0x0001` per game | `0x140198cc0`, `0x1401998d0` |
-| `.2cba` | 12-byte header, one block of type `0x2000` per game, even an empty one | `0x140197be0`; all 16,178 unannotated Mega games have their own empty block |
+| `.2cba` | 12-byte header, one block of type `0x2000` per game, even an empty one | `0x140197be0`; all 16,178 unannotated test database games have their own empty block |
 | `.2lid` | Name lists | Layout from [formats](formats.md); created by `0x1401e03e0` |
 | `.2lcd`, `.2lgd` | **Not written** | See below |
 
@@ -34,11 +34,11 @@ Classic CBH databases stay read-only. Converting them is a separate feature.
 * `.2lgd` is a `Cbg2IndexCacheFile`.
 * The lib manager accepts both as absent: status 3 passes its check
   `0x140128e20`.
-* ChessBase's integrity check runs "Rebuild control structures"
+* The reference app's integrity check runs "Rebuild control structures"
   (`0x1401576a0`) when the `.2lcd` catalogue is empty. That routine deletes
   both files, recreates them and adds every game's names again.
 
-This is the part most in need of a test in real ChessBase.
+This is the part most in need of a test in the real reference app.
 
 ### Headers
 
@@ -49,9 +49,9 @@ This is the part most in need of a test in real ChessBase.
   * LE64 record count, header included, at byte 16;
   * LE32 mode 0 at byte 36.
 
-  This is exactly the header of the Mega copy.
-* **2CBG:** LE64 used length, LE16 header size 12, then LE16 1. ChessBase
-  writes 1 on create. The Mega copy has `0x0500`; no code in 18.1 writes that
+  This is exactly the header of the test database copy.
+* **2CBG:** LE64 used length, LE16 header size 12, then LE16 1. The reference app
+  writes 1 on create. The test database copy has `0x0500`; no code in 18.1 writes that
   value, and the reader checks only the header size.
 * **2CBA:** LE64 used length, then LE32 12.
 * **2LID:** the big-endian header from [formats](formats.md), with the six
@@ -78,7 +78,7 @@ This is the part most in need of a test in real ChessBase.
 | 8, 16 | 2CBG and 2CBA block offsets |
 | 24–56 | White, black, tournament, annotator and source ids; all-ones means none |
 | 64, 72 | Team ids, all-ones (teams are not edited yet) |
-| 80 | LE64 2, the value of every Mega game without nested annotation types (those have 3) |
+| 80 | LE64 2, the value of every test database game without nested annotation types (those have 3) |
 | 88, 89 | Result code and line evaluation (see formats) |
 | 90, 92 | Round, subround |
 | 96, 112 | White and black Elo |
@@ -94,7 +94,7 @@ The zeroed fields include:
 * the hash at 152;
 * the FILETIME at 160.
 
-ChessBase uses them for list icons, material search and duplicate checks.
+The reference app uses them for list icons, material search and duplicate checks.
 They are not needed to show or replay a game. Recording more of them is
 follow-up work.
 
@@ -105,9 +105,9 @@ an existing record with exactly the same strings and reuses its id:
 * players: last name and first name, split at the first ", " of the PGN name;
 * tournaments: site and event;
 * sources: title and publisher;
-* annotators: player records, as in ChessBase.
+* annotators: player records, as in the reference app.
 
-Fixed record tails are copied from what every Mega record holds:
+Fixed record tails are copied from what every test database record holds:
 * a player record ends with the 24 bytes seen in all 3,471 players;
 * a tournament record ends with a 108-byte tail. It holds the packed game
   date, the value 7 at tail bytes 34, 45 and 56, and zeros elsewhere: no type,
@@ -120,7 +120,7 @@ groups.
 
 * **Moves** are encoded with the reader's token table, inverted.
   * Captured-piece alternatives are chosen from the piece actually taken.
-    The order is checked against every Mega game before relying on it.
+    The order is checked against every test database game before relying on it.
   * Set-up games use the placement tokens.
   * After a line's end marker, variations are written in the order the
     reader expects: later moves first, siblings in order.
@@ -132,11 +132,11 @@ groups.
   5. arrows.
 
   This is the most common order in the sample.
-  * Text is UTF-8, which ChessBase detects, with flags 0 and language 7
+  * Text is UTF-8, which the reference app detects, with flags 0 and language 7
     ("none").
   * NAGs 1–9 are move symbols, 140–145 prefixes, and everything else a
     position symbol.
-* **Content ChessBase cannot store** is reported and needs an explicit
+* **Content the reference app cannot store** is reported and needs an explicit
   acknowledgement before saving, as PGN export already does. Examples: a
   second NAG in the same slot, a mark colour outside G Y R B C O, a null move
   as the first move of a variation.
@@ -157,7 +157,7 @@ All writes go through a single `Writer` that owns the open files.
   A crash leaves at most unreferenced bytes past the declared lengths. The
   next write overwrites them.
 * **Replace game:** steps 1–3, then rewrite the game's record in one 192-byte
-  write. The old blocks stay in the file unreferenced, as in ChessBase, until
+  write. The old blocks stay in the file unreferenced, as in the reference app, until
   the database is compacted.
 * **Mark deleted / undelete:** rewrite byte 0 of the record.
 
@@ -170,7 +170,7 @@ the workbench stops the writer.
 * A database is writable only if:
   * the user created it with New Database; or
   * the user opened it with the explicit Open Database for Editing command,
-    which warns that ChessBase files will be changed.
+    which warns that the database's files will be changed.
 * Databases opened with Open Database stay read-only, as now.
 * Classic families are never writable.
 * A family that aliases a database open read-only is refused (same device and
@@ -179,7 +179,7 @@ the workbench stops the writer.
 
 ### Validation
 
-`examples/write_sample` copies a bounded, deterministic sample of Mega games
+`examples/write_sample` copies a bounded, deterministic sample of test database games
 into a temporary database outside the repository. It then reads them back
 with `Database`, then:
 * checks move trees, metadata and represented annotations against the source;
@@ -188,12 +188,12 @@ with `Database`, then:
 
 Tests use synthetic games only.
 
-In real ChessBase (Windows), please check:
+In the real reference app (Windows), please check:
 1. The database opens, and the game list shows players, events, dates,
    results and ECO.
 2. Games replay with their variations, comments, symbols, arrows and
    coloured squares.
 3. Tools › Check integrity reports no damage, or repairs it, for example by
    rebuilding the control structures.
-4. Adding a game in ChessBase reuses existing player names, after the check
+4. Adding a game in the reference app reuses existing player names, after the check
    above if needed.

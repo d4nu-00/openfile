@@ -28,7 +28,7 @@ fn index() -> &'static HashMap<Key, u16> {
     })
 }
 
-/// ChessBase square index: `8 * file + rank`.
+/// The reference app square index: `8 * file + rank`.
 fn cb(square: Square) -> u8 {
     (u32::from(square.file()) * 8 + u32::from(square.rank())) as u8
 }
@@ -149,7 +149,7 @@ pub fn encode_moves(game: &Game) -> Result<Vec<u8>, CbhError> {
 /// `first` is the index of the child that opens a variation, or `None` for the
 /// main continuation.
 ///
-/// ChessBase chains alternatives: a move with alternatives gets one marker,
+/// The reference app chains alternatives: a move with alternatives gets one marker,
 /// and the first move of each alternative carries the marker for the next
 /// one. The reader reads the attached variations in reverse order once the
 /// line ends.
@@ -208,7 +208,7 @@ fn square_code(name: &str) -> Option<u8> {
         .then(|| (b[0] - b'a') * 8 + (b[1] - b'1') + 1)
 }
 
-/// Symbol slot of a NAG: 0 move (1-9, and zugzwang 22, which ChessBase
+/// Symbol slot of a NAG: 0 move (1-9, and zugzwang 22, which the reference app
 /// offers among the move symbols), 2 prefix (140-145), 1 position.
 fn nag_slot(nag: u16) -> usize {
     match nag {
@@ -264,14 +264,14 @@ pub fn encode_annotations(game: &Game) -> (Vec<u8>, Omitted) {
         let mut symbols = [0u8; 3];
         for &nag in &node.nags {
             // The class slot first; a second symbol of one class goes to a
-            // free slot, as ChessBase stores $8 beside a move symbol.
+            // free slot, as the reference app stores $8 beside a move symbol.
             let slot = std::iter::once(nag_slot(nag))
                 .chain(0..3)
                 .find(|&s| symbols[s] == 0);
             match (u8::try_from(nag), slot) {
                 (Ok(byte), Some(slot)) if byte != 0 => symbols[slot] = byte,
                 _ => omitted.notes.push(format!(
-                    "NAG ${nag} does not fit ChessBase's three symbol slots"
+                    "NAG ${nag} does not fit the format's three symbol slots"
                 )),
             }
         }

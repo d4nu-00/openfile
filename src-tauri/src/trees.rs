@@ -21,7 +21,7 @@ const MAX_REFERENCE_HITS: usize = 100_000;
 const MAX_FOLLOW: usize = 5_000;
 /// Without a search booster, Find Position reads every game; the reference
 /// search does that by itself only for databases up to this size. (The
-/// classic Mega Database, 11.15 million games, takes 23 minutes.)
+/// classic test database, 11.15 million games, takes 23 minutes.)
 const AUTO_SEARCH_ENTRIES: u64 = 200_000;
 /// Moves accepted in a line.
 const MAX_LINE: usize = 1_000;

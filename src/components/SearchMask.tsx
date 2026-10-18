@@ -38,7 +38,7 @@ const RESULTS: [string, string][] = [
 ];
 
 /**
- * ChessBase's search mask. The game data tab has players, tournament,
+ * The reference app's search mask. The game data tab has players, tournament,
  * annotator, Elo, year, ECO, moves, result, final position and text; the
  * position tab finds a pattern or a whole position. Searching filters the
  * game list.

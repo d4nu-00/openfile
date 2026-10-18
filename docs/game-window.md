@@ -8,11 +8,11 @@ the user asked to proceed without review gates.
 ## Opening a game
 
 The user found that games opened slowly in the release build on the classic
-Mega Database. Each part was timed before anything was changed.
+test database. Each part was timed before anything was changed.
 
 ### Measurements
 
-Release build on the development Mac, classic Mega 2025 (11,151,119
+Release build on the development Mac, classic the test database (11,151,119
 entries). The example `src-tauri/examples/open_timing.rs` loads entries spread
 over the whole database through the app's own registry.
 
@@ -41,7 +41,7 @@ None of this is slow. Three things were:
    debug build).
 3. **The Reference pane's fallback.** When the opening tree cannot answer a
    position (for example any position of a game from a set-up position), the
-   reference search fell back to Find Position. On the classic Mega without
+   reference search fell back to Find Position. On the classic test database without
    a search booster, that reads every game. It ran for **1,357 s (22.6
    minutes)**, using one core and the disk throughout, and found 42 games.
    It was cancelled only when the board moved on, and the next such position
@@ -69,9 +69,9 @@ click, and one to open it. Each was fast, but they queued behind each other.
 
 ## Drawing arrows and coloured squares
 
-### What ChessBase does
+### What the reference app does
 
-Evidence is from CBase18.exe 18.1 (x64) and its message catalogue.
+Evidence is from the reference binary (x64) and its message catalogue.
 
 * Coloured squares and arrows are stored per move as "colour commentary"
   (`ArrowListAnno` and `PreArrowListAnno` in the RTTI; CBA annotation types
@@ -82,7 +82,7 @@ Evidence is from CBase18.exe 18.1 (x64) and its message catalogue.
 * In the Chess Media System, squares are highlighted "with right mouse
   button" in green, red or yellow (messages 2609–2612), and one command
   erases all arrows and highlighted squares.
-* ChessBase's documented convention for graphical commentary is Alt with the
+* The reference app's documented convention for graphical commentary is Alt with the
   left mouse button: a click marks a square, a drag draws an arrow. Alone it
   is green, with Shift red, with Ctrl yellow. Drawing the same mark again
   removes it.
@@ -117,9 +117,9 @@ that is not open for editing.
 
 ## Annotation symbols from the keyboard
 
-### What ChessBase does
+### What the reference app does
 
-ChessBase 18 has no command per symbol. Its command table has no symbol
+The reference app has no command per symbol. Its command table has no symbol
 commands, and Ctrl+1 to Ctrl+9 select layouts. Instead, the game window's
 key handler (`GameWin`, vtable slot 32, `0x1409e41a0`) looks at the typed
 character of a key event (byte 8 of the event) and opens a popup menu of
@@ -136,9 +136,9 @@ The handler only opens a popup when bit 6 of the window's state word
 (`+0x4f0`) is set; its meaning was not traced. The workbench requires a
 selected move.
 
-**How the symbols are stored.** ChessBase stores three symbol slots per move,
+**How the symbols are stored.** the reference app stores three symbol slots per move,
 for move, position and prefix symbols (see [formats](formats.md)). The NAG
-numbers come from the Mega's 2CBA file: all 24,759 annotation blocks were
+numbers come from the test database's 2CBA file: all 24,759 annotation blocks were
 read once.
 
 | Slot | NAGs found (count) |
@@ -154,14 +154,14 @@ among the move symbols.
 ### Workbench
 
 * Typing **!** or **?**, **=** or **$** in a game tab opens the matching
-  popup at the top of the notation. It lists ChessBase's entries in
-  ChessBase's order, starting on the move's current symbol.
+  popup at the top of the notation. It lists the reference app's entries in
+  the reference app's order, starting on the move's current symbol.
 * **Up**, **Down**, **Home** and **End** move through the list. **Enter**
   (or a click) chooses, and **Escape** closes the popup.
 * A choice replaces the move's symbol in that slot. **(none)** removes it.
   Each choice is one edit (`setNags`), so Undo takes it back.
 * The keys are listed in command search as Move Symbol, Evaluation Symbol
-  and Prefix Symbol. These are workbench names, since ChessBase has no
+  and Prefix Symbol. These are workbench names, since the reference app has no
   command for them.
 * They do not clash with other keys. **+** and **−** stay with the
   engine's lines, and the keys are ignored in text fields.
@@ -171,7 +171,7 @@ among the move symbols.
 
 ## Null moves, Insert Into Game, folding, deleting commentary
 
-### What ChessBase does
+### What the reference app does
 
 The names, keys and tooltips come from the command table (`commands.json`):
 
@@ -200,7 +200,7 @@ two are not ported.
   * that variation becomes the line;
   * the moves it replaced continue after its last move, together with their
     own variations;
-  * as ChessBase's tooltip says, the variation needs an even number of
+  * as the reference app's tooltip says, the variation needs an even number of
     moves, so the same side moves next;
   * if a later move is no longer legal, nothing changes;
   * the nodes are numbered again in pre-order, and the variation's last
@@ -222,7 +222,7 @@ two are not ported.
   * **Delete Text Commentary** removes text before and after moves.
   * **Delete Evaluation + Time Commentary** (Alt+Shift+Y) removes the
     scores the workbench writes as text ("+0.35/22", "+M3") and PGN's
-    `[%eval]`, `[%clk]` and `[%emt]` commands inside comments. ChessBase's
+    `[%eval]`, `[%clk]` and `[%emt]` commands inside comments. The reference app's
     own evaluation and time annotations are not decoded, so they are not in
     the game to begin with.
   * **Delete Colour Commentary** (Ctrl+Alt+Y) was already there. Training
@@ -230,7 +230,7 @@ two are not ported.
 
 ## Exchange Moves, Reorder and Clean up variations
 
-Evidence: CBase18.exe 18.1, through an REA session
+Evidence: the reference binary, through an REA session
 (`analysis/variations/` in the research workspace).
 
 | Command | Id | Run slot | Message |
@@ -242,13 +242,13 @@ Evidence: CBase18.exe 18.1, through an REA session
 None has a default key. The workbench puts them beside Promote Variation
 (Insert › Variations).
 
-### What ChessBase does
+### What the reference app does
 
 * **Exchange Moves** (`0x140b5b930`, `0x140b5bc60`, `0x140b5b9c0`) works
   only on the first move of a variation. The variation's moves replace
   the line's continuation, which then takes the variation's place.
   Elsewhere it says "Can't replace moves." (1244). A length and legality
-  check (`0x140b4db60`) exists because ChessBase stores lines as arrays.
+  check (`0x140b4db60`) exists because the reference app stores lines as arrays.
   The swap is undoable.
 * **Reorder Variations** asks "Including the mainline?" (51513, Yes/No/Cancel),
   then runs `0x140b62270` from the cursor along its line.
@@ -284,12 +284,12 @@ Reorder keep the selection on the same move; Clean up selects the start.
   * Comments of a move that meets an existing one are added to it, and its
     symbols are added when the existing move has none.
   * The dropped moves of an alternative move order lose their annotations,
-    as ChessBase's merge drops those moves. Whether ChessBase keeps their
+    as the reference app's merge drops those moves. Whether the reference app keeps their
     comments elsewhere was not traced.
 
 ## Game tabs
 
-### What ChessBase does
+### What the reference app does
 
 * Every game loaded from a database list opens in its own **board window**,
   until **Maximum Board Windows** are open. The option is in Options ›
@@ -304,7 +304,7 @@ Reorder keep the selection on the same move; Clean up selects the start.
 * Load Next and Load Previous Game (`LOADNEXTGAME`, `LOADPREVIOUSGAME`) replace
   the game in the current board window.
 
-How ChessBase picks the window to reuse once the maximum is reached was not
+How the reference app picks the window to reuse once the maximum is reached was not
 traced.
 
 ### Workbench
@@ -323,7 +323,7 @@ traced.
   changes. Load Next/Previous needs the game to come from the database
   shown.
 * **Maximum game tabs.** Options (`SETOPTIONS`, Ctrl+Alt+O) sets it from 1
-  to 8; the default is 8, as in ChessBase. When a new tab is needed and the
+  to 8; the default is 8, as in the reference app. When a new tab is needed and the
   maximum is open, the game replaces the least recently used tab without
   unsaved changes. If every tab has unsaved changes, the oldest one is shown
   and the user is asked about it first. With a maximum of 1, every game

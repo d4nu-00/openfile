@@ -1,4 +1,4 @@
-//! Prepare against White or Black (ChessBase's `PREPARE_WHITE`,
+//! Prepare against White or Black (the reference app's `PREPARE_WHITE`,
 //! `PREPARE_BLACK`): the opening tree of one player's games with one colour,
 //! held in memory. See docs/preparation.md.
 //!
@@ -226,7 +226,7 @@ impl Database {
     }
 }
 
-/// The average rating over the rated games among the last ten, as ChessBase
+/// The average rating over the rated games among the last ten, as the reference app
 /// shows when preparing (`0x1407ab590`); `None` when none is rated.
 pub fn recent_rating(ratings: &[u16]) -> Option<u32> {
     let last = &ratings[ratings.len().saturating_sub(10)..];

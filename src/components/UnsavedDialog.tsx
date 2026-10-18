@@ -36,7 +36,7 @@ export function UnsavedDialog({
             <p>
               The database receives the moves, game data and the annotations
               shown here. Original annotations that are not decoded, and marks
-              or symbols ChessBase cannot store, are left out.
+              or symbols the .2cbh format cannot store, are left out.
             </p>
             <button autoFocus onClick={() => answer("save")}>
               Save without them

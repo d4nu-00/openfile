@@ -2,10 +2,10 @@ import { useState } from "react";
 import type { SelectionNames } from "../api/types";
 
 /**
- * Edit Game Data for a selection (ChessBase's F2 in the list, and its Set
+ * Edit Game Data for a selection (the reference app's F2 in the list, and its Set
  * Tournament, Set Annotator and Set Source): the fields ticked are set for
  * every selected game. They start with the first selected game's values,
- * as in ChessBase; an empty field clears it.
+ * as in the reference app; an empty field clears it.
  */
 export function SelectionDataDialog({
   games,

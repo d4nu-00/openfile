@@ -84,7 +84,7 @@ fn compaction_removes_deleted_entries_and_keeps_the_rest_byte_for_byte() {
     assert!(report.bytes_after < size_before);
     let kept: Vec<_> = before.iter().filter(|e| !e.1).cloned().collect();
     assert_eq!(summaries(&path), kept);
-    // Comments and variations survive, and ChessBase's index is gone.
+    // Comments and variations survive, and the reference app's index is gone.
     let mut db = Database::open(&path, ReadLimits::default()).unwrap();
     let alpha = db.load(1).unwrap().game.unwrap();
     assert_eq!(alpha.nodes[1].comments, vec!["Good".to_string()]);

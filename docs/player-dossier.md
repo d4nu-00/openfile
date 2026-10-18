@@ -4,11 +4,11 @@ Status: implemented on branch `player-dossier` (2026-10-15), stacked on
 `prepare-against`. The direction was agreed in conversation: port what the
 user's databases can supply, without photos or online data.
 
-Evidence is from CBase18.exe 18.1 (x64), analysed statically through an REA
+Evidence is from the reference binary (x64), analysed statically through an REA
 session (`analysis/reports/` in the research workspace). Messages are cited
 by their ordinal in the message catalogue.
 
-## What ChessBase does
+## What the reference app does
 
 | Command | Id | Class, run slot | Key | Message |
 |---|---|---|---|---|
@@ -95,20 +95,20 @@ Database) builds the dossier of the player chosen in the Players list, or
 else the shown game's White player, from the open database. It runs in the
 backend with progress (games, repertoire, mates) and Stop.
 
-The dossier dialog shows, in ChessBase's order:
+The dossier dialog shows, in the reference app's order:
 * **Title:** the player, games, years, and deleted games left out.
 * **Statistics:** White, Black and all games, each with games, White wins,
   draws, Black wins, the score, and the opponents' average and performance
-  (ChessBase's score and FIDE's table).
+  (the reference app's score and FIDE's table).
   * Sentences give the score's band and the performance with each colour,
     the length band of White wins, draws and Black wins, and the drawing
     quote with quick draws, over all games.
-  * The band boundaries are ChessBase's. The words are the workbench's own
-    (e.g. "slightly above expectation"), since ChessBase's are its text.
+  * The band boundaries are the reference app's. The words are the workbench's own
+    (e.g. "slightly above expectation"), since the reference app's are its text.
 * **Elo profile and games played in years:** the player's highest rating
   each year from the games, with games and score. This stands in for the
   encyclopedia's rating graph.
-* **Score by the opponent's rating**, in ChessBase's bands of 50.
+* **Score by the opponent's rating**, in the reference app's bands of 50.
 * **Tournaments** (latest first) and **opponents** (most games first), at
   most 30 each. Rows list their games.
 * **Repertoire for White** and **for Black**: the lines of
@@ -136,8 +136,8 @@ app's data folder for the player list.
 
 | Database | Player | Games | Cold | Warm |
 |---|---|---|---|---|
-| Classic Mega 2025 | player A | 6,925 | 22.4 s | 0.62 s |
-| 2CBH Mega 2025 | player C | 446 | — | 0.26 s |
+| Classic the test database | player A | 6,925 | 22.4 s | 0.62 s |
+| 2CBH the test database | player C | 446 | — | 0.26 s |
 
 Player A has 14 + 12 repertoire lines, 174 games with medals, 192 mates
 given and 47 received among 4,697 decisive games, and 26 games they

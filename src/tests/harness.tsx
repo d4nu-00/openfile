@@ -475,8 +475,8 @@ export function mockApi(firstDatabase = 1) {
     startScreen: vi.fn().mockResolvedValue({
       favorites: [
         {
-          path: "/dbs/Mega.cbh",
-          name: "Mega",
+          path: "/dbs/test database.cbh",
+          name: "test database",
           folder: "/dbs",
           kind: "large",
           favorite: true,

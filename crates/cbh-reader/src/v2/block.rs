@@ -1,7 +1,7 @@
 //! Framed payload blocks shared by 2CBG and 2CBA.
 //!
 //! Layout recovered from the native block reader (`0x1401af990`), writer
-//! (`0x1401afc80`) and checksum (`0x140f06190`) in CBase18.exe 18.1:
+//! (`0x1401afc80`) and checksum (`0x140f06190`) in the reference binary:
 //! marker, payload length, padding length, checksum, payload type, payload,
 //! padding, then a total-length trailer.
 use crate::{CbhError, source::SourceFile};

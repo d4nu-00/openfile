@@ -14,7 +14,7 @@ export type Bindings = Partial<Record<string, Binding>>;
 const editable =
   'input,textarea,select,[contenteditable="true"],[role="separator"]';
 
-/** Dispatch ChessBase default shortcuts for the active view. */
+/** Dispatch the reference app default shortcuts for the active view. */
 export function useShortcuts(
   view: ViewId,
   bindings: Bindings,

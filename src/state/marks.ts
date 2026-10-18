@@ -2,7 +2,7 @@ import type { GameNode, SquareMark, ArrowMark } from "../api/types";
 import type { DrawnMark } from "../components/Board";
 
 /**
- * A node's marks after drawing `mark` on it, as in ChessBase: drawing a mark
+ * A node's marks after drawing `mark` on it, as in the reference app: drawing a mark
  * again in its colour removes it; in another colour, recolours it.
  */
 export function toggleMark(

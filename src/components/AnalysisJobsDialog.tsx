@@ -7,7 +7,7 @@ import type {
   RunJobsParams,
 } from "../api/types";
 
-/** The settings for new jobs; ChessBase's minimums are 15 s and 30 s. */
+/** The settings for new jobs; the reference app's minimums are 15 s and 30 s. */
 export const defaultJobKind: JobKind = {
   type: "analysis",
   lines: 3,
@@ -212,11 +212,7 @@ export function AnalysisJobsDialog({
               />
             </label>
           )}
-          {!timeValid && (
-            <p role="alert">
-              The time must be at least {min} s, as in ChessBase.
-            </p>
-          )}
+          {!timeValid && <p role="alert">The time must be at least {min} s.</p>}
         </fieldset>
         <label className="mask-row">
           <span>Engine</span>{" "}

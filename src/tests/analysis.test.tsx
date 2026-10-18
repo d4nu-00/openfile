@@ -121,7 +121,7 @@ describe("analysis jobs", () => {
     const dialog = await screen.findByRole("dialog", { name: "Analysis jobs" });
     expect(within(dialog).getByText("White – Black (#1)")).toBeVisible();
     expect(within(dialog).getByText("move 1…")).toBeVisible();
-    // ChessBase's minimum time for Deep Analysis jobs is 30 s.
+    // The reference app's minimum time for Deep Analysis jobs is 30 s.
     await ui.user.click(
       within(dialog).getByRole("radio", { name: "Deep Analysis" }),
     );
@@ -133,9 +133,7 @@ describe("analysis jobs", () => {
       "20",
     );
     expect(
-      within(dialog).getByText(
-        "The time must be at least 30 s, as in ChessBase.",
-      ),
+      within(dialog).getByText("The time must be at least 30 s."),
     ).toBeVisible();
     await ui.user.click(
       within(dialog).getByRole("button", { name: "Other engine…" }),

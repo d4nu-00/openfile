@@ -134,7 +134,7 @@ impl Registry {
                 return Err(AppError::new(
                     "incompleteAnnotations",
                     format!(
-                        "ChessBase cannot store every annotation ({note}); acknowledge their omission before saving"
+                        "The .2cbh format cannot store every annotation ({note}); acknowledge their omission before saving"
                     ),
                 ));
             }
@@ -155,7 +155,7 @@ impl Registry {
         Ok(())
     }
 
-    /// Appends the document's game to `database_id` (ChessBase "Save").
+    /// Appends the document's game to `database_id` (the reference app "Save").
     pub fn save_game(
         &self,
         document_id: String,
@@ -186,7 +186,7 @@ impl Registry {
         })
     }
 
-    /// Replaces the entry the document was loaded from (ChessBase "Replace").
+    /// Replaces the entry the document was loaded from (the reference app "Replace").
     pub fn replace_game(
         &self,
         document_id: String,

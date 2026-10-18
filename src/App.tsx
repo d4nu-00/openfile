@@ -284,7 +284,7 @@ export function App({
   const [setupError, setSetupError] = useState<string>();
   const [pasting, setPasting] = useState<"game" | "position">();
   const [paletteOpen, setPaletteOpen] = useState(false);
-  /** Folded variation nodes, per game document (ChessBase's Fold). */
+  /** Folded variation nodes, per game document (the reference app's Fold). */
   const [folds, setFolds] = useState<Record<string, number[]>>({});
   /** The symbol popup opened by typing !, ?, = or $. */
   const [symbolMenu, setSymbolMenu] = useState<SymbolSlot>();
@@ -605,7 +605,7 @@ export function App({
     try {
       const view = await api.addAnalysisJob(doc.documentId, selected, jobKind);
       setJobs((j) => j && { ...j, view });
-      // ChessBase's message 4026.
+      // The reference app's message 4026.
       w.setStatus("Analysis job added");
     } catch (err) {
       w.setDiagnostics([{ code: "jobs", message: explain(err) }]);
@@ -691,7 +691,7 @@ export function App({
     }
     void w.selectNode(id);
   }
-  // Arrow keys replay moves in both views, as in ChessBase.
+  // Arrow keys replay moves in both views, as in the reference app.
   useEffect(() => {
     function key(event: KeyboardEvent) {
       if (e.question || promotion.length || palette || event.defaultPrevented)
@@ -1074,7 +1074,7 @@ export function App({
       const r = await api.markRows(db.databaseId, ranges, () => {});
       keepSelection.current = true;
       await w.refreshList();
-      // ChessBase's message 50885.
+      // The reference app's message 50885.
       w.setStatus(`${r.changed} Games have been marked or unmarked`);
     } catch (err) {
       w.setDiagnostics([{ code: "mark", message: explain(err) }]);
@@ -1645,7 +1645,7 @@ export function App({
     "open-pgn": { run: () => e.run(e.openPgn, false) },
     "open-board": { run: () => setView("game"), enabled: !!game },
     "database-window": { run: () => setView("database") },
-    // ChessBase's Search text (GENERALSEARCH); what its own command opens
+    // The reference app's Search text (GENERALSEARCH); what its own command opens
     // was not traced, so the workbench opens the Annotations tab.
     "search-text": {
       run: () => setMaskOpen("annotations"),
@@ -1802,7 +1802,7 @@ export function App({
       },
       enabled: !!prepPlayer(false),
     },
-    // ChessBase opens the Players list, where the player is chosen and
+    // The reference app opens the Players list, where the player is chosen and
     // prepared against; with a player chosen, the workbench starts at once.
     "prepare-against": {
       run: () => {
@@ -2073,7 +2073,7 @@ export function App({
     },
     "exchange-moves": {
       run: () => e.edit({ kind: "exchangeMoves", node: selected }),
-      // ChessBase's Exchange Moves works on a variation's first move.
+      // The reference app's Exchange Moves works on a variation's first move.
       enabled:
         !busy &&
         !!game &&

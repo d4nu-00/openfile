@@ -11,7 +11,7 @@ export type Step = "first" | "previous" | "next" | "last";
 export const initialFen =
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-/** Board with ChessBase's replay bar underneath, shared by preview and game tab. */
+/** Board with the reference app's replay bar underneath, shared by preview and game tab. */
 export function BoardPane({
   title,
   position,

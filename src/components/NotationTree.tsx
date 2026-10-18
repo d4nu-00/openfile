@@ -136,7 +136,7 @@ export function NotationTree({
   selection: number;
   onSelect: (id: number) => void;
   startFen?: string;
-  /** Branch nodes whose variations are folded (ChessBase's Fold). */
+  /** Branch nodes whose variations are folded (the reference app's Fold). */
   folded?: ReadonlySet<number>;
   onUnfold?: (id: number) => void;
 }) {
@@ -165,7 +165,7 @@ export function NotationTree({
   const from = moveIndex[start] ?? 0;
   const to = moveIndex[start + WINDOW] ?? tokens.length;
   const visible = tokens.slice(from, to);
-  // Top-level variations become their own indented paragraphs, as in ChessBase.
+  // Top-level variations become their own indented paragraphs, as in the reference app.
   const blocks: { depth: number; items: Token[] }[] = [];
   let block = { depth: 0, items: [] as Token[] };
   for (const t of visible) {

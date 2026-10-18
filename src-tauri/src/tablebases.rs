@@ -122,7 +122,7 @@ pub struct TablebaseResponse {
 static FOLDER: Mutex<Option<PathBuf>> = Mutex::new(None);
 
 /// Points an engine at the chosen tablebase folder through its `SyzygyPath`
-/// option, as ChessBase does (`setoption name SyzygyPath value …`). Engines
+/// option, as the reference app does (`setoption name SyzygyPath value …`). Engines
 /// without the option, or no chosen folder, are left as they are.
 pub fn configure_engine(session: &mut engine::EngineSession) {
     let Some(dir) = FOLDER.lock().ok().and_then(|f| f.clone()) else {

@@ -2,7 +2,7 @@
 //! evidence behind each layout and for the write order.
 //!
 //! The writer owns the four files it changes (`.2cbh`, `.2cbg`, `.2cba`,
-//! `.2lid`). It never writes `.2lcd` or `.2lgd`, which are ChessBase indexes
+//! `.2lid`). It never writes `.2lcd` or `.2lgd`, which are the reference app indexes
 //! over the name lists. Every operation first checks that no other program
 //! changed the files since the writer last saw them.
 use super::{
@@ -26,7 +26,7 @@ const SLOTS: [u32; LISTS] = [1024, 1120, 220, 1024, 314, 532];
 pub(crate) const LID_HEADER: u64 = 184;
 /// Bytes of one 2LID group: one slot of each list.
 pub(crate) const GROUP: u64 = 1024 + 1120 + 220 + 1024 + 314 + 532;
-/// Block slack after the payload, as in the Mega copy (see writing.md).
+/// Block slack after the payload, as in the test database copy (see writing.md).
 const GAME_SLACK: usize = 104;
 const NOTES_SLACK: usize = 200;
 /// Tail of every player record in the sample.
@@ -39,7 +39,7 @@ const SOURCE_TAIL: [u8; 4] = [1, 0, 1, 0];
 const NONE: u64 = u64::MAX;
 
 /// The user medal of the medal word (record bytes 130–131): cyan in
-/// ChessBase's list, set by Mark Games.
+/// The reference app's list, set by Mark Games.
 pub const USER_MEDAL: u16 = 0x8000;
 
 /// What an entry carries besides its game: the deleted mark and the medal
@@ -110,7 +110,7 @@ impl Tracked {
 }
 
 /// A frame around one payload; padding brings the block to a multiple of
-/// eight bytes plus the slack ChessBase leaves.
+/// eight bytes plus the slack the reference app leaves.
 fn frame(kind: u16, payload: &[u8], slack: usize) -> Vec<u8> {
     let padding = slack - (34 + payload.len()) % 8;
     let total = (34 + payload.len() + padding) as u64;
@@ -350,16 +350,16 @@ pub fn pack_eco(eco: &str) -> u16 {
     }
 }
 
-fn result_code(result: Option<&str>, chessbase: Option<&str>) -> u8 {
+fn result_code(result: Option<&str>, stored: Option<&str>) -> u8 {
     let plain = match result {
         Some("1-0") => 2,
         Some("0-1") => 0,
         Some("1/2-1/2") => 1,
         _ => 3,
     };
-    // A forfeit or "0-0" kept from a ChessBase database, with the plain
+    // A forfeit or "0-0" kept from a reference app database, with the plain
     // code its PGN result maps to; used while the PGN result still agrees.
-    let (kept, agrees) = match chessbase {
+    let (kept, agrees) = match stored {
         Some("+:-") => (6, 2),
         Some("=:=") => (5, 1),
         Some("-:+") => (4, 0),
@@ -369,7 +369,7 @@ fn result_code(result: Option<&str>, chessbase: Option<&str>) -> u8 {
     if plain == agrees { kept } else { plain }
 }
 
-/// Main-line move count as ChessBase stores it (classic byte 45), capped.
+/// Main-line move count as the reference app stores it (classic byte 45), capped.
 fn move_count(game: &Game) -> u8 {
     let mut plies = 0usize;
     let mut at = 0usize;
@@ -683,7 +683,7 @@ impl Writer {
     }
 
     /// Sets the tournament, annotator or source of several game entries,
-    /// as ChessBase's Set Tournament, Set Annotator and Set Source do for a
+    /// as the reference app's Set Tournament, Set Annotator and Set Source do for a
     /// selection. Only the records' name ids change; `None` leaves a field,
     /// an empty name clears it. Names are reused or added as when saving.
     pub fn set_names(&mut self, ordinals: &[u64], names: &SelectionNames) -> Result<(), CbhError> {

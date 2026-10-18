@@ -12,7 +12,7 @@ pub fn decode_setup(bytes: &[u8], chess960: bool) -> Result<(String, PieceState)
     if bytes.len() != 28 {
         return Err(CbhError::Truncated);
     }
-    // Byte 0 is 1 in every Mega Database 2025 setup and is skipped by both
+    // Byte 0 is 1 in every the test database setup and is skipped by both
     // cbh2pgn and libcbh; only the two observed values are accepted.
     if bytes[0] > 1 || bytes[1] & 0xe0 != 0 || bytes[2] & 0xf0 != 0 {
         return Err(CbhError::UnsupportedSetup(
@@ -63,10 +63,10 @@ pub fn decode_setup(bytes: &[u8], chess960: bool) -> Result<(String, PieceState)
 
 /// The game of a decoded set-up. An en-passant file that is impossible on
 /// this board (no pawn that could just have double-pushed) carries no
-/// information; ChessBase's own 2CBG conversion drops it (Mega Database 2025
+/// information; the reference app's own 2CBG conversion drops it (the test database
 /// entry 13409), and so does this reader. Castling rights whose king or rook
 /// is off its standard square are dropped the same way, one right at a time
-/// (classic Mega entries 64687, 64740 and ten others; see
+/// (classic test database entries 64687, 64740 and ten others; see
 /// docs/compatibility.md). The set-up as stored is tried first, so nothing
 /// that decodes as stored changes.
 ///
@@ -130,7 +130,7 @@ pub(crate) fn possible_castling(board: &[char; 64], rights: u8) -> u8 {
 
 /// FEN for a decoded setup. `board` is indexed `rank * 8 + file`; castling uses
 /// bits 1/Q, 2/K, 4/q, 8/k; `ep_file` is 0 or 1..=8. Move number 0, which
-/// ChessBase stores for some setups, is written as 1.
+/// The reference app stores for some setups, is written as 1.
 pub(crate) fn fen(
     board: &[char; 64],
     black: bool,
@@ -190,7 +190,7 @@ pub(crate) fn fen(
 /// white and black kings, then the rooks White castles with on the king's
 /// and the queen's side, then Black's. They name the rook files of the
 /// castling rights (control bits 2/K, 1/Q, 8/k, 4/q), written as
-/// Shredder-FEN letters. Observed in every Chess960 game of Mega Database
+/// Shredder-FEN letters. Observed in every Chess960 game of test database
 /// 2025; a square that does not hold the king or rook it names is refused.
 pub fn chess960_castling(fen: &str, rights: u8, squares: &[u8]) -> Result<String, CbhError> {
     if squares.len() != 6 || squares.iter().any(|&s| s > 63) {

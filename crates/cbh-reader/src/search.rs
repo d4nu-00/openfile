@@ -1,4 +1,4 @@
-//! Game-data search over a whole database (ChessBase's search mask, game data
+//! Game-data search over a whole database (the reference app's search mask, game data
 //! tab). See docs/search.md. Name fields are resolved to id sets first; the
 //! entry index is then scanned in chunks without decoding any game.
 use crate::{CbhError, Database, DatabaseFormat, EntryKind, header::RawEntry};

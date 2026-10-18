@@ -1,12 +1,12 @@
 # Position search in the search mask
 
 Status: spec and implementation on branch `search-mask` (2026-10-14). The
-direction (port ChessBase's position tab as it works, keep the exact Find
+direction (port the reference app's position tab as it works, keep the exact Find
 Position) was agreed in conversation.
 
-## What ChessBase does
+## What the reference app does
 
-Evidence is from CBase18.exe 18.1 (x64). The search mask (dialog 310) has a
+Evidence is from the reference binary (x64). The search mask (dialog 310) has a
 Position tab, dialog **314**, owned by `CPositionDialog` (vtable
 `0x1411e4d00`, constructor `0x1407e6cb0`, data exchange `0x1407e93d0`,
 OK `0x1407e98c0`). Its controls:
@@ -72,7 +72,7 @@ Include lines walks variations, and the Sacrifice test.
 The Position tab gets a board editor in place of the FEN field.
 
 * **Boards.** Three boards, 'Look for', 'Or' and 'Exclude', chosen as in
-  ChessBase. Clicking a square with a palette piece adds it to the square, and
+  the reference app. Clicking a square with a palette piece adds it to the square, and
   clicking again removes it. A square holds up to four pieces, drawn in a
   2 × 2 grid. The palette has K, Q, R, B, N, P and **any piece** for each
   colour, plus an eraser. Copy board puts the current board on 'Look for';
@@ -83,7 +83,7 @@ The Position tab gets a board editor in place of the FEN field.
   In this mode the Or and Exclude boards are not used. Mirrors are allowed:
   each mirrored position is a further target, and the booster keeps the
   games whose signature can hold any of them.
-* **Pattern** (exact position off): ChessBase's rules above, with Mirror,
+* **Pattern** (exact position off): the reference app's rules above, with Mirror,
   First, Length, Last and a side-to-move choice (either, White, Black).
 * **Include lines in search** (off by default): variations are searched as
   well, each line from the start, its moves numbered as played. Off, only the
@@ -111,5 +111,5 @@ keeps the first hits.
 ## Measurements
 
 See [search](search.md#measurements-classic-mega-2026-10-14): on the
-classic Mega a pattern search replays every game in about 135 s on 8
+classic test database a pattern search replays every game in about 135 s on 8
 workers; an exact position with the booster takes seconds.

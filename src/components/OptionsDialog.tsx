@@ -2,8 +2,8 @@ import { useState } from "react";
 import type { AppSettings } from "../api/types";
 
 /**
- * ChessBase's Options (Ctrl+Alt+O): how many game tabs may be open at once
- * (ChessBase's "Maximum Board Windows", 1 to 8), and the Syzygy tablebase
+ * The reference app's Options (Ctrl+Alt+O): how many game tabs may be open at once
+ * (the reference app's "Maximum Board Windows", 1 to 8), and the Syzygy tablebase
  * folder.
  */
 export function OptionsDialog({

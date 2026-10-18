@@ -189,11 +189,11 @@ export const backend = {
     save({
       title: "New database",
       defaultPath: "New Database.2cbh",
-      filters: [{ name: "ChessBase database", extensions: ["2cbh"] }],
+      filters: [{ name: "Chess database", extensions: ["2cbh"] }],
     }),
   confirmEditing: () =>
     ask(
-      "Games you save, replace or delete will change this database's files. ChessBase's own index files (.2lcd, .2lgd) are not updated; ChessBase's Check Integrity rebuilds them. Keep a backup of databases you care about.",
+      "Games you save, replace or delete will change this database's files. The database's index files (.2lcd, .2lgd) are not updated; a Check Integrity in other database software rebuilds them. Keep a backup of databases you care about.",
       { title: "Open database for editing", kind: "warning" },
     ),
   /** The database's files that are only in iCloud (macOS; none elsewhere). */
@@ -225,7 +225,7 @@ export const backend = {
     save({
       title: "Convert to 2CBH",
       defaultPath: `${name}.2cbh`,
-      filters: [{ name: "ChessBase database", extensions: ["2cbh"] }],
+      filters: [{ name: "Chess database", extensions: ["2cbh"] }],
     }),
   /** The space a conversion needs and the free space at `target`. */
   convertEstimate: (
@@ -319,7 +319,7 @@ export const backend = {
     invoke<void>("cancel_maintenance", { databaseId }),
   confirmRemoveDeleted: () =>
     ask(
-      "Games marked as deleted are removed from the database files for good, and the other games are numbered anew. The files are rewritten beside the database and swapped in when complete. ChessBase's index files (.2lcd, .2lgd) are removed; its Check Integrity rebuilds them. Files beside the database that refer to game numbers, such as ChessBase's key files, are not updated.",
+      "Games marked as deleted are removed from the database files for good, and the other games are numbered anew. The files are rewritten beside the database and swapped in when complete. The database's index files (.2lcd, .2lgd) are removed; a Check Integrity in other database software rebuilds them. Files beside the database that refer to game numbers, such as key files, are not updated.",
       { title: "Remove Deleted Games", kind: "warning", okLabel: "Remove" },
     ),
   cancelConvert: (databaseId: string) =>
@@ -536,7 +536,7 @@ export const backend = {
     invoke<string>("delete_rows", { databaseId, ranges }),
   confirmPaste: (games: string) =>
     ask(
-      `Append ${games} games to this database? Annotations that are not decoded, or that ChessBase cannot store, are left out; the games affected are counted.`,
+      `Append ${games} games to this database? Annotations that are not decoded, or that the .2cbh format cannot store, are left out; the games affected are counted.`,
       { title: "Paste games", kind: "warning" },
     ),
   crosstable: (

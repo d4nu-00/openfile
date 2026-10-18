@@ -35,7 +35,7 @@ const sources = {
 
 /**
  * The opening tree of the open database for the current position, with
- * ChessBase's book columns (N, %, =%, Av, Perf) and the last year played.
+ * The reference app's book columns (N, %, =%, Av, Perf) and the last year played.
  */
 export function BookPane({
   book,

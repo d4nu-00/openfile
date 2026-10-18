@@ -7,7 +7,7 @@ describe("source distribution boundary", () => {
   it("rejects research and proprietary/database material", () => {
     for (const path of [
       "../analysis/classic-sample-games.pgn",
-      "tests/fixtures/Mega Database 2025.cbh",
+      "tests/fixtures/the test database.cbh",
       "src/extracted.exe",
       "src/foo.CBG",
       "crates/engine/src/private.cba",

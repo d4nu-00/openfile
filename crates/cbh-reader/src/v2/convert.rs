@@ -1,4 +1,4 @@
-//! Converting games of any database into a 2CBH database (ChessBase's
+//! Converting games of any database into a 2CBH database (the reference app's
 //! "Convert to free 2CBH format", `CONVERT_TO_FREE_2CBH`). Each game is
 //! loaded from the source and appended in batches; see docs/conversion.md.
 use super::write::{EntryMarks, Writer};
@@ -84,7 +84,7 @@ pub fn convert(
 
 /// Bytes a 2CBH copy of `games` of `source`'s entries is expected to take,
 /// from the sizes of the source's move and annotation files. The figures
-/// were measured on the classic Mega Database (docs/conversion.md) and are
+/// were measured on the classic test database (docs/conversion.md) and are
 /// rounded up.
 pub fn estimate(source: &Database, games: u64) -> u64 {
     let entries = source.info().entry_count.max(1);

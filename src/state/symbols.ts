@@ -1,10 +1,10 @@
 /**
- * ChessBase's annotation symbols, as PGN NAG numbers in the three slots a
- * ChessBase symbol annotation has: move, position and prefix. Each slot
+ * The reference app's annotation symbols, as PGN NAG numbers in the three slots a
+ * The reference app symbol annotation has: move, position and prefix. Each slot
  * holds one symbol, so choosing one replaces the slot's previous symbol.
  *
- * The groups and their order are those of the popups ChessBase opens when
- * "!" or "?", "=" and "$" are typed in a game window (CBase18 18.1:
+ * The groups and their order are those of the popups the reference app opens when
+ * "!" or "?", "=" and "$" are typed in a game window (the reference binary:
  * `0x140a65f60`, `0x140a65aa0`, `0x140a66690`; see docs/game-window.md).
  */
 export type SymbolSlot = "move" | "position" | "prefix";

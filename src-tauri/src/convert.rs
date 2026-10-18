@@ -1,4 +1,4 @@
-//! Convert to 2CBH (ChessBase's "Convert to free 2CBH format"): writes the
+//! Convert to 2CBH (the reference app's "Convert to free 2CBH format"): writes the
 //! games of an open database, or of a selection of its list, into a new
 //! 2CBH database. The source is only read. See docs/conversion.md.
 use crate::{clipboard::RowRange, commands::AppError, registry::Registry};
@@ -20,7 +20,7 @@ pub const RESERVE: u64 = 256 * 1024 * 1024;
 const STOP_BELOW: u64 = 128 * 1024 * 1024;
 /// Selected games converted at most; a whole database has no limit.
 pub const MAX_SELECTED: usize = 2_000_000;
-/// Every family extension, including ChessBase's indexes.
+/// Every family extension, including the reference app's indexes.
 const FAMILY: [&str; 6] = ["2cbh", "2cbg", "2cba", "2lid", "2lcd", "2lgd"];
 
 #[derive(Clone, Debug, serde::Serialize)]

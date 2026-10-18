@@ -172,7 +172,7 @@ pub async fn set_eco_codes(
 }
 
 // Opening Report (`OpeningReport`, `OPENINGREPORTBOARDCMD`): see
-// docs/openings.md for what ChessBase's report holds and what is ported.
+// docs/openings.md for what the reference app's report holds and what is ported.
 
 /// Games whose moves are read for the main line and "played by", at most:
 /// the strongest by rating.
@@ -180,14 +180,14 @@ const REPORT_DECODE: usize = 5_000;
 /// Plies of a game read past the report's position.
 const REPORT_PLIES: usize = 20;
 /// Rating from which a player counts as strong (the workbench's choice;
-/// ChessBase's "strong grandmasters" filter was not traced).
+/// The reference app's "strong grandmasters" filter was not traced).
 const STRONG_ELO: u16 = 2_500;
 /// Database games a fashion bucket needs for an index (the workbench's
 /// choice).
 const FASHION_MIN_GAMES: u64 = 100;
-/// Move rows listed (ChessBase prepares 20).
+/// Move rows listed (the reference app prepares 20).
 const REPORT_MOVES: usize = 20;
-/// ChessBase's "Main line" follows a move only while at least this many
+/// The reference app's "Main line" follows a move only while at least this many
 /// games play it (`0x140708a30`).
 const MAIN_LINE_GAMES: usize = 3;
 
@@ -258,7 +258,7 @@ pub struct OpeningReport {
     pub draws: u64,
     pub black_wins: u64,
     pub other_results: u64,
-    /// All games when there are fewer than 10, as ChessBase lists them.
+    /// All games when there are fewer than 10, as the reference app lists them.
     pub listed: Vec<ReportGame>,
     pub earliest: Option<ReportGame>,
     pub latest_annotated: Option<ReportGame>,
@@ -316,7 +316,7 @@ fn white_points(result: Option<&str>) -> Option<u32> {
     }
 }
 
-/// ChessBase's bucket size for the fashion chart, by the number of games
+/// The reference app's bucket size for the fashion chart, by the number of games
 /// (`0x140704f20`).
 pub fn fashion_bucket(games: u64) -> u16 {
     match games {
@@ -512,7 +512,7 @@ impl Registry {
                 .max_by_key(key)
                 .map(|e| report_game(e))
         };
-        // As ChessBase: the latest annotated game, the latest strong game if
+        // As the reference app: the latest annotated game, the latest strong game if
         // it is another, and the latest game if it is yet another.
         report.latest_annotated =
             latest(&|e| e.annotator.as_deref().is_some_and(|a| !a.is_empty()));
@@ -571,7 +571,7 @@ impl Registry {
         };
         report.strong_white = strongest(&white);
         report.strong_black = strongest(&black);
-        // ChessBase's "Other notable players" (`0x140706c50`): more than a
+        // The reference app's "Other notable players" (`0x140706c50`): more than a
         // hundredth of the games or more than 10, or an average rating over
         // 2500; at least 2 games; not listed above; at most 8.
         let listed: std::collections::HashSet<&str> = report
@@ -842,7 +842,7 @@ mod tests {
 
     #[test]
     fn the_fashion_index_compares_shares() {
-        // ChessBase's bucket sizes.
+        // The reference app's bucket sizes.
         assert_eq!(
             [10, 49, 50, 300, 301, 800, 801, 2_000, 2_001].map(fashion_bucket),
             [10, 10, 5, 5, 3, 3, 2, 2, 1]

@@ -1,10 +1,10 @@
-# ChessBase 18 feature checklist
+# Feature checklist
 
-This file lists ChessBase 18's feature surface, so the workbench can port it over
-time. It is built from the command table (806 `M_KC_*` commands), the ribbon
-builders, the shipped message catalogues, dialog templates and earlier format
+This file lists the feature surface of the reference app, an established desktop
+chess database, so OpenFile can cover it over time. It is built from the command table (806
+`M_KC_*` commands), the ribbon builders, the shipped message catalogues, dialog templates and earlier format
 research. See [docs/ui-shell.md](docs/ui-shell.md) for how these were recovered.
-Names in backticks are ChessBase command ids, for traceability.
+Names in backticks are the reference app's command ids, for traceability.
 
 **Status:** `[x]` done in the workbench · `[ ]` not started · *(partial)* noted inline.
 
@@ -12,8 +12,8 @@ Names in backticks are ChessBase command ids, for traceability.
 
 **Portability:**
 * 🟢 Can be built locally from the user's own files.
-* 🟡 Needs open data or an open service in place of ChessBase's.
-* 🔴 Depends on a ChessBase service or account: replace it or leave it out.
+* 🟡 Needs open data or an open service in place of the reference app's.
+* 🔴 Depends on a vendor service or account: replace it or leave it out.
 
 ## Suggested order
 
@@ -29,30 +29,30 @@ Names in backticks are ChessBase command ids, for traceability.
 
 - [x] P1 🟢 Read classic CBH header records, players (CBP) and tournaments (CBT)
 - [x] P1 🟢 Decode classic CBG move streams with variations and setup positions
-- [x] P1 🟢 Decode CBG Chess960, special and unencoded game records *(the encoding kinds were traced in CBase18 (`0x1401fb8f0`, `0x1401fc8b0`). All 892 Chess960 games with a set-up and all 11 special records of the classic Mega decode. Chess960 castling is in chess-core; PGN carries `Variant "Chess960"`; engines get `UCI_Chess960`. Saving Chess960 to 2CBH is refused (2CBG encoding not traced). The Chess960 record without a start position, and two-byte records with variations, are refused. The Mega has no unencoded records. See [formats](docs/formats.md#classic-cbg-encoding-kinds-and-chess960))*
-- [x] P1 🟢 Read the newer 2CBH/2CBG format *(records, blocks, standard and set-up move trees, 2LID players and tournaments; all 24,759 Mega games cross-checked against the classic file)*
+- [x] P1 🟢 Decode CBG Chess960, special and unencoded game records *(the encoding kinds were traced in the reference binary (`0x1401fb8f0`, `0x1401fc8b0`). All 892 Chess960 games with a set-up and all 11 special records of the classic test database decode. Chess960 castling is in chess-core; PGN carries `Variant "Chess960"`; engines get `UCI_Chess960`. Saving Chess960 to 2CBH is refused (2CBG encoding not traced). The Chess960 record without a start position, and two-byte records with variations, are refused. The test database has no unencoded records. See [formats](docs/formats.md#classic-cbg-encoding-kinds-and-chess960))*
+- [x] P1 🟢 Read the newer 2CBH/2CBG format *(records, blocks, standard and set-up move trees, 2LID players and tournaments; all 24,759 test database games cross-checked against the classic file)*
 - [x] P1 🟢 Decode CBA annotations: text, symbols, arrows, coloured squares and training *(classic CBA and 2CBA; training, quotations and other kinds are reported, not shown)*
 - [x] P1 🟢 Decode annotators (CBC), sources (CBS), teams (CBE) and other companions *(and the 2LID source and team lists; result codes 3–7; titles and remaining CBJ fields not read)*
-- [x] P1 🟢 Write databases: save new games, replace games, mark deleted (`SAVEGAME`, `REPLACEGAME`, `DBLISTSAVEGAMECMD`) *(2CBH only; ChessBase's .2lcd/.2lgd indexes are left to its integrity check; see docs/writing.md)*
+- [x] P1 🟢 Write databases: save new games, replace games, mark deleted (`SAVEGAME`, `REPLACEGAME`, `DBLISTSAVEGAMECMD`) *(2CBH only; the reference app's .2lcd/.2lgd indexes are left to its integrity check; see docs/writing.md)*
 - [x] P1 🟢 Create a new database (`NEWDATABASE`) *(2CBH)*
 - [x] P1 🟢 Read and write PGN *(import is bounded to 2,000 games)*
 - [ ] P2 🟢 Append games, append EPD, export a selection as text (`APPENDGAMES`, `APPENDEPD`, `CREATETEXTFILE`)
-- [x] P2 🟢 Convert between CBH and 2CBH (`CONVERT_TO_FREE_2CBH`, `CONVERTTOCBG`) *(CBH or 2CBH → a new 2CBH: the whole database or up to 2,000,000 selected games. Progress and Stop; checks the target disk's free space against a measured estimate before and while writing. Written to a temporary family and renamed; deleted marks kept; Chess960 games and text entries left out and counted; the source is never touched. 0.4 ms per game on the classic Mega. Writing classic CBH is not ported. See [conversion](docs/conversion.md))*
-- [ ] P3 🟢 Read CTG/CBOne/old ChessBase formats (seen in format labels)
+- [x] P2 🟢 Convert between CBH and 2CBH (`CONVERT_TO_FREE_2CBH`, `CONVERTTOCBG`) *(CBH or 2CBH → a new 2CBH: the whole database or up to 2,000,000 selected games. Progress and Stop; checks the target disk's free space against a measured estimate before and while writing. Written to a temporary family and renamed; deleted marks kept; Chess960 games and text entries left out and counted; the source is never touched. 0.4 ms per game on the classic test database. Writing classic CBH is not ported. See [conversion](docs/conversion.md))*
+- [ ] P3 🟢 Read CTG/CBOne and older formats (seen in format labels)
 - [ ] P3 🟢 Encrypted, password-protected archives (Archive DB dialog) (`DBTOOLSARCHIVE`)
 
 ## 2. Database window and maintenance
 
 - [x] P1 🟢 Open a database with its companion files and diagnostics
-- [x] P1 🟢 Database start screen: icons, folders, My Databases, recent files (`DBFavorites`, `TOGGLE_FOLDERTREE`, `ADDFOLDERSHORTCUT`) *(My Databases, Recent Databases (16) and folder shortcuts, kept in the app's settings file. Symbols carry ChessBase's 20 database types as the workbench's own icons; opening a database adds its symbol, as in ChessBase. Remove Database Symbol, Folders, Add Folder Shortcut; Symbols and Details views (Ctrl+I, Ctrl+D). Sizes come from header records only. See [start screen](docs/start-screen.md))*
+- [x] P1 🟢 Database start screen: icons, folders, My Databases, recent files (`DBFavorites`, `TOGGLE_FOLDERTREE`, `ADDFOLDERSHORTCUT`) *(My Databases, Recent Databases (16) and folder shortcuts, kept in the app's settings file. Symbols carry the reference app's 20 database types as the workbench's own icons; opening a database adds its symbol, as in the reference app. Remove Database Symbol, Folders, Add Folder Shortcut; Symbols and Details views (Ctrl+I, Ctrl+D). Sizes come from header records only. See [start screen](docs/start-screen.md))*
 - [ ] P2 🟢 Database views: Tile, Details, Symbols and Small Symbols (`VIEW_TILE`, `VIEWREPORTEXPL`, `VIEWSYMBOLSEXPL`) *(partial: Symbols and Details on the start screen)*
 - [ ] P2 🟢 Database properties: icon, type, description (`EDITDBPROPERTIES`, `Properties`)
 - [x] P2 🟢 Several databases open at once *(up to four, a tab each; each keeps its own search, sort and scroll position)*
-- [x] P1 🟢 Search Booster: create and delete the fast position index (`DBTOOLSCREATESEARCHBOOSTER`, `DBTOOLSDELETESEARCHBOOSTER`) *(the workbench's own index in its data folder; built by 8 workers, 128 s for the classic Mega; ChessBase's .cit/.cib files are not read)*
-- [x] P2 🟢 Remove deleted games, i.e. compact the database (`DBTOOLSPHYSICALDELETIONS`, `REMOVEDELETEDGAMES`) *(2CBH opened for editing: blocks copied byte for byte into temporary files, swapped in through backups; open games follow their new numbers; ChessBase's .2lcd/.2lgd removed for its Check Integrity to rebuild; 0.41 s for the 2CBH Mega; see [maintenance](docs/maintenance.md))*
-- [x] P2 🟢 Check integrity (`CHECKINTEGRITY`) *(any database, read only: headers, records, name references, every game's moves and annotations, in parallel with progress and Stop; repair and ChessBase's control-structure rebuild not ported; see [maintenance](docs/maintenance.md))*
-- [x] P2 🟢 Find and mark double games, with keep-better and annotation options (`REMOVEDOUBLESCMD`, `DeleteDubs`) *(ChessBase's Kill Doubles decision traced (`0x140715720`): annotated games kept, keep-better completeness score, keep different annotators, delete annotated doubles; names Exact/Similar/Ignore, moves Exact/Similar, game length, ignore result/year; marks only, in one write; 2CBH opened for editing, up to 2 M entries; merge/replace, tournaments and clip not ported; see [maintenance](docs/maintenance.md))*
-- [ ] P2 🟢 Sort the database, fix sort order (`SORTDBEXPL`, `FIXSORTORDER`) *(the list's sort is a view, as in ChessBase; these rewrite the files)*
+- [x] P1 🟢 Search Booster: create and delete the fast position index (`DBTOOLSCREATESEARCHBOOSTER`, `DBTOOLSDELETESEARCHBOOSTER`) *(the workbench's own index in its data folder; built by 8 workers, 128 s for the classic test database; the reference app's .cit/.cib files are not read)*
+- [x] P2 🟢 Remove deleted games, i.e. compact the database (`DBTOOLSPHYSICALDELETIONS`, `REMOVEDELETEDGAMES`) *(2CBH opened for editing: blocks copied byte for byte into temporary files, swapped in through backups; open games follow their new numbers; the reference app's .2lcd/.2lgd removed for its Check Integrity to rebuild; 0.41 s for the 2CBH test database; see [maintenance](docs/maintenance.md))*
+- [x] P2 🟢 Check integrity (`CHECKINTEGRITY`) *(any database, read only: headers, records, name references, every game's moves and annotations, in parallel with progress and Stop; repair and the reference app's control-structure rebuild not ported; see [maintenance](docs/maintenance.md))*
+- [x] P2 🟢 Find and mark double games, with keep-better and annotation options (`REMOVEDOUBLESCMD`, `DeleteDubs`) *(the reference app's Kill Doubles decision traced (`0x140715720`): annotated games kept, keep-better completeness score, keep different annotators, delete annotated doubles; names Exact/Similar/Ignore, moves Exact/Similar, game length, ignore result/year; marks only, in one write; 2CBH opened for editing, up to 2 M entries; merge/replace, tournaments and clip not ported; see [maintenance](docs/maintenance.md))*
+- [ ] P2 🟢 Sort the database, fix sort order (`SORTDBEXPL`, `FIXSORTORDER`) *(the list's sort is a view, as in the reference app; these rewrite the files)*
 - [ ] P2 🟢 Set ECO codes, final material, Elo values; reset ratings, teams and rounds (`DBTOOLSSETECOCODE`, `DBTOOLSSETMATERIAL`, `SETELOVALUES`, `RESETRATINGVALUES`)
 - [ ] P2 🟢 Improve player and tournament names (`IMPROVEPLAYERNAMES`, `IMPROVETOURNAMENT`, `ImproveDB`)
 - [ ] P3 🟢 Unannotate a database, cannibalise a database (`UNANNOTATEDB`, `CANNIBALIZEDB`)
@@ -67,13 +67,13 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Live preview of the selected game *(workbench improvement on the list's Quick Board, `TOGGLEGAMELISTBOARD`)*
 - [x] P1 🟢 Load next/previous game (`DBLOADNEXTGAME`, `LOADNEXTGAME`)
 - [x] P1 🟢 Go to entry number
-- [x] P1 🟢 Virtual scrolling across the whole database instead of 200-entry pages *(blocks of 100 rows read as needed, the list's own scrollbar; Go to entry and Load Next/Previous Game follow the list; the 11.15 M-entry classic Mega scrolls end to end)*
-- [x] P1 🟢 Sort the list by any column *(header click: ascending, descending, entry order; a sort order per column in the app data folder, built in parallel, cancellable; 0.3–0.8 s on the classic Mega warm; search results shown in that order; see docs/game-list.md)*
+- [x] P1 🟢 Virtual scrolling across the whole database instead of 200-entry pages *(blocks of 100 rows read as needed, the list's own scrollbar; Go to entry and Load Next/Previous Game follow the list; the 11.15 M-entry classic test database scrolls end to end)*
+- [x] P1 🟢 Sort the list by any column *(header click: ascending, descending, entry order; a sort order per column in the app data folder, built in parallel, cancellable; 0.3–0.8 s on the classic test database warm; search results shown in that order; see docs/game-list.md)*
 - [ ] P2 🟢 Configurable columns, list formats and fonts (`SETSELFDEFINEDLISTFORMAT`, `CHOOSEGAMELISTFONT`, `ABBREVIATEFIRSTNAME`)
 - [x] P1 🟢 Multi-select, copy, paste and delete games between databases (`DBEDITCOPY`, `DBEDITPASTE`, `DBEDITDELETE`, `DBEDITSELECTALL`) *(Ctrl/Shift-click and Ctrl+A; copy up to 50,000 games in list order; paste into a .2cbh opened for editing with progress and cancel, about 0.5 ms per game; forfeits and 0-0 kept via a CBResult tag; see docs/game-list.md)*
 - [x] P2 🟢 Edit game data for a selection: tournament, source, annotator, title (`DBTOOLSEDIT`, `EDITTOURNAMENT`, `EDITSOURCE`, `EDITANNOTATOR`, `EDITGAMETITLE`) *(F2 in the list: tournament, annotator and source for up to 50,000 selected games of a 2CBH opened for editing; only name ids rewritten; progress and Stop; titles and tournament details not ported; see [game list](docs/game-list.md))*
-- [x] P2 🟢 Mark games (medals and flags) (`MARKGAME`) *(+ toggles ChessBase's user medal, bit 15 of the medal word traced to `0x14013d510`; cyan dot in the list; medals kept by Replace and carried by Paste and conversion; the other fifteen medals are traced (bit order from the Medals dialog, `0x1407c1670`) and named in the list's tooltip; setting them is not ported; see [game list](docs/game-list.md))*
-- [x] P1 🟢 Players pane with each player's games (`TOGGLETOURNPLAYERS`, `VIEW_GAMES_OF_PLAYER`) *(Players tab: every player alphabetically with games and years, find by name, double-click lists the games by player id; 463,258 players of the classic Mega listed in 0.6 s)*
+- [x] P2 🟢 Mark games (medals and flags) (`MARKGAME`) *(+ toggles the reference app's user medal, bit 15 of the medal word traced to `0x14013d510`; cyan dot in the list; medals kept by Replace and carried by Paste and conversion; the other fifteen medals are traced (bit order from the Medals dialog, `0x1407c1670`) and named in the list's tooltip; setting them is not ported; see [game list](docs/game-list.md))*
+- [x] P1 🟢 Players pane with each player's games (`TOGGLETOURNPLAYERS`, `VIEW_GAMES_OF_PLAYER`) *(Players tab: every player alphabetically with games and years, find by name, double-click lists the games by player id; 463,258 players of the classic test database listed in 0.6 s)*
 - [x] P1 🟢 Tournaments pane with crosstable (`TOGGLEPANETOURNAMENTS`, `DBTOOLSCROSSTABLE`, `SHOWCROSSTABLE`) *(Tournaments tab with site, games and year; Cross Table (T) and Show Crosstable: round robin or Swiss layout, points, Sonneborn-Berger, Buchholz, wins, performance, category; results open their games; see docs/game-list.md)*
 - [ ] P2 🟢 Annotators, sources and teams panes
 - [ ] P2 🟢 Opening, theme and endgame keys: classify, insert/transfer keys, key memos (`DBTOOLSCLASSIFYALLKEYS`, `INSERTNEWKEY`, `ASSIGNGAME`, `INSERTMEMOKEY`)
@@ -85,10 +85,10 @@ Names in backticks are ChessBase command ids, for traceability.
 ## 4. Search
 
 - [x] P1 🟢 Search mask, game data: players, colour, event, site, year, Elo, ECO, result, moves, annotator, source (`OPEN_SEARCHMASK`) *(players with Wins Only and Ignore colours, tournament/site, annotator, Elo modes, Elo difference, year, ECO, moves, result, Mate/Stalemate/Check of the final position and Full Text with NOT; parallel, with progress and Cancel; the game data tab, dialog 311, has no source field; In Repertoire, Time Controls and Text/Good/Beautiful are not ported; see [search](docs/search.md))*
-- [x] P1 🟢 Position search: exact position, with OR/NOT boards and mirrored search *(the Position tab, dialog 314, traced in CBase18: 'Look for', 'Or' and 'Exclude' boards with any-piece and several pieces per square, Horizontal/Vertical mirroring, First/Length/Last, side to move, Include lines; Exact position uses the search booster with mirrored targets; patterns replay games; Sacrifice not ported; on the classic Mega a full replay takes 2 min on 8 workers, a boosted search seconds; see [position search](docs/position-search.md))*
+- [x] P1 🟢 Position search: exact position, with OR/NOT boards and mirrored search *(the Position tab, dialog 314, traced in the reference binary: 'Look for', 'Or' and 'Exclude' boards with any-piece and several pieces per square, Horizontal/Vertical mirroring, First/Length/Last, side to move, Include lines; Exact position uses the search booster with mirrored targets; patterns replay games; Sacrifice not ported; on the classic test database a full replay takes 2 min on 8 workers, a boosted search seconds; see [position search](docs/position-search.md))*
 - [x] P1 🟢 Find the current board position in a database (`FINDINDBBOARD`, `FINDPOSITION`) *(games open at the position found)*
 - [ ] P2 🟢 Material search (endgame type, material balance)
-- [x] P2 🟢 Annotation and text search: symbols, commentary text, medals (`GENERALSEARCH`) *(the search mask's Annotations tab (dialog 343) and Medals tab (dialog 312), traced from their data exchange: two texts, whole words, symbols, any text or symbol, colours, training, multimedia, pawn structure, piece path, the three critical positions, variations and medals; about 1 s on the classic Mega; Deleted, Position and the 960 number not ported; see [search](docs/search.md))*
+- [x] P2 🟢 Annotation and text search: symbols, commentary text, medals (`GENERALSEARCH`) *(the search mask's Annotations tab (dialog 343) and Medals tab (dialog 312), traced from their data exchange: two texts, whole words, symbols, any text or symbol, colours, training, multimedia, pawn structure, piece path, the three critical positions, variations and medals; about 1 s on the classic test database; Deleted, Position and the 960 number not ported; see [search](docs/search.md))*
 - [ ] P2 🟢 Manoeuvre search (piece routes) and attack/defence patterns
 - [ ] P3 🟢 Game phase and structural theme filters
 - [ ] P2 🟢 Save and load search masks (`SAVE_SEARCHMASK`)
@@ -120,7 +120,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Enter legal moves and new variations by clicking
 - [x] P1 🟢 Text after move, and NAGs by number (`ANNOPOSTTEXT`)
 - [x] P1 🟢 Text before move (`ANNOPRETEXT`) *(Ctrl+Shift+A focuses the editor below the notation)*
-- [x] P1 🟢 Annotation symbol palette and keyboard symbols (`SHOWSYMBOLPALETTE`) *(the palette (Ctrl+Alt+S) and ChessBase's typed-symbol popups: ! or ? move symbols, = evaluations, $ prefixes, traced to the game window's key handler `0x1409e41a0`. ChessBase has no per-symbol shortcut. One symbol per group, as 2CBH stores it; Only move is NAG 8. See [game window](docs/game-window.md#annotation-symbols-from-the-keyboard))*
+- [x] P1 🟢 Annotation symbol palette and keyboard symbols (`SHOWSYMBOLPALETTE`) *(the palette (Ctrl+Alt+S) and the reference app's typed-symbol popups: ! or ? move symbols, = evaluations, $ prefixes, traced to the game window's key handler `0x1409e41a0`. The reference app has no per-symbol shortcut. One symbol per group, as 2CBH stores it; Only move is NAG 8. See [game window](docs/game-window.md#annotation-symbols-from-the-keyboard))*
 - [x] P1 🟢 Delete and promote variations; delete remaining or previous moves (`DELETEVARIATION`, `PROMOTEVARIATION`, `DELETEREMAININGMOVES`, `DELETEPREVIOUSMOVES`) *(Ctrl+Y, Alt+Up; Delete Previous Moves starts the game from the current position)*
 - [x] P1 🟢 Undo/redo for game edits (`EDIT_UNDO`, `EDIT_REDO`) *(Ctrl+Z, Ctrl+Alt+Shift+Y; the last 100 edits, at most 200,000 stored nodes)*
 - [x] P1 🟢 Edit game data: players, event, result, Elo, ECO (`EDITGAMEHEADER`, F2) *(players, ratings, tournament, site, round, date, result, ECO and annotator as PGN tags, checked before they are kept)*
@@ -144,28 +144,28 @@ Names in backticks are ChessBase command ids, for traceability.
 - [x] P1 🟢 Local UCI engine: choose, configure options, start/stop analysis (`ADDKIBITZER`, `CREATEUCIENGINE`, Alt+F2)
 - [x] P1 🟢 MultiPV lines with depth, nodes, score and SAN principal variation
 - [x] P1 🟢 Increase and decrease the number of lines (`INCREASENLINES`, `DECREASENLINES`) *(+ and −: MultiPV, restarting the analysis; see [engines](docs/engines.md))*
-- [x] P1 🟢 Paste engine move or variation into the notation (`PASTEENGINEMOVE`, `PASTEENGINEVARIATIONS`, Ctrl+Space) *(Shift+Space for the move; one undoable edit; the score and depth as a text comment because ChessBase's evaluation annotation is not decoded)*
+- [x] P1 🟢 Paste engine move or variation into the notation (`PASTEENGINEMOVE`, `PASTEENGINEVARIATIONS`, Ctrl+Space) *(Shift+Space for the move; one undoable edit; the score and depth as a text comment because the reference app's evaluation annotation is not decoded)*
 - [x] P1 🟢 Engine management: installed engine list, defaults, several kibitzers (`ENGINEMANAGEMENT`, `CLOSEALLKIBITZERS`, `TOGGLEDEFAULTKIBITZER`) *(up to 4 kibitzers; installed engines, default and kept options in the app's settings; Default Kibitzer Alt+F2)*
-- [x] P1 🟢 Endgame tablebases (Syzygy) for analysis and the notation *(Tablebase tab with the result and DTZ of the position and every move; engines get the chosen folder through `SyzygyPath`, as ChessBase does; Tablebase Annotation marks main-line moves that give away a win or draw, with the tables' best move, as one undoable edit (the workbench's own symbols and texts, since ChessBase's notation display was not traced); see [engines](docs/engines.md))*
-- [x] P1 🟢 Tactical analysis or blunder check that annotates a game (`TACTICAL_ANALYSIS`, `BlunderCheck`) *(Ctrl+Alt+Shift+U: ChessBase's Time and Fine/Medium/Coarse thresholds (35/55/150 cp), cancellable with progress, one undoable edit. Evaluation symbols follow ChessBase's traced rule (±/⩲/= by score, set where the evaluation changes). The ?/?? rule stays the workbench's own, since ChessBase's was not found; see [engines](docs/engines.md))*
-- [x] P2 🟢 Deep analysis: tree-building position analysis (`DEEP_ANALYSIS`) *(ChessBase's traced iterations, time per position, depth, widths and 70-centipawn window, with one engine; cancellable with progress, bounded to 400 nodes; the tree goes in as one undoable edit with ChessBase's evaluation symbols and the score as text. Multi-engine roles and move symbol 8 are not ported; see [analysis](docs/analysis.md))*
+- [x] P1 🟢 Endgame tablebases (Syzygy) for analysis and the notation *(Tablebase tab with the result and DTZ of the position and every move; engines get the chosen folder through `SyzygyPath`, as the reference app does; Tablebase Annotation marks main-line moves that give away a win or draw, with the tables' best move, as one undoable edit (the workbench's own symbols and texts, since the reference app's notation display was not traced); see [engines](docs/engines.md))*
+- [x] P1 🟢 Tactical analysis or blunder check that annotates a game (`TACTICAL_ANALYSIS`, `BlunderCheck`) *(Ctrl+Alt+Shift+U: the reference app's Time and Fine/Medium/Coarse thresholds (35/55/150 cp), cancellable with progress, one undoable edit. Evaluation symbols follow the reference app's traced rule (±/⩲/= by score, set where the evaluation changes). The ?/?? rule stays the workbench's own, since the reference app's was not found; see [engines](docs/engines.md))*
+- [x] P2 🟢 Deep analysis: tree-building position analysis (`DEEP_ANALYSIS`) *(the reference app's traced iterations, time per position, depth, widths and 70-centipawn window, with one engine; cancellable with progress, bounded to 400 nodes; the tree goes in as one undoable edit with the reference app's evaluation symbols and the score as text. Multi-engine roles and move symbol 8 are not ported; see [analysis](docs/analysis.md))*
 - [ ] P2 🟢 Centipawn and achievement analysis (`CENTIPAWN`, `ACHIEVEMENT_ANALYSIS`)
 - [ ] P2 🟢 Analyse threat, lock engine, next best / search better (`ANALYSETHREAT`, `LOCKENGINE`, `NEXTBEST`, `SEARCHBETTER`)
-- [x] P2 🟢 Analysis jobs queue (`NEW_ANALYSIS_JOBS`, `ADD_ANALYSIS_JOB`, `OPEN_ANALYSIS_JOBS`) *(also `CREATE_CORR_ANALYSIS_JOBS`; ChessBase's Analysis and Deep Analysis job types and minimum times, for games of a 2CBH opened for editing; each result replaces its game ("Merge result with original game"); at most 1,000 jobs, with Stop and progress. The queue lasts for the session: ChessBase's jobs file is not read or written; see [analysis](docs/analysis.md))*
+- [x] P2 🟢 Analysis jobs queue (`NEW_ANALYSIS_JOBS`, `ADD_ANALYSIS_JOB`, `OPEN_ANALYSIS_JOBS`) *(also `CREATE_CORR_ANALYSIS_JOBS`; the reference app's Analysis and Deep Analysis job types and minimum times, for games of a 2CBH opened for editing; each result replaces its game ("Merge result with original game"); at most 1,000 jobs, with Stop and progress. The queue lasts for the session: the reference app's jobs file is not read or written; see [analysis](docs/analysis.md))*
 - [ ] P2 🟢 Evaluation profile graph (`TOGGLEEVPROFILE`)
 - [ ] P3 🟢 Assisted analysis: engine help on hover (`ASSISTED_ANALYSIS`)
 - [ ] P3 🟢 Position measurements: Plan Explorer, piece values, heat maps, mobility, attackers/defenders (`POSITION_INFO`)
 - [ ] P3 🟢 Position tutor: classifying moves and motifs (`NOTASHOWPOSTUTOR`)
 - [ ] P3 🟡 Cloud and remote engines; a self-hosted engine server could replace them (`CLOUD_ANALYSIS`, `LOAD_CLOUD_ENGINE`)
-- [ ] P3 🔴 Let's Check shared analysis and LiveBook (`LETS_CHECK`, `TOGGLE_LIVEBOOK_PANE`); a 🟡 option is the Lichess cloud evaluation API
+- [ ] P3 🔴 Shared online analysis and live book (`LETS_CHECK`, `TOGGLE_LIVEBOOK_PANE`); a 🟡 option is the Lichess cloud evaluation API
 
 ## 8. Openings and repertoire
 
 - [x] P1 🟢 Opening tree from the user's own databases: moves, frequency, score and Elo (`OPENBOOK`, `TOGGLEBOOKPANE`) *(Create Opening Tree builds it into the app data folder; Book tab and extra pane with N, share, %, =%, Av, Perf and last played; main lines only; journal keeps it current across the workbench's own saves; see docs/opening-tree.md)*
 - [x] P1 🟢 Reference database search for the current position (`TOGGLEREFERENCEPANE`, `FINDREFDBBOARD`, `AutoSearchDB`) *(Reference tab and pane follow the board, from the opening tree or Find Position; stale searches are cancelled; the reference database is the open database, a separate reference database setting is not implemented)*
 - [ ] P2 🟢 Opening books: import games or books, copy lines, save the tree (`BOOKIMPORTGAMES`, `BOOKIMPORTBOOK`, `COPYLINETOBOOK`, `SAVETREE`)
-- [x] P2 🟢 Opening classification with ECO and opening keys (`CLASSIFYGAME`, `ClassifyOpening`) *(ECO only, from the open lichess table (CC0) instead of ChessBase's Eco.cod: Classify Opening (Ctrl+Alt+C) with Set ECO, and Set ECO Codes (`DBTOOLSSETECOCODE`) for a 2CBH opened for editing, cancellable with progress, keeping existing codes by default. The table gives ChessBase's main code for 76 % of the 2CBH Mega's coded games. Opening keys (`.cko`) are not ported; see [openings](docs/openings.md))*
-- [x] P2 🟢 Opening report from a database (`OpeningReport`) *(ChessBase's sections as traced: title with ECO, results, history (earliest/latest annotated/latest strong/latest games, games per year, fashion index in ChessBase's bucket sizes), strong and other notable players (ChessBase's rule), move rows with "played by" from the tree or the strongest games, and the main line (≥ 3 games); cancellable with progress, at most 100,000 games. Plans, "You should play", critical lines and opening keys are not ported; see [openings](docs/openings.md))*
+- [x] P2 🟢 Opening classification with ECO and opening keys (`CLASSIFYGAME`, `ClassifyOpening`) *(ECO only, from the open lichess table (CC0) instead of the reference app's Eco.cod: Classify Opening (Ctrl+Alt+C) with Set ECO, and Set ECO Codes (`DBTOOLSSETECOCODE`) for a 2CBH opened for editing, cancellable with progress, keeping existing codes by default. The table gives the reference app's main code for 76 % of the 2CBH test database's coded games. Opening keys (`.cko`) are not ported; see [openings](docs/openings.md))*
+- [x] P2 🟢 Opening report from a database (`OpeningReport`) *(the reference app's sections as traced: title with ECO, results, history (earliest/latest annotated/latest strong/latest games, games per year, fashion index in the reference app's bucket sizes), strong and other notable players (the reference app's rule), move rows with "played by" from the tree or the strongest games, and the main line (≥ 3 games); cancellable with progress, at most 100,000 games. Plans, "You should play", critical lines and opening keys are not ported; see [openings](docs/openings.md))*
 - [ ] P2 🟢 Repertoire database: add white/black lines, find, report, print (`ADDTOREPERTOIREBOARD`, `OPEN_REPERTOIREDB`, `PRINTREPERTOIRE`)
 - [ ] P2 🟢 Generate a repertoire from your own games (`GENERATEREPERTOIRE`)
 - [ ] P2 🟢 Novelty finder and novelty annotation (`FINDNOVELTYBOARD`, `FIND_NOVELTY`)
@@ -176,10 +176,10 @@ Names in backticks are ChessBase command ids, for traceability.
 
 ## 9. Reports and statistics
 
-- [x] P1 🟢 Player statistics: score by colour, opening and year (`STATISTICS`, `PLAYERSTATISTIC`) *(ChessBase's Player statistic layout, dialog 846: score by colour and year, then opponents, tournaments and openings by ECO with its sort buttons and Table; performance and average Elo; one cancellable parallel scan, 0.06 s for Carlsen's 6,925 games on the classic Mega warm; rows open their games; the graphical Statistics dialog and opening keys are not ported; see [player statistics](docs/player-statistics.md))*
-- [x] P2 🟢 Player dossier (`PLAYERDOSSIER`) *(traced: the generator `0x1408358a0` and its sections, statistics tallies and verdict band tables; ported: statistics with ChessBase's bands in the workbench's words, years, score by rating band, tournaments, opponents, repertoire for each colour, medal games, mates given and received, self-annotated games; 0.62 s warm for 6,925 games on the classic Mega; biography, pictures and rating history need the player encyclopedia and are left out; see [player dossier](docs/player-dossier.md))*
+- [x] P1 🟢 Player statistics: score by colour, opening and year (`STATISTICS`, `PLAYERSTATISTIC`) *(the reference app's Player statistic layout, dialog 846: score by colour and year, then opponents, tournaments and openings by ECO with its sort buttons and Table; performance and average Elo; one cancellable parallel scan, 0.06 s for Carlsen's 6,925 games on the classic test database warm; rows open their games; the graphical Statistics dialog and opening keys are not ported; see [player statistics](docs/player-statistics.md))*
+- [x] P2 🟢 Player dossier (`PLAYERDOSSIER`) *(traced: the generator `0x1408358a0` and its sections, statistics tallies and verdict band tables; ported: statistics with the reference app's bands in the workbench's words, years, score by rating band, tournaments, opponents, repertoire for each colour, medal games, mates given and received, self-annotated games; 0.62 s warm for 6,925 games on the classic test database; biography, pictures and rating history need the player encyclopedia and are left out; see [player dossier](docs/player-dossier.md))*
 - [x] P2 🟢 Tournament crosstable and report (`DBTOOLSCROSSTABLE`, `TournamentReport`) *(crosstable done, §3; report traced to `0x14083a600`/`0x14083a800`: rounds with date and pairings, round range, two columns; ported with standings after each round and result statistics; reached from Cross table, both ribbons; see [tournament report](docs/tournament-report.md))*
-- [x] P2 🟢 Error report: blunder statistics and estimated rating (`BLUNDER_REPORT`) *(traced: Quick/Slower depths 9/12, per-move loss and weights, error value, the Blunder Elo curve `0x1404705d0`; ported with the user's UCI engine: ChessBase's curve and error value with the weights a UCI engine allows, plus severity, losses by size, phase, opponent, evaluation transitions and worst moves; within 82–292 points of three strong players' ratings with Stockfish at depth 9; complexity, shape, slope and GM reference charts not ported; see [error report](docs/error-report.md))*
+- [x] P2 🟢 Error report: blunder statistics and estimated rating (`BLUNDER_REPORT`) *(traced: Quick/Slower depths 9/12, per-move loss and weights, error value, the Blunder Elo curve `0x1404705d0`; ported with the user's UCI engine: the reference app's curve and error value with the weights a UCI engine allows, plus severity, losses by size, phase, opponent, evaluation transitions and worst moves; within 82–292 points of three strong players' ratings with Stockfish at depth 9; complexity, shape, slope and GM reference charts not ported; see [error report](docs/error-report.md))*
 - [ ] P3 🟢 Style report (`STYLE_REPORT`)
 - [ ] P3 🟢 Game overview and theme classification (`OVERVIEWBOARD`, `THEMECLASSIFYBOARD`)
 - [ ] P3 🟢 Piece probability and piece first-move statistics (`DBTOOLSPIECEPROBABILITY`, `DBTOOLSPIECEFIRSTMOVE`)
@@ -187,7 +187,7 @@ Names in backticks are ChessBase command ids, for traceability.
 
 ## 10. Players and preparation
 
-- [x] P2 🟢 Prepare against White or Black from the database (`PREPARE_WHITE`, `PREPARE_BLACK`, `PREPARE_AGAINST`) *(traced: the player's games of one colour, deleted left out, in a game window with the last game loaded, and the average of the last ten ratings; the workbench shows score, recent rating, repertoire lines with ECO names, openings and latest games, and the player's tree in the Book pane; a player's 3,515 White games read in 0.12 s warm on the classic Mega; the window's tree mode and rating formula use not traced; see [preparation](docs/preparation.md))*
+- [x] P2 🟢 Prepare against White or Black from the database (`PREPARE_WHITE`, `PREPARE_BLACK`, `PREPARE_AGAINST`) *(traced: the player's games of one colour, deleted left out, in a game window with the last game loaded, and the average of the last ten ratings; the workbench shows score, recent rating, repertoire lines with ECO names, openings and latest games, and the player's tree in the Book pane; a player's 3,515 White games read in 0.12 s warm on the classic test database; the window's tree mode and rating formula use not traced; see [preparation](docs/preparation.md))*
 - [ ] P2 🟡 Player encyclopedia: names, photos, ratings and biography; FIDE rating lists could supply open data (`OPENPLAYERBASE`, `PB_EDITPLAYER`, `SHOWELOLIST`)
 - [ ] P3 🟢 Player photos in the game window (`TOGGLEPHOTOS`)
 - [ ] P3 🟡 Find a player online or match Lichess accounts (`SEARCHPLAYER`, `ComparePlayerOnline`)
@@ -200,7 +200,7 @@ Names in backticks are ChessBase command ids, for traceability.
 - [ ] P3 🟢 Tactics training from positions (`TRAINING_TACTICS`, `TACTICS_FIGHT`)
 - [ ] P3 🟢 Opening and dynamic hints (`OPENING_HINTS`, `DYNAMIC_HINTS`)
 - [ ] P3 🟢 Full tree replay of a repertoire (`FullTreeReplay`)
-- [ ] P3 🔴 Daily tactics and Fritz online play-out (`TOGGLE_DAILYTACTICS`, `PLAY_IN_FRITZONLINE`)
+- [ ] P3 🔴 Daily tactics and online play-out (`TOGGLE_DAILYTACTICS`, `PLAY_IN_FRITZONLINE`)
 
 ## 12. Text, printing and publishing
 
@@ -227,11 +227,11 @@ Names in backticks are ChessBase command ids, for traceability.
 - [ ] P3 🟢 Other variants: Giveaway, Twin, Pawn chess, Makruk, Ouk Chatrang (`GIVEAWAYCHESS`, `TWINCHESS`, `MAKRUK`)
 - [ ] P3 🟢 Play against an engine with a clock, blitz or long games (`NEWGAMEBLITZ`, `NEWGAMETOURNAMENT`, `TOGGLECLOCKPANE`)
 
-## 15. ChessBase online services (🔴 replace or leave out)
+## 15. The reference app online services (🔴 replace or leave out)
 
-- [ ] P3 🔴 Playchess server: rooms, broadcasts, tournaments, simuls and ratings (≈150 `PLAYSERVER*`, `TOPRATING*`, `NEW*BROADCAST` commands); 🟡 Lichess broadcasts are an open alternative
-- [ ] P3 🔴 ChessBase Cloud databases (`CLOUD_DATABASES`, `CREATE_CLOUD_DATABASE`, `CLOUD_SHARING`); 🟡 a file sync folder is a local alternative
-- [ ] P3 🔴 Online database at database.chessbase.com (`TOGGLEONLINEDB`)
+- [ ] P3 🔴 Online playing server: rooms, broadcasts, tournaments, simuls and ratings (≈150 `PLAYSERVER*`, `TOPRATING*`, `NEW*BROADCAST` commands); 🟡 Lichess broadcasts are an open alternative
+- [ ] P3 🔴 Cloud databases (`CLOUD_DATABASES`, `CREATE_CLOUD_DATABASE`, `CLOUD_SHARING`); 🟡 a file sync folder is a local alternative
+- [ ] P3 🔴 The vendor's online database (`TOGGLEONLINEDB`)
 - [ ] P3 🔴 Engine Cloud, Ducats payments and engine providers (`OPEN_CLOUD_ENGINES`, `CHECK_DUCATS_ACCOUNT`, `PROVIDE_*`)
 - [ ] P3 🔴 Account, activation, subscriptions and game updates (`EDIT_ACCOUNT`, `ACTIVATE`, `DAM_*`); 🟡 TWIC downloads could supply game updates (`GETTWIC` is declared)
 - [ ] P3 🔴 AI Buddy / ChatGPT assistant (`AIBuddy`); 🟡 an assistant with a user-configured model is an option
@@ -239,16 +239,16 @@ Names in backticks are ChessBase command ids, for traceability.
 
 ## 16. Application shell
 
-- [x] P1 🟢 ChessBase-style ribbon with tabs, groups and tooltips
-- [x] P1 🟢 ChessBase default keyboard shortcuts (306 recovered; the implemented subset is bound)
+- [x] P1 🟢 reference-app-style ribbon with tabs, groups and tooltips
+- [x] P1 🟢 the reference app default keyboard shortcuts (306 recovered; the implemented subset is bound)
 - [x] P1 🟢 White, Blue, Gray and Black themes
 - [x] P1 🟢 Command search across all commands *(workbench addition)*
 - [x] P1 🟢 Resizable panes with layout presets (`LAYOUTSTANDARD`, `LAYOUTBIGBOARD`, `LAYOUTBIGENGINE`)
-- [x] P1 🟢 Multiple game tabs at once, plus a "new board" window (`NEWBOARDWINDOW`) *(each opened game gets a tab, up to Options › Maximum game tabs, 1–8, default 8 as ChessBase's `MaxGameWins`; per-tab undo, dirty state and origin; quitting asks per tab; see [game window](docs/game-window.md))*
+- [x] P1 🟢 Multiple game tabs at once, plus a "new board" window (`NEWBOARDWINDOW`) *(each opened game gets a tab, up to Options › Maximum game tabs, 1–8, default 8 as the reference app's `MaxGameWins`; per-tab undo, dirty state and origin; quitting asks per tab; see [game window](docs/game-window.md))*
 - [ ] P2 🟢 Save and load layouts (`SAVELAYOUT`, `LOADLAYOUT`)
 - [ ] P2 🟢 Options dialog (`SETOPTIONS`) and customisable shortcuts (`CUSTOMIZE`) *(partial: Options (Ctrl+Alt+O) has the Limits page, kept in the app's config folder)*
 - [ ] P2 🟢 Navigation history back/forward (`HISTORYBACK`, `HISTORYFORWARD`)
 - [ ] P3 🟢 Minimise ribbon and quick-access toolbar *(minimise done; no quick-access toolbar)*
 - [ ] P3 🟢 Full screen and window arrangements (`VIEWFULLSCREEN`, `WINDOWTOP2VERTICAL`)
-- [ ] P3 🟢 Localisation: ChessBase ships 10 UI languages; the app needs its own translations
+- [ ] P3 🟢 Localisation: the reference app ships 10 UI languages; the app needs its own translations
 - [ ] P3 🟢 Help and shortcut overview (`HELPHELP`, `VIEWSHORTCUTS`)

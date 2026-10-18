@@ -4,7 +4,7 @@ use cbh_reader::{
 };
 use std::fs;
 
-// Tokens observed for Mega Database 2025 entry 20 (research sample), paired
+// Tokens observed for the test database entry 20 (research sample), paired
 // with the moves an independent classic decoder produced for the same game.
 const E2E4: u16 = 0xad3f;
 const E7E5: u16 = 0xb02d;
@@ -242,7 +242,7 @@ fn family() -> tempfile::TempDir {
             (0, 1, strings(&["Müller", "Jörg"])),
             (1, 1, strings(&["Göteborg", "Open"])),
             (2, 0, {
-                let mut b = strings(&["EXT 2021", "ChessBase"]);
+                let mut b = strings(&["EXT 2021", "Publisher"]);
                 b.truncate(b.len() - 8);
                 b.extend(((2020u32 << 9) | (10 << 5) | 23).to_le_bytes());
                 b.extend(((2020u32 << 9) | (10 << 5) | 23).to_le_bytes());
@@ -279,7 +279,7 @@ fn new_family_pages_and_loads() {
     assert_eq!(e.annotator_id, Some(0));
     assert_eq!(e.annotator.as_deref(), Some("Zeta, Ana"));
     assert_eq!(e.source.as_deref(), Some("EXT 2021"));
-    assert_eq!(e.source_publisher.as_deref(), Some("ChessBase"));
+    assert_eq!(e.source_publisher.as_deref(), Some("Publisher"));
     assert_eq!(e.source_date.as_deref(), Some("2020.10.23"));
     assert_eq!(e.white_team.as_deref(), Some("North"));
     assert_eq!(e.black_team.as_deref(), Some("South"));

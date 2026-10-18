@@ -9,7 +9,7 @@ export interface DrawnMark {
   color: string;
 }
 /**
- * ChessBase's colours for graphical commentary: green, Shift for red and
+ * The reference app's colours for graphical commentary: green, Shift for red and
  * Ctrl for yellow. The right button or Alt with the left button draws.
  */
 export function drawColor(e: { shiftKey: boolean; ctrlKey: boolean }) {

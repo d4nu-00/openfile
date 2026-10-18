@@ -77,23 +77,23 @@ pub enum Edit {
         arrows: Vec<chess_core::ArrowMark>,
     },
     ClearMarks,
-    /// ChessBase's Exchange Moves on the first move of a variation.
+    /// The reference app's Exchange Moves on the first move of a variation.
     ExchangeMoves {
         node: u32,
     },
-    /// ChessBase's Reorder Variations from `node` along its line.
+    /// The reference app's Reorder Variations from `node` along its line.
     ReorderVariations {
         node: u32,
         #[serde(default, rename = "mainLine")]
         main_line: bool,
     },
-    /// ChessBase's Clean up variations of the whole game.
+    /// The reference app's Clean up variations of the whole game.
     CleanUpVariations,
-    /// ChessBase's Insert Into Game for the variation containing `node`.
+    /// The reference app's Insert Into Game for the variation containing `node`.
     InsertVariation {
         node: u32,
     },
-    /// ChessBase's Delete Commentary commands; `node` is the selected move.
+    /// The reference app's Delete Commentary commands; `node` is the selected move.
     DeleteCommentary {
         commentary: chess_core::edit::Commentary,
         node: u32,
@@ -191,7 +191,7 @@ fn add_analysis(game: &mut chess_core::Game, items: Vec<AnalysisItem>) -> Result
     *game = next;
     Ok(())
 }
-/// Sets ChessBase's evaluation symbol `nag` on `node`, replacing an
+/// Sets the reference app's evaluation symbol `nag` on `node`, replacing an
 /// evaluation it has but not another position symbol such as "with attack".
 fn set_evaluation(game: &mut chess_core::Game, node: u32, nag: u16) -> Result<(), AppError> {
     let nags = &game.nodes[node as usize].nags;
@@ -353,7 +353,7 @@ impl Registry {
             selected: None,
         })
     }
-    /// A new, empty game from the initial position or `fen` (ChessBase "New
+    /// A new, empty game from the initial position or `fen` (the reference app "New
     /// Game" and "Position Setup").
     pub fn new_document(
         &self,

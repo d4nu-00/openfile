@@ -7,8 +7,8 @@ const points = (p: number) =>
   Number.isInteger(p) ? String(p) : `${Math.floor(p) || ""}½`;
 
 /**
- * Tournament report (ChessBase's `TournamentReport`): the tournament's
- * games round by round, each round with its date, as ChessBase writes it,
+ * Tournament report (the reference app's `TournamentReport`): the tournament's
+ * games round by round, each round with its date, as the reference app writes it,
  * with its options (a range of rounds and two columns). The standings
  * after each round and the result statistics are the workbench's additions.
  */

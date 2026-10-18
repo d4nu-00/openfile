@@ -4,10 +4,10 @@ Status: implemented on branch `prepare-against` (2026-10-15). The direction
 was agreed in conversation: build on the player statistics, the opening tree
 and the ECO classification.
 
-Evidence is from CBase18.exe 18.1 (x64), analysed statically through an REA
+Evidence is from the reference binary (x64), analysed statically through an REA
 session (`analysis/reports/` in the research workspace).
 
-## What ChessBase does
+## What the reference app does
 
 | Command | Id | Class, run slot | Key | Message |
 |---|---|---|---|---|
@@ -71,7 +71,7 @@ Black ratings because they sit beside the player-id getters (`0x1401ceef0`,
   system menu keeps ⌘W for Close Window. The same holds for Ctrl+Q, Ctrl+H
   and Ctrl+M.
 * **Prepare Against** (database window, Home › Players) opens the Players
-  list, as ChessBase's ribbon button does. With a player already chosen
+  list, as the reference app's ribbon button does. With a player already chosen
   there, it prepares against them as White.
 
 **The job** runs in the backend, cancellable from the dialog, with progress:
@@ -87,8 +87,8 @@ database changes or closes.
 **The dialog** "Prepare against White: name" shows:
 * the games, years, and deleted or unreadable games;
 * the score (N, +, =, −, score, Elo-Av, Perf.);
-* **Recent Elo**: ChessBase's average of the last ten games' ratings with
-  that colour (step 3 above). ChessBase's formula on it is not ported, since
+* **Recent Elo**: the reference app's average of the last ten games' ratings with
+  that colour (step 3 above). The reference app's formula on it is not ported, since
   its use is unknown.
 * **Repertoire**: the lines the player keeps playing from the start
   position, from their main lines, transpositions included.
@@ -98,7 +98,7 @@ database changes or closes.
   * Each has its ECO code and name from the open table (see
     [openings](openings.md)), the games, the player's score and the last
     year.
-  * These thresholds are the workbench's choices; ChessBase has no such
+  * These thresholds are the workbench's choices; the reference app has no such
     list.
 * **Openings**: the games by the ECO code stored in each game, most played
   first, with the score (at most 20);
@@ -108,17 +108,17 @@ database changes or closes.
 **Its buttons:**
 * **As White / As Black** switch the colour.
 * **Show in Book** makes the Book pane answer from the player's games, as
-  ChessBase's game window shows them. Its columns are the opening tree's
+  the reference app's game window shows them. Its columns are the opening tree's
   (see [opening tree](opening-tree.md)). The header names the preparation,
   and **Database tree** returns to the database's opening tree.
 * **List games** lists the games in the game list. Double-clicking a line
   lists the games reaching its last position.
-* **Load last game** loads the last game, which is what ChessBase loads.
+* **Load last game** loads the last game, which is what the reference app loads.
   Double-clicking a latest game loads it.
 
 ## Measurements
 
-Release build, `cbh-reader/examples/prepare.rs`, classic Mega 2025
+Release build, `cbh-reader/examples/prepare.rs`, classic the test database
 (11,151,119 entries), player A (6,925 games) with White:
 
 | Step | Cold | Warm |

@@ -5,7 +5,7 @@ describe("databases in iCloud", () => {
   it("asks, downloads with progress, then opens", async () => {
     const ui = renderWorkbench({ clean: true });
     ui.api.cloudStatus.mockResolvedValueOnce({
-      files: ["Mega.cbg", "Mega.cba"],
+      files: ["test database.cbg", "test database.cba"],
       bytes: "1500000000",
     });
     await ui.user.keyboard("{Control>}o{/Control}");
@@ -22,7 +22,7 @@ describe("databases in iCloud", () => {
   it("does not open when the download is declined", async () => {
     const ui = renderWorkbench({ clean: true });
     ui.api.cloudStatus.mockResolvedValueOnce({
-      files: ["Mega.cbg"],
+      files: ["test database.cbg"],
       bytes: "1253435766",
     });
     ui.api.confirmCloudDownload.mockResolvedValueOnce(false);
@@ -37,7 +37,7 @@ describe("databases in iCloud", () => {
   it("reports a stopped download as not opened", async () => {
     const ui = renderWorkbench({ clean: true });
     ui.api.cloudStatus.mockResolvedValueOnce({
-      files: ["Mega.cbg"],
+      files: ["test database.cbg"],
       bytes: "1253435766",
     });
     ui.api.downloadCloudFiles.mockRejectedValueOnce({

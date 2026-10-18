@@ -61,7 +61,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-/** A workspace view; each has its own ribbon, as ChessBase's windows do. */
+/** A workspace view; each has its own ribbon, as the reference app's windows do. */
 export type ViewId = "database" | "game";
 
 export interface CommandMeta {
@@ -69,7 +69,7 @@ export interface CommandMeta {
   label: string;
   tip: string;
   icon: LucideIcon;
-  /** Default shortcut in ChessBase notation ("Ctrl" is ⌘ on macOS). */
+  /** Default shortcut in the reference app notation ("Ctrl" is ⌘ on macOS). */
   keys?: string;
   /** Further keys that run the command. */
   alsoKeys?: string[];
@@ -82,7 +82,7 @@ const db: ViewId[] = ["database"];
 const game: ViewId[] = ["game"];
 
 /*
- * Command names, tooltips and default shortcuts follow ChessBase 18's command
+ * Command names, tooltips and default shortcuts follow the reference app's command
  * table (M_KC_* ids and their M_MN_/M_TX_ messages); the grouping below follows
  * its ribbon builders. Commands added by this workbench are marked "workbench".
  */
@@ -91,7 +91,7 @@ const list: CommandMeta[] = [
   {
     id: "open-database",
     label: "Open Database",
-    tip: "Open a ChessBase database (.cbh or .2cbh)",
+    tip: "Open a database (.cbh or .2cbh)",
     icon: FolderOpen,
     keys: "Ctrl+O",
     views: both,
@@ -173,7 +173,7 @@ const list: CommandMeta[] = [
   {
     id: "cloud-databases",
     label: "Cloud Databases",
-    tip: "Open databases stored in the ChessBase Cloud",
+    tip: "Open databases stored in the cloud",
     icon: Cloud,
     views: both,
   },
@@ -886,7 +886,7 @@ const list: CommandMeta[] = [
     keys: "Ctrl+Alt+S",
     views: game,
   },
-  // ChessBase opens these popups for typed symbol keys in the game window
+  // The reference app opens these popups for typed symbol keys in the game window
   // (GameWin key handler 0x1409e41a0); they have no M_KC_ command.
   {
     id: "symbol-menu-move",
@@ -1190,7 +1190,7 @@ const helpTab: RibbonTab = {
   groups: [{ label: "Help website", items: [L("help"), L("feedback")] }],
 };
 
-/** Tabs and groups follow ChessBase 18's database and game window ribbons. */
+/** Tabs and groups follow the reference app's database and game window ribbons. */
 export const ribbons: Record<ViewId, RibbonTab[]> = {
   database: [
     {

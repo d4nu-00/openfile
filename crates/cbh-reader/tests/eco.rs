@@ -40,7 +40,7 @@ fn set_eco_codes_classifies_main_lines_and_keeps_sub_codes() {
     ))
     .unwrap();
     w.append(&pgn("1. e4 (1. d4) e5 2. Nf3 Nf6 *")).unwrap();
-    // Game 1's code gets a ChessBase sub-classification (low seven bits).
+    // Game 1's code gets a reference app sub-classification (low seven bits).
     w.set_eco_many(&[(1, pack_eco("C42") | 5)]).unwrap();
     drop(w);
 

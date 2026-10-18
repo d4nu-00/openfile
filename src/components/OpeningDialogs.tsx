@@ -48,7 +48,7 @@ export function ClassifyDialog({
         )}
         <p className="hint">
           The game's ECO code: {result.current ?? "none"}. Codes and names come
-          from the open lichess opening table (CC0), not from ChessBase's.
+          from the open lichess opening table (CC0).
         </p>
         <div className="mask-buttons">
           {onSetEco && (
@@ -98,9 +98,9 @@ export function SetEcoDialog({
         </label>
         <p className="hint">
           Every game's main line is classified with the open lichess opening
-          table. It gives ChessBase's own code for about three games in four, so
-          codes already set are kept unless this is unticked. A code whose main
-          part does not change keeps ChessBase's sub-classification.
+          table. It agrees with the codes already stored for about three games
+          in four, so codes already set are kept unless this is unticked. A code
+          whose main part does not change keeps its stored sub-classification.
         </p>
         <div className="mask-buttons">
           <button type="submit">Start</button>

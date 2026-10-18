@@ -72,7 +72,7 @@ fn created_database_reads_back() {
         pgn("[White \"Zeta, Ana\"]\n[Black \"Müller, Jörg\"]\n[Result \"0-1\"]\n\n1. d4 d5 0-1");
     assert_eq!(w.append(&second).unwrap().0, 2);
     drop(w);
-    // ChessBase index files are never written.
+    // The reference app index files are never written.
     assert!(!path.with_extension("2lcd").exists());
 
     let mut db = Database::open(&path, ReadLimits::default()).unwrap();
@@ -185,7 +185,7 @@ fn one_symbol_per_slot_is_storable() {
     let mut g = pgn("1. e4 e5 *");
     g.nodes[1].nags = vec![8, 13, 142];
     assert!(encode::encode_annotations(&g).1.notes.is_empty());
-    // Zugzwang is a move symbol, as in ChessBase's "!" popup; beside an
+    // Zugzwang is a move symbol, as in the reference app's "!" popup; beside an
     // evaluation and a prefix it still fits.
     g.nodes[1].nags = vec![22, 13, 142];
     assert!(encode::encode_annotations(&g).1.notes.is_empty());

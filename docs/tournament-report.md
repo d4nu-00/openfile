@@ -4,10 +4,10 @@ Status: implemented on branch `tournament-report` (2026-10-16), stacked on
 `player-dossier`. The direction was agreed in conversation: build on the
 existing crosstable.
 
-Evidence is from CBase18.exe 18.1 (x64), analysed statically through an REA
+Evidence is from the reference binary (x64), analysed statically through an REA
 session (`analysis/reports/` in the research workspace).
 
-## What ChessBase does
+## What the reference app does
 
 * **The report** is the class `TournamentReport` (vtable `0x1411f7908`),
   another HTML report built on the same generator base as the dossier. Its
@@ -37,7 +37,7 @@ session (`analysis/reports/` in the research workspace).
   The German text and the fixed path suggest an in-house tool.
 
 **Not traced:** the menu that reaches the report, the parameter dialog's
-fields beyond the offsets above, and how ChessBase orders games within a
+fields beyond the offsets above, and how the reference app orders games within a
 round.
 
 ## Workbench
@@ -56,16 +56,16 @@ The dialog shows:
   the average game length (the workbench's addition).
 * **Standings:** the crosstable's ranking with points, games,
   Sonneborn-Berger and performance.
-* **The rounds**, as ChessBase lists them:
+* **The rounds**, as the reference app lists them:
   * every round with a number in order, then games without a round;
   * each with its earliest date (unknown parts left out) and its pairings
     "White – Black", with the result and moves, in entry order;
-  * ChessBase's options: a range of rounds and **Two columns**. All rounds
+  * The reference app's options: a range of rounds and **Two columns**. All rounds
     are listed, not only 1–19.
   * **Standings after each round**: the ten leaders after the round, ties in
     the crosstable's order. This is the workbench's addition, on by default.
   * **Games** lists the round's games in the game list, in place of
-    ChessBase's PGN file per round; a double-click loads a game.
+    the reference app's PGN file per round; a double-click loads a game.
 * **Cross table** opens the tournament's crosstable.
 
 **Not ported:** the HTML page, the German headings and the PGN files.
@@ -73,7 +73,7 @@ The dialog shows:
 ## Measurements
 
 Release build, `src-tauri/examples/tournament_report.rs`, read-only, with
-the app's data folder. On the classic Mega (11.15 M entries), without a sort
+the app's data folder. On the classic test database (11.15 M entries), without a sort
 order by tournament, three tournaments of 1–35 games took 0.86–0.88 s each,
 almost all of it the search for the tournament's games. A sort order by
 tournament makes this a lookup.

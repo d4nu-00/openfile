@@ -20,7 +20,7 @@ const RESULTS: [string, string][] = [
 ];
 
 /**
- * ChessBase's Edit Game Data (F2): the game's players, ratings, tournament,
+ * The reference app's Edit Game Data (F2): the game's players, ratings, tournament,
  * date, result and ECO, saved as PGN tags. Other tags are kept.
  */
 export function GameDataDialog({

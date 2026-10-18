@@ -56,7 +56,7 @@ pub fn decode_classic(record: &[u8], limits: &ReadLimits) -> Result<Game, CbhErr
         return Err(CbhError::Truncated);
     }
     // Chess960 games carry both bits of 0x0a000000 (cbh2pgn's
-    // MASK_IS_960); every one in Mega Database 2025 that has moves also has
+    // MASK_IS_960); every one in the test database that has moves also has
     // a set-up position.
     let chess960 = header & CHESS960 == CHESS960;
     // Flag 0x04000000 alone: standard games written in another byte order.
@@ -261,13 +261,13 @@ pub fn decode_classic(record: &[u8], limits: &ReadLimits) -> Result<Game, CbhErr
 
 /// Records of encoding kinds 1 and 5 (CBG flags `0x01000000` and
 /// `0x05000000`): every move is a 16-bit word, written by `0x1401fc8b0` in
-/// CBase18.exe 18.1. Bits 0–5 hold the source and 6–11 the target square
+/// The reference binary. Bits 0–5 hold the source and 6–11 the target square
 /// (file-major), 12–14 a promotion piece, 0x4000 marks a line's last move
 /// and 0x8000 a move with variations or a line followed by another. Both
 /// bytes are mapped through the kind's table with the move counter: kind 1
 /// reads the position of `byte - counter` in `KIND1_ORDER`, kind 5 the
 /// position of the byte in `KIND5_ORDER`, less the counter. Variations are not read: every such
-/// record in Mega Database 2025 is a single line, and the 0x8000 bit's two
+/// record in the test database is a single line, and the 0x8000 bit's two
 /// meanings were not separated. In kind 1 the upper four bits are not read
 /// at all (see below).
 fn decode_words(
@@ -314,7 +314,7 @@ fn decode_words(
             return Err(CbhError::Decode("Moves after the last move".into()));
         }
         let mut word = u16::from_be_bytes([unmap(pair[0], counter), unmap(pair[1], counter)]);
-        // Kind 1's upper bits follow no pattern in its only Mega record (a
+        // Kind 1's upper bits follow no pattern in its only test database record (a
         // single line whose every move is legal); only the squares are read
         // and the line ends with the record.
         if kind == 1 {

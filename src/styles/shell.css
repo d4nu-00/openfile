@@ -419,7 +419,7 @@ kbd {
   background: var(--row-selected-bg);
   color: var(--row-selected-fg);
 }
-/* Mark Games: ChessBase's user medal is cyan. */
+/* Mark Games: the reference app's user medal is cyan. */
 .game-list .user-medal {
   display: inline-block;
   width: 8px;
@@ -429,7 +429,7 @@ kbd {
   background: #00b5d8;
   vertical-align: middle;
 }
-/* ChessBase's other medals: one amber dot; the names are in its tooltip. */
+/* the reference app's other medals: one amber dot; the names are in its tooltip. */
 .game-list .medals {
   display: inline-block;
   width: 8px;
@@ -1482,7 +1482,7 @@ kbd {
 }
 
 /* Player statistic: score by colour and year, then opponents, tournaments
-   and openings side by side, as in ChessBase's dialog 846. */
+   and openings side by side, as in the reference app's dialog 846. */
 .modal.player-statistics {
   width: min(1200px, 96vw);
   max-width: min(1200px, 96vw);
@@ -1598,7 +1598,7 @@ kbd {
   }
 }
 
-/* Search mask position tab: three pattern boards, as ChessBase's dialog 314. */
+/* Search mask position tab: three pattern boards, as the reference app's dialog 314. */
 .position-mask {
   display: flex;
   gap: 16px;
@@ -1671,7 +1671,7 @@ kbd {
 }
 
 /* Database start screen: groups on the left, database symbols on the right,
-   in the manner of ChessBase's database window (docs/start-screen.md). */
+   in the manner of the reference app's database window (docs/start-screen.md). */
 .start-wrap {
   display: flex;
   flex-direction: column;

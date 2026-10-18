@@ -1,4 +1,4 @@
-//! The search mask's position tab (ChessBase's dialog 314). See
+//! The search mask's position tab (the reference app's dialog 314). See
 //! docs/position-search.md.
 //!
 //! Three boards say where pieces must stand ('Look for'), where at least one
@@ -10,7 +10,7 @@ use crate::{CbhError, position::Target};
 use chess_core::{Game, NodeId};
 use shakmaty::{Bitboard, Board, Chess, Color, Piece, Position, Role, Square};
 
-/// The piece kinds of a board, in ChessBase's code order 1..=7: K, Q, N, B,
+/// The piece kinds of a board, in the reference app's code order 1..=7: K, Q, N, B,
 /// R, P, and any piece.
 const ROLES: [Option<Role>; 7] = [
     Some(Role::King),
@@ -113,7 +113,7 @@ impl Set {
             exclude: self.exclude.map(f, swap),
         }
     }
-    /// ChessBase's test (`0x14018afb0`), for every piece kind of both sides.
+    /// The reference app's test (`0x14018afb0`), for every piece kind of both sides.
     fn matches(&self, board: &Board) -> bool {
         [Color::White, Color::Black].into_iter().all(|color| {
             let pick = |b: &Boards| if color.is_white() { b.white } else { b.black };

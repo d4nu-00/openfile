@@ -4,11 +4,11 @@ Status: implemented on branch `deep-analysis` (2026-10-15); this spec was
 written first. The direction was agreed in conversation; the user asked to
 proceed without review gates.
 
-Evidence is from CBase18.exe 18.1 (x64), analysed statically through an REA
+Evidence is from the reference binary (x64), analysed statically through an REA
 session (`analysis/deep-analysis/` in the research workspace). Messages are
 cited by their ordinal in the message catalogue.
 
-## What ChessBase does
+## What the reference app does
 
 ### Commands
 
@@ -76,9 +76,9 @@ collections `0x140a0a1a0` (with a flag for "new"), Add `0x140a085f0`.
   3. Their first moves are played into the game as variations (existing
      moves are followed), and the search recurses into each, until depth
      *D*.
-  4. At the depth limit, a move gets ChessBase's evaluation symbol for its
+  4. At the depth limit, a move gets the reference app's evaluation symbol for its
      score (`0x140425370` through `0x140b560c0`, the same rule as Tactical
-     Analysis; see [engines](engines.md)) and ChessBase's own evaluation
+     Analysis; see [engines](engines.md)) and the reference app's own evaluation
      annotation (`0x1401a7b10`, not decoded).
   5. New lines are coloured while the analysis runs (`0x14042a960`). The
      colours are removed at the end (`0x140429c30`). Move symbol 8 is set or
@@ -103,7 +103,7 @@ collections `0x140a0a1a0` (with a flag for "new"), Add `0x140a085f0`.
   * a depth to stop at instead of the time (0x54c, with a flag in 0x544);
   * flags (bit 0: "Merge result with original game", 4072).
   A job without settings of its own uses the collection's.
-* **A collection** is a file in ChessBase's `AnalysisJobs` folder, read with
+* **A collection** is a file in the reference app's `AnalysisJobs` folder, read with
   a 1 MB limit (`0x1403d0fa0`). "Add Analysis Job" appends the current game
   and says "Analysis job added" (4026).
 * **The window** is `AnalysisSetupVariables` ("Analysis Setup", 4010;
@@ -135,14 +135,14 @@ saves to, and the merge itself (`0x140b64220`).
 ### Deep Analysis
 
 **Deep Analysis** (Analysis ribbon) analyses the board position of the shown
-game as ChessBase does, with one engine: an installed one or a file.
+game as the reference app does, with one engine: an installed one or a file.
 
 * **The dialog** offers the engine and the duration: until stopped (as from
-  ChessBase's menu) or a time limit in minutes (1 to 1,440).
+  the reference app's menu) or a time limit in minutes (1 to 1,440).
 * **The job** runs in the backend with its own engine process, separate from
-  the kibitzers. It follows ChessBase's iterations, time per position, depth,
-  widths, sibling rule and 70-centipawn window above. ChessBase's
-  multi-engine roles are not ported. ChessBase's time-limit rules apply.
+  the kibitzers. It follows the reference app's iterations, time per position, depth,
+  widths, sibling rule and 70-centipawn window above. The reference app's
+  multi-engine roles are not ported. The reference app's time-limit rules apply.
 * **The tree** is the job's own while it runs. A node stores its move, and,
   from the line that found it, the score for the side that played it and the
   engine depth. Moves the game already has at the analysed position are
@@ -150,18 +150,18 @@ game as ChessBase does, with one engine: an installed one or a file.
 * **Progress** shows the iteration, the positions analysed, the elapsed time
   and the best line found so far, with its score. The best line is the
   backed-up (negamax) value of the tree, and children are ordered by it.
-  This is the workbench's own choice: ChessBase's minimax window was seen
+  This is the workbench's own choice: the reference app's minimax window was seen
   but its use not traced.
-* **Stop** ends the analysis and keeps what was found, as in ChessBase. The
+* **Stop** ends the analysis and keeps what was found, as in the reference app. The
   dialog's Cancel discards it.
 * **The result is one edit**, so Undo removes it, and nothing is added if
   the game changed meanwhile:
   * every root-to-leaf path becomes a line from the analysed position, best
     first;
-  * the last move of each line gets ChessBase's evaluation symbol for its
+  * the last move of each line gets the reference app's evaluation symbol for its
     score;
   * it also gets the score and depth as text (`+0.35/20`). This stands in
-    for ChessBase's evaluation annotation, which is not decoded.
+    for the reference app's evaluation annotation, which is not decoded.
 
   Line colours are not used, since the tree is only written at the end. The
   move symbol 8 rule is not ported.
@@ -174,22 +174,22 @@ game as ChessBase does, with one engine: an installed one or a file.
 ### Analysis jobs
 
 The jobs queue analyses several games of a 2CBH database opened for editing
-and replaces each game with the analysed one. That is ChessBase's "Merge
+and replaces each game with the analysed one. That is the reference app's "Merge
 result with original game", always on.
 
 * **Adding jobs.** In the game list of an editable 2CBH database:
   * **Create analysis jobs** adds the final position of each selected game's
-    main line, as ChessBase's command does;
+    main line, as the reference app's command does;
   * **Add Analysis Job** in the game window adds the board position of the
     shown game, if it was loaded from such a database and has no unsaved
     changes.
 
   A job stores the database, the entry number, the moves leading to the
   position and a fingerprint of the game. The commands sit in the database
-  window's Home tab and the game window's Analysis tab. ChessBase's ribbon
+  window's Home tab and the game window's Analysis tab. The reference app's ribbon
   places for them were not traced.
 * **The queue** is kept in the backend for the session, at most 1,000 jobs.
-  ChessBase's jobs file is not written or read. **New analysis jobs** clears
+  the reference app's jobs file is not written or read. **New analysis jobs** clears
   the queue, and **Open analysis jobs** shows it.
 * **The window** lists the jobs (number, game, move, type, status) and has:
   * Start/Continue and Stop;
@@ -198,7 +198,7 @@ result with original game", always on.
     (time), and the engine.
 
   The time is at least 15 s for Analysis and 30 s for Deep Analysis, as in
-  ChessBase.
+  the reference app.
 * **Running.** One engine process runs the waiting jobs in order, with
   progress for the queue and the current job. For each job:
   1. The game is loaded from its database and the position found again by

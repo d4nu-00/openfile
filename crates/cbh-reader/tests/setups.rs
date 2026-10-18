@@ -168,7 +168,7 @@ fn unsupported_flags_are_not_empty_games() {
 }
 #[test]
 fn setup_byte_zero_one_and_impossible_en_passant_are_accepted() {
-    // Byte 0 is 1 in every Mega Database 2025 setup.
+    // Byte 0 is 1 in every the test database setup.
     let mut r = setup(0, 0, 1, &[(32, 1), (39, 9)], &[]);
     r[4] = 1;
     let g = decode_classic(&r, &ReadLimits::default()).unwrap();
@@ -184,7 +184,7 @@ fn setup_byte_zero_one_and_impossible_en_passant_are_accepted() {
 
 #[test]
 fn setup_impossible_castling_rights_are_dropped_one_by_one() {
-    // Kings on g1 and g8 with K and k set (bits 2 and 8), as in classic Mega
+    // Kings on g1 and g8 with K and k set (bits 2 and 8), as in classic test database
     // entries 64687 and 96531: both rights are impossible and dropped.
     let g = decode_classic(
         &setup(

@@ -12,7 +12,7 @@ type OpponentSort = "n" | "az" | "score";
 type TournamentSort = "score" | "az" | "date";
 type OpeningSort = "white" | "black" | "az";
 
-/** A row of sort buttons, as under each of ChessBase's three lists. */
+/** A row of sort buttons, as under each of the reference app's three lists. */
 function SortButtons<T extends string>({
   label,
   value,
@@ -44,9 +44,9 @@ function SortButtons<T extends string>({
 }
 
 /**
- * A player's statistics (ChessBase's Player statistic, dialog 846): the
+ * A player's statistics (the reference app's Player statistic, dialog 846): the
  * score by colour and by year, then three lists side by side, opponents,
- * tournaments and openings, each with ChessBase's sort buttons. Double-click
+ * tournaments and openings, each with the reference app's sort buttons. Double-click
  * a row to list its games.
  */
 export function PlayerStatisticsDialog({

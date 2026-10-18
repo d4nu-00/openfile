@@ -6,11 +6,11 @@ corrected after measuring. The direction was
 agreed in conversation: reuse the engine infrastructure of Tactical
 Analysis, and port what can be traced.
 
-Evidence is from CBase18.exe 18.1 (x64), analysed statically through an REA
+Evidence is from the reference binary (x64), analysed statically through an REA
 session (`analysis/reports/` in the research workspace). Messages are cited
 by their ordinal in the message catalogue.
 
-## What ChessBase does
+## What the reference app does
 
 | Command | Id | Class, run slot | Key | Message |
 |---|---|---|---|---|
@@ -76,7 +76,7 @@ by their ordinal in the message catalogue.
   (110667).
 
 **Not traced:** the complexity measure and the deep-search tags (they come
-from ChessBase's own engine), the category and context thresholds, the
+from the reference app's own engine), the category and context thresholds, the
 shape and slope definitions, the per-game average behind *a* (taken here to
 be the analysed plies), and the observation rules.
 
@@ -86,7 +86,7 @@ be the analysed plies), and the observation rules.
 
 * **Error Report** (B, database window) analyses the games selected in the
   game list, at most 1,000, with an engine of the user's (installed or a
-  file), as Tactical Analysis does. The dialog offers ChessBase's **Quick**
+  file), as Tactical Analysis does. The dialog offers the reference app's **Quick**
   (depth 9) and **Slower** (depth 12), and whose moves to count: one player
   of the selection (by default the one in most games) or both sides.
 * **The engine pass** runs in the backend, cancellable with progress, with
@@ -96,35 +96,35 @@ be the analysed plies), and the observation rules.
   before less the evaluation after, from the mover's side, clamped to
   0–400, and 0 when the move is the engine's best. Unreadable games and
   set-ups the engine refuses are skipped and counted.
-* **Weights**, ChessBase's where they can be known: 0 for the only legal
+* **Weights**, the reference app's where they can be known: 0 for the only legal
   move and 0.2 for a recapture (a capture on the square of the previous
-  move's capture). Every other move gets 2, which is ChessBase's least weight
-  of an ordinary move (1 + its complexity / 100, at least 1). ChessBase's
+  move's capture). Every other move gets 2, which is the reference app's least weight
+  of an ordinary move (1 + its complexity / 100, at least 1). The reference app's
   complexity and its deep-search tags come from its own engine; a UCI
   engine does not report them.
-* **Error value**, in ChessBase's form: *e* = Σ loss / Σ weight over the
+* **Error value**, in the reference app's form: *e* = Σ loss / Σ weight over the
   moves with a weight. A first version weighted the losses as well, which
   gave about twice the error and estimates 400–700 points too low on real
   games (see Measurements).
-* **Blunder Elo**: ChessBase's curve of *e*, with *a* = the analysed plies
+* **Blunder Elo**: the reference app's curve of *e*, with *a* = the analysed plies
   per game. The slope and shape terms are left out (no complexity
   measure). It is shown with the side's average rating in the analysed
   games and the difference. The result is labelled an estimate, with
-  ChessBase's caveat that it varies a lot with few games.
+  the reference app's caveat that it varies a lot with few games.
 
 ### The workbench's own statistics
 
-These stand in for ChessBase's charts, whose thresholds were not traced:
+These stand in for the reference app's charts, whose thresholds were not traced:
 * **Severity**, per 100 counted moves: inaccuracies (25–49 cp), mistakes
   (50–99), blunders (100–299) and losing blunders (300+). These are common
-  conventions, not ChessBase's categories.
+  conventions, not the reference app's categories.
 * **Magnitude distribution**: losses of 25 cp or more in bins of 25 up to
   400.
 * **Contexts**: average loss and error count by phase (opening = the first
   15 moves, endgame = each side has at most 13 points of pieces,
   middlegame otherwise) and by opponent (stronger or weaker by 100 points or
   more, equal otherwise).
-* **Evaluation transitions**, ChessBase's 15 kinds, for moves losing 50 cp
+* **Evaluation transitions**, the reference app's 15 kinds, for moves losing 50 cp
   or more, with the bands winning ≥ +2.00, better ≥ +0.70, equal, worse
   ≤ −0.70 and lost ≤ −2.00 (the workbench's bands).
 * **Worst moves**: the 30 largest losses with the game, move and best move.
@@ -132,9 +132,9 @@ These stand in for ChessBase's charts, whose thresholds were not traced:
 
 ### Not ported
 
-The HTML page and its charts, the GM reference distributions (ChessBase's
+The HTML page and its charts, the GM reference distributions (the reference app's
 data), the observation sentences, the blitz probability, the complexity
-slope, the shape, and ChessBase's deep-search weights.
+slope, the shape, and the reference app's deep-search weights.
 
 ### Architecture
 
@@ -156,7 +156,7 @@ slope, the shape, and ChessBase's deep-search weights.
 
 ## Measurements
 
-Release build, `src-tauri/examples/error_report.rs`, the classic Mega
+Release build, `src-tauri/examples/error_report.rs`, the classic test database
 read-only, Stockfish 17 (`/opt/homebrew/bin/stockfish`), Quick (depth 9).
 Each run took the player's latest games in entry order, which may include
 rapid and blitz.
@@ -171,5 +171,5 @@ Slower (depth 12) on player A took 95 s for the same 1,014 moves. With the
 first version's weighting (losses weighted by 1), the same runs gave 2430,
 2130 and similar, 400–700 points low, which led to the correction above.
 Stockfish's evaluations at these depths vary from run to run. The estimate
-tends to be low for strong players, as ChessBase's own remarks warn for few
+tends to be low for strong players, as the reference app's own remarks warn for few
 games and fast games.

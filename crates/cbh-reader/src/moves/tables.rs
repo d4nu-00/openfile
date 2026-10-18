@@ -1433,8 +1433,8 @@ pub const DEOBFUSCATE: [u8; 256] = [
     248, 40, 126, 97, 57, 225, 219, 105, 128,
 ];
 
-/// The one-byte move codes in ChessBase's move order: `STANDARD_ORDER[i]`
-/// is the byte of move kind `i` in a standard CBG record (CBase18.exe 18.1,
+/// The one-byte move codes in the reference app's move order: `STANDARD_ORDER[i]`
+/// is the byte of move kind `i` in a standard CBG record (the reference binary,
 /// `.data` `0x141974010`, chosen for encoding kind 0 by `0x1401fb8f0`).
 pub const STANDARD_ORDER: [u8; 256] = [
     170, 73, 57, 216, 93, 194, 177, 178, 71, 118, 181, 165, 184, 203, 83, 127, 107, 141, 121, 190,

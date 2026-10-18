@@ -28,7 +28,7 @@ import {
 import type { WorkbenchApi } from "../api/client";
 import type { DatabaseSymbol, StartScreenData } from "../api/types";
 
-/** ChessBase's database types (messages 50027–50046) and the workbench's
+/** the reference app's database types (messages 50027–50046) and the workbench's
  * own icon for each. */
 export const KINDS: Record<string, [string, LucideIcon]> = {
   unspecific: ["Unspecific", Database],
@@ -62,7 +62,7 @@ const sameGroup = (a: StartGroup, b: StartGroup) =>
     : a.folder === b.folder;
 
 /**
- * The database start screen, after ChessBase's database window: My
+ * The database start screen, after the reference app's database window: My
  * Databases, Recent Databases and folder shortcuts on the left, the chosen
  * group's database symbols on the right. Double-click opens a database.
  */

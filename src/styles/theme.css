@@ -1,5 +1,5 @@
-/* ChessBase 18-style UI themes (BCG Office 2016 family). White is the default.
-   Icon tints are sampled from the matching ChessBase ribbon icon themes. */
+/* the reference app-style UI themes (BCG Office 2016 family). White is the default.
+   Icon tints are sampled from the matching the reference app ribbon icon themes. */
 :root,
 [data-theme="white"] {
   --font-ui: "Segoe UI", -apple-system, BlinkMacSystemFont, Inter, sans-serif;

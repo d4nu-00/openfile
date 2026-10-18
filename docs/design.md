@@ -6,7 +6,7 @@ Status: Approved by the user on 2026-10-09; implementation has not started.
 ## Intended outcome
 
 Build an independent, open-source desktop application for Windows, macOS and
-Linux that covers the practical chess database workflows of ChessBase. The
+Linux that covers the practical chess database workflows of the reference app. The
 user's acceptance priority is reading existing `.cbh` databases. Feature parity
 is the overall direction; the first deliverable is a usable database workbench,
 followed by separately scoped search, preparation and training subsystems.
@@ -14,7 +14,7 @@ followed by separately scoped search, preparation and training subsystems.
 The first deliverable must open a real classic CBH database, show its game list,
 replay supported games with variations, export PGN and analyse positions with a
 local UCI engine. Merely listing headers or displaying a demonstration board
-does not meet this requirement. The supplied Mega Database is the private local
+does not meet this requirement. The supplied test database is the private local
 compatibility target, including its scale of more than eleven million entries.
 
 Assumptions: local desktop use comes first; offline access is essential; the
@@ -197,7 +197,7 @@ limitations are visible, and all three desktop builds have actually passed.
    independently available services and protocols.
 
 Each stage gets its own scoped design and verification. Exact proprietary UI,
-embedded assets and hosted ChessBase services are not dependencies of the
+embedded assets and hosted vendor services are not dependencies of the
 independent product. A full feature-equivalence claim requires workflow-by-
 workflow acceptance evidence beyond this initial deliverable.
 

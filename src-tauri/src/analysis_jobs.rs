@@ -1,4 +1,4 @@
-//! The analysis jobs queue (ChessBase's analysis jobs, see
+//! The analysis jobs queue (the reference app's analysis jobs, see
 //! docs/analysis.md): positions of games in a 2CBH database opened for
 //! editing, analysed one after another by one engine. Each result is merged
 //! into its game, which replaces the entry ("Merge result with original
@@ -31,9 +31,9 @@ const LINE_MOVES: usize = 20;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum JobKind {
-    /// ChessBase's type 1: the engine's lines after the time.
+    /// The reference app's type 1: the engine's lines after the time.
     Analysis { lines: u32, seconds: u64 },
-    /// ChessBase's type 2: Deep Analysis for the time.
+    /// The reference app's type 2: Deep Analysis for the time.
     Deep { seconds: u64 },
 }
 
@@ -41,7 +41,7 @@ impl JobKind {
     fn check(&self) -> Result<(), AppError> {
         let bad = |m: &str| Err(AppError::new("invalidParameters", m));
         match *self {
-            // ChessBase's minimums: 15 s for Analysis, 30 s for Deep Analysis.
+            // The reference app's minimums: 15 s for Analysis, 30 s for Deep Analysis.
             Self::Analysis { lines, seconds } => {
                 if !(1..=10).contains(&lines) {
                     return bad("Analysis takes 1 to 10 lines");
@@ -247,7 +247,7 @@ impl Registry {
         Ok(())
     }
 
-    /// ChessBase's Create analysis jobs: the final position of each game's
+    /// The reference app's Create analysis jobs: the final position of each game's
     /// main line, for the games in `ranges` of the current list. Text
     /// entries are left out; games that cannot be read are left out and
     /// counted.
@@ -305,7 +305,7 @@ impl Registry {
         Ok((self.analysis_jobs()?, left_out))
     }
 
-    /// ChessBase's Add Analysis Job: the board position of a game loaded
+    /// The reference app's Add Analysis Job: the board position of a game loaded
     /// from a database opened for editing, without unsaved changes.
     pub fn add_analysis_job(
         &self,

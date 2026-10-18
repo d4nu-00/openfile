@@ -103,8 +103,8 @@ fn field(bytes: &[u8]) -> EntityText {
     }
 }
 /// Classic names, like annotation text, are UTF-8 when they are valid UTF-8,
-/// and Windows-1252 otherwise (the Mega has no-break spaces, 0xA0, in
-/// names). Bytes 0xA2 to 0xA6 are pieces in ChessBase's figurine fonts; names
+/// and Windows-1252 otherwise (the test database has no-break spaces, 0xA0, in
+/// names). Bytes 0xA2 to 0xA6 are pieces in the reference app's figurine fonts; names
 /// that are opening lines use them ("1.b3 e5 2.\xa5b2 \xa4c6"), so they are
 /// shown as figurines: ♔ ♕ ♘ ♗ ♖.
 pub fn decode_name(bytes: &[u8]) -> String {
@@ -311,7 +311,7 @@ impl EntityTables {
             .put((TOURNAMENT, id), Cached::Tournament(v.clone()));
         Ok(v)
     }
-    /// CBC: one 45-byte name, stored as ChessBase shows it ("Last,First").
+    /// CBC: one 45-byte name, stored as the reference app shows it ("Last,First").
     pub fn annotator(&mut self, id: u32) -> Result<EntityText, CbhError> {
         self.single(ANNOTATOR, id)
     }

@@ -1,4 +1,4 @@
-//! Player statistics (ChessBase's Player statistic, `PLAYERSTATISTIC`, and
+//! Player statistics (the reference app's Player statistic, `PLAYERSTATISTIC`, and
 //! Statistics, `STATISTICS`). See docs/player-statistics.md.
 //!
 //! A player's games are found by one parallel scan of the entry index; no

@@ -114,7 +114,7 @@ fn classic_names_decode_utf8_windows_1252_and_figurines() {
     // Not UTF-8: Windows-1252, with a no-break space.
     assert_eq!(decode_name(b"Rodrigo\xa0Pereira"), "Rodrigo\u{a0}Pereira");
     assert_eq!(decode_name(b"M\xfcller"), "Müller");
-    // Opening lines stored as names use ChessBase's figurine bytes.
+    // Opening lines stored as names use the reference app's figurine bytes.
     assert_eq!(decode_name(b"1.b3 e5 2.\xa5b2 \xa4c6"), "1.b3 e5 2.♗b2 ♘c6");
     assert_eq!(decode_name(b"\xa2b1 \xa3d5 \xa6fd8"), "♔b1 ♕d5 ♖fd8");
 }

@@ -30,7 +30,7 @@ const layouts = {
 
 /**
  * The players or tournaments of the open database, alphabetically, with
- * their number of games (ChessBase's player and tournament lists). The list
+ * their number of games (the reference app's player and tournament lists). The list
  * is prepared once per database in the app's data folder.
  */
 export function NamesPane({

@@ -2,14 +2,14 @@
 
 Status: spec and implementation on branch `start-screen` (2026-10-14).
 
-## What ChessBase does
+## What the reference app does
 
-Evidence: CBase18.exe 18.1 (x64), its command table, messages, ribbon and
+Evidence: the reference binary (x64), its command table, messages, ribbon and
 strings.
 
 * **My Databases** (`DBFavorites`; ribbon Home › Database, message 50002).
   The database window shows database *symbols*: a database's icon, name and
-  size. "Open a database and add symbol to 'My ChessBase'" (50592), so
+  size. "Open a database and add symbol to 'My the reference app's" (50592), so
   opening a database also adds its symbol. **Remove Database Symbol** (50487,
   ribbon Home › Copy) takes a symbol away and keeps the files (50488). "Pin
   to favorites" is message 4208.
@@ -36,7 +36,7 @@ strings.
 
 ## Workbench
 
-ChessBase's bitmaps are not used. The icons are the workbench's own,
+The reference app's bitmaps are not used. The icons are the workbench's own,
 one per type.
 
 **The screen.** The Databases workspace tab shows the start screen when no
@@ -49,7 +49,7 @@ database is open, and whenever My Databases (`DBFavorites`) is chosen.
   are missing is shown dimmed.
 * **Opening**: double-click or Enter opens a symbol.
 * **Symbol commands**: Pin to My Databases, Remove Database Symbol, Set Type
-  (ChessBase's 20 types), Open Folder Location (workbench).
+  (the reference app's 20 types), Open Folder Location (workbench).
 * **Views**: Symbols (a grid) and Details (a table, Ctrl+D). Tile and Small
   Symbols are left for later.
 
@@ -63,7 +63,7 @@ config folder), never beside a database:
 | Folder shortcuts | 50 | as added |
 
 * Opening or creating a database puts it first in Recent and, as in
-  ChessBase, adds it to My Databases unless it is there already.
+  the reference app, adds it to My Databases unless it is there already.
 * Paths are absolute and kept once each.
 * Options does not change the lists: they are changed only through their
   own commands, which read, change and save the file in one step.

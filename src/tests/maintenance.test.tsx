@@ -37,7 +37,7 @@ describe("database maintenance", () => {
     ).toBeDisabled();
   });
 
-  it("finds doubles with ChessBase's options and marks them", async () => {
+  it("finds doubles with the reference app's options and marks them", async () => {
     const ui = await editable();
     await ui.user.click(
       screen.getByRole("button", { name: "Find Double Games" }),

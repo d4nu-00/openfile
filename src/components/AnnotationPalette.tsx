@@ -11,7 +11,7 @@ const LABELS: Record<SymbolSlot, string> = {
 };
 
 /**
- * ChessBase's Annotation Palette (Ctrl+Alt+S): symbols for the current move,
+ * The reference app's Annotation Palette (Ctrl+Alt+S): symbols for the current move,
  * stored as PGN NAGs. A move has one symbol of each group; clicking a set
  * symbol removes it.
  */

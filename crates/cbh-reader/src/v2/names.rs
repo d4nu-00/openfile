@@ -7,7 +7,7 @@
 //! stored in fixed groups: group `id` holds slot `id` of every list in header
 //! order, so a record lives at `header + id * sum(slots) + sum(earlier slots)`.
 //! A record is a LE32 payload length and the payload; strings inside it are
-//! LE32-length-prefixed UTF-8. Recovered from the Mega Database 2025 sample and
+//! LE32-length-prefixed UTF-8. Recovered from the test database sample and
 //! cross-checked against the classic CBP/CBT names of every shared game.
 use crate::{
     CbhError, Diagnostic,
@@ -206,7 +206,7 @@ impl NameIndex {
     pub fn player(&mut self, id: u32) -> Result<EntityText, CbhError> {
         self.person(PLAYER, id)
     }
-    /// 2CBH annotator ids refer to the player list: every annotated Mega game
+    /// 2CBH annotator ids refer to the player list: every annotated test database game
     /// names the same person here as the classic CBC annotator.
     pub fn annotator(&mut self, id: u32) -> Result<EntityText, CbhError> {
         self.person(ANNOTATOR, id)

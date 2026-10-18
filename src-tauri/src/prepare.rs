@@ -91,7 +91,7 @@ pub struct Preparation {
     pub truncated: bool,
     pub score: Score,
     /// The average rating of the player's last ten games with the colour, as
-    /// ChessBase computes it when preparing.
+    /// The reference app computes it when preparing.
     pub recent_rating: Option<u32>,
     pub first_year: u16,
     pub last_year: u16,
@@ -100,7 +100,7 @@ pub struct Preparation {
     pub openings: Vec<OpeningRow>,
     /// Latest entry first.
     pub latest: Vec<LatestGame>,
-    /// Entry number of the last game, which ChessBase loads.
+    /// Entry number of the last game, which the reference app loads.
     pub last_game: Option<String>,
 }
 

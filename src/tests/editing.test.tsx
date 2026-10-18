@@ -125,7 +125,7 @@ describe("game data and text", () => {
     );
   });
 
-  it("opens ChessBase's symbol popups for typed !, ? and =", async () => {
+  it("opens the reference app's symbol popups for typed !, ? and =", async () => {
     // 1.e4 carries "!" (NAG 1), so the move popup starts on it.
     const ui = renderWorkbench({ position: at(1) });
     await ui.user.keyboard("?");
