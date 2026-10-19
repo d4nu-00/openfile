@@ -1572,6 +1572,10 @@ export function App({
   const referencePane = (
     <ReferencePane
       reference={panes.reference}
+      api={api}
+      databaseId={state.database?.databaseId}
+      filter={panes.referenceFilter}
+      onFilterChange={panes.setReferenceFilter}
       hasDatabase={!!state.database}
       hasLine={!!panes.line}
       onOpen={openReference}

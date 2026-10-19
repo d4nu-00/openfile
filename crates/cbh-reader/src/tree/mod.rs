@@ -269,6 +269,67 @@ pub struct GameStats {
     pub year: u16,
 }
 
+/// Criteria for the Reference pane. Elo bounds apply to both players; a
+/// missing rating or year cannot satisfy a bound on that field.
+#[derive(Clone, Debug, Default, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReferenceFilter {
+    pub elo_min: Option<u16>,
+    pub elo_max: Option<u16>,
+    pub year_min: Option<u16>,
+    pub year_max: Option<u16>,
+    pub good_games: bool,
+    pub player_id: Option<u32>,
+    pub player_black: bool,
+}
+
+impl ReferenceFilter {
+    fn matches_elo(&self, game: &GameStats) -> bool {
+        let elo_bound = self.elo_min.is_some() || self.elo_max.is_some();
+        if elo_bound && (game.white_elo == 0 || game.black_elo == 0) {
+            return false;
+        }
+        if elo_bound
+            && [game.white_elo, game.black_elo].into_iter().any(|elo| {
+                self.elo_min.is_some_and(|min| elo < min)
+                    || self.elo_max.is_some_and(|max| elo > max)
+            })
+        {
+            return false;
+        }
+        true
+    }
+    fn matches_year(&self, game: &GameStats) -> bool {
+        let year_bound = self.year_min.is_some() || self.year_max.is_some();
+        if year_bound
+            && (game.year == 0
+                || self.year_min.is_some_and(|min| game.year < min)
+                || self.year_max.is_some_and(|max| game.year > max))
+        {
+            return false;
+        }
+        true
+    }
+    fn matches_good(&self, game: &GameStats, plies: u8) -> bool {
+        !self.good_games
+            || (game.white_elo >= 2200 && game.black_elo >= 2200 && game.result != 0 && plies >= 40)
+    }
+    fn matches(&self, game: &GameStats, plies: u8) -> bool {
+        self.matches_elo(game) && self.matches_year(game) && self.matches_good(game, plies)
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ReferenceChoiceStats {
+    pub filtered: Vec<MoveStats>,
+    pub player: Vec<MoveStats>,
+    pub scanned: u64,
+    pub after_elo: u64,
+    pub after_year: u64,
+    pub missing_elo: u64,
+    pub missing_year: u64,
+}
+
 impl GameStats {
     /// Forfeits count as their PGN result, as in the search mask.
     pub fn of(raw: &RawEntry) -> Self {
@@ -897,6 +958,62 @@ impl Database {
     ) -> Result<Vec<MoveStats>, CbhError> {
         Ok(self.line_answer(ordinals, target, 0, cancel)?.0)
     }
+
+    /// Counts filtered and selected-player choices from indexed position
+    /// postings. The caller supplies the side to move and an explicit bound
+    /// on postings; no move stream needs replaying here.
+    pub fn reference_choice_stats(
+        &self,
+        games: &[(u64, u16)],
+        black_to_move: bool,
+        filter: &ReferenceFilter,
+        cancel: &AtomicBool,
+    ) -> Result<ReferenceChoiceStats, CbhError> {
+        let mut result = ReferenceChoiceStats::default();
+        for &(ordinal, code) in games {
+            if cancel.load(Ordering::Relaxed) {
+                break;
+            }
+            let raw = self.raw_chunk(ordinal, 1)?.remove(0);
+            result.scanned += 1;
+            if raw.white_elo.is_none() || raw.black_elo.is_none() {
+                result.missing_elo += 1;
+            }
+            if raw.year.is_none() {
+                result.missing_year += 1;
+            }
+            let stats = GameStats::of(&raw);
+            if !filter.matches_elo(&stats) {
+                continue;
+            }
+            result.after_elo += 1;
+            if !filter.matches_year(&stats) {
+                continue;
+            }
+            result.after_year += 1;
+            if !filter.matches_good(&stats, raw.move_count) {
+                continue;
+            }
+            debug_assert!(filter.matches(&stats, raw.move_count));
+            add_game(&mut result.filtered, code, &stats, black_to_move);
+            if filter.player_id.is_some_and(|id| {
+                if filter.player_black {
+                    raw.black_id == Some(id)
+                } else {
+                    raw.white_id == Some(id)
+                }
+            }) {
+                add_game(&mut result.player, code, &stats, black_to_move);
+            }
+        }
+        result
+            .filtered
+            .sort_by(|a, b| b.games.cmp(&a.games).then(a.code.cmp(&b.code)));
+        result
+            .player
+            .sort_by(|a, b| b.games.cmp(&a.games).then(a.code.cmp(&b.code)));
+        Ok(result)
+    }
 }
 
 /// Totals over the moves of an answer.
@@ -985,6 +1102,48 @@ mod tests {
         // 62.5% rounds to 63%: +95.
         assert_eq!(s.performance(), Some(2495));
         assert_eq!((s.year_min, s.year_max), (2000, 2000));
+    }
+
+    #[test]
+    fn reference_filter_excludes_unknowns_and_applies_each_bound() {
+        let good = GameStats {
+            result: 1,
+            white_elo: 2320,
+            black_elo: 2210,
+            year: 2022,
+        };
+        let filter = ReferenceFilter {
+            elo_min: Some(2200),
+            year_min: Some(2020),
+            good_games: true,
+            ..Default::default()
+        };
+        assert!(filter.matches(&good, 40));
+        assert!(!filter.matches(
+            &GameStats {
+                black_elo: 0,
+                ..good
+            },
+            40
+        ));
+        assert!(!filter.matches(&GameStats { year: 0, ..good }, 40));
+        assert!(!filter.matches(&GameStats { result: 0, ..good }, 40));
+        assert!(!filter.matches(&good, 39));
+        assert!(
+            !ReferenceFilter {
+                elo_max: Some(2300),
+                ..Default::default()
+            }
+            .matches(&good, 40)
+        );
+        assert!(
+            !ReferenceFilter {
+                year_max: Some(2021),
+                ..Default::default()
+            }
+            .matches(&good, 40)
+        );
+        assert!(ReferenceFilter::default().matches(&GameStats::default(), 0));
     }
 
     #[test]

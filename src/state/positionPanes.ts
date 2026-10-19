@@ -4,6 +4,8 @@ import type {
   Line,
   PageResponse,
   ReferenceResponse,
+  ReferenceFilter,
+  ReferenceStatistics,
   TreeResponse,
 } from "../api/types";
 import type { WorkbenchApi } from "../api/client";
@@ -39,7 +41,15 @@ export interface ReferenceState {
   response?: ReferenceResponse;
   page?: PageResponse;
   error?: string;
+  statistics?: ReferenceStatistics;
+  statisticsLoading?: boolean;
+  statisticsError?: string;
 }
+
+export const defaultReferenceFilter: ReferenceFilter = {
+  goodGames: false,
+  playerBlack: false,
+};
 
 /** Waits this long after a move before asking, so fast replay stays smooth. */
 const SETTLE_MS = 60;
@@ -71,11 +81,17 @@ export function usePositionPanes(
   const gates = useRef({
     book: new SelectionGate(),
     reference: new SelectionGate(),
+    statistics: new SelectionGate(),
   }).current;
   const [book, setBook] = useState<BookState>({ loading: false });
   const [reference, setReference] = useState<ReferenceState>({
     loading: false,
   });
+  const [referenceFilter, setReferenceFilter] = useState<ReferenceFilter>(
+    defaultReferenceFilter,
+  );
+  useEffect(() => setReferenceFilter(defaultReferenceFilter), [db?.databaseId]);
+  const filterKey = JSON.stringify(referenceFilter);
   /** The position whose Find Position the user asked for. */
   const [searchKey, setSearchKey] = useState<string>();
   const searchAnyway = key !== "" && searchKey === key;
@@ -113,7 +129,7 @@ export function usePositionPanes(
   useEffect(() => {
     if (!active.reference || !db || !line) return;
     const request = gates.reference.begin();
-    setReference((r) => ({ ...r, loading: true }));
+    setReference({ loading: true });
     const timer = setTimeout(async () => {
       try {
         const response = await api.referenceSearch(
@@ -140,6 +156,55 @@ export function usePositionPanes(
     };
   }, [active.reference, db, key, searchAnyway]);
 
+  useEffect(() => {
+    const response = reference.response;
+    if (
+      !active.reference ||
+      !db ||
+      !line ||
+      !response ||
+      response.source === "notSearched"
+    )
+      return;
+    const request = gates.statistics.begin();
+    setReference((r) => ({
+      ...r,
+      statistics: undefined,
+      statisticsLoading: true,
+      statisticsError: undefined,
+    }));
+    const timer = setTimeout(async () => {
+      try {
+        const statistics = await api.referenceStatistics(
+          db.databaseId,
+          line,
+          request,
+          referenceFilter,
+        );
+        if (gates.statistics.accept(statistics.requestId))
+          setReference((r) => ({ ...r, statistics, statisticsLoading: false }));
+      } catch (e) {
+        if (gates.statistics.accept(request))
+          setReference((r) => ({
+            ...r,
+            statisticsLoading: false,
+            statisticsError: explain(e),
+          }));
+      }
+    }, SETTLE_MS);
+    return () => {
+      clearTimeout(timer);
+      gates.statistics.begin();
+      void api.cancelReference(db.databaseId).catch(() => {});
+    };
+  }, [
+    active.reference,
+    db?.databaseId,
+    key,
+    reference.response?.requestId,
+    filterKey,
+  ]);
+
   // Leaving the position or closing the pane stops a running search.
   useEffect(() => {
     if (!active.reference || !db) return;
@@ -153,12 +218,15 @@ export function usePositionPanes(
     line,
     book,
     reference,
+    referenceFilter,
+    setReferenceFilter,
     /** Runs Find Position for the current position, however long it takes. */
     searchReference: () => setSearchKey(key),
     cancelReference: () => {
       gates.reference.begin();
+      gates.statistics.begin();
       setSearchKey(undefined);
-      setReference((r) => ({ ...r, loading: false }));
+      setReference((r) => ({ ...r, loading: false, statisticsLoading: false }));
       if (db) void api.cancelReference(db.databaseId).catch(() => {});
     },
   };

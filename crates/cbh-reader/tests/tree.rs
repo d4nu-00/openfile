@@ -1,6 +1,8 @@
 use cbh_reader::{
     Database, ReadLimits,
-    tree::{BuildOptions, OpeningTree, Source, pack_move, position_hash, unpack_uci},
+    tree::{
+        BuildOptions, OpeningTree, ReferenceFilter, Source, pack_move, position_hash, unpack_uci,
+    },
     v2::write::Writer,
 };
 use chess_core::{GameLimits, parse_pgn};
@@ -9,7 +11,7 @@ use std::{path::Path, sync::atomic::AtomicBool};
 
 fn game(white: u16, black: u16, year: u16, result: &str, moves: &str) -> String {
     format!(
-        "[WhiteElo \"{white}\"]\n[BlackElo \"{black}\"]\n[Date \"{year}.01.01\"]\n[Result \"{result}\"]\n\n{moves} {result}\n\n"
+        "[White \"Alpha\"]\n[Black \"Beta\"]\n[WhiteElo \"{white}\"]\n[BlackElo \"{black}\"]\n[Date \"{year}.01.01\"]\n[Result \"{result}\"]\n\n{moves} {result}\n\n"
     )
 }
 
@@ -130,6 +132,57 @@ fn counts_main_lines_and_transpositions() {
     assert_eq!(
         e4.games.iter().map(|g| g.0).collect::<Vec<_>>(),
         [1, 2, 4, 5]
+    );
+}
+
+#[test]
+fn reference_choices_filter_indexed_postings_and_can_stop() {
+    let d = tempfile::tempdir().unwrap();
+    let mut db = Database::open(&family(d.path()), ReadLimits::default()).unwrap();
+    let file = d.path().join("T.cwtree");
+    let cancel = AtomicBool::new(false);
+    OpeningTree::build(&db, &file, &options(2), &cancel, |_, _, _| {}).unwrap();
+    let mut tree = OpeningTree::open(&file, &db).unwrap().unwrap();
+    let answer = ask(&mut tree, &db, &[]);
+    let player_id = db.page(1, 1).unwrap().entries[0].white_id.unwrap();
+    let filter = ReferenceFilter {
+        elo_min: Some(2500),
+        year_max: Some(2003),
+        player_id: Some(player_id),
+        ..Default::default()
+    };
+    let selected = db
+        .reference_choice_stats(&answer.games, false, &filter, &cancel)
+        .unwrap();
+    assert_eq!(selected.scanned, 7);
+    assert_eq!(selected.missing_elo, 2);
+    assert_eq!(selected.filtered.iter().map(|m| m.games).sum::<u64>(), 3);
+    assert_eq!(
+        selected
+            .filtered
+            .iter()
+            .find(|m| m.uci().as_deref() == Some("e2e4"))
+            .unwrap()
+            .games,
+        2
+    );
+    assert_eq!(selected.player.iter().map(|m| m.games).sum::<u64>(), 3);
+    let good = ReferenceFilter {
+        good_games: true,
+        ..Default::default()
+    };
+    assert!(
+        db.reference_choice_stats(&answer.games, false, &good, &cancel)
+            .unwrap()
+            .filtered
+            .is_empty()
+    );
+    cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+    assert_eq!(
+        db.reference_choice_stats(&answer.games, false, &filter, &cancel)
+            .unwrap()
+            .scanned,
+        0
     );
 }
 

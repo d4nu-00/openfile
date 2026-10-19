@@ -727,6 +727,17 @@ pub fn cancel_reference(
     state.cancel_reference(database_id)
 }
 #[tauri::command]
+pub async fn reference_statistics(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    line: crate::trees::Line,
+    request_id: String,
+    filter: cbh_reader::tree::ReferenceFilter,
+) -> Result<crate::trees::ReferenceStatistics, AppError> {
+    let s = state.inner().clone();
+    blocking(move || s.reference_statistics(database_id, line, request_id, filter)).await
+}
+#[tauri::command]
 pub async fn read_reference_page(
     state: tauri::State<'_, Arc<Registry>>,
     database_id: String,

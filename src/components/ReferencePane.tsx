@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { GameList } from "../views/GameList";
 import type { ReferenceState } from "../state/positionPanes";
+import type { ReferenceFilter } from "../api/types";
+import type { WorkbenchApi } from "../api/client";
+import { ReferenceFilters } from "./ReferenceFilters";
 
 const sources = {
   tree: "from the opening tree",
@@ -21,6 +24,10 @@ export function ReferencePane({
   onOpen,
   onSearch,
   onCancel,
+  api,
+  databaseId,
+  filter,
+  onFilterChange,
 }: {
   reference: ReferenceState;
   hasDatabase: boolean;
@@ -29,6 +36,10 @@ export function ReferencePane({
   /** Runs Find Position when the tree cannot answer. */
   onSearch?: () => void;
   onCancel?: () => void;
+  api: WorkbenchApi;
+  databaseId?: string;
+  filter: ReferenceFilter;
+  onFilterChange: (next: ReferenceFilter) => void;
 }) {
   const [cursor, setCursor] = useState<number>();
   const [top, setTop] = useState(0);
@@ -61,9 +72,9 @@ export function ReferencePane({
               : ""}
           </span>
         )}
-        {reference.loading && (
+        {(reference.loading || reference.statisticsLoading) && (
           <span className="hint">
-            Searching…{" "}
+            {reference.loading ? "Searching…" : "Updating choices…"}{" "}
             {onCancel && (
               <button type="button" className="link-button" onClick={onCancel}>
                 Stop
@@ -72,6 +83,17 @@ export function ReferencePane({
           </span>
         )}
       </div>
+      {databaseId && hasLine && !notSearched && (
+        <ReferenceFilters
+          api={api}
+          databaseId={databaseId}
+          filter={filter}
+          onChange={onFilterChange}
+          statistics={reference.statistics}
+          loading={reference.statisticsLoading}
+          error={reference.statisticsError}
+        />
+      )}
       {notSearched && !reference.loading ? (
         <div className="empty-state">
           <p>

@@ -792,6 +792,25 @@ export function mockApi(firstDatabase = 1) {
         indexed: false,
       })),
     cancelReference: vi.fn().mockResolvedValue(undefined),
+    referenceStatistics: vi
+      .fn()
+      .mockImplementation(async (_db, _line, requestId) => ({
+        requestId,
+        fullGames: 10,
+        filteredGames: 7,
+        playerGames: 2,
+        scannedGames: 10,
+        afterElo: 8,
+        afterYear: 7,
+        missingElo: 1,
+        missingYear: 2,
+        complete: true,
+        fullComplete: true,
+        moves: [
+          { san: "e4", full: 6, filtered: 4, player: 2 },
+          { san: "d4", full: 3, filtered: 2, player: 0 },
+        ],
+      })),
     readReferencePage: vi
       .fn()
       .mockImplementation(async (_db, _start, _limit, requestId) => ({

@@ -175,7 +175,7 @@ Names in backticks are the reference app's command ids, for traceability.
 
 - [x] P1 🟢 Opening tree from the user's own databases: moves, frequency, score and Elo (`OPENBOOK`, `TOGGLEBOOKPANE`) *(Create Opening Tree builds it into the app data folder; Book tab and extra pane with N, share, %, =%, Av, Perf and last played; main lines only; journal keeps it current across the workbench's own saves; see docs/opening-tree.md)*
 - [x] P1 🟢 Reference database search for the current position (`TOGGLEREFERENCEPANE`, `FINDREFDBBOARD`, `AutoSearchDB`) *(Reference tab and pane follow the board, from the opening tree or Find Position; stale searches are cancelled; the reference database is the open database, a separate reference database setting is not implemented)*
-- [ ] P1 🟢 Filter reference move statistics by Elo, year and a transparent good-game rule; compare a player's move choices with the full reference set.
+- [x] P1 🟢 Filter reference move statistics by Elo, year and a transparent good-game rule; compare a player's move choices with the full reference set. *(Reference pane: both-player Elo and year bounds, a stated 2200/known-result/40-ply rule, and a searchable player plus colour; exact full-tree baseline alongside filtered and player counts, with a visibly bounded 100,000-game posting scan and cancellation. See [opening tree](docs/opening-tree.md).)*
 - [ ] P2 🟢 Reference insights for the current line: popularity over time, recent strong-player variations and likely endgame types.
 - [ ] P2 🟢 Switch opening-tree sources between the database, current game-list filter and local books, preserving the position and making each source clear.
 - [ ] P2 🟢 Build opening reference statistics from selected games, not only the whole database or a saved search.
