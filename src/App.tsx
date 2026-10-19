@@ -397,6 +397,9 @@ export function App({
     practice.side === workspaceSide
       ? practice
       : undefined;
+  const activePracticeRef = useRef(activePractice);
+  activePracticeRef.current = activePractice;
+  const gradingRef = useRef<typeof activePractice>(undefined);
   useEffect(() => {
     if (notationTab !== "repertoire") setPractice(undefined);
   }, [notationTab]);
@@ -473,18 +476,29 @@ export function App({
     );
   }
   async function gradePractice(uci: string) {
-    if (!activePractice || activePractice.result || !panes.line) return;
+    if (
+      !activePractice ||
+      activePractice.result ||
+      !panes.line ||
+      gradingRef.current === activePractice
+    )
+      return;
+    gradingRef.current = activePractice;
     try {
       const result = await api.repertoireGrade(panes.line, workspaceSide, uci);
+      if (activePracticeRef.current !== activePractice) return;
       setPractice({ ...activePractice, result });
       setRepertoireRefresh((n) => n + 1);
     } catch (error) {
+      if (activePracticeRef.current !== activePractice) return;
       w.setDiagnostics([
         {
           code: "repertoire",
           message: (error as { message?: string }).message ?? String(error),
         },
       ]);
+    } finally {
+      if (gradingRef.current === activePractice) gradingRef.current = undefined;
     }
   }
   /** The best line of the active kibitzer, for the position shown. */

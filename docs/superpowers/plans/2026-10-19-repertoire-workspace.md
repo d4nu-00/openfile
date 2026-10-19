@@ -55,4 +55,4 @@
 
 - [x] Describe the user flow, storage, transpositions, practice and limits.
 - [x] Run format, lint, test, typecheck, build and distribution checks.
-- [ ] Inspect UI screenshots, fix defects and open an unmerged PR.
+- [x] Inspect UI screenshots, fix defects and open an unmerged PR.

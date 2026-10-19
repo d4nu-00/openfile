@@ -309,6 +309,53 @@ it("plays a normal game move after leaving practice", async () => {
   expect(grade).not.toHaveBeenCalled();
 });
 
+it("ignores practice feedback returned after leaving the tab", async () => {
+  const ui = renderWorkbench();
+  const current = {
+    key: "start",
+    fen: line.startFen,
+    line,
+    route: "Start position",
+    ownTurn: true,
+    moves: [{ uci: "e2e4", san: "e4", preferred: true, note: "", valid: true }],
+    practice: { attempts: 0, correct: 0, needsRetry: false },
+  };
+  vi.spyOn(ui.api, "repertoireSnapshot").mockResolvedValue({
+    ...snapshot,
+    current,
+  });
+  let resolveGrade!: (
+    value: Awaited<ReturnType<WorkbenchApi["repertoireGrade"]>>,
+  ) => void;
+  const grade = vi.spyOn(ui.api, "repertoireGrade").mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        resolveGrade = resolve;
+      }),
+  );
+  await ui.user.click(ui.getByRole("tab", { name: "Repertoire" }));
+  await ui.user.click(
+    await ui.findByRole("button", { name: "Practise this position" }),
+  );
+  await ui.user.click(ui.getByRole("button", { name: "e2 White pawn" }));
+  await ui.user.click(ui.getByRole("button", { name: "e4 empty" }));
+  await waitFor(() => expect(grade).toHaveBeenCalled());
+  await ui.user.click(ui.getByRole("tab", { name: "Notation" }));
+  await act(async () =>
+    resolveGrade({
+      correct: true,
+      playedSan: "e4",
+      preferredSan: "e4",
+      practice: { attempts: 1, correct: 1, needsRetry: false },
+    }),
+  );
+  await ui.user.click(ui.getByRole("tab", { name: "Repertoire" }));
+  expect(
+    await ui.findByRole("button", { name: "Practise this position" }),
+  ).toBeVisible();
+  expect(ui.queryByText("Correct: e4.")).not.toBeInTheDocument();
+});
+
 it("counts an opponent reply as uncovered until my next move is saved", async () => {
   const api = {
     repertoireSnapshot: vi.fn().mockResolvedValue({
