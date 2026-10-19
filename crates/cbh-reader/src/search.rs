@@ -421,7 +421,7 @@ fn quick_term(token: &str) -> Result<QuickTerm, CbhError> {
     }
     let value_lower = value.to_lowercase();
     let mut needle = value_lower.clone();
-    let invalid = || CbhError::InvalidQuery(format!("{token}"));
+    let invalid = || CbhError::InvalidQuery(token.to_string());
     let kind = if let Some(codes) = result_codes(&value_lower) {
         QuickKind::Result(codes)
     } else if value.starts_with('>') || value.starts_with('<') {
@@ -737,20 +737,20 @@ impl Database {
         })?;
         self.names_each_annotator(&mut |id, name| {
             for term in &mut words {
-                if let QuickKind::Any(w) = &mut term.kind {
-                    if contains(name, &term.needle) {
-                        w.annotators.insert(id);
-                    }
+                if let QuickKind::Any(w) = &mut term.kind
+                    && contains(name, &term.needle)
+                {
+                    w.annotators.insert(id);
                 }
             }
             true
         })?;
         self.names_each_source(&mut |id, title| {
             for term in &mut words {
-                if let QuickKind::Any(w) = &mut term.kind {
-                    if contains(title, &term.needle) {
-                        w.sources.insert(id);
-                    }
+                if let QuickKind::Any(w) = &mut term.kind
+                    && contains(title, &term.needle)
+                {
+                    w.sources.insert(id);
                 }
             }
             true
