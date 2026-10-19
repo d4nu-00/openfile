@@ -330,6 +330,7 @@ export function mockApi(firstDatabase = 1) {
                 white: true,
                 loss: 120,
                 category: "mistake",
+                bestUci: "d2d4",
                 bestLine: ["d4", "d5"],
               },
             ],

@@ -309,8 +309,47 @@ export function demoApi(): WorkbenchApi {
       revision: "0",
     }),
     cancelBlunderCheck: async () => {},
-    centipawnAnalysis: async () => {
-      throw { code: "unsupported", message: "Not available in the demo" };
+    centipawnAnalysis: async (_doc, _params, onProgress) => {
+      // Browser preview: one example finding from Morphy's Opera Game.
+      onProgress({ done: 1, total: 1 });
+      return {
+        revision: String(revision),
+        cancelled: false,
+        positions: 1,
+        bookPlies: 19,
+        millisPerMove: 750,
+        white: {
+          moves: 0,
+          averageLoss: null,
+          accuracy: null,
+          errorValue: null,
+          categories: [0, 0, 0, 0, 0, 0, 0, 0],
+        },
+        black: {
+          moves: 1,
+          averageLoss: 168,
+          accuracy: 33,
+          errorValue: 0.84,
+          categories: [0, 0, 0, 0, 0, 1, 0, 0],
+        },
+        items: [
+          { node: 0, comment: "Centipawn Analysis after ply 19" },
+          { node: 20, comment: "Mistake (−1.7)" },
+        ],
+        moves: [
+          {
+            node: 20,
+            ply: 20,
+            moveNumber: 10,
+            san: "cxb5",
+            white: false,
+            loss: 168,
+            category: "mistake" as const,
+            bestUci: "e7b4",
+            bestLine: ["Qb4+"],
+          },
+        ],
+      };
     },
     cancelCentipawnAnalysis: async () => {},
     deepAnalysis: async (_doc, params) => ({

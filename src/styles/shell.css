@@ -1497,6 +1497,90 @@ kbd {
 .review-findings button span {
   width: 100%;
 }
+.practice-marker {
+  margin-left: auto;
+  color: var(--text-muted);
+}
+.practice-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+}
+.practice-entry .hint {
+  white-space: nowrap;
+}
+.review-practice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.practice-topline,
+.practice-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.practice-topline h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.practice-topline span {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.practice-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.practice-board {
+  width: 100%;
+  container-type: inline-size;
+}
+.practice-board .board.compact {
+  width: 100%;
+}
+.practice-promotion,
+.practice-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+.practice-promotion button,
+.practice-actions button {
+  min-width: 0;
+  padding: 5px;
+}
+.practice-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.practice-side .practice-status {
+  min-height: 62px;
+  line-height: 1.4;
+}
+.practice-navigation {
+  justify-content: flex-end;
+}
+@media (max-width: 540px) {
+  .practice-layout {
+    grid-template-columns: 1fr;
+  }
+  .practice-board {
+    max-width: 260px;
+    margin: auto;
+  }
+  .practice-side .practice-status {
+    min-height: 0;
+  }
+}
 .modal.blunder-check {
   flex-direction: column;
   flex-wrap: nowrap;

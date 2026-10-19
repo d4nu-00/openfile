@@ -166,6 +166,8 @@ pub struct ReviewedMove {
     pub loss: i32,
     pub category: Option<Category>,
     pub best_line: Vec<String>,
+    /// First engine move, for local practice attempts.
+    pub best_uci: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -375,6 +377,7 @@ impl Registry {
                     loss: m.loss,
                     category,
                     best_line,
+                    best_uci: m.best.clone(),
                 });
                 records
                     .entry(white)
