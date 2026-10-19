@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   GameView,
   Line,
+  OpenDatabaseResponse,
   PageResponse,
   ReferenceResponse,
   ReferenceFilter,
@@ -35,6 +36,8 @@ export interface BookState {
   loading: boolean;
   tree?: TreeResponse;
   error?: string;
+  requestKey?: string;
+  database?: OpenDatabaseResponse;
 }
 export interface ReferenceState {
   loading: boolean;
@@ -95,11 +98,12 @@ export function usePositionPanes(
   /** The position whose Find Position the user asked for. */
   const [searchKey, setSearchKey] = useState<string>();
   const searchAnyway = key !== "" && searchKey === key;
+  const bookRequestKey = `${db?.databaseId ?? ""}|${key}|${prepared ?? ""}|${bookScope}`;
 
   useEffect(() => {
     if (!active.book || !db || !line) return;
     const request = gates.book.begin();
-    setBook({ loading: true });
+    setBook({ loading: true, requestKey: bookRequestKey, database: db });
     const filtered = bookScope === "search" && !!state.search && !prepared;
     const timer = setTimeout(async () => {
       try {
@@ -109,10 +113,20 @@ export function usePositionPanes(
             ? await api.filteredOpeningTree(db.databaseId, line, request)
             : await api.openingTree(db.databaseId, line, request);
         if (gates.book.accept(tree.requestId))
-          setBook({ loading: false, tree });
+          setBook({
+            loading: false,
+            tree,
+            requestKey: bookRequestKey,
+            database: db,
+          });
       } catch (e) {
         if (gates.book.accept(request))
-          setBook({ loading: false, error: explain(e) });
+          setBook({
+            loading: false,
+            error: explain(e),
+            requestKey: bookRequestKey,
+            database: db,
+          });
       }
     }, SETTLE_MS);
     return () => {
@@ -216,7 +230,12 @@ export function usePositionPanes(
 
   return {
     line,
-    book,
+    book:
+      active.book && db && line
+        ? book.requestKey === bookRequestKey && book.database === db
+          ? book
+          : { loading: true }
+        : { loading: false },
     reference,
     referenceFilter,
     setReferenceFilter,

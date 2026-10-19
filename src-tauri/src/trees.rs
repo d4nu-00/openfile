@@ -77,7 +77,7 @@ mod cancellation_tests {
 }
 
 /// A position given as a line: the start position and the moves from it.
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Line {
     pub start_fen: String,

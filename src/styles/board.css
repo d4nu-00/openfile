@@ -8,6 +8,89 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   user-select: none;
 }
+.repertoire-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+.repertoire-header {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.repertoire-scroll {
+  overflow: auto;
+  min-height: 0;
+  padding: 8px 12px 18px;
+}
+.repertoire-section {
+  border-bottom: 1px solid var(--pane-border);
+  padding: 8px 0 14px;
+}
+.repertoire-section h3 {
+  font-size: 0.86rem;
+  margin: 4px 0 8px;
+}
+.repertoire-section .hint {
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+.repertoire-choice,
+.repertoire-add,
+.repertoire-coverage > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 5px 0;
+  flex-wrap: wrap;
+}
+.repertoire-choice input {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.repertoire-choice .book-move {
+  min-width: 42px;
+  font-weight: 700;
+}
+.repertoire-add select {
+  min-width: 70px;
+  max-width: 140px;
+}
+.repertoire-coverage > div {
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+.repertoire-lines {
+  display: grid;
+  gap: 4px;
+}
+.repertoire-lines button {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+.repertoire-lines button.active {
+  outline: 1px solid var(--accent);
+}
+.repertoire-lines small {
+  color: var(--text-muted);
+}
+.repertoire-correct,
+.repertoire-miss,
+.repertoire-error {
+  padding: 7px;
+  border-radius: 4px;
+  font-size: 0.82rem;
+}
+.repertoire-correct {
+  background: color-mix(in srgb, #2f8f59 18%, transparent);
+}
+.repertoire-miss,
+.repertoire-error {
+  background: color-mix(in srgb, #c57a20 18%, transparent);
+}
 .board.compact {
   width: min(100cqw, 340px);
 }

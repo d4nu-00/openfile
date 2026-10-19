@@ -1,5 +1,9 @@
 # Generate Repertoire and the Repertoire Report
 
+The personal [Repertoire workspace](repertoire-workspace.md) is separate from
+these generated 2CBH databases and reports. It stores manually selected White
+and Black moves in the app data folder, without modifying a source database.
+
 Status: implemented on branch `generate-repertoire` (2026-10-18). The direction
 was agreed in conversation: trace what the reference app writes, then build
 it on the player's main lines and write new 2CBH databases.

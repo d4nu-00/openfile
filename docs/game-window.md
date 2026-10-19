@@ -7,6 +7,11 @@ the user asked to proceed without review gates.
 
 ## Opening a game
 
+The **Repertoire** notation tab uses the same board position as Book and
+Reference. It lets you save and annotate White or Black opening choices, browse
+saved positions, inspect unanswered reference replies and practise moves on the
+board. See [Repertoire workspace](repertoire-workspace.md).
+
 The user found that games opened slowly in the release build on the classic
 test database. Each part was timed before anything was changed.
 

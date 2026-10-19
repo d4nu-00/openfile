@@ -78,6 +78,10 @@ import type {
   GeneratedRepertoire,
   RepertoireProgress,
   RepertoireReport,
+  WorkspaceAction,
+  WorkspaceSide,
+  RepertoireSnapshot,
+  RepertoireGrade,
 } from "./types";
 
 /** A progress channel; one that drops the messages when nobody listens. */
@@ -419,6 +423,24 @@ export const backend = {
     invoke<void>("delete_opening_tree", { databaseId }),
   openingTree: (databaseId: string, line: Line, requestId: string) =>
     invoke<TreeResponse>("opening_tree", { databaseId, line, requestId }),
+  repertoireSnapshot: (line: Line, side: WorkspaceSide) =>
+    invoke<RepertoireSnapshot>("repertoire_snapshot", { line, side }),
+  repertoireEdit: (
+    line: Line,
+    side: WorkspaceSide,
+    uci: string,
+    action: WorkspaceAction,
+    note?: string,
+  ) =>
+    invoke<RepertoireSnapshot>("repertoire_edit", {
+      line,
+      side,
+      uci,
+      action,
+      note,
+    }),
+  repertoireGrade: (line: Line, side: WorkspaceSide, uci: string) =>
+    invoke<RepertoireGrade>("repertoire_grade", { line, side, uci }),
   filteredOpeningTree: (databaseId: string, line: Line, requestId: string) =>
     invoke<TreeResponse>("filtered_opening_tree", {
       databaseId,

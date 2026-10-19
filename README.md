@@ -36,7 +36,7 @@ artwork or games ship with it.
 | :--- | :--- | :--- |
 | Open `.cbh` and `.2cbh` databases, even 11 million games | Any UCI engine, MultiPV, several kibitzers | Prepare against White or Black |
 | Sort, filter and search by game data, position, annotations, medals | Blunder check, deep analysis, analysis jobs | Player statistics and dossier |
-| Opening tree, reference search, crosstables | Syzygy tablebases in analysis and notation | Opening, tournament and error reports |
+| Opening tree, reference search, crosstables | Syzygy tablebases in analysis and notation | Personal White/Black repertoire workspace, opening, tournament and error reports |
 | Edit games and write `.2cbh`; PGN in and out | Comments, symbols, arrows, variation tools | A familiar ribbon, shortcuts and themes |
 
 Everything runs on your computer: no account, no network, nothing uploaded.
@@ -117,6 +117,11 @@ turns them into a database.
 - **Private and safe.** A database is only written when you open it for
   editing. The app keeps its indexes (search booster, opening tree, sort
   orders, name lists) in its own data folder, never beside your files.
+- **Repertoire workspace.** From a game board's Repertoire tab, save legal
+  opening choices for White and Black, mark a preferred move, add short notes,
+  follow saved positions, see unanswered reference replies, and practise your
+  own moves. Choices and practice attempts stay in the app's data folder and
+  follow the same chess position across move orders and databases.
 
 </details>
 
@@ -269,6 +274,7 @@ outside iCloud Drive.
 | Flip the board | Ctrl+F |
 | Load the next or previous game of the list | F11 / Ctrl+F11 |
 | Opening book | **Book** tab (Ctrl+F12) |
+| Your opening choices | **Repertoire** tab; choose White or Black, save moves, or practise on the board |
 | Engine analysis | **Infinite Analysis** (Alt+F2) |
 | Find the position in the database | **Find Position › Hard Disk** |
 
@@ -289,7 +295,7 @@ Reference panes; it takes about ten minutes for the 11-million-game test databas
 ## Not there yet
 
 - Training: replay training and calculation training.
-- Repertoire databases and repertoire reports.
+- Printing and importing the local repertoire workspace.
 - Text entries, printing, diagram lists and HTML publishing.
 - Correspondence chess, and playing against an engine.
 - Vendor online services (cloud databases, playing servers, shared analysis) are
@@ -306,7 +312,7 @@ and reported as unsupported.
 | What is done and planned | [Feature checklist](feature_checklist.md) · [Compatibility](docs/compatibility.md) |
 | Databases and files | [Formats](docs/formats.md) · [Writing](docs/writing.md) · [Conversion](docs/conversion.md) · [Maintenance](docs/maintenance.md) |
 | Lists and search | [Game list](docs/game-list.md) · [Search](docs/search.md) · [Position search](docs/position-search.md) |
-| Openings | [Opening tree](docs/opening-tree.md) · [Openings](docs/openings.md) |
+| Openings | [Opening tree](docs/opening-tree.md) · [Repertoire workspace](docs/repertoire-workspace.md) · [Openings](docs/openings.md) |
 | Games and engines | [Game window](docs/game-window.md) · [Engines](docs/engines.md) · [Analysis](docs/analysis.md) · [Game review](docs/game-review.md) |
 | Players and reports | [Player statistics](docs/player-statistics.md) · [Dossier](docs/player-dossier.md) · [Preparation](docs/preparation.md) · [Tournament report](docs/tournament-report.md) · [Error report](docs/error-report.md) |
 | Design | [Design](docs/design.md) · [UI shell](docs/ui-shell.md) · [Validation](docs/validation.md) |

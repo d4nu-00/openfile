@@ -11,6 +11,9 @@ import type {
   AppSettings,
   PlayerStatistics,
   StatScore,
+  RepertoirePosition,
+  WorkspaceSide,
+  Line,
 } from "../api/types";
 import { demoFens, demoLegal, demoNodes } from "./demoGame";
 
@@ -295,7 +298,82 @@ export function demoApi(): WorkbenchApi {
     nodes,
   });
   let settings: AppSettings = { maxGameTabs: 8, engines: [] };
+  const repertoireEntries: RepertoirePosition[] = [];
+  const demoSnapshot = (line: Line, side: WorkspaceSide) => {
+    const legal = bookMoves(line.moves).map((move) => ({
+      ...move,
+      preferred: false,
+      note: "",
+      valid: true,
+    }));
+    const ownTurn = (line.moves.length % 2 === 0) === (side === "white");
+    const key = `${side}|${line.moves.join(" ")}`;
+    return {
+      entries: repertoireEntries.filter((entry) =>
+        entry.key.startsWith(`${side}|`),
+      ),
+      current: repertoireEntries.find((entry) => entry.key === key),
+      ownTurn,
+      legal,
+    };
+  };
   const api: Partial<WorkbenchApi> = {
+    repertoireSnapshot: async (line, side) => demoSnapshot(line, side),
+    repertoireEdit: async (line, side, uci, action, note) => {
+      const key = `${side}|${line.moves.join(" ")}`;
+      let entry = repertoireEntries.find((item) => item.key === key);
+      const legal = bookMoves(line.moves);
+      if (action === "add" && !entry) {
+        entry = {
+          key,
+          fen: demoFens[line.moves.length] ?? demoFens[0],
+          line,
+          route: line.moves.join(" ") || "Start position",
+          ownTurn: (line.moves.length % 2 === 0) === (side === "white"),
+          moves: [],
+          practice: { attempts: 0, correct: 0, needsRetry: false },
+        };
+        repertoireEntries.push(entry);
+      }
+      const move = entry?.moves.find((item) => item.uci === uci);
+      if (entry && action === "add" && !move) {
+        const found = legal.find((item) => item.uci === uci);
+        if (found)
+          entry.moves.push({
+            ...found,
+            preferred: entry.moves.length === 0,
+            note: note ?? "",
+            valid: true,
+          });
+      } else if (entry && action === "remove") {
+        entry.moves = entry.moves.filter((item) => item.uci !== uci);
+        if (entry.moves.length && !entry.moves.some((item) => item.preferred))
+          entry.moves[0].preferred = true;
+        if (!entry.moves.length)
+          repertoireEntries.splice(repertoireEntries.indexOf(entry), 1);
+      } else if (entry && action === "prefer") {
+        entry.moves.forEach((item) => {
+          item.preferred = item.uci === uci;
+        });
+      } else if (move && action === "note") move.note = note ?? "";
+      return demoSnapshot(line, side);
+    },
+    repertoireGrade: async (line, side, uci) => {
+      const entry = demoSnapshot(line, side).current;
+      const correct = !!entry?.moves.some((m) => m.uci === uci);
+      const playedSan =
+        bookMoves(line.moves).find((m) => m.uci === uci)?.san ?? uci;
+      const preferredSan = entry?.moves.find((m) => m.preferred)?.san;
+      const practice = entry?.practice ?? {
+        attempts: 0,
+        correct: 0,
+        needsRetry: false,
+      };
+      practice.attempts++;
+      if (correct) practice.correct++;
+      practice.needsRetry = !correct;
+      return { correct, playedSan, preferredSan, practice: { ...practice } };
+    },
     chooseDatabase: async () => "/demo/Famous Games.cbh",
     startupRequest: async () => null,
     startupShown: async () => {},
