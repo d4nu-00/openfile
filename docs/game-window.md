@@ -230,8 +230,12 @@ two are not ported.
     `[%eval]`, `[%clk]` and `[%emt]` commands inside comments. The reference app's
     own evaluation and time annotations are not decoded, so they are not in
     the game to begin with.
-  * **Delete Colour Commentary** (Ctrl+Alt+Y) was already there. Training
-    and multimedia annotations are not decoded either.
+  * **Delete Colour Commentary** (Ctrl+Alt+Y) removes board marks. Training
+    questions have their own **Delete Training Commentary** command; multimedia
+    annotations are not decoded.
+
+The **Training** ribbon also starts [Replay Training Sessions](replay-training.md)
+for the current game. It covers the notation while asking saved questions.
 
 ## Exchange Moves, Reorder and Clean up variations
 

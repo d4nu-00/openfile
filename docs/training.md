@@ -146,8 +146,7 @@ before.
   change is one undoable edit (`Edit::SetTraining`).
 * **Delete Training Commentary** removes every training annotation of the
   game, as one edit.
-* Asking the questions while replaying is Replay Training's job, specced on
-  its own.
+* Asking the questions while replaying is covered by [Replay Training Sessions](replay-training.md).
 
 ### Measurements
 

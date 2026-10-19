@@ -1046,6 +1046,20 @@ const list: CommandMeta[] = [
     views: game,
   },
   {
+    id: "replay-training-game",
+    label: "Replay Training",
+    tip: "Practise the saved questions in this game",
+    icon: GraduationCap,
+    views: game,
+  },
+  {
+    id: "replay-training-selection",
+    label: "Replay Selected Games",
+    tip: "Practise saved questions in selected game-list rows",
+    icon: GraduationCap,
+    views: db,
+  },
+  {
     id: "delete-training",
     label: "Delete Training Commentary",
     tip: "Delete all training commentary",
@@ -1256,6 +1270,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
           label: "Lists",
           items: [
             S("toggle-game-list"),
+            S("replay-training-selection"),
             S("toggle-players"),
             S("toggle-tournaments"),
             S("games-of-player"),
@@ -1524,7 +1539,12 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
       groups: [
         {
           label: "Training",
-          items: [L("training-annotation"), S("delete-training"), L("hints")],
+          items: [
+            L("replay-training-game"),
+            S("training-annotation"),
+            S("delete-training"),
+            L("hints"),
+          ],
         },
       ],
     },

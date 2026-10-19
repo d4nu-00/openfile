@@ -1,0 +1,11 @@
+# Replay Training Sessions design
+
+OpenFile lets a player practise questions already authored in a game, or in selected game-list rows. A session presents each question on the board position before its annotated move, with later moves hidden. It reads the existing training annotation without altering a game or source database.
+
+The Training ribbon starts a session from the current game or selected rows. Selected rows are resolved in the displayed list order, then loaded one at a time. Progress and cancellation are visible; each temporary document is closed after its questions are collected. Database changes cancel the scan. A game with no usable questions gets a clear empty state.
+
+A question can be move input or multiple choice. Move input accepts only legal moves and uses the annotation's from/to answer squares; promotion answers without a stored promotion role mean queen promotion. A saved answer with positive points is graded from its authored points and feedback; one with zero points is an authored wrong answer. Other legal moves are explicitly ungraded. No engine is used. The question's score is displayed, while a clean full-credit answer is a solve. Hints, wrong answers, time expiry, reveal and skip mark the item as needing another attempt. Retry resets the displayed answer and help. At the end, a summary shows solved and retry counts and can restart the session.
+
+Local progress is written under the app data folder in `replay-training-sessions/progress.json`, separate from annotations, review, repertoire and source files. A question key includes game tags, start position, the path of moves to the annotated node and the saved annotation. This lets progress survive restart while a changed annotation gets a fresh record. The UI reports storage failures instead of silently claiming persistence.
+
+The session is a modal over the existing game view so no notation, upcoming move or answer is exposed while asking. It reuses the board and its legal move list, supports both colours and promotions, and shows authored hints and feedback only after requested or answered. Malformed or stale questions are skipped with a count and reason. The design uses the project's own UI and model; no reference app assets or behavior are needed.

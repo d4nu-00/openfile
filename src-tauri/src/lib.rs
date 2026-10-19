@@ -20,6 +20,7 @@ pub mod prepare;
 pub mod registry;
 pub mod repertoire;
 pub mod repertoire_workspace;
+pub mod replay_training;
 pub mod save;
 pub mod searches;
 pub mod settings;
@@ -150,6 +151,8 @@ pub fn run() {
                     .set_index_dir(dir.join("search-boosters"));
                 app.state::<repertoire_workspace::RepertoireWorkspace>()
                     .set_dir(dir.join("repertoire-workspace"));
+                app.state::<replay_training::ReplayTrainingStore>()
+                    .set_dir(dir.join("replay-training-sessions"));
             }
             if let Ok(dir) = app.path().app_config_dir() {
                 app.state::<settings::Settings>().set_dir(&dir);
@@ -171,6 +174,7 @@ pub fn run() {
         .manage(std::sync::Arc::new(error_report::ErrorReportJobs::default()))
         .manage(std::sync::Arc::new(repertoire::RepertoireJobs::default()))
         .manage(repertoire_workspace::RepertoireWorkspace::default())
+        .manage(replay_training::ReplayTrainingStore::default())
         .manage(std::sync::Arc::new(centipawn::CentipawnJobs::default()))
         .manage(std::sync::Arc::new(deep_analysis::DeepJobs::default()))
         .manage(std::sync::Arc::new(tablebases::Tablebases::default()))
@@ -243,6 +247,8 @@ pub fn run() {
             repertoire_workspace::repertoire_snapshot,
             repertoire_workspace::repertoire_edit,
             repertoire_workspace::repertoire_grade,
+            replay_training::replay_training_progress,
+            replay_training::replay_training_record,
             commands::copy_rows,
             commands::clip_size,
             commands::paste_games,
