@@ -622,3 +622,102 @@ it("reviews analysed moves and jumps from a finding to the board", async () => {
   ).toBeVisible();
   expect(ui.api.centipawnAnalysis).toHaveBeenCalledTimes(1);
 });
+it("practises a critical position without editing the game or revealing the line", async () => {
+  localStorage.clear();
+  const ui = renderWorkbench();
+  await ui.user.keyboard("{Control>}{Alt>}{Shift>}z{/Shift}{/Alt}{/Control}");
+  let dialog = await ui.findByRole("dialog", { name: "Centipawn Analysis" });
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "Other engine…" }),
+  );
+  await ui.user.click(within(dialog).getByRole("button", { name: "Start" }));
+  await within(dialog).findByText(/Better: 1\. d4 d5/);
+  const edits = ui.api.editDocument.mock.calls.length;
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: /Learn from mistakes/ }),
+  );
+  dialog = ui.getByRole("dialog", { name: "Centipawn Analysis" });
+  expect(within(dialog).queryByText(/Better: 1\. d4 d5/)).toBeNull();
+  expect(within(dialog).queryByText(/d4 d5/)).toBeNull();
+  expect(within(dialog).getByText(/White to move/)).toBeVisible();
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "d2 White pawn" }),
+  );
+  await ui.user.click(within(dialog).getByRole("button", { name: "d4 empty" }));
+  expect(within(dialog).getByText(/Correct: 1\. d4/)).toBeVisible();
+  expect(within(dialog).getByText(/Solved without help/)).toBeVisible();
+  expect(ui.api.editDocument.mock.calls).toHaveLength(edits);
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "Back to review" }),
+  );
+  expect(within(dialog).getByText(/1 solved/)).toBeVisible();
+  expect(
+    within(dialog).getByRole("button", { name: /1\. e4.*Solved/ }),
+  ).toBeVisible();
+  await ui.user.click(within(dialog).getByRole("button", { name: "Close" }));
+  await ui.user.keyboard("{Control>}{Alt>}{Shift>}z{/Shift}{/Alt}{/Control}");
+  dialog = await ui.findByRole("dialog", { name: "Centipawn Analysis" });
+  expect(within(dialog).getByText(/1 solved/)).toBeVisible();
+  expect(ui.api.centipawnAnalysis).toHaveBeenCalledTimes(1);
+});
+it("offers a hint, solution and skip while recording positions to revisit", async () => {
+  localStorage.clear();
+  const ui = renderWorkbench();
+  await ui.user.keyboard("{Control>}{Alt>}{Shift>}z{/Shift}{/Alt}{/Control}");
+  const dialog = await ui.findByRole("dialog", { name: "Centipawn Analysis" });
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "Other engine…" }),
+  );
+  await ui.user.click(within(dialog).getByRole("button", { name: "Start" }));
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: /Learn from mistakes/ }),
+  );
+  await ui.user.click(within(dialog).getByRole("button", { name: "Hint" }));
+  expect(within(dialog).getByText(/pawn move/)).toBeVisible();
+  expect(within(dialog).queryByText(/Correct: 1\. d4/)).toBeNull();
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "Show solution" }),
+  );
+  expect(within(dialog).getByText(/1\. d4 d5/)).toBeVisible();
+  expect(within(dialog).getByText(/Needs practice/)).toBeVisible();
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "Try again" }),
+  );
+  expect(within(dialog).queryByText(/1\. d4 d5/)).toBeNull();
+  await ui.user.click(within(dialog).getByRole("button", { name: "Skip" }));
+  expect(within(dialog).getByText(/Needs practice/)).toBeVisible();
+  expect(within(dialog).queryByText(/1\. d4 d5/)).toBeNull();
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "Back to review" }),
+  );
+  expect(within(dialog).getByText(/1 needs practice/)).toBeVisible();
+});
+it("keeps a wrong first attempt in the needs-practice count", async () => {
+  localStorage.clear();
+  const ui = renderWorkbench();
+  await ui.user.keyboard("{Control>}{Alt>}{Shift>}z{/Shift}{/Alt}{/Control}");
+  const dialog = await ui.findByRole("dialog", { name: "Centipawn Analysis" });
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "Other engine…" }),
+  );
+  await ui.user.click(within(dialog).getByRole("button", { name: "Start" }));
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: /Learn from mistakes/ }),
+  );
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "e2 White pawn" }),
+  );
+  await ui.user.click(within(dialog).getByRole("button", { name: "e4 empty" }));
+  expect(within(dialog).getByText(/Try another move/)).toBeVisible();
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "d2 White pawn" }),
+  );
+  await ui.user.click(within(dialog).getByRole("button", { name: "d4 empty" }));
+  expect(
+    within(dialog).getByText(/Correct: 1\. d4.*Needs practice/),
+  ).toBeVisible();
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "Back to review" }),
+  );
+  expect(within(dialog).getByText(/1 needs practice/)).toBeVisible();
+});

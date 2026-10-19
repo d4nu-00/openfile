@@ -3039,6 +3039,7 @@ export function App({
               ? gameReview.report
               : undefined
           }
+          game={state.document?.documentId === centipawn ? game : undefined}
           onSelectNode={(node) => void w.selectNode(node)}
           onApply={async (report) => {
             const now = w.current.current.document;

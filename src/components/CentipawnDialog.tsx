@@ -3,9 +3,18 @@ import type { WorkbenchApi } from "../api/client";
 import type {
   CentipawnReport,
   CentipawnSide,
+  GameView,
   InstalledEngine,
   ReviewedMove,
 } from "../api/types";
+import { criticalMoves, ReviewPractice } from "./ReviewPractice";
+import {
+  practiceItemKey,
+  practiceKey,
+  readPractice,
+  recordPractice,
+  writePractice,
+} from "../state/reviewPractice";
 
 /** The reference app's categories, in its order (`0x140418b10`). */
 const categories = [
@@ -55,6 +64,7 @@ export function CentipawnDialog({
   onChooseFile,
   onApply,
   initialReport,
+  game,
   onSelectNode,
   onClose,
 }: {
@@ -66,6 +76,7 @@ export function CentipawnDialog({
   /** Adds the report's texts to the game; resolves to an error, if any. */
   onApply: (report: CentipawnReport) => Promise<string | undefined>;
   initialReport?: CentipawnReport;
+  game?: GameView;
   onSelectNode: (node: number) => void;
   onClose: () => void;
 }) {
@@ -79,6 +90,11 @@ export function CentipawnDialog({
   const [report, setReport] = useState<CentipawnReport | undefined>(
     initialReport,
   );
+  const [practising, setPractising] = useState(false);
+  const storageKey = game && practiceKey(game);
+  const [progress, setProgress] = useState(() =>
+    storageKey ? readPractice(storageKey) : {},
+  );
   const busy = useRef(false);
   const time = Number(seconds);
   const valid = !!engine && Number.isInteger(time) && time >= 0 && time <= 60;
@@ -89,6 +105,7 @@ export function CentipawnDialog({
     busy.current = true;
     setError(undefined);
     setReport(undefined);
+    setPractising(false);
     setRunning("starting…");
     try {
       const r = await api.centipawnAnalysis(
@@ -100,7 +117,10 @@ export function CentipawnDialog({
       else {
         const failed = await onApply(r);
         if (failed) setError(failed);
-        else setReport(r);
+        else {
+          setReport(r);
+          if (storageKey) setProgress(readPractice(storageKey));
+        }
       }
     } catch (e) {
       setError((e as { message?: string })?.message ?? String(e));
@@ -121,6 +141,13 @@ export function CentipawnDialog({
       <td className="num">{value(s.errorValue, 2)}</td>
     </tr>
   );
+  const practiceMoves = report ? criticalMoves(report.moves) : [];
+  const solvedCount = practiceMoves.filter(
+    (move) => progress[practiceItemKey(move)] === "solved",
+  ).length;
+  const needsCount = practiceMoves.filter(
+    (move) => progress[practiceItemKey(move)] === "needsPractice",
+  ).length;
   return (
     <div className="modal-backdrop">
       <form
@@ -135,198 +162,245 @@ export function CentipawnDialog({
         onKeyDown={(e) => e.key === "Escape" && !running && onClose()}
       >
         <h2>Centipawn Analysis</h2>
-        <label className="mask-row">
-          <span>Engine</span>{" "}
-          <select
-            aria-label="Engine"
-            value={engine ?? ""}
-            disabled={!!running}
-            onChange={(e) => setEngine(e.target.value)}
-          >
-            {!engine && <option value="">Choose an engine</option>}
-            {engines.map((e) => (
-              <option key={e.id} value={e.path}>
-                {e.name}
-              </option>
-            ))}
-            {engine && !engines.some((e) => e.path === engine) && (
-              <option value={engine}>{engine}</option>
-            )}
-          </select>{" "}
-          <button
-            type="button"
-            disabled={!!running}
-            onClick={() =>
-              void onChooseFile().then((p) => {
-                if (typeof p === "string") setEngine(p);
-              })
-            }
-          >
-            Other engine…
-          </button>
-        </label>
-        <label className="mask-row">
-          <span>Seconds</span>{" "}
-          <input
-            type="number"
-            aria-label="Seconds"
-            min={0}
-            max={60}
-            step={1}
-            value={seconds}
-            disabled={!!running}
-            onChange={(e) => setSeconds(e.target.value)}
-          />
-          <span className="hint">
-            {" "}
-            {valid
-              ? `${time === 0 ? 0.2 : Math.max(0.5, time * 0.75)} s per position`
-              : "0 to 60"}
-          </span>
-        </label>
-        <label className="mask-check">
-          <input
-            type="checkbox"
-            checked={everyMove}
-            disabled={!!running}
-            onChange={(e) => setEveryMove(e.target.checked)}
-          />
-          Comment every classified move, not only the errors
-        </label>
-        <p className="hint">
-          The main line is analysed after its opening (the opening table's
-          moves, at least ten plies). The summary goes before the first move;
-          Undo removes all of it.
-        </p>
-        {running && (
-          <p role="status" className="hint">
-            Analysing: {running}
-          </p>
-        )}
-        {error && <p role="alert">{error}</p>}
-        {report && (
-          <div className="centipawn-result">
-            <p className="hint">
-              After ply {report.bookPlies}, {report.positions} positions.
-            </p>
-            <table className="stat-table" aria-label="Centipawn loss">
-              <thead>
-                <tr>
-                  <th />
-                  <th className="num">Moves</th>
-                  <th className="num" title="Average loss in centipawns">
-                    Loss
-                  </th>
-                  <th
-                    className="num"
-                    title="Mean move accuracy across analysed moves"
-                  >
-                    Accuracy
-                  </th>
-                  <th
-                    className="num"
-                    title="The Error Report's weighted error value"
-                  >
-                    Error
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {side("White", report.white)}
-                {side("Black", report.black)}
-              </tbody>
-            </table>
-            <p className="hint">
-              Accuracy is the mean of 100 × exp(−centipawn loss ÷ 150) for
-              analysed moves.
-            </p>
-            <table className="stat-table" aria-label="Moves by category">
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th className="num">White</th>
-                  <th className="num">Black</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categories.map((name, i) =>
-                  report.white.categories[i] + report.black.categories[i] ? (
-                    <tr key={name}>
-                      <td>{name}</td>
-                      <td className="num">{report.white.categories[i]}</td>
-                      <td className="num">{report.black.categories[i]}</td>
-                    </tr>
-                  ) : null,
+        {!practising && (
+          <>
+            <label className="mask-row">
+              <span>Engine</span>{" "}
+              <select
+                aria-label="Engine"
+                value={engine ?? ""}
+                disabled={!!running}
+                onChange={(e) => setEngine(e.target.value)}
+              >
+                {!engine && <option value="">Choose an engine</option>}
+                {engines.map((e) => (
+                  <option key={e.id} value={e.path}>
+                    {e.name}
+                  </option>
+                ))}
+                {engine && !engines.some((e) => e.path === engine) && (
+                  <option value={engine}>{engine}</option>
                 )}
-              </tbody>
-            </table>
-            {report.moves?.length > 0 && (
-              <section className="game-review" aria-label="Game review">
-                <h3>Move quality</h3>
-                <ol
-                  aria-label="Move quality timeline"
-                  className="review-timeline"
-                >
-                  {report.moves.map((move) => (
-                    <li key={move.node}>
-                      <button
-                        type="button"
-                        className={`review-move ${move.category ?? "uncategorised"}`}
-                        onClick={() => {
-                          onSelectNode(move.node);
-                          onClose();
-                        }}
-                      >
-                        <strong>{moveName(move)}</strong>
-                        <span>{quality(move)}</span>
-                        <small>{move.loss} cp</small>
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-                <h3>Critical positions</h3>
-                <ul className="review-findings">
-                  {report.moves
-                    .filter(
-                      (move) =>
-                        move.category &&
-                        [
-                          "inaccuracy",
-                          "mistake",
-                          "missedWin",
-                          "losing",
-                        ].includes(move.category),
-                    )
-                    .map((move) => (
-                      <li key={move.node}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onSelectNode(move.node);
-                            onClose();
-                          }}
-                        >
-                          <strong>{moveName(move)}</strong> · {quality(move)} ·{" "}
-                          {move.loss} cp
-                          {move.bestLine.length > 0 && (
-                            <span>
-                              Better:{" "}
-                              {moveName({ ...move, san: move.bestLine[0] })}
-                              {move.bestLine.length > 1
-                                ? ` ${move.bestLine.slice(1).join(" ")}`
-                                : ""}
-                            </span>
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                </ul>
-              </section>
+              </select>{" "}
+              <button
+                type="button"
+                disabled={!!running}
+                onClick={() =>
+                  void onChooseFile().then((p) => {
+                    if (typeof p === "string") setEngine(p);
+                  })
+                }
+              >
+                Other engine…
+              </button>
+            </label>
+            <label className="mask-row">
+              <span>Seconds</span>{" "}
+              <input
+                type="number"
+                aria-label="Seconds"
+                min={0}
+                max={60}
+                step={1}
+                value={seconds}
+                disabled={!!running}
+                onChange={(e) => setSeconds(e.target.value)}
+              />
+              <span className="hint">
+                {" "}
+                {valid
+                  ? `${time === 0 ? 0.2 : Math.max(0.5, time * 0.75)} s per position`
+                  : "0 to 60"}
+              </span>
+            </label>
+            <label className="mask-check">
+              <input
+                type="checkbox"
+                checked={everyMove}
+                disabled={!!running}
+                onChange={(e) => setEveryMove(e.target.checked)}
+              />
+              Comment every classified move, not only the errors
+            </label>
+            <p className="hint">
+              The main line is analysed after its opening (the opening table's
+              moves, at least ten plies). The summary goes before the first
+              move; Undo removes all of it.
+            </p>
+            {running && (
+              <p role="status" className="hint">
+                Analysing: {running}
+              </p>
             )}
-          </div>
+            {error && <p role="alert">{error}</p>}
+            {report && (
+              <div className="centipawn-result">
+                <p className="hint">
+                  After ply {report.bookPlies}, {report.positions} positions.
+                </p>
+                <table className="stat-table" aria-label="Centipawn loss">
+                  <thead>
+                    <tr>
+                      <th />
+                      <th className="num">Moves</th>
+                      <th className="num" title="Average loss in centipawns">
+                        Loss
+                      </th>
+                      <th
+                        className="num"
+                        title="Mean move accuracy across analysed moves"
+                      >
+                        Accuracy
+                      </th>
+                      <th
+                        className="num"
+                        title="The Error Report's weighted error value"
+                      >
+                        Error
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {side("White", report.white)}
+                    {side("Black", report.black)}
+                  </tbody>
+                </table>
+                <p className="hint">
+                  Accuracy is the mean of 100 × exp(−centipawn loss ÷ 150) for
+                  analysed moves.
+                </p>
+                {game && practiceMoves.length > 0 && (
+                  <div className="practice-entry">
+                    <button type="button" onClick={() => setPractising(true)}>
+                      Learn from mistakes ({practiceMoves.length})
+                    </button>
+                    <span className="hint">
+                      {solvedCount} solved · {needsCount} needs practice
+                    </span>
+                  </div>
+                )}
+                <table className="stat-table" aria-label="Moves by category">
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th className="num">White</th>
+                      <th className="num">Black</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categories.map((name, i) =>
+                      report.white.categories[i] +
+                      report.black.categories[i] ? (
+                        <tr key={name}>
+                          <td>{name}</td>
+                          <td className="num">{report.white.categories[i]}</td>
+                          <td className="num">{report.black.categories[i]}</td>
+                        </tr>
+                      ) : null,
+                    )}
+                  </tbody>
+                </table>
+                {report.moves?.length > 0 && (
+                  <section className="game-review" aria-label="Game review">
+                    <h3>Move quality</h3>
+                    <ol
+                      aria-label="Move quality timeline"
+                      className="review-timeline"
+                    >
+                      {report.moves.map((move) => (
+                        <li key={move.node}>
+                          <button
+                            type="button"
+                            className={`review-move ${move.category ?? "uncategorised"}`}
+                            onClick={() => {
+                              onSelectNode(move.node);
+                              onClose();
+                            }}
+                          >
+                            <strong>{moveName(move)}</strong>
+                            <span>{quality(move)}</span>
+                            <small>{move.loss} cp</small>
+                          </button>
+                        </li>
+                      ))}
+                    </ol>
+                    <h3>Critical positions</h3>
+                    <ul className="review-findings">
+                      {report.moves
+                        .filter(
+                          (move) =>
+                            move.category &&
+                            [
+                              "inaccuracy",
+                              "mistake",
+                              "missedWin",
+                              "losing",
+                            ].includes(move.category),
+                        )
+                        .map((move) => (
+                          <li key={move.node}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onSelectNode(move.node);
+                                onClose();
+                              }}
+                            >
+                              <strong>{moveName(move)}</strong> ·{" "}
+                              {quality(move)} · {move.loss} cp
+                              {progress[practiceItemKey(move)] && (
+                                <small className="practice-marker">
+                                  {progress[practiceItemKey(move)] === "solved"
+                                    ? "Solved"
+                                    : "Needs practice"}
+                                </small>
+                              )}
+                              {move.bestLine.length > 0 && (
+                                <span>
+                                  Better:{" "}
+                                  {moveName({ ...move, san: move.bestLine[0] })}
+                                  {move.bestLine.length > 1
+                                    ? ` ${move.bestLine.slice(1).join(" ")}`
+                                    : ""}
+                                </span>
+                              )}
+                            </button>
+                          </li>
+                        ))}
+                    </ul>
+                  </section>
+                )}
+              </div>
+            )}
+          </>
+        )}
+        {practising && report && game && practiceMoves.length > 0 && (
+          <ReviewPractice
+            api={api}
+            documentId={documentId}
+            game={game}
+            moves={practiceMoves}
+            progress={progress}
+            onResult={(move, result) => {
+              setProgress((current) => {
+                const next = recordPractice(current, move, result);
+                if (storageKey) writePractice(storageKey, next);
+                return next;
+              });
+            }}
+          />
         )}
         <div className="mask-buttons">
-          {running ? (
+          {practising ? (
+            <>
+              <button type="button" onClick={() => setPractising(false)}>
+                Back to review
+              </button>
+              <button type="button" onClick={onClose}>
+                Close
+              </button>
+            </>
+          ) : running ? (
             <button
               type="button"
               onClick={() =>

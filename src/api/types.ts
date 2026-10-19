@@ -1246,6 +1246,8 @@ export interface ReviewedMove {
     | null;
   /** Engine continuation in SAN from the position before this move. */
   bestLine: string[];
+  /** First engine move for checking a board attempt; never shown as notation. */
+  bestUci?: string | null;
 }
 export interface CentipawnReport {
   revision: string;

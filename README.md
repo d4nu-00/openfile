@@ -108,8 +108,9 @@ turns them into a database.
 - **Engines.** Plug in any UCI engine, such as Stockfish, and manage several.
   MultiPV lines with depth, nodes and scores; paste engine moves into the
   notation. Blunder check and tactical analysis annotate a game; deep
-  analysis and analysis jobs run unattended. Syzygy tablebases answer
-  endgames.
+  analysis and analysis jobs run unattended. Guided game review lets you
+  retry critical positions and track which ones need practice. Syzygy
+  tablebases answer endgames.
 - **PGN in and out.** Import PGN collections, and export or copy games as PGN.
 - **Private and safe.** A database is only written when you open it for
   editing. The app keeps its indexes (search booster, opening tree, sort
@@ -285,7 +286,7 @@ Reference panes; it takes about ten minutes for the 11-million-game test databas
 
 ## Not there yet
 
-- Training: training annotations, replay and calculation training.
+- Training: replay training and calculation training.
 - Repertoire databases and repertoire reports.
 - Text entries, printing, diagram lists and HTML publishing.
 - Correspondence chess, and playing against an engine.
@@ -304,7 +305,7 @@ and reported as unsupported.
 | Databases and files | [Formats](docs/formats.md) · [Writing](docs/writing.md) · [Conversion](docs/conversion.md) · [Maintenance](docs/maintenance.md) |
 | Lists and search | [Game list](docs/game-list.md) · [Search](docs/search.md) · [Position search](docs/position-search.md) |
 | Openings | [Opening tree](docs/opening-tree.md) · [Openings](docs/openings.md) |
-| Games and engines | [Game window](docs/game-window.md) · [Engines](docs/engines.md) · [Analysis](docs/analysis.md) |
+| Games and engines | [Game window](docs/game-window.md) · [Engines](docs/engines.md) · [Analysis](docs/analysis.md) · [Game review](docs/game-review.md) |
 | Players and reports | [Player statistics](docs/player-statistics.md) · [Dossier](docs/player-dossier.md) · [Preparation](docs/preparation.md) · [Tournament report](docs/tournament-report.md) · [Error report](docs/error-report.md) |
 | Design | [Design](docs/design.md) · [UI shell](docs/ui-shell.md) · [Validation](docs/validation.md) |
 
