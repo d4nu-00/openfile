@@ -1420,6 +1420,8 @@ kbd {
   align-items: stretch;
   width: min(560px, calc(100vw - 32px));
   cursor: default;
+  max-height: min(88vh, 900px);
+  overflow-y: auto;
 }
 .modal.centipawn .mask-row {
   flex-wrap: wrap;
@@ -1431,6 +1433,69 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+.game-review h3 {
+  margin: 8px 0 4px;
+  font-size: 13px;
+}
+.review-timeline {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0 0 4px;
+  list-style: none;
+  overflow-x: auto;
+}
+.review-timeline li {
+  flex: 0 0 88px;
+}
+.review-move {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-height: 54px;
+  padding: 5px 6px;
+  border: 1px solid var(--pane-border);
+  background: var(--pane-bg);
+  text-align: left;
+  cursor: pointer;
+}
+.review-move span,
+.review-move small {
+  font-size: 11px;
+}
+.review-move.inaccuracy {
+  border-bottom: 3px solid #d1a031;
+}
+.review-move.mistake,
+.review-move.missedWin {
+  border-bottom: 3px solid #db7540;
+}
+.review-move.losing {
+  border-bottom: 3px solid #c54040;
+}
+.review-findings {
+  display: grid;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.review-findings button {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--pane-border);
+  background: var(--pane-bg);
+  text-align: left;
+  cursor: pointer;
+}
+.review-findings button span {
+  width: 100%;
 }
 .modal.blunder-check {
   flex-direction: column;

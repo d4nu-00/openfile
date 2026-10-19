@@ -61,6 +61,39 @@ fn moves_after_the_opening_are_classified_and_summarised() {
     // The mock engine says +0.17 for the side to move, with 1...e5 as its
     // move: every counted move loses 34 cp, an inaccuracy.
     assert_eq!(report.white.average_loss, Some(34.0));
+    assert_eq!(report.moves.len() as u32, counted);
+    assert!(report.moves.iter().all(|m| m.loss == 34));
+    assert!(
+        report
+            .moves
+            .iter()
+            .all(|m| m.category == Some(Category::Inaccuracy))
+    );
+    assert!(report.moves.iter().all(|m| !m.san.is_empty()));
+    assert!(
+        report
+            .moves
+            .windows(2)
+            .all(|pair| pair[0].ply < pair[1].ply)
+    );
+    assert!(
+        report
+            .moves
+            .iter()
+            .all(|m| m.move_number == u32::from(m.ply).div_ceil(2))
+    );
+    assert!(
+        report
+            .white
+            .accuracy
+            .is_some_and(|a| (a - 79.7).abs() < 0.2)
+    );
+    assert!(
+        report
+            .black
+            .accuracy
+            .is_some_and(|a| (a - 79.7).abs() < 0.2)
+    );
     let inaccuracies = report.white.categories[Category::Inaccuracy as usize]
         + report.black.categories[Category::Inaccuracy as usize];
     assert_eq!(inaccuracies, counted);
@@ -136,4 +169,24 @@ fn a_game_inside_its_opening_has_nothing_to_analyse() {
         .centipawn_analysis(&doc, &params(false), &AtomicBool::new(false), |_, _| {})
         .unwrap_err();
     assert_eq!(err.code, "noMoves");
+}
+
+#[test]
+fn review_uses_the_start_positions_move_number() {
+    let d = tempfile::tempdir().unwrap();
+    let r = Registry::default();
+    let doc = document(
+        &r,
+        &d,
+        "[SetUp \"1\"]\n[FEN \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 18\"]\n\n18... e5 19. Nf3 Nc6 *\n",
+    );
+    let report = r
+        .centipawn_analysis(&doc, &params(false), &AtomicBool::new(false), |_, _| {})
+        .unwrap();
+    let first = &report.moves[0];
+    assert_eq!(
+        (first.move_number, first.white, first.san.as_str()),
+        (18, false, "e5")
+    );
+    assert_eq!(report.moves[1].move_number, 19);
 }

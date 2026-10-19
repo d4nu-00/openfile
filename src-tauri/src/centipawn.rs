@@ -139,6 +139,8 @@ pub fn classify(engine_move: bool, before: i32, after: i32) -> Option<Category> 
 pub struct SideSummary {
     pub moves: u32,
     pub average_loss: Option<f64>,
+    /// Mean of 100 × exp(−centipawn loss / 150) for analysed moves.
+    pub accuracy: Option<f64>,
     pub error_value: Option<f64>,
     /// Per [`Category::ALL`].
     pub categories: [u32; 8],
@@ -150,6 +152,20 @@ pub struct SideSummary {
 pub struct TextItem {
     pub node: u32,
     pub comment: String,
+}
+
+/// A move in the review timeline. `best_line` is SAN from before the move.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReviewedMove {
+    pub node: u32,
+    pub ply: u16,
+    pub move_number: u32,
+    pub san: String,
+    pub white: bool,
+    pub loss: i32,
+    pub category: Option<Category>,
+    pub best_line: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -165,6 +181,7 @@ pub struct CentipawnReport {
     pub white: SideSummary,
     pub black: SideSummary,
     pub items: Vec<TextItem>,
+    pub moves: Vec<ReviewedMove>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -264,6 +281,7 @@ impl Registry {
             white: SideSummary::default(),
             black: SideSummary::default(),
             items: vec![],
+            moves: vec![],
         };
         if total == 0 {
             return Err(AppError::new(
@@ -339,11 +357,30 @@ impl Registry {
                 };
                 side.moves += 1;
                 let engine_move = m.best.as_deref() == Some(moves[i].as_str());
+                let category = classify(engine_move, m.before, m.after);
+                let best_line = evals[i]
+                    .as_ref()
+                    .map(|(_, pv)| crate::deep_analysis::san_line(&line[i], pv))
+                    .unwrap_or_default();
+                report.moves.push(ReviewedMove {
+                    node: nodes[i + 1],
+                    ply: (i + 1) as u16,
+                    move_number: line[i].fullmoves().get(),
+                    san: game
+                        .san_at(nodes[i + 1])
+                        .ok()
+                        .flatten()
+                        .unwrap_or_else(|| moves[i].clone()),
+                    white,
+                    loss: m.loss,
+                    category,
+                    best_line,
+                });
                 records
                     .entry(white)
                     .or_default()
                     .push(record(&m, i, nodes[i + 1], white));
-                let Some(category) = classify(engine_move, m.before, m.after) else {
+                let Some(category) = category else {
                     continue;
                 };
                 side.categories[category as usize] += 1;
@@ -363,6 +400,12 @@ impl Registry {
                 if !r.is_empty() {
                     side.average_loss =
                         Some(r.iter().map(|m| f64::from(m.loss)).sum::<f64>() / r.len() as f64);
+                    side.accuracy = Some(
+                        r.iter()
+                            .map(|m| 100.0 * (-f64::from(m.loss) / 150.0).exp())
+                            .sum::<f64>()
+                            / r.len() as f64,
+                    );
                     // The reference app gives the weighted value once the
                     // weights pass 4.
                     if r.iter().map(|m| m.weight).sum::<f64>() > 4.0 {

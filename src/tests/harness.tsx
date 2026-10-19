@@ -305,6 +305,7 @@ export function mockApi(firstDatabase = 1) {
           const side = (loss: number, mistakes: number) => ({
             moves: 2,
             averageLoss: loss,
+            accuracy: 80,
             errorValue: loss / 2,
             categories: [0, 0, 1, 0, 0, mistakes, 0, 0],
           });
@@ -319,6 +320,18 @@ export function mockApi(firstDatabase = 1) {
             items: [
               { node: 0, comment: "Centipawn Analysis after ply 10" },
               { node: 1, comment: "Mistake (−1.2)" },
+            ],
+            moves: [
+              {
+                node: 1,
+                ply: 1,
+                moveNumber: 1,
+                san: "e4",
+                white: true,
+                loss: 120,
+                category: "mistake",
+                bestLine: ["d4", "d5"],
+              },
             ],
           };
         },

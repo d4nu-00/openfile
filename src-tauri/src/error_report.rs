@@ -333,9 +333,8 @@ fn san(position: &Chess, uci: &str) -> Option<String> {
     Some(SanPlus::from_move(position.clone(), m).to_string())
 }
 
-/// One position's evaluation for the side to move, and the engine's best
-/// move there.
-pub(crate) type LineEval = Option<(i32, Option<String>)>;
+/// One position's evaluation for the side to move, and the engine's line.
+pub(crate) type LineEval = Option<(i32, Vec<String>)>;
 
 /// Evaluates the positions `line[i]` (after `moves[..i]` from `start_fen`)
 /// whose `needed[i]` is set, each to `depth` or for `cap` milliseconds at
@@ -371,7 +370,7 @@ pub(crate) fn evaluate_line(
             .into(),
         };
         match evaluate_to(session, request, &line[i], cap, depth, cancel) {
-            Ok(Some(e)) => evals[i] = Some((e.cp, e.pv.first().cloned())),
+            Ok(Some(e)) => evals[i] = Some((e.cp, e.pv)),
             Ok(None) => return Ok(None),
             Err(e) if e.code == "engine" && evals.iter().all(Option::is_none) => break,
             Err(e) => return Err(e),
@@ -405,7 +404,7 @@ pub(crate) fn move_loss(
         return None;
     };
     let (before, after) = (*before, -*next);
-    let loss = if best.as_deref() == Some(moves[i].as_str()) {
+    let loss = if best.first().map(String::as_str) == Some(moves[i].as_str()) {
         0
     } else {
         (before.clamp(-MATE, MATE) - after.clamp(-MATE, MATE)).clamp(0, MAX_LOSS)
@@ -432,7 +431,7 @@ pub(crate) fn move_loss(
         },
         before: before.clamp(-MATE, MATE),
         after: after.clamp(-MATE, MATE),
-        best: best.clone(),
+        best: best.first().cloned(),
     })
 }
 

@@ -8,7 +8,9 @@ import {
   emptyFilter,
   type AppSettings,
   type BlunderParams,
+  type CentipawnReport,
   type Classification,
+  type GameView,
   type OpeningReport,
   type DeepParams,
   type DeepProgress,
@@ -127,6 +129,19 @@ function storedTheme(): Theme {
   return "white";
 }
 
+function mainLineKey(game?: GameView): string {
+  if (!game) return "";
+  const moves: string[] = [game.startFen];
+  let node = 0;
+  for (let i = 0; i < game.nodes.length; i++) {
+    const next = game.nodes[node]?.children[0];
+    if (next === undefined || !game.nodes[next]) break;
+    moves.push(game.nodes[next].uci ?? "");
+    node = next;
+  }
+  return moves.join(" ");
+}
+
 export function App({
   api = backend,
   initialState,
@@ -178,6 +193,11 @@ export function App({
   const [training, setTraining] = useState<{ node: number; error?: string }>();
   /** The document Centipawn Analysis runs on. */
   const [centipawn, setCentipawn] = useState<string>();
+  const [gameReview, setGameReview] = useState<{
+    documentId: string;
+    line: string;
+    report: CentipawnReport;
+  }>();
   const [blunder, setBlunder] = useState<{
     running?: string;
     error?: string;
@@ -2573,7 +2593,9 @@ export function App({
                     />
                     <span
                       className="hint"
-                      title={'Combine terms; -Karpov means Black, 2001-2011 is a year range, Event:"World Championship" matches a phrase. Positive results such as 1-0 and 0-1 are alternatives.'}
+                      title={
+                        'Combine terms; -Karpov means Black, 2001-2011 is a year range, Event:"World Championship" matches a phrase. Positive results such as 1-0 and 0-1 are alternatives.'
+                      }
                     >
                       Enter searches all games · Use ! to exclude a term
                     </span>
@@ -3011,6 +3033,13 @@ export function App({
           engines={settings.engines}
           defaultEngine={settings.defaultEngine}
           onChooseFile={api.pickEngine}
+          initialReport={
+            gameReview?.documentId === centipawn &&
+            gameReview.line === mainLineKey(game)
+              ? gameReview.report
+              : undefined
+          }
+          onSelectNode={(node) => void w.selectNode(node)}
           onApply={async (report) => {
             const now = w.current.current.document;
             if (
@@ -3027,6 +3056,11 @@ export function App({
               })),
             });
             if (result === null) return "The texts could not be added.";
+            setGameReview({
+              documentId: centipawn,
+              line: mainLineKey(now.game),
+              report,
+            });
             w.setStatus(
               `Centipawn Analysis: average loss White ${report.white.averageLoss?.toFixed(0) ?? "–"}, Black ${report.black.averageLoss?.toFixed(0) ?? "–"}`,
             );
