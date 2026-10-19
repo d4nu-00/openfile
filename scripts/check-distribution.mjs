@@ -48,6 +48,7 @@ const documents = new Set([
   "repertoire.md",
   "centipawn-analysis.md",
   "training.md",
+  "game-review.md",
 ]);
 export function allowedSourcePath(candidate) {
   if (
@@ -100,7 +101,11 @@ export function allowedSourcePath(candidate) {
   if (candidate.startsWith("docs/") && documents.has(candidate.slice(5)))
     return true;
   if (
-    candidate === "docs/superpowers/plans/2026-10-18-filtered-opening-tree.md"
+    [
+      "docs/superpowers/plans/2026-10-18-filtered-opening-tree.md",
+      "docs/superpowers/plans/2026-10-18-quick-search-expressions.md",
+      "docs/superpowers/specs/2026-10-18-quick-search-expressions-design.md",
+    ].includes(candidate)
   )
     return true;
   // README screenshots and the public-domain games they show.

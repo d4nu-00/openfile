@@ -32,7 +32,10 @@ describe("source distribution boundary", () => {
       "licenses/cbh2pgn-MIT.txt",
       "tests/fixtures/synthetic-start.pgn",
       "docs/compatibility.md",
+      "docs/game-review.md",
       "docs/superpowers/plans/2026-10-18-filtered-opening-tree.md",
+      "docs/superpowers/plans/2026-10-18-quick-search-expressions.md",
+      "docs/superpowers/specs/2026-10-18-quick-search-expressions-design.md",
       ".github/workflows/desktop.yml",
     ])
       expect(allowedSourcePath(path), path).toBe(true);
