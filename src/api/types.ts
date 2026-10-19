@@ -1221,9 +1221,31 @@ export interface CentipawnParams {
 export interface CentipawnSide {
   moves: number;
   averageLoss?: number | null;
+  /** Mean of 100 × exp(−centipawn loss / 150) for analysed moves. */
+  accuracy?: number | null;
   errorValue?: number | null;
   /** Per category, in the reference app's order. */
   categories: number[];
+}
+export interface ReviewedMove {
+  node: NodeId;
+  ply: number;
+  moveNumber: number;
+  san: string;
+  white: boolean;
+  loss: number;
+  category?:
+    | "brilliant"
+    | "strong"
+    | "best"
+    | "good"
+    | "inaccuracy"
+    | "mistake"
+    | "missedWin"
+    | "losing"
+    | null;
+  /** Engine continuation in SAN from the position before this move. */
+  bestLine: string[];
 }
 export interface CentipawnReport {
   revision: string;
@@ -1235,6 +1257,7 @@ export interface CentipawnReport {
   black: CentipawnSide;
   /** Texts: node 0 is before the first move. */
   items: { node: NodeId; comment: string }[];
+  moves: ReviewedMove[];
 }
 /** Generate Repertoire and the Repertoire Report (docs/repertoire.md). */
 export interface RepertoireProgress {

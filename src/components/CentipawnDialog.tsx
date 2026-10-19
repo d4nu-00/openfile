@@ -4,6 +4,7 @@ import type {
   CentipawnReport,
   CentipawnSide,
   InstalledEngine,
+  ReviewedMove,
 } from "../api/types";
 
 /** The reference app's categories, in its order (`0x140418b10`). */
@@ -21,6 +22,25 @@ const categories = [
 const value = (v: number | null | undefined, digits: number) =>
   v == null ? "–" : v.toFixed(digits);
 
+const moveName = (move: ReviewedMove) =>
+  `${move.moveNumber}${move.white ? "." : "..."} ${move.san}`;
+
+const quality = (move: ReviewedMove) =>
+  move.category
+    ? categories[
+        [
+          "brilliant",
+          "strong",
+          "best",
+          "good",
+          "inaccuracy",
+          "mistake",
+          "missedWin",
+          "losing",
+        ].indexOf(move.category)
+      ]
+    : "Good move";
+
 /**
  * Centipawn Analysis (the reference app's `CENTIPAWN`, Ctrl+Alt+Shift+Z): an
  * engine checks the main line's moves after the opening; the average loss,
@@ -34,6 +54,8 @@ export function CentipawnDialog({
   defaultEngine,
   onChooseFile,
   onApply,
+  initialReport,
+  onSelectNode,
   onClose,
 }: {
   api: WorkbenchApi;
@@ -43,6 +65,8 @@ export function CentipawnDialog({
   onChooseFile: () => Promise<string | string[] | null>;
   /** Adds the report's texts to the game; resolves to an error, if any. */
   onApply: (report: CentipawnReport) => Promise<string | undefined>;
+  initialReport?: CentipawnReport;
+  onSelectNode: (node: number) => void;
   onClose: () => void;
 }) {
   const [engine, setEngine] = useState(
@@ -52,7 +76,9 @@ export function CentipawnDialog({
   const [everyMove, setEveryMove] = useState(false);
   const [running, setRunning] = useState<string>();
   const [error, setError] = useState<string>();
-  const [report, setReport] = useState<CentipawnReport>();
+  const [report, setReport] = useState<CentipawnReport | undefined>(
+    initialReport,
+  );
   const busy = useRef(false);
   const time = Number(seconds);
   const valid = !!engine && Number.isInteger(time) && time >= 0 && time <= 60;
@@ -89,6 +115,9 @@ export function CentipawnDialog({
       <th scope="row">{name}</th>
       <td className="num">{s.moves}</td>
       <td className="num strong">{value(s.averageLoss, 0)}</td>
+      <td className="num strong">
+        {s.accuracy == null ? "–" : `${value(s.accuracy, 0)}%`}
+      </td>
       <td className="num">{value(s.errorValue, 2)}</td>
     </tr>
   );
@@ -190,6 +219,12 @@ export function CentipawnDialog({
                   </th>
                   <th
                     className="num"
+                    title="Mean move accuracy across analysed moves"
+                  >
+                    Accuracy
+                  </th>
+                  <th
+                    className="num"
                     title="The Error Report's weighted error value"
                   >
                     Error
@@ -201,6 +236,10 @@ export function CentipawnDialog({
                 {side("Black", report.black)}
               </tbody>
             </table>
+            <p className="hint">
+              Accuracy is the mean of 100 × exp(−centipawn loss ÷ 150) for
+              analysed moves.
+            </p>
             <table className="stat-table" aria-label="Moves by category">
               <thead>
                 <tr>
@@ -221,6 +260,69 @@ export function CentipawnDialog({
                 )}
               </tbody>
             </table>
+            {report.moves?.length > 0 && (
+              <section className="game-review" aria-label="Game review">
+                <h3>Move quality</h3>
+                <ol
+                  aria-label="Move quality timeline"
+                  className="review-timeline"
+                >
+                  {report.moves.map((move) => (
+                    <li key={move.node}>
+                      <button
+                        type="button"
+                        className={`review-move ${move.category ?? "uncategorised"}`}
+                        onClick={() => {
+                          onSelectNode(move.node);
+                          onClose();
+                        }}
+                      >
+                        <strong>{moveName(move)}</strong>
+                        <span>{quality(move)}</span>
+                        <small>{move.loss} cp</small>
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+                <h3>Critical positions</h3>
+                <ul className="review-findings">
+                  {report.moves
+                    .filter(
+                      (move) =>
+                        move.category &&
+                        [
+                          "inaccuracy",
+                          "mistake",
+                          "missedWin",
+                          "losing",
+                        ].includes(move.category),
+                    )
+                    .map((move) => (
+                      <li key={move.node}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSelectNode(move.node);
+                            onClose();
+                          }}
+                        >
+                          <strong>{moveName(move)}</strong> · {quality(move)} ·{" "}
+                          {move.loss} cp
+                          {move.bestLine.length > 0 && (
+                            <span>
+                              Better:{" "}
+                              {moveName({ ...move, san: move.bestLine[0] })}
+                              {move.bestLine.length > 1
+                                ? ` ${move.bestLine.slice(1).join(" ")}`
+                                : ""}
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                </ul>
+              </section>
+            )}
           </div>
         )}
         <div className="mask-buttons">

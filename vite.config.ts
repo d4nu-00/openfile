@@ -15,5 +15,7 @@ export default defineConfig({
     setupFiles: ["./src/test-setup.ts"],
     // Bound concurrent DOM environments on local machines and native CI runners.
     maxWorkers: 2,
+    // Full workbench interaction tests can exceed Vitest's 5s default on Windows CI.
+    testTimeout: 15_000,
   },
 });

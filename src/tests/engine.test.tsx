@@ -588,3 +588,37 @@ it("runs Centipawn Analysis and adds its texts as one edit", async () => {
     await ui.findByText("Centipawn Analysis: average loss White 18, Black 40"),
   ).toBeVisible();
 });
+it("reviews analysed moves and jumps from a finding to the board", async () => {
+  const ui = renderWorkbench();
+  await ui.user.keyboard("{Control>}{Alt>}{Shift>}z{/Shift}{/Alt}{/Control}");
+  let dialog = await ui.findByRole("dialog", { name: "Centipawn Analysis" });
+  await ui.user.click(
+    within(dialog).getByRole("button", { name: "Other engine…" }),
+  );
+  await ui.user.click(within(dialog).getByRole("button", { name: "Start" }));
+  expect(await within(dialog).findByText("Accuracy")).toBeVisible();
+  const timeline = within(dialog).getByRole("list", {
+    name: "Move quality timeline",
+  });
+  expect(
+    within(timeline).getByRole("button", { name: /1\. e4.*Mistake/ }),
+  ).toBeVisible();
+  expect(within(dialog).getByText(/Better: 1\. d4 d5/)).toBeVisible();
+  await ui.user.click(
+    within(timeline).getByRole("button", { name: /1\. e4.*Mistake/ }),
+  );
+  expect(ui.queryByRole("dialog", { name: "Centipawn Analysis" })).toBeNull();
+  await waitFor(() =>
+    expect(ui.api.positionAt).toHaveBeenCalledWith(
+      "doc-1",
+      1,
+      expect.any(String),
+    ),
+  );
+  await ui.user.keyboard("{Control>}{Alt>}{Shift>}z{/Shift}{/Alt}{/Control}");
+  dialog = await ui.findByRole("dialog", { name: "Centipawn Analysis" });
+  expect(
+    within(dialog).getByRole("list", { name: "Move quality timeline" }),
+  ).toBeVisible();
+  expect(ui.api.centipawnAnalysis).toHaveBeenCalledTimes(1);
+});
