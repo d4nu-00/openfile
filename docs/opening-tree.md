@@ -143,6 +143,13 @@ when the position or pane changes.
 
 ## Reference search
 
+The game window's [Repertoire workspace](repertoire-workspace.md) uses this
+database's Book rows for coverage. It shows unsaved moves on the player's turn
+and opponent replies without a saved answer at the resulting position, with game counts
+at the selected position. A stored tree position provides the complete indexed
+move counts; followed lines may miss transpositions, and an absent tree provides
+no coverage claim. The repertoire itself belongs to the app, not this tree.
+
 The Reference pane lists the games that reach the current board, in entry
 order, at most 100,000. It is answered from the tree as above, or by Find
 Position when there is no tree. Every move starts a new request; the previous

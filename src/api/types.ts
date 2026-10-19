@@ -817,6 +817,44 @@ export interface TreeResponse {
   /** Number of hits in the current search result. */
   totalHits?: number;
 }
+/** Local repertoire overlay, independent of the open database. */
+export type WorkspaceSide = "white" | "black";
+export type WorkspaceAction = "add" | "remove" | "prefer" | "note";
+export interface RepertoireChoice {
+  uci: string;
+  san: string;
+  preferred: boolean;
+  note: string;
+  valid: boolean;
+}
+export interface RepertoirePracticeStatus {
+  attempts: number;
+  correct: number;
+  needsRetry: boolean;
+}
+export interface RepertoirePosition {
+  key: string;
+  fen: string;
+  line: Line;
+  route: string;
+  ownTurn: boolean;
+  moves: RepertoireChoice[];
+  practice: RepertoirePracticeStatus;
+}
+export interface RepertoireSnapshot {
+  entries: RepertoirePosition[];
+  current?: RepertoirePosition;
+  legal: RepertoireChoice[];
+  ownTurn: boolean;
+  answeredReplies?: Record<string, boolean>;
+  replyPositions?: Record<string, string>;
+}
+export interface RepertoireGrade {
+  correct: boolean;
+  playedSan: string;
+  preferredSan?: string;
+  practice: RepertoirePracticeStatus;
+}
 export interface TreeProgress {
   stage: "reading" | "sorting";
   done: string;

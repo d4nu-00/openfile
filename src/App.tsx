@@ -11,6 +11,8 @@ import {
   type CentipawnReport,
   type Classification,
   type GameView,
+  type RepertoireGrade,
+  type WorkspaceSide,
   type OpeningReport,
   type DeepParams,
   type DeepProgress,
@@ -76,6 +78,7 @@ import { EnginePanel } from "./components/EnginePanel";
 import { NotationTree } from "./components/NotationTree";
 import { BookPane } from "./components/BookPane";
 import { ReferencePane } from "./components/ReferencePane";
+import { RepertoirePane } from "./components/RepertoirePane";
 import { lineTo, usePositionPanes } from "./state/positionPanes";
 import { Diagnostics } from "./components/Diagnostics";
 import { GameList } from "./views/GameList";
@@ -328,8 +331,15 @@ export function App({
   const [symbolMenu, setSymbolMenu] = useState<SymbolSlot>();
   // Notation tabs, and the book and reference panes outside them.
   const [notationTab, setNotationTab] = useState<
-    "notation" | "book" | "reference" | "tablebase"
+    "notation" | "book" | "reference" | "repertoire" | "tablebase"
   >("notation");
+  const [workspaceSide, setWorkspaceSide] = useState<WorkspaceSide>("white");
+  const [practice, setPractice] = useState<{
+    lineKey: string;
+    side: WorkspaceSide;
+    result?: RepertoireGrade;
+  }>();
+  const [repertoireRefresh, setRepertoireRefresh] = useState(0);
   const [extraBook, setExtraBook] = useState(false);
   const [extraReference, setExtraReference] = useState(false);
 
@@ -368,12 +378,31 @@ export function App({
     api,
     state,
     {
-      book: inGame && (notationTab === "book" || extraBook),
+      book:
+        inGame &&
+        (notationTab === "book" || notationTab === "repertoire" || extraBook),
       reference: inGame && (notationTab === "reference" || extraReference),
     },
-    bookPrepared && `${bookPrepared.playerId}:${bookPrepared.white}`,
-    bookScope,
+    notationTab !== "repertoire" && bookPrepared
+      ? `${bookPrepared.playerId}:${bookPrepared.white}`
+      : undefined,
+    notationTab === "repertoire" ? "database" : bookScope,
   );
+  const currentLineKey = panes.line
+    ? `${panes.line.startFen}|${panes.line.moves.join(" ")}`
+    : "";
+  const activePractice =
+    notationTab === "repertoire" &&
+    practice?.lineKey === currentLineKey &&
+    practice.side === workspaceSide
+      ? practice
+      : undefined;
+  const activePracticeRef = useRef(activePractice);
+  activePracticeRef.current = activePractice;
+  const gradingRef = useRef<typeof activePractice>(undefined);
+  useEffect(() => {
+    if (notationTab !== "repertoire") setPractice(undefined);
+  }, [notationTab]);
   const title = game
     ? `${game.tags.White ?? "?"} — ${game.tags.Black ?? "?"}`
     : "Game board";
@@ -435,7 +464,8 @@ export function App({
       return;
     }
     if (moves.length === 1) {
-      void e.edit({ kind: "appendMove", parent: selected, uci: moves[0] });
+      if (activePractice) void gradePractice(moves[0]);
+      else void e.edit({ kind: "appendMove", parent: selected, uci: moves[0] });
       setSquare(undefined);
       return;
     }
@@ -444,6 +474,32 @@ export function App({
         ? to
         : undefined,
     );
+  }
+  async function gradePractice(uci: string) {
+    if (
+      !activePractice ||
+      activePractice.result ||
+      !panes.line ||
+      gradingRef.current === activePractice
+    )
+      return;
+    gradingRef.current = activePractice;
+    try {
+      const result = await api.repertoireGrade(panes.line, workspaceSide, uci);
+      if (activePracticeRef.current !== activePractice) return;
+      setPractice({ ...activePractice, result });
+      setRepertoireRefresh((n) => n + 1);
+    } catch (error) {
+      if (activePracticeRef.current !== activePractice) return;
+      w.setDiagnostics([
+        {
+          code: "repertoire",
+          message: (error as { message?: string }).message ?? String(error),
+        },
+      ]);
+    } finally {
+      if (gradingRef.current === activePractice) gradingRef.current = undefined;
+    }
   }
   /** The best line of the active kibitzer, for the position shown. */
   function bestLine() {
@@ -1581,6 +1637,30 @@ export function App({
       onOpen={openReference}
       onSearch={panes.searchReference}
       onCancel={panes.cancelReference}
+    />
+  );
+  const repertoirePane = (
+    <RepertoirePane
+      api={api}
+      line={panes.line}
+      side={workspaceSide}
+      onSideChange={(side) => {
+        setWorkspaceSide(side);
+        setPractice(undefined);
+      }}
+      book={panes.book}
+      onNavigate={(fen) => {
+        setPractice(undefined);
+        void e.newGame(fen);
+      }}
+      onPractice={() => {
+        if (panes.line)
+          setPractice({ lineKey: currentLineKey, side: workspaceSide });
+      }}
+      onStopPractice={() => setPractice(undefined)}
+      practising={!!activePractice}
+      practice={activePractice?.result}
+      refresh={repertoireRefresh}
     />
   );
 
@@ -2728,7 +2808,8 @@ export function App({
                       onMark={drawMark}
                       promotion={promotion}
                       onPromote={(uci) => {
-                        if (uci)
+                        if (uci && activePractice) void gradePractice(uci);
+                        else if (uci)
                           void e.edit({
                             kind: "appendMove",
                             parent: selected,
@@ -2753,6 +2834,7 @@ export function App({
                             ["notation", "Notation"],
                             ["book", "Book"],
                             ["reference", "Reference"],
+                            ["repertoire", "Repertoire"],
                             ["tablebase", "Tablebase"],
                           ] as const
                         ).map(([tab, label]) => (
@@ -2796,6 +2878,7 @@ export function App({
                     )}
                     {notationTab === "book" && bookPane}
                     {notationTab === "reference" && referencePane}
+                    {notationTab === "repertoire" && repertoirePane}
                     {notationTab === "tablebase" && (
                       <TablebasePane
                         api={api}

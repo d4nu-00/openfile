@@ -46,6 +46,7 @@ const documents = new Set([
   "tournament-report.md",
   "error-report.md",
   "repertoire.md",
+  "repertoire-workspace.md",
   "centipawn-analysis.md",
   "training.md",
   "game-review.md",
@@ -104,6 +105,8 @@ export function allowedSourcePath(candidate) {
     [
       "docs/superpowers/plans/2026-10-18-filtered-opening-tree.md",
       "docs/superpowers/plans/2026-10-18-quick-search-expressions.md",
+      "docs/superpowers/plans/2026-10-19-repertoire-workspace.md",
+      "docs/superpowers/specs/2026-10-19-repertoire-workspace-design.md",
       "docs/superpowers/specs/2026-10-18-quick-search-expressions-design.md",
     ].includes(candidate)
   )
