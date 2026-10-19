@@ -50,7 +50,9 @@ databases, grade unsaved moves with an engine, sync to a service, or print a
 full repertoire tree. The existing Generate Repertoire and Repertoire Report
 commands remain separate.
 
-![Saved choice, note and reference coverage in the compact Repertoire tab](media/repertoire-workspace.png)
+![Saved choice and note in the compact Repertoire tab](media/repertoire-workspace.png)
+
+![Reference counts and saved positions in the Repertoire tab](media/repertoire-coverage.png)
 
 ![Feedback and retry marker after an unsaved practice move](media/repertoire-practice.png)
 
