@@ -196,6 +196,64 @@ describe("opening book", () => {
 });
 
 describe("reference search", () => {
+  it("shows full and filtered sample sizes and compares a chosen player's SAN moves", async () => {
+    const ui = renderWorkbench();
+    await ui.user.click(ui.getByRole("tab", { name: "Reference" }));
+    const pane = await ui.findByLabelText("Reference search");
+    const comparison = await within(pane).findByLabelText(
+      "Reference move comparison",
+    );
+    expect(within(comparison).getByText("e4")).toBeVisible();
+    expect(within(comparison).getByText("6 · 60.0%")).toBeVisible();
+    expect(within(comparison).getByText("4 · 57.1%")).toBeVisible();
+    expect(
+      within(pane).getByText(/1 missing a rating · 2 missing a year/),
+    ).toBeVisible();
+    await ui.user.type(
+      within(pane).getByLabelText("Minimum Elo for both players"),
+      "2200",
+    );
+    await ui.user.type(within(pane).getByLabelText("First year"), "2020");
+    await ui.user.click(within(pane).getByLabelText("Good games"));
+    await waitFor(() =>
+      expect(ui.api.referenceStatistics).toHaveBeenLastCalledWith(
+        "db-1",
+        expect.anything(),
+        expect.any(String),
+        expect.objectContaining({
+          eloMin: 2200,
+          yearMin: 2020,
+          goodGames: true,
+        }),
+      ),
+    );
+    expect(await within(pane).findByText("Elo kept 8 / 10")).toBeVisible();
+    expect(within(pane).getByText("Year kept 7 / 8")).toBeVisible();
+    expect(within(pane).getByText("Good games kept 7 / 7")).toBeVisible();
+    await ui.user.type(
+      within(pane).getByLabelText("Find comparison player"),
+      "Player 120",
+    );
+    await ui.user.click(
+      await within(pane).findByRole("option", { name: /Player 120, A/ }),
+    );
+    await ui.user.click(within(pane).getByLabelText("Black"));
+    await waitFor(() =>
+      expect(ui.api.referenceStatistics).toHaveBeenLastCalledWith(
+        "db-1",
+        expect.anything(),
+        expect.any(String),
+        expect.objectContaining({ playerId: 120, playerBlack: true }),
+      ),
+    );
+    expect(within(pane).getByText("Player 120, A as Black: 2")).toBeVisible();
+    expect(within(pane).getByText(/both players Elo ≥ 2200/)).toBeVisible();
+    await ui.user.keyboard("{Control>}{Shift>}{F7}{/Shift}{/Control}");
+    const extra = await ui.findByLabelText("Reference pane");
+    expect(
+      within(extra).getByRole("textbox", { name: "Find comparison player" }),
+    ).toHaveValue("Player 120, A");
+  });
   it("lists games reaching the board and opens them there", async () => {
     const ui = renderWorkbench();
     await ui.user.click(ui.getByRole("tab", { name: "Reference" }));

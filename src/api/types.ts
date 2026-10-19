@@ -1055,6 +1055,31 @@ export interface ReferenceResponse {
   /** A fallback search used the search booster. */
   indexed: boolean;
 }
+export interface ReferenceFilter {
+  eloMin?: number;
+  eloMax?: number;
+  yearMin?: number;
+  yearMax?: number;
+  goodGames: boolean;
+  playerId?: number;
+  /** Shared display name for the tab and extra pane; Rust ignores it. */
+  playerName?: string;
+  playerBlack: boolean;
+}
+export interface ReferenceStatistics {
+  requestId: string;
+  fullGames: number;
+  filteredGames: number;
+  playerGames: number;
+  scannedGames: number;
+  afterElo: number;
+  afterYear: number;
+  missingElo: number;
+  missingYear: number;
+  complete: boolean;
+  fullComplete: boolean;
+  moves: { san: string; full: number; filtered: number; player: number }[];
+}
 /** The names Edit Game Data sets for a selection; a field left out is
  * kept, an empty one cleared. */
 export interface SelectionNames {

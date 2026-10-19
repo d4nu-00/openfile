@@ -998,15 +998,65 @@ export function demoApi(): WorkbenchApi {
       };
     },
     cancelFilteredOpeningTree: async () => {},
-    referenceSearch: async (_db, _line, requestId) => ({
+    referenceSearch: async (_db, line, requestId) => ({
       requestId,
-      hits: "12",
+      hits: String(
+        bookMoves(line.moves)
+          .slice(0, 3)
+          .reduce((n, _, i) => n + Math.max(1, 7 - i * 2), 0),
+      ),
       truncated: false,
       cancelled: false,
       source: "tree" as const,
       indexed: false,
     }),
     cancelReference: async () => {},
+    referenceStatistics: async (_db, line, requestId, filter) => {
+      const legal = bookMoves(line.moves).slice(0, 3);
+      const counts = legal.map((_, i) => Math.max(1, 7 - i * 2));
+      const fullGames = counts.reduce((a, b) => a + b, 0);
+      const eloOn = filter.eloMin !== undefined || filter.eloMax !== undefined;
+      const yearOn =
+        filter.yearMin !== undefined || filter.yearMax !== undefined;
+      const filtered = counts.map((n) =>
+        filter.goodGames || eloOn || yearOn ? Math.ceil(n / 2) : n,
+      );
+      const filteredGames = filtered.reduce((a, b) => a + b, 0);
+      const afterElo = eloOn
+        ? Math.min(
+            fullGames,
+            filteredGames + (yearOn ? 2 : filter.goodGames ? 1 : 0),
+          )
+        : fullGames;
+      const afterYear = yearOn
+        ? Math.min(afterElo, filteredGames + (filter.goodGames ? 1 : 0))
+        : afterElo;
+      return {
+        requestId,
+        fullGames,
+        filteredGames,
+        playerGames:
+          filter.playerId === undefined ? 0 : Math.min(2, filteredGames),
+        scannedGames: fullGames,
+        afterElo,
+        afterYear,
+        missingElo: 1,
+        missingYear: 1,
+        complete: true,
+        fullComplete: true,
+        moves: legal.map(({ san }, i) => ({
+          san,
+          full: counts[i],
+          filtered: filtered[i],
+          player:
+            filter.playerId === undefined
+              ? 0
+              : i === 0
+                ? Math.min(2, filteredGames)
+                : 0,
+        })),
+      };
+    },
     readReferencePage: async (db, _start, _limit, requestId) => {
       const page = await api.readPage!(db, "1", 12, requestId);
       return { ...page, entries: page.entries.slice(0, 12), next: undefined };

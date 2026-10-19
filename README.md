@@ -91,7 +91,9 @@ turns them into a database.
   searches find every game that reaches a board, faster with a search booster.
 - **Opening tree and reference search.** The Book pane shows games, score,
   draw rate, average rating, performance and the year last played for every
-  move. The Reference pane follows your board through the database. Games are
+  move. The Reference pane follows your board through the database, filters
+  moves by both players' Elo, year or an explicit good-game rule, and compares
+  a chosen player's White or Black choices with the full position. Games are
   classified by ECO.
 - **Players and tournaments.** Every player and tournament is listed with
   game counts and years. Player statistics, dossiers and **Prepare against

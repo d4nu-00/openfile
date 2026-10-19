@@ -42,6 +42,11 @@ automatical search pane"; `FINDREFDBBOARD` Shift+F7, "Search the current board
 position in the reference database") lists the games of the reference
 database that reach the board, and follows the game as you move.
 
+A fresh static REA/Ghidra string search of the reference executable found
+"Warning - good games not marked." at `0x1411d0198`; it did not establish
+the reference app's marking rule. The filter below is therefore an explicit
+OpenFile rule, not a claim to reproduce a hidden reference classification.
+
 ## Columns in the workbench
 
 For each move played in the current position:
@@ -146,6 +151,43 @@ a game from the list selects the position found.
 
 The reference database is the open database. The reference app's separate reference
 database setting is not implemented yet.
+
+### Reference filters and player comparison
+
+The Reference pane keeps the indexed **full position** as the baseline. For
+each SAN move it shows the number of games and share of all games reaching
+the position, then the number and share after the chosen filters. A named
+player can be found in the database's player list and compared as White or
+Black. The player column applies the same filters; its percentages use that
+player's filtered games at the position as the denominator. Games ending at
+the position count in each denominator but have no move row.
+
+* **Elo** minimum and maximum are inclusive and apply to **both players**.
+  A game missing either rating is excluded when either Elo bound is set.
+* **Year** minimum and maximum are inclusive. A game without a year is
+  excluded when either year bound is set; a known year counts even when its
+  month or day is unknown.
+* **Good games** is an explicit metadata proxy: both players have recorded
+  Elo **at least 2200**, the result is known, and the stored main line has at
+  least **40 half-moves**. It does not assess move quality. Missing Elo and
+  unknown results fail this rule; a missing date alone does not. All chosen
+  conditions combine with AND.
+
+The pane reports the full, filtered and player game counts, plus the numbers
+missing a rating or year among scanned games. The full baseline comes from
+the opening tree's aggregate and covers every indexed game at a stored
+position. For every active condition it also reports games kept after Elo,
+then year, then the good-game rule, so the effect of each step is visible.
+To keep filter changes and board navigation responsive, individual
+postings are read for at most the first **100,000** games in entry order.
+When there are more, the UI says the filtered and player counts and shares
+describe that bounded sample; it never presents them as whole-database
+figures. Searches without a stored tree retain the position search's existing
+100,000-game bound, and the UI labels the full baseline as limited too.
+Stop and changing position or filter cancel obsolete work. The list of
+individual reference games remains separate from these statistics.
+
+![Reference filters and move comparison in the compact pane](media/reference-filters-detail.png)
 
 ## Saving into a database with a tree
 

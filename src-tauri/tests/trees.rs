@@ -1,3 +1,4 @@
+use cbh_reader::tree::ReferenceFilter;
 use openfile::{
     registry::Registry,
     trees::{Line, ReferenceSource, TreeStatus},
@@ -78,6 +79,49 @@ fn tree_answers_and_follows_saves() {
     assert_eq!((e4.average_elo, e4.performance), (Some(2600), Some(2500)));
     assert_eq!((e4.first_year, e4.last_year), (Some(2000), Some(2005)));
     assert!((e4.share - 600.0 / 7.0).abs() < 1e-9);
+    let compared = r
+        .reference_statistics(
+            id.clone(),
+            line(&[]),
+            "stats".into(),
+            ReferenceFilter {
+                elo_min: Some(2500),
+                year_min: Some(2003),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        (
+            compared.full_games,
+            compared.filtered_games,
+            compared.scanned_games
+        ),
+        (7, 3, 7)
+    );
+    assert_eq!((compared.after_elo, compared.after_year), (6, 3));
+    assert_eq!(compared.missing_elo, 1);
+    assert!(compared.complete && compared.full_complete);
+    assert_eq!(
+        (
+            compared.moves[0].san.as_str(),
+            compared.moves[0].full,
+            compared.moves[0].filtered
+        ),
+        ("e4", 6, 3)
+    );
+    let good = r
+        .reference_statistics(
+            id.clone(),
+            line(&[]),
+            "good".into(),
+            ReferenceFilter {
+                good_games: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(good.filtered_games, 0); // Every synthetic game is under 40 plies.
 
     // 1.e4 e5 has three games, fewer than the tree stores: followed.
     let e5 = r

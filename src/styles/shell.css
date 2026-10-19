@@ -2148,6 +2148,82 @@ kbd {
 .book-pane .pane-header {
   flex-wrap: wrap;
 }
+.reference-analysis {
+  border-bottom: 1px solid var(--pane-border);
+  padding: 5px 8px;
+  max-height: 47%;
+  overflow: auto;
+  font-size: 11px;
+  flex: none;
+}
+.reference-controls,
+.reference-player,
+.reference-totals {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 9px;
+}
+.reference-controls label,
+.reference-player label {
+  white-space: nowrap;
+}
+.reference-controls input[type="number"] {
+  width: 54px;
+  font: inherit;
+}
+.reference-player input[type="text"],
+.reference-player input:not([type]) {
+  width: 135px;
+  font: inherit;
+}
+.reference-rule {
+  margin: 3px 0;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+.reference-totals {
+  font-weight: 600;
+  margin-top: 5px;
+}
+.reference-funnel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 9px;
+  color: var(--text-muted);
+}
+.reference-player-choices {
+  display: flex;
+  flex-direction: column;
+  max-height: 110px;
+  overflow: auto;
+  border: 1px solid var(--pane-border);
+}
+.reference-player-choices button {
+  text-align: left;
+  border: 0;
+  background: var(--pane-header-bg);
+  color: var(--text);
+  padding: 3px 5px;
+}
+.reference-player-choices button:hover {
+  background: var(--accent);
+  color: white;
+}
+.reference-moves {
+  max-height: 145px;
+  overflow: auto;
+  margin-top: 3px;
+}
+.reference-moves table {
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+.reference-moves th,
+.reference-moves td {
+  white-space: nowrap;
+  padding: 2px 5px;
+}
 .book-scope {
   display: inline-flex;
   gap: 2px;

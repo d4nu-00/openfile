@@ -7,9 +7,9 @@ use crate::{
 };
 use cbh_reader::{
     CbhError,
-    tree::{self, BuildStage, OpeningTree, PendingChange, Source},
+    tree::{self, BuildStage, OpeningTree, PendingChange, ReferenceFilter, Source},
 };
-use shakmaty::{Chess, EnPassantMode, Position, fen::Fen, san::SanPlus, uci::UciMove};
+use shakmaty::{Chess, Color, EnPassantMode, Position, fen::Fen, san::SanPlus, uci::UciMove};
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
@@ -164,6 +164,32 @@ pub struct ReferenceResponse {
     pub cancelled: bool,
     pub source: ReferenceSource,
     pub indexed: bool,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReferenceChoice {
+    pub san: String,
+    pub full: u64,
+    pub filtered: u64,
+    pub player: u64,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReferenceStatistics {
+    pub request_id: String,
+    pub full_games: u64,
+    pub filtered_games: u64,
+    pub player_games: u64,
+    pub scanned_games: u64,
+    pub after_elo: u64,
+    pub after_year: u64,
+    pub missing_elo: u64,
+    pub missing_year: u64,
+    pub complete: bool,
+    pub full_complete: bool,
+    pub moves: Vec<ReferenceChoice>,
 }
 
 /// The line's last position, and the hashes and packed moves leading there.
@@ -585,6 +611,121 @@ impl Registry {
             c.store(true, Ordering::Relaxed);
         }
         Ok(())
+    }
+
+    /// Compare the indexed full position with a filtered cohort and one
+    /// player's choices. The same Stop action cancels this work and a pending
+    /// reference search. No registry mutex is held while reading headers.
+    pub fn reference_statistics(
+        &self,
+        database_id: String,
+        line: Line,
+        request_id: String,
+        filter: ReferenceFilter,
+    ) -> Result<ReferenceStatistics, AppError> {
+        if filter
+            .elo_min
+            .zip(filter.elo_max)
+            .is_some_and(|(a, b)| a > b)
+            || filter
+                .year_min
+                .zip(filter.year_max)
+                .is_some_and(|(a, b)| a > b)
+        {
+            return Err(AppError::new(
+                "bounds",
+                "Reference filter minimum exceeds maximum",
+            ));
+        }
+        let cancel = Arc::new(AtomicBool::new(false));
+        if let Some(old) = self
+            .lock()?
+            .reference_cancels
+            .insert(database_id.clone(), cancel.clone())
+        {
+            old.store(true, Ordering::Relaxed);
+        }
+        let result = (|| {
+            let (pos, hashes, moves) = replay(&line)?;
+            let target = *hashes
+                .last()
+                .ok_or_else(|| AppError::new("bounds", "Empty line"))?;
+            let mut indexed = None;
+            if let Some(open) = self.open_tree(&database_id)? {
+                let mut open = open
+                    .lock()
+                    .map_err(|_| AppError::new("state", "Opening tree unavailable"))?;
+                let OpenTree { tree, db } = &mut *open;
+                match tree.query(db, &hashes, &moves, MAX_REFERENCE_HITS, MAX_FOLLOW, &cancel) {
+                    Ok(answer) if answer.source != Source::None => indexed = Some(answer),
+                    Ok(_) | Err(CbhError::LimitExceeded) => {}
+                    Err(e) => return Err(e.into()),
+                }
+            }
+            let db = self.own_handle(&database_id)?;
+            let (full, games, complete, full_complete) = if let Some(answer) = indexed {
+                let exact = answer.source == Source::Tree || !answer.truncated;
+                (answer.moves, answer.games, !answer.truncated, exact)
+            } else {
+                let hits = self
+                    .lock()?
+                    .references
+                    .get(&database_id)
+                    .cloned()
+                    .ok_or_else(|| AppError::new("noSearch", "Search the position first"))?;
+                let (stats, games) =
+                    db.line_answer(&hits.ordinals, target, MAX_REFERENCE_HITS, &cancel)?;
+                let exact = hits.ordinals.len() < MAX_REFERENCE_HITS;
+                (stats, games, exact, exact)
+            };
+            let selected =
+                db.reference_choice_stats(&games, pos.turn() == Color::Black, &filter, &cancel)?;
+            if cancel.load(Ordering::Relaxed) {
+                return Err(AppError::new("cancelled", "Reference statistics stopped"));
+            }
+            let full_games = tree::total(&full).games;
+            let filtered_games = tree::total(&selected.filtered).games;
+            let player_games = tree::total(&selected.player).games;
+            let mut rows = Vec::new();
+            for entry in full.iter().filter(|entry| entry.uci().is_some()) {
+                let uci = entry.uci().unwrap_or_default();
+                let count = |moves: &[tree::MoveStats]| {
+                    moves
+                        .iter()
+                        .find(|m| m.code == entry.code)
+                        .map_or(0, |m| m.games)
+                };
+                rows.push(ReferenceChoice {
+                    san: san(&pos, &uci),
+                    full: entry.games,
+                    filtered: count(&selected.filtered),
+                    player: count(&selected.player),
+                });
+            }
+            Ok(ReferenceStatistics {
+                request_id,
+                full_games,
+                filtered_games,
+                player_games,
+                scanned_games: selected.scanned,
+                after_elo: selected.after_elo,
+                after_year: selected.after_year,
+                missing_elo: selected.missing_elo,
+                missing_year: selected.missing_year,
+                complete: complete && selected.scanned == games.len() as u64,
+                full_complete,
+                moves: rows,
+            })
+        })();
+        let mut state = self.lock()?;
+        if state
+            .reference_cancels
+            .get(&database_id)
+            .is_some_and(|active| Arc::ptr_eq(active, &cancel))
+        {
+            state.reference_cancels.remove(&database_id);
+        }
+        result
     }
 
     /// Entries `start .. start + limit` of the reference search result.

@@ -31,6 +31,8 @@ import type {
   PrepareProgress,
   TreeProgress,
   ReferenceResponse,
+  ReferenceFilter,
+  ReferenceStatistics,
   AppSettings,
   TablebaseResponse,
   BlunderParams,
@@ -439,6 +441,18 @@ export const backend = {
     }),
   cancelReference: (databaseId: string) =>
     invoke<void>("cancel_reference", { databaseId }),
+  referenceStatistics: (
+    databaseId: string,
+    line: Line,
+    requestId: string,
+    filter: ReferenceFilter,
+  ) =>
+    invoke<ReferenceStatistics>("reference_statistics", {
+      databaseId,
+      line,
+      requestId,
+      filter,
+    }),
   readReferencePage: (
     databaseId: string,
     start: string,

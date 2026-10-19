@@ -202,6 +202,7 @@ pub fn run() {
             commands::filtered_opening_tree,
             commands::cancel_filtered_opening_tree,
             commands::reference_search,
+            commands::reference_statistics,
             commands::cancel_reference,
             commands::read_reference_page,
             commands::read_page,
