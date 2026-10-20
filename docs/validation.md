@@ -1095,3 +1095,10 @@ formatting, strict workspace/all-target Clippy, TypeScript, Prettier, production
 frontend build and native debug/release executable builds pass. The frontend build retains its
 existing >500 kB chunk-size advisory. Distribution audit passes for all 641
 tracked source/artifact paths. PR checks provide the cross-platform CI record.
+
+The first PR macOS CI run exposed a pre-existing review-practice drag-test race:
+the square query could resolve before the asynchronously mounted board finished
+its effects. The failure reproduced locally on attempt 4. Awaiting the initial
+render and position effects in React `act` passed 20 consecutive targeted runs;
+the drag and grading assertions remain unchanged. This is a test synchronization
+fix, with no change to board behavior.

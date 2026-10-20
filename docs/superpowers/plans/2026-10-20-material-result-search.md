@@ -53,7 +53,8 @@
 - [x] Implement material preset/range/balance controls and explicit target selection with no-results modes disabled.
 - [x] Verify actual running UI with synthetic database, inspect/show screenshots, measure large read-only database searches.
 - [x] Record reference controls/addresses, uncertainties, design choices, measurements and limitations; tick checklist only when verified.
-- [ ] Run full local checks, obtain independent review, fix findings, open an unmerged PR, inspect/fix CI failures.
+- [x] Run full local checks, obtain independent review, fix findings and open an unmerged PR.
+- [ ] Inspect/fix CI failures and confirm the final cross-platform checks.
 
 
 ## Execution record
@@ -65,3 +66,5 @@
 - Browser and native UI checked. After the Mac was unlocked, native real-reader flows verified All, Within, Add, repeated Add, matching-node opening, large-database progress/cancel preserving prior results, and Within on an empty result. Native screenshots inspected and saved.
 - Release measurements on both read-only reference formats recorded in docs/search.md.
 - Final checks and PR/CI evidence recorded in docs/validation.md.
+
+- PR #45 opened unmerged. Initial macOS CI exposed an existing review-practice drag-test timing race, reproduced locally on attempt 4 and fixed by awaiting initial render/position effects; 20 repeated targeted runs passed. Cross-platform checks rerun after this test-only fix.
