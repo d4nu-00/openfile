@@ -212,6 +212,14 @@ export function ReplayTrainingSession({
         setStorageError("Progress could not be saved to the app data folder.");
       });
   };
+  useEffect(() => {
+    if (!question || done || question.training.seconds <= 0) return;
+    const timeout = window.setTimeout(() => {
+      setElapsed((value) => Math.max(value, question.training.seconds));
+      if (!runRecorded.current) save(false, 0);
+    }, question.training.seconds * 1000);
+    return () => window.clearTimeout(timeout);
+  }, [question, done, epoch]);
   const answer = (value: string | number) => {
     if (!question || done) return;
     const result = gradeAnswer(question, value);

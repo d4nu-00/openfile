@@ -41,6 +41,48 @@ const game: GameView = {
 };
 
 describe("replay training session", () => {
+  it("records an expired unanswered question as needing another attempt", async () => {
+    const timedGame: GameView = {
+      ...game,
+      nodes: game.nodes.map((node) =>
+        node.id === 1
+          ? { ...node, training: { ...node.training!, seconds: 1 } }
+          : node,
+      ),
+    };
+    const record = vi.fn().mockResolvedValue(undefined);
+    const api = {
+      replayTrainingProgress: vi.fn().mockResolvedValue({}),
+      replayTrainingRecord: record,
+      positionAt: vi.fn().mockResolvedValue({
+        requestId: "q",
+        documentId: "doc",
+        nodeId: 0,
+        fen: timedGame.startFen,
+        turn: "white",
+        legalUci: ["e2e4"],
+      }),
+    } as unknown as WorkbenchApi;
+    render(
+      <ReplayTrainingSession
+        api={api}
+        source={{
+          kind: "current",
+          game: timedGame,
+          documentId: "doc",
+          label: "A–B",
+        }}
+        onClose={() => {}}
+      />,
+    );
+    expect(
+      await screen.findByText("Time expired", {}, { timeout: 3000 }),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Next question" }));
+    expect(screen.getByText(/1 need another attempt/)).toBeVisible();
+    await waitFor(() => expect(record).toHaveBeenCalledTimes(1));
+  });
+
   it("summarizes this run separately from saved progress", async () => {
     const position = {
       requestId: "q",

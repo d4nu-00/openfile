@@ -143,6 +143,62 @@ describe("replay training model", () => {
     expect(gradeAnswer(q, "a7a8n")?.kind).toBe("ungraded");
   });
 
+  it("matches a Chess960 castling answer to the legal king-to-rook UCI", () => {
+    const castling = {
+      ...game,
+      nodes: game.nodes.map((n) =>
+        n.id === 1
+          ? {
+              ...n,
+              training: {
+                ...n.training!,
+                answers: [{ from: 8, to: 48, points: 10 }],
+              },
+              trainingMoves: ["O-O"],
+            }
+          : n,
+      ),
+    };
+    const q = prepareQuestion(
+      castling,
+      1,
+      {
+        ...position,
+        fen: "4k3/8/8/8/8/8/8/RK5R w AH - 0 1",
+        legalUci: ["b1h1", "b1a1"],
+      },
+      "Chess960",
+    );
+    expect(q).not.toBeNull();
+    expect(gradeAnswer(q!, "b1h1")?.kind).toBe("correct");
+    const adjacent = {
+      ...castling,
+      nodes: castling.nodes.map((n) =>
+        n.id === 1
+          ? {
+              ...n,
+              training: {
+                ...n.training!,
+                answers: [{ from: 40, to: 48, points: 10 }],
+              },
+            }
+          : n,
+      ),
+    };
+    const adjacentQuestion = prepareQuestion(
+      adjacent,
+      1,
+      {
+        ...position,
+        fen: "4k3/8/8/8/8/8/8/R4K1R w AH - 0 1",
+        legalUci: ["f1g1", "f1h1"],
+      },
+      "Adjacent castle",
+    )!;
+    expect(gradeAnswer(adjacentQuestion, "f1h1")?.kind).toBe("correct");
+    expect(gradeAnswer(adjacentQuestion, "f1g1")?.kind).toBe("ungraded");
+  });
+
   it("reports solved and retry items separately", () => {
     expect(
       summary([{ key: "a" }, { key: "b" }] as never, {

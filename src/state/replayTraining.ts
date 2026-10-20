@@ -75,14 +75,44 @@ function pathTo(game: GameView, node: number): string[] | null {
 function answerMove(
   answer: TrainingAnswer,
   legal: string[],
+  fen: string,
+  san?: string | null,
 ): string | undefined {
   const from = square(answer.from),
     to = square(answer.to);
   if (!from || !to) return undefined;
-  return legal.find(
+  const direct = legal.find(
     (uci) =>
       uci.startsWith(from + to) && (uci.length === 4 || uci.endsWith("q")),
   );
+  if (
+    (direct && !san?.startsWith("O-O")) ||
+    (san && !san.startsWith("O-O")) ||
+    !["c", "g"].includes(to[0]) ||
+    from[1] !== to[1]
+  )
+    return direct;
+  // The annotation stores a castling king destination. Chess960 legal UCI
+  // instead names the rook square; only a legal king-to-own-rook move matches.
+  const pieceAt = (at: string) => {
+    const row = fen.split(" ")[0].split("/")[8 - Number(at[1])];
+    if (!row) return undefined;
+    const expanded = row.replace(/[1-8]/g, (n) => ".".repeat(Number(n)));
+    return expanded["abcdefgh".indexOf(at[0])];
+  };
+  const king = pieceAt(from);
+  if (king !== "K" && king !== "k") return direct;
+  const castle = legal.find((uci) => {
+    const rookSquare = uci.slice(2, 4);
+    return (
+      uci.slice(0, 2) === from &&
+      rookSquare[1] === from[1] &&
+      pieceAt(rookSquare) === (king === "K" ? "R" : "r") &&
+      "abcdefgh".indexOf(rookSquare[0]) > "abcdefgh".indexOf(from[0]) ===
+        (to[0] === "g")
+    );
+  });
+  return castle ?? direct;
 }
 
 /** Validates the saved annotation against the current parent position. */
@@ -106,7 +136,12 @@ export function prepareQuestion(
   const answers = training.answers.flatMap((answer, index) => {
     const value =
       training.kind === "moveInput"
-        ? answerMove(answer, position.legalUci)
+        ? answerMove(
+            answer,
+            position.legalUci,
+            position.fen,
+            entry.trainingMoves?.[index],
+          )
         : index;
     const choice =
       training.kind === "multipleChoice" ? shownText(answer.choice).trim() : "";
