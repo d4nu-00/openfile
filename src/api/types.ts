@@ -95,6 +95,10 @@ export interface Training {
   help?: [TrainingBlock, TrainingBlock];
   answers: TrainingAnswer[];
 }
+export type ReplayProgressMap = Record<
+  string,
+  { attempts: number; needsRetry: boolean; bestPoints?: number }
+>;
 /** Colours use the PGN [%csl]/[%cal] letters: G, Y, R, B, C, O. */
 export interface SquareMark {
   color: string;

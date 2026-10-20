@@ -82,6 +82,7 @@ import type {
   WorkspaceSide,
   RepertoireSnapshot,
   RepertoireGrade,
+  ReplayProgressMap,
 } from "./types";
 
 /** A progress channel; one that drops the messages when nobody listens. */
@@ -441,6 +442,10 @@ export const backend = {
     }),
   repertoireGrade: (line: Line, side: WorkspaceSide, uci: string) =>
     invoke<RepertoireGrade>("repertoire_grade", { line, side, uci }),
+  replayTrainingProgress: () =>
+    invoke<ReplayProgressMap>("replay_training_progress"),
+  replayTrainingRecord: (key: string, progress: ReplayProgressMap[string]) =>
+    invoke<void>("replay_training_record", { key, progress }),
   filteredOpeningTree: (databaseId: string, line: Line, requestId: string) =>
     invoke<TreeResponse>("filtered_opening_tree", {
       databaseId,

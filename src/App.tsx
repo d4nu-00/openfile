@@ -54,6 +54,10 @@ import { TablebasePane } from "./components/TablebasePane";
 import { BlunderCheckDialog } from "./components/BlunderCheckDialog";
 import { CentipawnDialog } from "./components/CentipawnDialog";
 import { TrainingDialog } from "./components/TrainingDialog";
+import {
+  ReplayTrainingSession,
+  type ReplaySource,
+} from "./components/ReplayTrainingSession";
 import { DeepAnalysisDialog } from "./components/DeepAnalysisDialog";
 import { ClassifyDialog, SetEcoDialog } from "./components/OpeningDialogs";
 import { OpeningReportDialog } from "./components/OpeningReportDialog";
@@ -194,6 +198,10 @@ export function App({
   /** Tactical Analysis: open, its progress while running, its error. */
   /** The move whose training question is being edited, and any error. */
   const [training, setTraining] = useState<{ node: number; error?: string }>();
+  const [replay, setReplay] = useState<{
+    source: ReplaySource;
+    databaseId?: string;
+  }>();
   /** The document Centipawn Analysis runs on. */
   const [centipawn, setCentipawn] = useState<string>();
   const [gameReview, setGameReview] = useState<{
@@ -835,6 +843,10 @@ export function App({
     if (keepSelection.current) keepSelection.current = false;
     else setSelection(noSelection);
   }, [listKey]);
+  useEffect(() => {
+    if (replay?.databaseId && replay.databaseId !== state.database?.databaseId)
+      setReplay(undefined);
+  }, [replay, state.database?.databaseId]);
   /** Games copied and waiting to be pasted, and a running paste. */
   const [clipGames, setClipGames] = useState(0);
   const [pastingGames, setPastingGames] = useState<string>();
@@ -2101,6 +2113,44 @@ export function App({
       run: () => selected !== 0 && setTraining({ node: selected }),
       enabled: !!state.document?.documentId && selected !== 0,
     },
+    "replay-training-game": {
+      run: () => {
+        if (game && state.document?.documentId)
+          setReplay({
+            source: {
+              kind: "current",
+              game,
+              documentId: state.document.documentId,
+              label: `${game.tags.White ?? "White"}–${game.tags.Black ?? "Black"}`,
+            },
+            databaseId: state.database?.databaseId,
+          });
+      },
+      enabled: !!game && !!state.document?.documentId,
+    },
+    "replay-training-selection": {
+      run: () => {
+        if (!state.database) return;
+        const ranges = selection.ranges.length
+          ? selection.ranges.map(([a, b]) => [a, b] as [number, number])
+          : w.cursor !== undefined
+            ? [[w.cursor, w.cursor + 1] as [number, number]]
+            : [];
+        if (ranges.length)
+          setReplay({
+            source: {
+              kind: "selection",
+              databaseId: state.database.databaseId,
+              ranges,
+              entry: (row) => w.rows.entry(row, w.rowCount),
+            },
+            databaseId: state.database.databaseId,
+          });
+      },
+      enabled:
+        !!state.database &&
+        (selectedCount(selection) > 0 || w.cursor !== undefined),
+    },
     "delete-training": {
       run: () => void e.edit({ kind: "clearTraining" }),
       enabled: !!game?.nodes.some((n) => n.training),
@@ -2363,6 +2413,7 @@ export function App({
       palette ||
       !!symbolMenu ||
       !!maskOpen ||
+      !!replay ||
       gameDataOpen ||
       setupOpen ||
       !!pasting ||
@@ -2371,7 +2422,7 @@ export function App({
   // "/" also opens command search when focus is not in a field.
   useEffect(() => {
     function slash(event: KeyboardEvent) {
-      if (event.key !== "/" || palette) return;
+      if (event.key !== "/" || palette || replay) return;
       if ((event.target as HTMLElement).closest?.("input,textarea,select"))
         return;
       event.preventDefault();
@@ -2379,7 +2430,7 @@ export function App({
     }
     window.addEventListener("keydown", slash);
     return () => window.removeEventListener("keydown", slash);
-  }, [palette]);
+  }, [palette, replay]);
 
   const databaseName = state.database ? "Database" : "Databases";
   /** Open databases in the order they were opened. */
@@ -3111,6 +3162,13 @@ export function App({
               )
           }
           onClose={() => setTraining(undefined)}
+        />
+      )}
+      {replay && (
+        <ReplayTrainingSession
+          api={api}
+          source={replay.source}
+          onClose={() => setReplay(undefined)}
         />
       )}
       {centipawn && (

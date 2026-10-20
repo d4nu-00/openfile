@@ -122,6 +122,9 @@ turns them into a database.
   follow saved positions, see unanswered reference replies, and practise your
   own moves. Choices and practice attempts stay in the app's data folder and
   follow the same chess position across move orders and databases.
+- **Replay Training Sessions.** Practise saved questions from a game or selected
+  game-list rows on a hidden-answer board. Use authored hints and feedback,
+  retry questions, and keep progress in the app data folder.
 
 </details>
 
@@ -276,6 +279,7 @@ outside iCloud Drive.
 | Opening book | **Book** tab (Ctrl+F12) |
 | Your opening choices | **Repertoire** tab; choose White or Black, save moves, or practise on the board |
 | Engine analysis | **Infinite Analysis** (Alt+F2) |
+| Practise authored questions | **Training › Replay Training**; in the database window choose **Replay Selected Games** for selected rows |
 | Find the position in the database | **Find Position › Hard Disk** |
 
 </details>
@@ -294,7 +298,7 @@ Reference panes; it takes about ten minutes for the 11-million-game test databas
 
 ## Not there yet
 
-- Training: replay training and calculation training.
+- Training: calculation training and automatic generation of new questions.
 - Printing and importing the local repertoire workspace.
 - Text entries, printing, diagram lists and HTML publishing.
 - Correspondence chess, and playing against an engine.
@@ -313,7 +317,7 @@ and reported as unsupported.
 | Databases and files | [Formats](docs/formats.md) · [Writing](docs/writing.md) · [Conversion](docs/conversion.md) · [Maintenance](docs/maintenance.md) |
 | Lists and search | [Game list](docs/game-list.md) · [Search](docs/search.md) · [Position search](docs/position-search.md) |
 | Openings | [Opening tree](docs/opening-tree.md) · [Repertoire workspace](docs/repertoire-workspace.md) · [Openings](docs/openings.md) |
-| Games and engines | [Game window](docs/game-window.md) · [Engines](docs/engines.md) · [Analysis](docs/analysis.md) · [Game review](docs/game-review.md) |
+| Games and engines | [Game window](docs/game-window.md) · [Replay training](docs/replay-training.md) · [Engines](docs/engines.md) · [Analysis](docs/analysis.md) · [Game review](docs/game-review.md) |
 | Players and reports | [Player statistics](docs/player-statistics.md) · [Dossier](docs/player-dossier.md) · [Preparation](docs/preparation.md) · [Tournament report](docs/tournament-report.md) · [Error report](docs/error-report.md) |
 | Design | [Design](docs/design.md) · [UI shell](docs/ui-shell.md) · [Validation](docs/validation.md) |
 

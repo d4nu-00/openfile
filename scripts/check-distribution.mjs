@@ -50,6 +50,7 @@ const documents = new Set([
   "centipawn-analysis.md",
   "training.md",
   "game-review.md",
+  "replay-training.md",
 ]);
 export function allowedSourcePath(candidate) {
   if (
@@ -108,11 +109,21 @@ export function allowedSourcePath(candidate) {
       "docs/superpowers/plans/2026-10-19-repertoire-workspace.md",
       "docs/superpowers/specs/2026-10-19-repertoire-workspace-design.md",
       "docs/superpowers/specs/2026-10-18-quick-search-expressions-design.md",
+      "docs/superpowers/plans/2026-10-19-replay-training-sessions.md",
+      "docs/superpowers/specs/2026-10-19-replay-training-sessions-design.md",
     ].includes(candidate)
   )
     return true;
   // README screenshots and the public-domain games they show.
   if (/^docs\/media\/[a-z0-9-]+\.png$/.test(candidate)) return true;
+  if (
+    [
+      "docs/media/replay-training-question.jpg",
+      "docs/media/replay-training-solved.jpg",
+      "docs/media/replay-training-summary.jpg",
+    ].includes(candidate)
+  )
+    return true;
   if (candidate === "docs/media/showcase.pgn") return true;
   // Release notes, one per tag.
   if (/^docs\/releases\/v[0-9]+\.[0-9]+\.[0-9]+\.md$/.test(candidate))
@@ -163,7 +174,7 @@ export function checkDistribution(root) {
       errors.push(`Source must be a regular file: ${name}`);
       continue;
     }
-    if (!name.startsWith("licenses/") && !name.endsWith(".png")) {
+    if (!name.startsWith("licenses/") && !/\.(png|jpg)$/.test(name)) {
       const content = fs.readFileSync(file, "utf8");
       if (
         /(?:\/Users\/|\/home\/)[\w.-]+\/|[A-Z]:\\Users\\[^\\]+\\/.test(content)

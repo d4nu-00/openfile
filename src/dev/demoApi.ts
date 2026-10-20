@@ -14,6 +14,7 @@ import type {
   RepertoirePosition,
   WorkspaceSide,
   Line,
+  ReplayProgressMap,
 } from "../api/types";
 import { demoFens, demoLegal, demoNodes } from "./demoGame";
 
@@ -258,6 +259,39 @@ export function demoApi(): WorkbenchApi {
     return order.filter((o) => keep.has(o));
   };
   let nodes: GameNode[] = structuredClone(demoNodes) as unknown as GameNode[];
+  // A small authored sample for browser-only replay previews.
+  nodes[7].training = {
+    kind: "moveInput",
+    seconds: 60,
+    score: 10,
+    question: {
+      texts: [
+        { language: 0, text: "How should White challenge the pinned bishop?" },
+      ],
+    },
+    wrong: {
+      texts: [{ language: 0, text: "Look at the tension in the centre." }],
+    },
+    help: [
+      { texts: [{ language: 0, text: "Consider a pawn capture." }] },
+      { texts: [{ language: 0, text: "The d-pawn can take on e5." }] },
+    ],
+    answers: [
+      {
+        from: 27,
+        to: 36,
+        points: 10,
+        feedback: {
+          texts: [
+            {
+              language: 0,
+              text: "The centre opens while the bishop is committed.",
+            },
+          ],
+        },
+      },
+    ],
+  };
   const bookMoves = (moves: string[]) => {
     if (moves.length === 0)
       return [
@@ -298,6 +332,7 @@ export function demoApi(): WorkbenchApi {
     nodes,
   });
   let settings: AppSettings = { maxGameTabs: 8, engines: [] };
+  const replayProgress: ReplayProgressMap = {};
   const repertoireEntries: RepertoirePosition[] = [];
   const demoSnapshot = (line: Line, side: WorkspaceSide) => {
     const legal = bookMoves(line.moves).map((move) => ({
@@ -318,6 +353,10 @@ export function demoApi(): WorkbenchApi {
     };
   };
   const api: Partial<WorkbenchApi> = {
+    replayTrainingProgress: async () => ({ ...replayProgress }),
+    replayTrainingRecord: async (key, progress) => {
+      replayProgress[key] = progress;
+    },
     repertoireSnapshot: async (line, side) => demoSnapshot(line, side),
     repertoireEdit: async (line, side, uci, action, note) => {
       const key = `${side}|${line.moves.join(" ")}`;
