@@ -269,7 +269,7 @@ outside iCloud Drive.
 |---|---|
 | Replay moves | Left/Right, Home and End |
 | Jump to a move | Click it in the notation |
-| Add a move | Click a piece, then its destination |
+| Add a move | Click a piece, then its destination, or drag it there with mouse or touch |
 | Draw arrows and squares | Right-click a square or right-drag an arrow (or Alt with the left button); green, Shift for red, Ctrl for yellow |
 | Edit game data | F2 |
 | Add symbols | Annotation palette, Ctrl+Alt+S |

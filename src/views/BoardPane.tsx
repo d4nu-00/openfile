@@ -5,6 +5,7 @@ import {
   ChevronsRight,
 } from "lucide-react";
 import { Board, type DrawnMark } from "../components/Board";
+import { pieceImages } from "../board/pieces";
 import type { GameNode, PositionResponse } from "../api/types";
 
 export type Step = "first" | "previous" | "next" | "last";
@@ -20,6 +21,7 @@ export function BoardPane({
   navigate,
   selectedSquare,
   onSquare,
+  onMove,
   promotion,
   onPromote,
   compact,
@@ -33,6 +35,7 @@ export function BoardPane({
   navigate: (step: Step) => void;
   selectedSquare?: string;
   onSquare?: (square: string) => void;
+  onMove?: (from: string, to: string) => void;
   promotion?: string[];
   onPromote?: (uci?: string) => void;
   compact?: boolean;
@@ -46,6 +49,11 @@ export function BoardPane({
     ["next", "Next move", ChevronRight],
     ["last", "Last move", ChevronsRight],
   ];
+  const promotionSquare = promotion?.[0]?.slice(2, 4);
+  const promotionFile = promotionSquare
+    ? (flipped ? "hgfedcba" : "abcdefgh").indexOf(promotionSquare[0])
+    : 0;
+  const promotionAtTop = promotionSquare?.[1] === (flipped ? "1" : "8");
   return (
     <div className={compact ? "board-pane compact" : "board-pane"}>
       <div className="pane-title">
@@ -60,34 +68,64 @@ export function BoardPane({
           flipped={flipped}
           selectedSquare={selectedSquare}
           onSquare={onSquare}
+          onMove={onMove}
           legalUci={position?.legalUci ?? []}
           compact={compact}
           marks={node}
           onMark={onMark}
         />
-      </div>
-      {promotion && promotion.length > 0 && onPromote && (
-        <section
-          role="dialog"
-          aria-label="Choose promotion"
-          className="promotion"
-        >
-          {[
-            ["q", "Queen"],
-            ["r", "Rook"],
-            ["b", "Bishop"],
-            ["n", "Knight"],
-          ].map(([code, label]) => (
-            <button
-              key={code}
-              onClick={() => onPromote(promotion.find((m) => m.endsWith(code)))}
+        {promotion && promotion.length > 0 && onPromote && (
+          <section
+            role="dialog"
+            aria-label="Choose promotion"
+            className="promotion"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) onPromote(undefined);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                event.stopPropagation();
+                onPromote(undefined);
+              }
+            }}
+          >
+            <div
+              className={`promotion-pieces ${promotionAtTop ? "from-top" : "from-bottom"}`}
+              style={{ left: `${(promotionFile + 0.5) * 12.5}%` }}
             >
-              {label}
-            </button>
-          ))}
-          <button onClick={() => onPromote(undefined)}>Cancel</button>
-        </section>
-      )}
+              {(
+                [
+                  ["q", "Queen"],
+                  ["r", "Rook"],
+                  ["b", "Bishop"],
+                  ["n", "Knight"],
+                ] as const
+              ).map(([code, label]) => (
+                <button
+                  key={code}
+                  type="button"
+                  aria-label={label}
+                  title={label}
+                  autoFocus={code === "q"}
+                  onClick={() =>
+                    onPromote(promotion.find((m) => m.endsWith(code)))
+                  }
+                >
+                  <img
+                    src={
+                      pieceImages[
+                        position?.turn === "black" ? code : code.toUpperCase()
+                      ]
+                    }
+                    alt=""
+                  />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
       <div className="replay-bar" aria-label="Move navigation">
         {steps.map(([step, label, Icon]) => (
           <button

@@ -10,7 +10,7 @@ The game review intentionally follows the existing game window and analysis dial
 
 ## Learn from mistakes
 
-After a review, choose **Learn from mistakes** to practise its inaccuracies, mistakes, missed wins and losing moves. The review's suggested lines disappear while practising. Each exercise loads the board **before** the critical move; click a piece and its destination to try a legal move. Promotions offer a piece choice. The practice board does not add moves or variations to the game.
+After a review, choose **Learn from mistakes** to practise its inaccuracies, mistakes, missed wins and losing moves. The review's suggested lines disappear while practising. Each exercise loads the board **before** the critical move; click a piece and its destination, or drag it with mouse or touch, to try a legal move. Promotions offer a piece choice. The practice board does not add moves or variations to the game.
 
 The saved engine move is the answer. A wrong move leaves the same position available for another try. **Hint** names the kind of piece to consider without showing the move. **Show solution** reveals the engine continuation in SAN. **Skip** records the position without revealing the line. Previous and Next move among the eligible positions; **Try again** hides revealed help. Moves without an engine continuation are omitted from practice but remain visible in the review. If a saved move no longer fits its position, practice asks for a new review.
 

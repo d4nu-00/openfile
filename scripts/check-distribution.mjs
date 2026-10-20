@@ -121,6 +121,10 @@ export function allowedSourcePath(candidate) {
       "docs/media/replay-training-question.jpg",
       "docs/media/replay-training-solved.jpg",
       "docs/media/replay-training-summary.jpg",
+      "docs/media/board-drag-flipped.jpg",
+      "docs/media/board-capture-promotion.jpg",
+      "docs/media/board-setup-drag.jpg",
+      "docs/media/board-training-drag.jpg",
     ].includes(candidate)
   )
     return true;

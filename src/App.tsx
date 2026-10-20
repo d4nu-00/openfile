@@ -461,14 +461,15 @@ export function App({
     };
   }, [api]);
 
-  function clickSquare(to: string) {
+  function clickSquare(to: string, from = square) {
     if (e.busy || !game) return;
     const moves =
       state.position?.legalUci.filter(
-        (m) => m.slice(0, 2) === square && m.slice(2, 4) === to,
+        (m) => m.slice(0, 2) === from && m.slice(2, 4) === to,
       ) ?? [];
     if (moves.length > 1) {
       setPromotion(moves);
+      setSquare(undefined);
       return;
     }
     if (moves.length === 1) {
@@ -2855,7 +2856,12 @@ export function App({
                       navigate={navigate}
                       node={game?.nodes[selected]}
                       selectedSquare={square}
-                      onSquare={clickSquare}
+                      onSquare={promotion.length ? undefined : clickSquare}
+                      onMove={
+                        promotion.length
+                          ? undefined
+                          : (from, to) => clickSquare(to, from)
+                      }
                       onMark={drawMark}
                       promotion={promotion}
                       onPromote={(uci) => {
