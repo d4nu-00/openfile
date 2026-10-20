@@ -132,11 +132,13 @@ square. Clicking a piece and then a destination remains available for mouse,
 touch and keyboard users. The read-only game-list preview does not accept
 moves.
 
-Promotions, including captures on the last rank, show a queen, rook, bishop
-and knight chooser centered over the board after a legal drop. The chooser
-does not change the board size. Choosing a piece completes the move; Cancel
-or Escape leaves the position unchanged. Standard castling uses the king's
-destination square. Chess960
+Promotions, including captures on the last rank, show queen, rook, bishop
+and knight icons in a vertical column over the destination file after a legal
+drop. The chooser covers the board without changing its size. Choosing a piece
+completes the move; clicking the dimmed board or pressing Escape cancels it.
+The column starts at the promotion rank and reverses when that rank appears
+at the bottom after flipping. Standard castling uses the king's destination
+square. Chess960
 castling uses the legal king-to-rook target, including when the rook occupies
 that square; the king may be dragged onto the castling rook. The same rule
 applies to click-to-move. Board orientation changes only the screen mapping;
@@ -172,10 +174,13 @@ without duplicating the pawn, and Replay Training accepted a dragged `d4xe5`
 answer. The preview has no configured analysis engine, so the review practice
 board was checked with component integration tests rather than a live review.
 For a capture promotion, the native app's old chooser appeared below and
-shrunk the board. In the revised browser preview, dragging `b7xa8` kept the
-board at 541.1 × 541.1 pixels while the chooser opened over it; choosing
-Knight placed a white knight on `a8`. The component test also checks Escape
-cancellation and the exact `b7a8n` move sent to the editing API.
+shrunk the board. Lichess's public [promotion stylesheet](https://github.com/lichess-org/lila/blob/master/ui/lib/css/chess/_promotion.scss)
+shows a board-sized choice layer with piece icons. OpenFile uses the same
+general placement idea with its own pieces and styling. In the revised browser
+preview, dragging `b7xa8` kept the board at 544 × 544 pixels while the four
+icons opened above the `a` file; choosing Knight placed a white knight on
+`a8`. Component tests cover Escape and backdrop cancellation, the exact
+`b7a8n` move sent to the editing API, and the column's position after flipping.
 
 ![Promotion chooser after dragging a pawn onto a rook](media/board-capture-promotion.jpg)
 

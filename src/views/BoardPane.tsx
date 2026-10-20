@@ -49,6 +49,11 @@ export function BoardPane({
     ["next", "Next move", ChevronRight],
     ["last", "Last move", ChevronsRight],
   ];
+  const promotionSquare = promotion?.[0]?.slice(2, 4);
+  const promotionFile = promotionSquare
+    ? (flipped ? "hgfedcba" : "abcdefgh").indexOf(promotionSquare[0])
+    : 0;
+  const promotionAtTop = promotionSquare?.[1] === (flipped ? "1" : "8");
   return (
     <div className={compact ? "board-pane compact" : "board-pane"}>
       <div className="pane-title">
@@ -74,15 +79,21 @@ export function BoardPane({
             role="dialog"
             aria-label="Choose promotion"
             className="promotion"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) onPromote(undefined);
+            }}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
+                event.preventDefault();
                 event.stopPropagation();
                 onPromote(undefined);
               }
             }}
           >
-            <h3>Choose promotion</h3>
-            <div className="promotion-pieces">
+            <div
+              className={`promotion-pieces ${promotionAtTop ? "from-top" : "from-bottom"}`}
+              style={{ left: `${(promotionFile + 0.5) * 12.5}%` }}
+            >
               {(
                 [
                   ["q", "Queen"],
@@ -94,24 +105,24 @@ export function BoardPane({
                 <button
                   key={code}
                   type="button"
+                  aria-label={label}
+                  title={label}
                   autoFocus={code === "q"}
                   onClick={() =>
                     onPromote(promotion.find((m) => m.endsWith(code)))
                   }
                 >
                   <img
-                    src={pieceImages[
-                      position?.turn === "black" ? code : code.toUpperCase()
-                    ]}
+                    src={
+                      pieceImages[
+                        position?.turn === "black" ? code : code.toUpperCase()
+                      ]
+                    }
                     alt=""
                   />
-                  <span>{label}</span>
                 </button>
               ))}
             </div>
-            <button type="button" onClick={() => onPromote(undefined)}>
-              Cancel
-            </button>
           </section>
         )}
       </div>

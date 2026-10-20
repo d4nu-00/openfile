@@ -11,6 +11,7 @@ import type { GameView } from "../api/types";
 import { PositionSetup } from "../components/PositionSetup";
 import { ReplayTrainingSession } from "../components/ReplayTrainingSession";
 import { ReviewPractice } from "../components/ReviewPractice";
+import { BoardPane } from "../views/BoardPane";
 import { mockApi, renderWorkbench, selected } from "./harness";
 
 function drag(board: HTMLElement, from: string, to: string, flipped = false) {
@@ -73,10 +74,22 @@ it("captures into promotion without shrinking the board, and can cancel or under
   drag(board, "b7", "a8");
   const chooser = ui.getByRole("dialog", { name: "Choose promotion" });
   expect(board.parentElement).toContainElement(chooser);
+  const pieces = chooser.querySelector(".promotion-pieces");
+  expect(pieces).toHaveClass("from-top");
+  expect(pieces).toHaveStyle({ left: "6.25%" });
+  expect(pieces?.querySelectorAll("button img")).toHaveLength(4);
+  expect(within(chooser).getAllByRole("button")).toHaveLength(4);
   expect(within(chooser).getByRole("button", { name: "Queen" })).toHaveFocus();
   fireEvent.keyDown(chooser, { key: "Escape" });
-  expect(ui.queryByRole("dialog", { name: "Choose promotion" })).not.toBeInTheDocument();
+  expect(
+    ui.queryByRole("dialog", { name: "Choose promotion" }),
+  ).not.toBeInTheDocument();
   expect(ui.api.editDocument).not.toHaveBeenCalled();
+  drag(board, "b7", "a8");
+  fireEvent.click(ui.getByRole("dialog", { name: "Choose promotion" }));
+  expect(
+    ui.queryByRole("dialog", { name: "Choose promotion" }),
+  ).not.toBeInTheDocument();
   drag(board, "b7", "a8");
   await ui.user.click(ui.getByRole("button", { name: "Knight" }));
   expect(ui.api.editDocument).toHaveBeenCalledWith(
@@ -84,6 +97,49 @@ it("captures into promotion without shrinking the board, and can cancel or under
     { kind: "appendMove", parent: 0, uci: "b7a8n" },
     "0",
   );
+});
+
+it("anchors a black capture promotion to the right file after flipping", () => {
+  const position = {
+    requestId: "test",
+    documentId: "doc-1",
+    nodeId: 0,
+    fen: "7k/8/8/8/8/8/1p6/R6K b - - 0 1",
+    turn: "black" as const,
+    legalUci: ["b2a1q", "b2a1r", "b2a1b", "b2a1n"],
+  };
+  const ui = render(
+    <BoardPane
+      title="Test"
+      position={position}
+      flipped={false}
+      hasGame
+      navigate={() => {}}
+      promotion={position.legalUci}
+      onPromote={() => {}}
+    />,
+  );
+  expect(
+    ui
+      .getByRole("dialog", { name: "Choose promotion" })
+      .querySelector(".promotion-pieces"),
+  ).toHaveClass("from-bottom");
+  ui.rerender(
+    <BoardPane
+      title="Test"
+      position={position}
+      flipped
+      hasGame
+      navigate={() => {}}
+      promotion={position.legalUci}
+      onPromote={() => {}}
+    />,
+  );
+  const pieces = ui
+    .getByRole("dialog", { name: "Choose promotion" })
+    .querySelector(".promotion-pieces");
+  expect(pieces).toHaveClass("from-top");
+  expect(pieces).toHaveStyle({ left: "93.75%" });
 });
 
 it("enters Chess960 castling by dropping the king on its rook", () => {
