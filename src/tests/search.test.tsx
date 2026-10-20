@@ -211,3 +211,97 @@ describe("position search", () => {
     expect(ui.api.deleteSearchBooster).toHaveBeenCalledWith("db-1");
   });
 });
+
+describe("material and result scopes", () => {
+  it("builds a rook ending with a signed balance and refines current results", async () => {
+    const ui = renderWorkbench({ initialView: "database" });
+    await ui.user.keyboard("{Control>}f{/Control}");
+    expect(ui.getByRole("radio", { name: "Within results" })).toBeDisabled();
+    expect(ui.getByRole("radio", { name: "Add to results" })).toBeDisabled();
+    await ui.user.click(ui.getByRole("button", { name: "Search" }));
+    await ui.findByText("2 of 401 entries found");
+    await ui.user.keyboard("{Control>}f{/Control}");
+    await ui.user.click(ui.getByRole("tab", { name: "Material" }));
+    await ui.user.click(ui.getByLabelText("Use material criteria"));
+    await ui.user.selectOptions(ui.getByLabelText("Endgame type"), "rook");
+    await ui.user.type(ui.getByLabelText("Material balance from"), "-2");
+    await ui.user.type(ui.getByLabelText("Material balance to"), "2");
+    await ui.user.click(ui.getByLabelText("Ignore material colours"));
+    await ui.user.click(ui.getByRole("radio", { name: "Within results" }));
+    await ui.user.click(ui.getByRole("button", { name: "Search" }));
+    expect(ui.api.searchGames).toHaveBeenLastCalledWith(
+      "db-1",
+      expect.objectContaining({
+        material: expect.objectContaining({
+          white: expect.objectContaining({
+            queens: { max: 0 },
+            rooks: { min: 1 },
+            bishops: { max: 0 },
+            knights: { max: 0 },
+          }),
+          black: expect.objectContaining({
+            queens: { max: 0 },
+            rooks: { min: 1 },
+          }),
+          balance: { min: -2, max: 2 },
+          ignoreColors: true,
+        }),
+      }),
+      expect.any(String),
+      expect.any(Function),
+      "within",
+    );
+    await ui.findByText("2 of 401 entries found");
+    await ui.user.keyboard("{Control>}f{/Control}");
+    await ui.user.click(ui.getByRole("tab", { name: "Material" }));
+    expect(ui.getByLabelText("Material balance from")).toHaveValue(-2);
+    await ui.user.click(ui.getByRole("radio", { name: "Add to results" }));
+    await ui.user.click(ui.getByRole("button", { name: "Search" }));
+    expect(ui.api.searchGames.mock.calls.at(-1)?.[4]).toBe("add");
+  });
+
+  it("rejects reversed material ranges and resets every criterion and scope", async () => {
+    const ui = renderWorkbench({ initialView: "database" });
+    await ui.user.keyboard("{Control>}f{/Control}");
+    await ui.user.click(ui.getByRole("tab", { name: "Material" }));
+    await ui.user.click(ui.getByLabelText("Use material criteria"));
+    await ui.user.type(ui.getByLabelText("White rooks from"), "2");
+    await ui.user.type(ui.getByLabelText("White rooks to"), "1");
+    expect(ui.getByRole("button", { name: "Search" })).toBeDisabled();
+    expect(ui.getByRole("alert")).toHaveTextContent(/range/i);
+    await ui.user.click(ui.getByRole("button", { name: "Reset all" }));
+    expect(ui.getByLabelText("Use material criteria")).not.toBeChecked();
+    expect(ui.getByRole("radio", { name: "All games" })).toBeChecked();
+    expect(ui.getByRole("button", { name: "Search" })).toBeEnabled();
+  });
+});
+
+describe("material mask recovery", () => {
+  it("resets the displayed preset when criteria are reset or re-enabled", async () => {
+    const ui = renderWorkbench({ initialView: "database" });
+    await ui.user.keyboard("{Control>}f{/Control}");
+    await ui.user.click(ui.getByRole("tab", { name: "Material" }));
+    await ui.user.click(ui.getByLabelText("Use material criteria"));
+    await ui.user.selectOptions(ui.getByLabelText("Endgame type"), "rook");
+    await ui.user.click(ui.getByRole("button", { name: "Reset all" }));
+    expect(ui.getByLabelText("Endgame type")).toHaveValue("any");
+    await ui.user.click(ui.getByLabelText("Use material criteria"));
+    await ui.user.selectOptions(ui.getByLabelText("Endgame type"), "rook");
+    await ui.user.click(ui.getByLabelText("Use material criteria"));
+    await ui.user.click(ui.getByLabelText("Use material criteria"));
+    expect(ui.getByLabelText("Endgame type")).toHaveValue("any");
+  });
+
+  it("allows a position-only search despite invalid material on another tab", async () => {
+    const ui = renderWorkbench({ initialView: "database" });
+    await ui.user.keyboard("{Control>}f{/Control}");
+    await ui.user.click(ui.getByRole("tab", { name: "Material" }));
+    await ui.user.click(ui.getByLabelText("Use material criteria"));
+    await ui.user.type(ui.getByLabelText("White rooks from"), "2");
+    await ui.user.type(ui.getByLabelText("White rooks to"), "1");
+    await ui.user.click(ui.getByRole("tab", { name: "Position" }));
+    expect(ui.getByRole("button", { name: "Search" })).toBeEnabled();
+    await ui.user.click(ui.getByRole("button", { name: "Search" }));
+    expect(ui.api.searchPosition).toHaveBeenCalled();
+  });
+});

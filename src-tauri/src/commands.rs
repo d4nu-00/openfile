@@ -538,11 +538,21 @@ pub async fn search_games(
     state: tauri::State<'_, Arc<Registry>>,
     database_id: String,
     filter: cbh_reader::search::GameFilter,
+    scope: Option<crate::searches::SearchScope>,
     request_id: String,
     events: tauri::ipc::Channel<crate::searches::BoosterProgress>,
 ) -> Result<crate::searches::SearchResponse, AppError> {
     let s = state.inner().clone();
-    blocking(move || s.search_games(database_id, filter, request_id, progress_to(events))).await
+    blocking(move || {
+        s.search_games_scoped(
+            database_id,
+            filter,
+            scope.unwrap_or_default(),
+            request_id,
+            progress_to(events),
+        )
+    })
+    .await
 }
 #[tauri::command]
 pub fn cancel_search(
@@ -585,11 +595,21 @@ pub async fn search_position(
     state: tauri::State<'_, Arc<Registry>>,
     database_id: String,
     query: cbh_reader::pattern::PositionQuery,
+    scope: Option<crate::searches::SearchScope>,
     request_id: String,
     events: tauri::ipc::Channel<crate::searches::BoosterProgress>,
 ) -> Result<crate::searches::SearchResponse, AppError> {
     let s = state.inner().clone();
-    blocking(move || s.search_position(database_id, query, request_id, progress_to(events))).await
+    blocking(move || {
+        s.search_position_scoped(
+            database_id,
+            query,
+            scope.unwrap_or_default(),
+            request_id,
+            progress_to(events),
+        )
+    })
+    .await
 }
 /// Sends (done, total) to the frontend at most four times a second.
 fn progress_to(

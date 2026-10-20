@@ -36,8 +36,44 @@ pub(crate) fn parallel<S, T: Send>(
     init: impl Fn(&Database) -> Result<S, CbhError> + Sync,
     chunk: impl Fn(&Database, &mut S, u64, u64, &mut Vec<(u64, T)>) -> Result<(), CbhError> + Sync,
 ) -> Result<Scanned<T>, CbhError> {
+    parallel_selected(
+        db,
+        None,
+        workers,
+        step,
+        max_hits,
+        cancel,
+        &mut progress,
+        init,
+        chunk,
+    )
+}
+
+/// Like `parallel`, but walks only a sorted unique selection, batching adjacent entries.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn parallel_selected<S, T: Send>(
+    db: &Database,
+    selection: Option<&[u64]>,
+    workers: usize,
+    step: u64,
+    max_hits: usize,
+    cancel: &AtomicBool,
+    mut progress: impl FnMut(u64, u64),
+    init: impl Fn(&Database) -> Result<S, CbhError> + Sync,
+    chunk: impl Fn(&Database, &mut S, u64, u64, &mut Vec<(u64, T)>) -> Result<(), CbhError> + Sync,
+) -> Result<Scanned<T>, CbhError> {
     db.verify()?;
-    let count = db.info().entry_count;
+    let entries = db.info().entry_count;
+    if selection.is_some_and(|s| {
+        s.first() == Some(&0)
+            || s.last().is_some_and(|&n| n > entries)
+            || s.windows(2).any(|w| w[0] >= w[1])
+    }) {
+        return Err(CbhError::InvalidQuery(
+            "Selection must contain sorted unique valid entries".into(),
+        ));
+    }
+    let count = selection.map_or(entries, |s| s.len() as u64);
     let workers = (workers.clamp(1, 64) as u64).min(count.max(1));
     let handles = (1..workers)
         .map(|_| db.reopen())
@@ -86,7 +122,26 @@ pub(crate) fn parallel<S, T: Send>(
                         break;
                     }
                     let n = step.min(last + 1 - at);
-                    chunk(handle, &mut state, at, n, &mut part.hits)?;
+                    if let Some(selection) = selection {
+                        let picked = &selection[(at - 1) as usize..(at + n - 1) as usize];
+                        let mut from = 0;
+                        while from < picked.len() && !cancel.load(Ordering::Relaxed) {
+                            let mut to = from + 1;
+                            while to < picked.len() && picked[to] == picked[to - 1] + 1 {
+                                to += 1;
+                            }
+                            chunk(
+                                handle,
+                                &mut state,
+                                picked[from],
+                                (to - from) as u64,
+                                &mut part.hits,
+                            )?;
+                            from = to;
+                        }
+                    } else {
+                        chunk(handle, &mut state, at, n, &mut part.hits)?;
+                    }
                     found[i as usize].store(part.hits.len() as u64, Ordering::Relaxed);
                     part.scanned += n;
                     done.fetch_add(n, Ordering::Relaxed);
@@ -134,5 +189,6 @@ pub(crate) fn parallel<S, T: Send>(
             out.hits.push(hit);
         }
     }
+    out.cancelled |= cancel.load(Ordering::Relaxed);
     Ok(out)
 }

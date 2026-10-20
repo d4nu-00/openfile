@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type SetStateAction } from "react";
 import type {
   SearchResponse,
+  SearchScope,
   GameFilter,
   GameResponse,
   OpenDatabaseResponse,
@@ -30,6 +31,7 @@ export interface ActiveSearch {
   position?: PositionQuery;
   /** What the list shows, e.g. "Games of Carlsen, Magnus". */
   label?: string;
+  scope?: SearchScope;
   hits: string;
   truncated: boolean;
 }
@@ -595,9 +597,15 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     return loadEntry(entry.ordinal, entry.foundNode ?? 0);
   }
   /** Searches the whole database and shows the hits in the list. */
-  function search(filter: GameFilter, label?: string) {
-    return runSearch({ filter, label }, (db, request, progress) =>
-      api.searchGames(db, filter, request, progress),
+  function search(
+    filter: GameFilter,
+    label?: string,
+    scope: SearchScope = "all",
+  ) {
+    return runSearch({ filter, label, scope }, (db, request, progress) =>
+      scope === "all"
+        ? api.searchGames(db, filter, request, progress)
+        : api.searchGames(db, filter, request, progress, scope),
     );
   }
   /** Lists the games of a player statistics row. */
@@ -630,14 +638,17 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     );
   }
   /** Runs the search mask's position tab. */
-  function positionSearch(position: PositionQuery) {
-    return runSearch({ position }, (db, request, progress) =>
-      api.searchPosition(db, position, request, progress),
+  function positionSearch(position: PositionQuery, scope: SearchScope = "all") {
+    return runSearch({ position, scope }, (db, request, progress) =>
+      scope === "all"
+        ? api.searchPosition(db, position, request, progress)
+        : api.searchPosition(db, position, request, progress, scope),
     );
   }
   async function runSearch(
     what: {
       filter?: GameFilter;
+      scope?: SearchScope;
       fen?: string;
       position?: PositionQuery;
       label?: string;
@@ -657,7 +668,9 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     setSearching({ databaseId: db.databaseId });
     const progress = (p: { done: string; total: string }) => {
       if (!gates.page.accept(request)) return;
-      const percent = Number((BigInt(p.done) * 100n) / BigInt(p.total || "1"));
+      const total = BigInt(p.total);
+      const percent =
+        total > 0n ? Number((BigInt(p.done) * 100n) / total) : 100;
       setSearching({ databaseId: db.databaseId, percent });
       setStatus(`${verb}… ${percent}%`);
     };

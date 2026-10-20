@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -190,16 +191,20 @@ it("grades a review practice move made by dragging", async () => {
     bestUci: "d2d4",
     bestLine: ["d4"],
   };
-  render(
-    <ReviewPractice
-      api={api}
-      documentId="doc-1"
-      game={selected.game!}
-      moves={[move]}
-      progress={{}}
-      onResult={onResult}
-    />,
-  );
+  // Flush the asynchronous position load and the board's mount effects before
+  // sending pointer events; a square can appear before those effects finish.
+  await act(async () => {
+    render(
+      <ReviewPractice
+        api={api}
+        documentId="doc-1"
+        game={selected.game!}
+        moves={[move]}
+        progress={{}}
+        onResult={onResult}
+      />,
+    );
+  });
   const practice = screen.getByRole("region", { name: "Learn from mistakes" });
   await within(practice).findByRole("button", { name: "d2 White pawn" });
   drag(within(practice).getByRole("grid", { name: "Chess board" }), "d2", "d4");

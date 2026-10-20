@@ -10,6 +10,7 @@ pub mod header;
 pub mod history;
 pub mod limits;
 pub mod maintain;
+pub mod material;
 pub mod moves;
 pub mod name_list;
 pub mod pattern;

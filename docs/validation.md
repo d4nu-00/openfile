@@ -1042,3 +1042,63 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
   * every game round-trips through 2CBA;
   * the game also in the 2CBH sample agrees.
 
+
+
+## Material search and result combinations (2026-10-20)
+
+Implemented from latest fetched main in an isolated feature worktree. No source
+database, reference executable or extracted proprietary assets were changed.
+Reference executable controls and Ghidra addresses, uncertainties and independent
+rules are in [search](search.md#material-search-2026-10-20).
+
+Synthetic reader tests cover inclusive piece/minor/total ranges, signed balance,
+colour reversal, promotions, setup roots, move windows, duration with fixed
+orientation, mainline versus variations, invalid queries, sparse/empty selections,
+limits, node IDs and cancellation. Real synthetic 2CBH registry tests cover
+intersection/union, duplicate entry identities, entry and column order, retained
+and new nodes, empty versus absent results, error/cancel/reset/supersession/closure,
+and a deterministic overlapping booster/search cancellation race. A bounded
+synthetic union checks retention of existing entries and earliest unique new IDs
+with aligned nodes. UI regressions cover retained fields, targets, disabled
+unavailable scopes, range validation, reset, independent Position submissions,
+progress and cancellation. The development preview also implements set operations.
+
+Independent read-only review approved the core implementation after three
+reproduced regressions were fixed. A preview pagination continuation issue was
+also reproduced and fixed. Browser UI verification covered All material search,
+Within refinement, Add position matches, repeated Add and ascending entry IDs.
+
+Native macOS verification used a disposable five-game synthetic 2CBH and real
+Tauri/Rust code: All rook endings with balance 0 → [1,3,5]; Within White Capture
+→ [3]; Add pawn endings → [2,3,4]; repeated Add unchanged. All balance ≥+5
+returned [3,4], and entry 3 opened at 1.Rxh1/node 1. Native screenshots were
+inspected and are linked from [search](search.md#search-ui-evidence). They show
+OpenFile with synthetic games, not the proprietary reference application.
+
+Native large-database verification used the classic source read-only. An
+unmatched synthetic player prefix showed progress (observed 14%) and returned
+an empty result. Add with material balance ≥+144 showed Searching… 0% and Cancel;
+clicking Cancel returned Search cancelled and retained 0 of 11,151,119 entries.
+Within on that empty result completed with zero hits. No screenshot or private
+game data from that database was added to the repository.
+
+Release timing: classic database 11,151,119 index entries, year ≥2024 and one
+rook each/no queens or minors: 46,642 hits, 31.58 s first run / 31.90 s repeated
+warm run, approximately 7.3 MB peak RSS. Refinement of 3,837 White-Carlsen hits:
+499 material matches, 0.162 s excluding initial-result creation. New format,
+24,783 entries, material balance ≥+5: 11,294 matches in 0.167 s. No broad
+unfiltered full-replay timing is claimed; expensive scans retain at most 100,000
+matches, while combined results cap at 2,000,000 and retain prior entries.
+
+Final local checks: **306 Rust tests** and **188 frontend tests** pass; Cargo
+formatting, strict workspace/all-target Clippy, TypeScript, Prettier, production
+frontend build and native debug/release executable builds pass. The frontend build retains its
+existing >500 kB chunk-size advisory. Distribution audit passes for all 641
+tracked source/artifact paths. PR checks provide the cross-platform CI record.
+
+The first PR macOS CI run exposed a pre-existing review-practice drag-test race:
+the square query could resolve before the asynchronously mounted board finished
+its effects. The failure reproduced locally on attempt 4. Awaiting the initial
+render and position effects in React `act` passed 20 consecutive targeted runs;
+the drag and grading assertions remain unchanged. This is a test synchronization
+fix, with no change to board behavior.

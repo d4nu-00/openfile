@@ -362,6 +362,19 @@ impl Database {
         cancel: &AtomicBool,
         progress: impl FnMut(u64, u64),
     ) -> Result<PositionResult, CbhError> {
+        self.find_query_selected(query, index, None, max_hits, cancel, progress)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn find_query_selected(
+        &mut self,
+        query: &crate::pattern::Compiled,
+        index: Option<&mut PositionIndex>,
+        selection: Option<&[u64]>,
+        max_hits: usize,
+        cancel: &AtomicBool,
+        progress: impl FnMut(u64, u64),
+    ) -> Result<PositionResult, CbhError> {
         use crate::pattern::Compiled;
         let index = match query {
             Compiled::Exact(_) => index.map(|i| &*i),
@@ -372,8 +385,9 @@ impl Database {
             Compiled::Pattern(_) => vec![],
         };
         let replayed = std::sync::atomic::AtomicU64::new(0);
-        let found = crate::scan::parallel(
+        let found = crate::scan::parallel_selected(
             self,
+            selection,
             crate::scan::default_workers(),
             1024,
             max_hits,
@@ -386,6 +400,9 @@ impl Database {
                     None => (start..start + n).collect(),
                 };
                 for ordinal in ordinals {
+                    if cancel.load(Ordering::Relaxed) {
+                        break;
+                    }
                     let raw = db.raw(ordinal)?;
                     let Some(game) = db.moves_of(&raw)? else {
                         continue;
