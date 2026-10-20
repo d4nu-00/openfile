@@ -113,3 +113,27 @@ keeps the first hits.
 See [search](search.md#measurements-classic-mega-2026-10-14): on the
 classic test database a pattern search replays every game in about 135 s on 8
 workers; an exact position with the booster takes seconds.
+
+## Combining position results (2026-10-20)
+
+The search mask's Search target applies to exact and pattern position queries:
+All replaces, Within scans the captured entry identities only, and Add unions
+by entry identity. Empty results are valid inputs; absent results are rejected
+for Within/Add. The active column sort still controls display. Material and
+other tab criteria apply to game-data searches; a Position submission remains
+position-only. To require both kinds in a game, run one then refine with the
+other. This means the same game contains both criteria, without requiring them
+at the same node.
+
+Within keeps the new query's first hit node. Add retains old entries' prior
+nodes and records nodes for newly added entries, including deferred nodes from
+preparation results. Cancellation, errors, reset, supersession and database
+closure prevent partial publication. The booster can still eliminate exact
+candidates inside the selected entries. Patterns use the same selected-entry
+parallel scan without a booster; neither path replays games outside the captured
+result. Scope progress reports the selected count.
+
+See [search rules and reference uncertainties](search.md#search-all-refine-or-add-2026-10-20).
+The native search execution was investigated at `0x1406ded10`,
+`0x1406e2c30` and `0x1406e3380`; exact result-combination and duplicate-node
+policies remain untraced. These set rules are OpenFile's independent design.

@@ -3602,18 +3602,19 @@ export function App({
         <SearchMask
           initialTab={maskOpen === "annotations" ? "annotations" : undefined}
           initial={state.search?.filter}
+          resultCount={state.search?.hits}
           initialPosition={state.search?.position}
           boardFen={state.position?.fen}
-          onSearchPosition={(query) => {
+          onSearchPosition={(query, scope) => {
             setMaskOpen(false);
             setView("database");
-            void w.positionSearch(query);
+            void w.positionSearch(query, scope);
           }}
           onClose={() => setMaskOpen(false)}
-          onSearch={(filter) => {
+          onSearch={(filter, scope) => {
             setMaskOpen(false);
             setView("database");
-            void w.search(filter);
+            void w.search(filter, undefined, scope);
           }}
         />
       )}

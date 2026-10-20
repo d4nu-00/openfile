@@ -341,6 +341,7 @@ fn arranged(sort: &ListSort, hits: &Arc<Hits>) -> Result<Arc<Hits>, AppError> {
             .as_ref()
             .map(|nodes| order.iter().map(|&i| nodes[i as usize]).collect()),
         fen: hits.fen.clone(),
+        truncated: hits.truncated,
     });
     *cached = Some((Arc::downgrade(hits), result.clone()));
     Ok(result)

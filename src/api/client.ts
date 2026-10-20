@@ -16,6 +16,7 @@ import type {
   StartupRequest,
   SaveGameResponse,
   GameFilter,
+  SearchScope,
   SearchResponse,
   BoosterProgress,
   Line,
@@ -368,12 +369,14 @@ export const backend = {
     filter: GameFilter,
     requestId: string,
     onProgress?: (p: BoosterProgress) => void,
+    scope?: SearchScope,
   ) =>
     invoke<SearchResponse>("search_games", {
       databaseId,
       filter,
       requestId,
       events: channel(onProgress),
+      scope,
     }),
   findPosition: (
     databaseId: string,
@@ -393,12 +396,14 @@ export const backend = {
     query: PositionQuery,
     requestId: string,
     onProgress?: (p: BoosterProgress) => void,
+    scope?: SearchScope,
   ) =>
     invoke<SearchResponse>("search_position", {
       databaseId,
       query,
       requestId,
       events: channel(onProgress),
+      scope,
     }),
   createSearchBooster: async (
     databaseId: string,

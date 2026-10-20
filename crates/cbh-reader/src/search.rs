@@ -76,6 +76,7 @@ pub struct GameFilter {
     pub medals: u16,
     /// The search mask's Annotations tab (dialog 343).
     pub annotations: AnnotationQuery,
+    pub material: Option<crate::material::MaterialQuery>,
 }
 
 /// The search mask's Annotations tab (dialog 343, `CAnnoMaskDialog`; see
@@ -219,6 +220,7 @@ pub fn ending(game: &chess_core::Game) -> Result<Ending, CbhError> {
 #[serde(rename_all = "camelCase")]
 pub struct SearchResult {
     pub ordinals: Vec<u64>,
+    pub nodes: Option<Vec<u32>>,
     /// Entries examined; equals the entry count unless stopped early.
     pub scanned: u64,
     /// Stopped at the hit limit.
@@ -767,7 +769,22 @@ impl Database {
         cancel: &AtomicBool,
         mut progress: impl FnMut(u64),
     ) -> Result<SearchResult, CbhError> {
+        self.search_selected(filter, None, max_hits, cancel, |done, _| progress(done))
+    }
+
+    /// Searches only the sorted unique entries in `selection`, or every entry with None.
+    pub fn search_selected(
+        &mut self,
+        filter: &GameFilter,
+        selection: Option<&[u64]>,
+        max_hits: usize,
+        cancel: &AtomicBool,
+        progress: impl FnMut(u64, u64),
+    ) -> Result<SearchResult, CbhError> {
         self.verify()?;
+        if let Some(material) = &filter.material {
+            material.validate()?;
+        }
         let tournaments = if filter.tournament.trim().is_empty() {
             None
         } else {
@@ -810,28 +827,50 @@ impl Database {
         };
         // Header fields are compared first; games are read only for what
         // passes them.
-        let step = if filter.reads_games() { 256 } else { 8192 };
-        let found = crate::scan::parallel(
+        let step = if filter.reads_games() || filter.material.is_some() {
+            64
+        } else {
+            8192
+        };
+        let found = crate::scan::parallel_selected(
             self,
+            selection,
             crate::scan::default_workers(),
             step,
             max_hits,
             cancel,
-            |done, _| progress(done),
+            progress,
             |_| Ok(()),
             |db, _, start, n, out| {
                 for raw in db.raw_chunk(start, n)? {
-                    if filter.matches(&compiled, &raw)
-                        && (!filter.reads_games() || filter.matches_game(db, &raw)?)
-                    {
-                        out.push((raw.ordinal, ()));
+                    if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                        break;
                     }
+                    if !filter.matches(&compiled, &raw)
+                        || (filter.reads_games() && !filter.matches_game(db, &raw)?)
+                    {
+                        continue;
+                    }
+                    let node = if let Some(material) = &filter.material {
+                        let Some(game) = db.moves_of(&raw)? else {
+                            continue;
+                        };
+                        let Some(node) = material.find_in(&game, cancel)? else {
+                            continue;
+                        };
+                        node
+                    } else {
+                        0
+                    };
+                    out.push((raw.ordinal, node));
                 }
                 Ok(())
             },
         )?;
+        let (ordinals, nodes): (Vec<_>, Vec<_>) = found.hits.into_iter().unzip();
         Ok(SearchResult {
-            ordinals: found.hits.into_iter().map(|h| h.0).collect(),
+            ordinals,
+            nodes: filter.material.as_ref().map(|_| nodes),
             scanned: found.scanned,
             truncated: found.truncated,
             cancelled: found.cancelled,

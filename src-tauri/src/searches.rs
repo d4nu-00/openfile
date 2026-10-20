@@ -21,6 +21,7 @@ pub struct Hits {
     pub nodes: Option<Vec<u32>>,
     /// The position searched, when nodes are found page by page instead.
     pub fen: Option<String>,
+    pub truncated: bool,
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -54,52 +55,112 @@ impl Registry {
         database_id: String,
         filter: cbh_reader::search::GameFilter,
         request_id: String,
-        mut progress: impl FnMut(u64, u64),
+        progress: impl FnMut(u64, u64),
     ) -> Result<SearchResponse, AppError> {
-        let db = self.database(&database_id)?;
-        let total = db
-            .lock()
-            .map_err(|_| AppError::new("state", "Database unavailable"))?
-            .info()
-            .entry_count;
+        self.search_games_scoped(database_id, filter, SearchScope::All, request_id, progress)
+    }
+
+    pub fn search_games_scoped(
+        &self,
+        database_id: String,
+        filter: cbh_reader::search::GameFilter,
+        scope: SearchScope,
+        request_id: String,
+        progress: impl FnMut(u64, u64),
+    ) -> Result<SearchResponse, AppError> {
+        let job = self.begin_search(&database_id, scope)?;
+        let selection = job.selection(scope);
+        let result = (|| {
+            let mut db = self.own_handle(&database_id)?;
+            let limit = if filter.material.is_some() {
+                MAX_POSITION_HITS
+            } else {
+                MAX_HITS
+            };
+            let result =
+                db.search_selected(&filter, selection.as_deref(), limit, &job.cancel, progress)?;
+            Ok(Outcome {
+                hits: Hits {
+                    ordinals: result.ordinals,
+                    nodes: result.nodes,
+                    fen: None,
+                    truncated: false,
+                },
+                scanned: result.scanned,
+                truncated: result.truncated,
+                indexed: false,
+                cancelled: result.cancelled,
+            })
+        })();
+        self.finish_search(database_id, request_id, scope, job, result)
+    }
+
+    fn begin_search(&self, database_id: &str, scope: SearchScope) -> Result<SearchJob, AppError> {
+        let mut state = self.lock()?;
+        if !state.databases.contains_key(database_id) {
+            return Err(AppError::new(
+                "invalidHandle",
+                "Database is closed or unknown",
+            ));
+        }
+        let base = state.searches.get(database_id).cloned();
+        if scope != SearchScope::All && base.is_none() {
+            return Err(AppError::new(
+                "noSearch",
+                "No current results; search all games first",
+            ));
+        }
         let cancel = Arc::new(AtomicBool::new(false));
-        // A new search cancels the previous one on this database.
-        if let Some(old) = self
-            .lock()?
+        if let Some(old) = state
             .search_cancels
-            .insert(database_id.clone(), cancel.clone())
+            .insert(database_id.into(), cancel.clone())
         {
             old.store(true, Ordering::Relaxed);
         }
-        let result = db
-            .lock()
-            .map_err(|_| AppError::new("state", "Database unavailable"))?
-            .search(&filter, MAX_HITS, &cancel, |done| progress(done, total))?;
+        Ok(SearchJob { cancel, base })
+    }
+
+    fn finish_search(
+        &self,
+        database_id: String,
+        request_id: String,
+        scope: SearchScope,
+        job: SearchJob,
+        result: Result<Outcome, AppError>,
+    ) -> Result<SearchResponse, AppError> {
         let mut state = self.lock()?;
-        if state
+        let owned = state
             .search_cancels
             .get(&database_id)
-            .is_some_and(|c| Arc::ptr_eq(c, &cancel))
-        {
+            .is_some_and(|c| Arc::ptr_eq(c, &job.cancel));
+        if owned {
             state.search_cancels.remove(&database_id);
         }
+        let result = result?;
+        let same_base = match (&job.base, state.searches.get(&database_id)) {
+            (None, None) => true,
+            (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+            _ => false,
+        };
+        let cancelled = result.cancelled
+            || job.cancel.load(Ordering::Relaxed)
+            || !owned
+            || !same_base
+            || !state.databases.contains_key(&database_id);
+        let (mut hits, overflow) = combine(job.base.as_deref(), result.hits, scope, MAX_HITS);
+        hits.truncated = result.truncated
+            || overflow
+            || (scope != SearchScope::All && job.base.as_ref().is_some_and(|h| h.truncated));
         let response = SearchResponse {
             request_id,
-            hits: result.ordinals.len().to_string(),
+            hits: hits.ordinals.len().to_string(),
             scanned: result.scanned.to_string(),
-            truncated: result.truncated,
-            cancelled: result.cancelled,
-            indexed: false,
+            truncated: hits.truncated,
+            cancelled,
+            indexed: result.indexed,
         };
-        if !result.cancelled && state.databases.contains_key(&database_id) {
-            state.searches.insert(
-                database_id,
-                Arc::new(Hits {
-                    ordinals: result.ordinals,
-                    nodes: None,
-                    fen: None,
-                }),
-            );
+        if !cancelled {
+            state.searches.insert(database_id, Arc::new(hits));
         }
         Ok(response)
     }
@@ -185,11 +246,24 @@ impl Registry {
         }
         drop(db);
         // Long jobs read through their own handle, so the list stays usable.
-        let reader = self.own_handle(&database_id)?;
-        let built =
-            cbh_reader::position::PositionIndex::build(&reader, &path, &cancel, &mut progress)?;
-        self.lock()?.search_cancels.remove(&database_id);
-        Ok(built)
+        let result = (|| {
+            let reader = self.own_handle(&database_id)?;
+            Ok(cbh_reader::position::PositionIndex::build(
+                &reader,
+                &path,
+                &cancel,
+                &mut progress,
+            )?)
+        })();
+        let mut state = self.lock()?;
+        if state
+            .search_cancels
+            .get(&database_id)
+            .is_some_and(|current| Arc::ptr_eq(current, &cancel))
+        {
+            state.search_cancels.remove(&database_id);
+        }
+        result
     }
 
     pub fn delete_search_booster(&self, database_id: String) -> Result<(), AppError> {
@@ -230,6 +304,20 @@ impl Registry {
         self.run_position_search(database_id, &query, request_id, progress)
     }
 
+    pub fn search_position_scoped(
+        &self,
+        database_id: String,
+        query: cbh_reader::pattern::PositionQuery,
+        scope: SearchScope,
+        request_id: String,
+        progress: impl FnMut(u64, u64),
+    ) -> Result<SearchResponse, AppError> {
+        let query = query
+            .compile()
+            .map_err(|e| AppError::new("invalidQuery", e.to_string()))?;
+        self.run_position_search_scoped(database_id, &query, scope, request_id, progress)
+    }
+
     fn run_position_search(
         &self,
         database_id: String,
@@ -237,45 +325,49 @@ impl Registry {
         request_id: String,
         progress: impl FnMut(u64, u64),
     ) -> Result<SearchResponse, AppError> {
-        self.database(&database_id)?;
-        let cancel = Arc::new(AtomicBool::new(false));
-        if let Some(old) = self
-            .lock()?
-            .search_cancels
-            .insert(database_id.clone(), cancel.clone())
-        {
-            old.store(true, Ordering::Relaxed);
-        }
-        let result = self.position_search(&database_id, query, &cancel, progress);
-        let mut state = self.lock()?;
-        if state
-            .search_cancels
-            .get(&database_id)
-            .is_some_and(|c| Arc::ptr_eq(c, &cancel))
-        {
-            state.search_cancels.remove(&database_id);
-        }
-        let result = result?;
-        let response = SearchResponse {
-            request_id,
-            hits: result.hits.len().to_string(),
-            scanned: result.scanned.to_string(),
-            truncated: result.truncated,
-            cancelled: result.cancelled,
-            indexed: result.indexed,
-        };
-        if !result.cancelled && state.databases.contains_key(&database_id) {
-            let (ordinals, nodes) = result.hits.into_iter().unzip();
-            state.searches.insert(
-                database_id,
-                Arc::new(Hits {
+        self.run_position_search_scoped(database_id, query, SearchScope::All, request_id, progress)
+    }
+
+    fn run_position_search_scoped(
+        &self,
+        database_id: String,
+        query: &cbh_reader::pattern::Compiled,
+        scope: SearchScope,
+        request_id: String,
+        progress: impl FnMut(u64, u64),
+    ) -> Result<SearchResponse, AppError> {
+        let job = self.begin_search(&database_id, scope)?;
+        let selection = job.selection(scope);
+        let result = (|| {
+            let booster = self.booster_path(&database_id).ok();
+            let mut db = self.own_handle(&database_id)?;
+            let mut index = booster
+                .map(|p| cbh_reader::position::PositionIndex::open(&p, &db))
+                .transpose()?
+                .flatten();
+            let r = db.find_query_selected(
+                query,
+                index.as_mut(),
+                selection.as_deref(),
+                MAX_POSITION_HITS,
+                &job.cancel,
+                progress,
+            )?;
+            let (ordinals, nodes) = r.hits.into_iter().unzip();
+            Ok(Outcome {
+                hits: Hits {
                     ordinals,
                     nodes: Some(nodes),
                     fen: None,
-                }),
-            );
-        }
-        Ok(response)
+                    truncated: false,
+                },
+                scanned: r.scanned,
+                truncated: r.truncated,
+                cancelled: r.cancelled,
+                indexed: r.indexed,
+            })
+        })();
+        self.finish_search(database_id, request_id, scope, job, result)
     }
 
     /// Finds games matching `query` through a separate read handle, with
@@ -335,19 +427,25 @@ impl Registry {
             cancelled: false,
             indexed: false,
         };
+        self.cancel_search(database_id.clone())?;
         self.lock()?.searches.insert(
             database_id,
             Arc::new(Hits {
                 ordinals,
                 nodes: None,
                 fen: None,
+                truncated: false,
             }),
         );
         Ok(response)
     }
 
     pub fn clear_search(&self, database_id: String) -> Result<(), AppError> {
-        self.lock()?.searches.remove(&database_id);
+        let mut state = self.lock()?;
+        if let Some(cancel) = state.search_cancels.remove(&database_id) {
+            cancel.store(true, Ordering::Relaxed);
+        }
+        state.searches.remove(&database_id);
         Ok(())
     }
 
@@ -398,6 +496,9 @@ impl Registry {
             // Entries are read one at a time; a search result is sparse.
             let mut page = db.page(hits.ordinals[i], 1)?;
             let node = match (&hits.nodes, &target) {
+                (Some(nodes), Some(target)) if nodes[i] == u32::MAX => {
+                    db.find_node(hits.ordinals[i], target)?
+                }
                 (Some(nodes), _) => Some(nodes[i]),
                 (None, Some(target)) => db.find_node(hits.ordinals[i], target)?,
                 (None, None) => None,
@@ -413,5 +514,135 @@ impl Registry {
             entries,
             next: (to < hits.ordinals.len()).then(|| (to + 1).to_string()),
         })
+    }
+}
+
+/// The result combination applies to entry identities, independent of list sorting.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SearchScope {
+    #[default]
+    All,
+    Within,
+    Add,
+}
+
+struct SearchJob {
+    cancel: Arc<AtomicBool>,
+    base: Option<Arc<Hits>>,
+}
+impl SearchJob {
+    fn selection(&self, scope: SearchScope) -> Option<Vec<u64>> {
+        (scope == SearchScope::Within).then(|| {
+            let mut picked = self
+                .base
+                .as_ref()
+                .map(|h| h.ordinals.clone())
+                .unwrap_or_default();
+            picked.sort_unstable();
+            picked.dedup();
+            picked
+        })
+    }
+}
+struct Outcome {
+    hits: Hits,
+    scanned: u64,
+    truncated: bool,
+    cancelled: bool,
+    indexed: bool,
+}
+
+/// Existing entries win ties on Add; a refinement's new position wins when present.
+/// Keep all existing entries at capacity, then the earliest new entries that fit.
+fn combine(base: Option<&Hits>, new: Hits, scope: SearchScope, limit: usize) -> (Hits, bool) {
+    let pairs = |h: &Hits| {
+        h.ordinals
+            .iter()
+            .enumerate()
+            .map(|(i, &o)| {
+                (
+                    o,
+                    h.nodes
+                        .as_ref()
+                        .map_or(if h.fen.is_some() { u32::MAX } else { 0 }, |n| n[i]),
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    let mut old = base.map(pairs).unwrap_or_default();
+    old.sort_by_key(|p| p.0);
+    old.dedup_by_key(|p| p.0);
+    let mut fresh = pairs(&new);
+    fresh.sort_by_key(|p| p.0);
+    fresh.dedup_by_key(|p| p.0);
+    let nodes = new.nodes.is_some()
+        || (scope != SearchScope::All
+            && base.is_some_and(|h| h.nodes.is_some() || h.fen.is_some()));
+    let mut overflow = false;
+    let mut kept = match scope {
+        SearchScope::All => fresh,
+        SearchScope::Within => {
+            if new.nodes.is_none() {
+                for p in &mut fresh {
+                    if let Ok(i) = old.binary_search_by_key(&p.0, |p| p.0) {
+                        p.1 = old[i].1;
+                    }
+                }
+            }
+            fresh
+        }
+        SearchScope::Add => {
+            fresh.retain(|p| old.binary_search_by_key(&p.0, |p| p.0).is_err());
+            let capacity = limit.saturating_sub(old.len());
+            overflow = fresh.len() > capacity;
+            fresh.truncate(capacity);
+            old.extend(fresh);
+            old.sort_by_key(|p| p.0);
+            old
+        }
+    };
+    if kept.len() > limit {
+        kept.truncate(limit);
+        overflow = true;
+    }
+    let (ordinals, found) = kept.into_iter().unzip();
+    (
+        Hits {
+            ordinals,
+            nodes: nodes.then_some(found),
+            fen: if scope == SearchScope::All {
+                new.fen
+            } else {
+                base.and_then(|h| h.fen.clone())
+            },
+            truncated: false,
+        },
+        overflow,
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn hits(ordinals: &[u64], nodes: Option<Vec<u32>>) -> Hits {
+        Hits {
+            ordinals: ordinals.to_vec(),
+            nodes,
+            fen: None,
+            truncated: false,
+        }
+    }
+    #[test]
+    fn union_at_capacity_retains_old_and_earliest_unique_new_nodes() {
+        let old = hits(&[8, 9], Some(vec![80, 90]));
+        let new = hits(&[7, 1, 7, 2], Some(vec![70, 10, 71, 20]));
+        let (kept, full) = combine(Some(&old), new, SearchScope::Add, 4);
+        assert!(full);
+        assert_eq!(kept.ordinals, [1, 2, 8, 9]);
+        assert_eq!(kept.nodes, Some(vec![10, 20, 80, 90]));
+        let (kept, full) = combine(Some(&old), hits(&[9, 8], None), SearchScope::Within, 4);
+        assert!(!full);
+        assert_eq!(kept.nodes, Some(vec![80, 90]));
     }
 }

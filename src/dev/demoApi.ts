@@ -15,6 +15,7 @@ import type {
   WorkspaceSide,
   Line,
   ReplayProgressMap,
+  SearchScope,
 } from "../api/types";
 import { demoFens, demoLegal, demoNodes } from "./demoGame";
 
@@ -252,6 +253,21 @@ export function demoApi(): WorkbenchApi {
   let hits: number[] | undefined;
   let order: number[] | undefined;
   const all = () => Array.from({ length: demoCount }, (_, i) => i + 1);
+  const combineHits = (matches: number[], scope: SearchScope = "all") => {
+    if (scope !== "all" && hits === undefined)
+      throw new Error("No current results");
+    const old = new Set(hits ?? []);
+    const scanned = scope === "within" ? old.size : demoCount;
+    hits =
+      scope === "within"
+        ? matches.filter((n) => old.has(n))
+        : scope === "add"
+          ? [...old, ...matches]
+          : matches;
+    hits = [...new Set(hits)].sort((a, b) => a - b);
+    return String(scanned);
+  };
+
   const list = () => {
     const base = hits ?? all();
     if (!order) return base;
@@ -555,12 +571,16 @@ export function demoApi(): WorkbenchApi {
     confirmCloudDownload: async () => false,
     downloadCloudFiles: async () => {},
     cancelCloudDownload: async () => {},
-    searchGames: async (_db, _filter, requestId) => {
-      hits = all().filter((n) => n % 12 === 1);
+    searchGames: async (_db, _filter, requestId, onProgress, scope) => {
+      const scanned = combineHits(
+        all().filter((n) => n % 12 === 1),
+        scope,
+      );
+      onProgress?.({ done: scanned, total: scanned });
       return {
         requestId,
-        hits: String(hits.length),
-        scanned: "2400",
+        hits: String(hits!.length),
+        scanned,
         truncated: false,
         cancelled: false,
       };
@@ -577,12 +597,16 @@ export function demoApi(): WorkbenchApi {
         indexed: false,
       };
     },
-    searchPosition: async (_db, query, requestId) => {
-      hits = all().filter((n) => n % 7 === 1);
+    searchPosition: async (_db, query, requestId, onProgress, scope) => {
+      const scanned = combineHits(
+        all().filter((n) => n % 7 === 1),
+        scope,
+      );
+      onProgress?.({ done: scanned, total: scanned });
       return {
         requestId,
-        hits: String(hits.length),
-        scanned: "2400",
+        hits: String(hits!.length),
+        scanned,
         truncated: false,
         cancelled: false,
         indexed: false && query.exact,
@@ -993,8 +1017,8 @@ export function demoApi(): WorkbenchApi {
       hits = ordinals.map(Number);
       return {
         requestId,
-        hits: String(hits.length),
-        scanned: String(hits.length),
+        hits: String(hits!.length),
+        scanned: String(hits!.length),
         truncated: false,
         cancelled: false,
         indexed: false,
@@ -1030,8 +1054,8 @@ export function demoApi(): WorkbenchApi {
       });
       return {
         requestId,
-        hits: String(hits.length),
-        scanned: String(hits.length),
+        hits: String(hits!.length),
+        scanned: String(hits!.length),
         truncated: false,
         cancelled: false,
         indexed: false,
@@ -1045,8 +1069,8 @@ export function demoApi(): WorkbenchApi {
       });
       return {
         requestId,
-        hits: String(hits.length),
-        scanned: String(hits.length),
+        hits: String(hits!.length),
+        scanned: String(hits!.length),
         truncated: false,
         cancelled: false,
         indexed: false,
@@ -1181,8 +1205,16 @@ export function demoApi(): WorkbenchApi {
     clearSearch: async () => {
       hits = undefined;
     },
-    readSearchPage: async (db, start, limit, requestId) =>
-      api.readPage!(db, start, limit, requestId),
+    readSearchPage: async (_db, start, limit, requestId) => ({
+      requestId,
+      entries: (hits ?? [])
+        .slice(Number(start) - 1, Number(start) - 1 + limit)
+        .map(demoEntry),
+      next:
+        Number(start) - 1 + limit < (hits?.length ?? 0)
+          ? String(Number(start) + limit)
+          : undefined,
+    }),
     openDatabase: async (_path, requestId) => ({
       requestId,
       databaseId: "demo",

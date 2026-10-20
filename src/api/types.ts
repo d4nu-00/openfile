@@ -339,6 +339,30 @@ export interface PlayerQuery {
   first: string;
 }
 export type EloMode = "none" | "one" | "both" | "average";
+export type SearchScope = "all" | "within" | "add";
+export interface MaterialRange {
+  min?: number;
+  max?: number;
+}
+export interface MaterialSide {
+  queens?: MaterialRange;
+  rooks?: MaterialRange;
+  bishops?: MaterialRange;
+  knights?: MaterialRange;
+  pawns?: MaterialRange;
+  minors?: MaterialRange;
+  total?: MaterialRange;
+}
+export interface MaterialQuery {
+  white?: MaterialSide;
+  black?: MaterialSide;
+  balance?: MaterialRange;
+  ignoreColors?: boolean;
+  first?: number;
+  last?: number;
+  length?: number;
+  lines?: boolean;
+}
 export interface GameFilter {
   white: PlayerQuery;
   black: PlayerQuery;
@@ -377,6 +401,7 @@ export interface GameFilter {
   medals?: number;
   /** The Annotations tab; every criterion set must hold. */
   annotations?: AnnotationQuery;
+  material?: MaterialQuery;
 }
 /** The search mask's Annotations tab (dialog 343; see docs/search.md). */
 export interface AnnotationQuery {

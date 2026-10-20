@@ -2745,3 +2745,47 @@ kbd {
     margin: auto;
   }
 }
+
+.material-mask fieldset {
+  border: 0;
+  padding: 0;
+  margin: 8px 0;
+  min-width: 0;
+}
+.material-mask table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+.material-mask th {
+  text-align: left;
+  font-weight: 500;
+  padding: 4px;
+}
+.material-mask td {
+  padding: 3px;
+}
+.material-mask td input {
+  width: 64px;
+  margin-right: 4px;
+}
+.material-mask .mask-row input {
+  width: 84px;
+}
+.material-mask .mask-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mask-scope {
+  margin: 8px 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+}
+.mask-scope > label {
+  display: inline-flex;
+  margin-right: 14px;
+}
+.material-mask [role="alert"] {
+  color: var(--danger, #b33);
+}

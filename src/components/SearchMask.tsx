@@ -7,7 +7,9 @@ import {
   type EloMode,
   type GameFilter,
   type PositionQuery,
+  type SearchScope,
 } from "../api/types";
+import { MaterialMask, materialError } from "./MaterialMask";
 import { PositionMask } from "./PositionMask";
 import { SYMBOL_GROUPS } from "../state/symbols";
 
@@ -48,6 +50,7 @@ export function SearchMask({
   initialTab,
   initialPosition,
   boardFen,
+  resultCount,
   onSearch,
   onSearchPosition,
   onClose,
@@ -59,13 +62,15 @@ export function SearchMask({
   initialPosition?: PositionQuery;
   /** The current board, offered on the position tab. */
   boardFen?: string;
-  onSearch: (filter: GameFilter) => void;
-  onSearchPosition: (query: PositionQuery) => void;
+  resultCount?: string;
+  onSearch: (filter: GameFilter, scope: SearchScope) => void;
+  onSearchPosition: (query: PositionQuery, scope: SearchScope) => void;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<
-    "game" | "annotations" | "position" | "medals"
+    "game" | "annotations" | "position" | "material" | "medals"
   >(initialTab ?? (initialPosition ? "position" : "game"));
+  const [scope, setScope] = useState<SearchScope>("all");
   const [position, setPosition] = useState<{
     query?: PositionQuery;
     valid: boolean;
@@ -142,10 +147,11 @@ export function SearchMask({
         className={`modal search-mask${tab === "position" ? " wide" : ""}`}
         onSubmit={(e) => {
           e.preventDefault();
+          if (tab !== "position" && materialError(f.material)) return;
           if (tab === "position") {
             if (position.query && position.valid)
-              onSearchPosition(position.query);
-          } else onSearch(f);
+              onSearchPosition(position.query, scope);
+          } else onSearch(f, scope);
         }}
         onKeyDown={(e) => e.key === "Escape" && onClose()}
       >
@@ -156,6 +162,7 @@ export function SearchMask({
               ["game", "Game data"],
               ["annotations", "Annotations"],
               ["position", "Position"],
+              ["material", "Material"],
               ["medals", "Medals"],
             ] as const
           ).map(([id, label]) => (
@@ -176,6 +183,12 @@ export function SearchMask({
             initial={positionKey ? undefined : initialPosition}
             boardFen={boardFen}
             onChange={(query, valid) => setPosition({ query, valid })}
+          />
+        )}
+        {tab === "material" && (
+          <MaterialMask
+            value={f.material}
+            onChange={(material) => set({ material })}
           />
         )}
         {tab === "annotations" && (
@@ -403,11 +416,40 @@ export function SearchMask({
             </label>
           </>
         )}
+        <fieldset className="mask-scope">
+          <legend>Search target</legend>
+          {(
+            [
+              ["all", "All games"],
+              ["within", "Within results"],
+              ["add", "Add to results"],
+            ] as const
+          ).map(([id, label]) => (
+            <label key={id} className="mask-check">
+              <input
+                type="radio"
+                name="search-scope"
+                checked={scope === id}
+                disabled={id !== "all" && resultCount === undefined}
+                onChange={() => setScope(id)}
+              />
+              {label}
+            </label>
+          ))}
+          <p className="hint">
+            {resultCount === undefined
+              ? "Search all games to create results first."
+              : `${resultCount} current results. Within keeps matching entries; Add keeps existing entries and adds new matches without duplicates.`}
+          </p>
+        </fieldset>
         <div className="mask-buttons">
           <button
             type="submit"
             autoFocus
-            disabled={tab === "position" && !position.valid}
+            disabled={
+              (tab !== "position" && !!materialError(f.material)) ||
+              (tab === "position" && !position.valid)
+            }
           >
             Search
           </button>
@@ -415,6 +457,7 @@ export function SearchMask({
             type="button"
             onClick={() => {
               setF(emptyFilter());
+              setScope("all");
               setPositionKey((k) => k + 1);
             }}
           >

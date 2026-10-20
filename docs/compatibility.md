@@ -206,3 +206,15 @@ cannot store, are left out and counted, as when a single game is saved. PGN
 cannot express forfeits or "0-0". Loaded games keep such results in a
 `CBResult` tag, which the writer stores again and PGN exports carry. macOS native operation is verified locally;
 Windows/Linux native validation remains outstanding. See [validation](validation.md).
+
+
+## Material and result combinations (2026-10-20)
+
+Both classic and new-format databases support material replay queries and
+All/Within/Add search targets. Material uses independently implemented count
+ranges and signed Q9/R5/B3/N3/P1 balance, including promotions, setup roots and
+optional variations. ChessBase's signed per-piece Difference mode, pawn
+structure/bishop-quality options and example catalogue are not implemented.
+Reference evidence, uncertain native rules, hit limits and the separate
+Position-tab behavior are recorded in [search](search.md#material-search-2026-10-20).
+No source database or native reference index is written by these searches.
