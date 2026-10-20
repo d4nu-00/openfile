@@ -58,6 +58,34 @@ it("edits a game with a touch drag and offers promotion choice", async () => {
   );
 });
 
+it("captures into promotion without shrinking the board, and can cancel or underpromote", async () => {
+  const ui = renderWorkbench({
+    position: {
+      requestId: "initial",
+      documentId: "doc-1",
+      nodeId: 0,
+      fen: "r6k/1P6/8/8/8/8/8/7K w - - 0 1",
+      turn: "white",
+      legalUci: ["b7a8q", "b7a8r", "b7a8b", "b7a8n"],
+    },
+  });
+  const board = ui.getByRole("grid", { name: "Chess board" });
+  drag(board, "b7", "a8");
+  const chooser = ui.getByRole("dialog", { name: "Choose promotion" });
+  expect(board.parentElement).toContainElement(chooser);
+  expect(within(chooser).getByRole("button", { name: "Queen" })).toHaveFocus();
+  fireEvent.keyDown(chooser, { key: "Escape" });
+  expect(ui.queryByRole("dialog", { name: "Choose promotion" })).not.toBeInTheDocument();
+  expect(ui.api.editDocument).not.toHaveBeenCalled();
+  drag(board, "b7", "a8");
+  await ui.user.click(ui.getByRole("button", { name: "Knight" }));
+  expect(ui.api.editDocument).toHaveBeenCalledWith(
+    "doc-1",
+    { kind: "appendMove", parent: 0, uci: "b7a8n" },
+    "0",
+  );
+});
+
 it("enters Chess960 castling by dropping the king on its rook", () => {
   const ui = renderWorkbench({
     position: {

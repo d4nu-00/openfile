@@ -615,6 +615,7 @@ kbd {
   align-items: center;
   justify-content: center;
   container-type: size;
+  position: relative;
 }
 .board-pane.compact .board-holder {
   container-type: inline-size;
@@ -635,9 +636,47 @@ kbd {
   color: var(--icon);
 }
 .promotion {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, calc(100% - 12px));
+  max-height: calc(100% - 12px);
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  overflow: auto;
+  background: var(--pane-bg);
+  border: 1px solid var(--pane-border);
+  border-radius: 6px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+}
+.promotion h3 {
+  margin: 0;
+  font-size: 13px;
+}
+.promotion-pieces {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
-  margin-top: 6px;
+}
+.promotion-pieces button {
+  min-width: 0;
+  padding: 5px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+}
+.promotion-pieces img {
+  width: 30px;
+  height: 30px;
+}
+.promotion > button {
+  align-self: flex-end;
 }
 
 /* Notation */

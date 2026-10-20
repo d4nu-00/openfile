@@ -108,7 +108,7 @@ Names in backticks are the reference app's command ids, for traceability.
 
 ## 5. Board and replay
 
-- [x] P1 🟢 2D board with coordinates, legal-move hints and promotion choice
+- [x] P1 🟢 2D board with coordinates, legal-move hints and promotion choice *(quiet and capture promotions use a chooser over the board without resizing it; Cancel and Escape cancel the move, see [game window](docs/game-window.md#moving-pieces-with-mouse-or-touch))*
 - [x] P1 🟢 Flip board (`VIEWFLIPBOARD`, Ctrl+F)
 - [x] P1 🟢 Replay with first/previous/next/last and arrow keys (`GOTOBEGIN`, `GOTOEND`, `RETRACTMOVE`, `EXECMOVE`)
 - [ ] P2 🟢 Board design: square colours and textures, piece sets, table (`DESIGNBOARD`, `BOARD2D_BACKGROUND`, `BOARD2D_PIECES`, `DESIGNWOOD`)

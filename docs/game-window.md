@@ -132,8 +132,11 @@ square. Clicking a piece and then a destination remains available for mouse,
 touch and keyboard users. The read-only game-list preview does not accept
 moves.
 
-Promotions show the existing queen, rook, bishop and knight chooser after a
-legal drop. Standard castling uses the king's destination square. Chess960
+Promotions, including captures on the last rank, show a queen, rook, bishop
+and knight chooser centered over the board after a legal drop. The chooser
+does not change the board size. Choosing a piece completes the move; Cancel
+or Escape leaves the position unchanged. Standard castling uses the king's
+destination square. Chess960
 castling uses the legal king-to-rook target, including when the rook occupies
 that square; the king may be dragged onto the castling rook. The same rule
 applies to click-to-move. Board orientation changes only the screen mapping;
@@ -168,6 +171,13 @@ move, `e7–e5` entered it after flipping, Position Setup moved `d2–d4`
 without duplicating the pawn, and Replay Training accepted a dragged `d4xe5`
 answer. The preview has no configured analysis engine, so the review practice
 board was checked with component integration tests rather than a live review.
+For a capture promotion, the native app's old chooser appeared below and
+shrunk the board. In the revised browser preview, dragging `b7xa8` kept the
+board at 541.1 × 541.1 pixels while the chooser opened over it; choosing
+Knight placed a white knight on `a8`. The component test also checks Escape
+cancellation and the exact `b7a8n` move sent to the editing API.
+
+![Promotion chooser after dragging a pawn onto a rook](media/board-capture-promotion.jpg)
 
 ![A move entered by dragging on the flipped board](media/board-drag-flipped.jpg)
 

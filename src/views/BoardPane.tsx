@@ -5,6 +5,7 @@ import {
   ChevronsRight,
 } from "lucide-react";
 import { Board, type DrawnMark } from "../components/Board";
+import { pieceImages } from "../board/pieces";
 import type { GameNode, PositionResponse } from "../api/types";
 
 export type Step = "first" | "previous" | "next" | "last";
@@ -68,29 +69,52 @@ export function BoardPane({
           marks={node}
           onMark={onMark}
         />
-      </div>
-      {promotion && promotion.length > 0 && onPromote && (
-        <section
-          role="dialog"
-          aria-label="Choose promotion"
-          className="promotion"
-        >
-          {[
-            ["q", "Queen"],
-            ["r", "Rook"],
-            ["b", "Bishop"],
-            ["n", "Knight"],
-          ].map(([code, label]) => (
-            <button
-              key={code}
-              onClick={() => onPromote(promotion.find((m) => m.endsWith(code)))}
-            >
-              {label}
+        {promotion && promotion.length > 0 && onPromote && (
+          <section
+            role="dialog"
+            aria-label="Choose promotion"
+            className="promotion"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.stopPropagation();
+                onPromote(undefined);
+              }
+            }}
+          >
+            <h3>Choose promotion</h3>
+            <div className="promotion-pieces">
+              {(
+                [
+                  ["q", "Queen"],
+                  ["r", "Rook"],
+                  ["b", "Bishop"],
+                  ["n", "Knight"],
+                ] as const
+              ).map(([code, label]) => (
+                <button
+                  key={code}
+                  type="button"
+                  autoFocus={code === "q"}
+                  onClick={() =>
+                    onPromote(promotion.find((m) => m.endsWith(code)))
+                  }
+                >
+                  <img
+                    src={pieceImages[
+                      position?.turn === "black" ? code : code.toUpperCase()
+                    ]}
+                    alt=""
+                  />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={() => onPromote(undefined)}>
+              Cancel
             </button>
-          ))}
-          <button onClick={() => onPromote(undefined)}>Cancel</button>
-        </section>
-      )}
+          </section>
+        )}
+      </div>
       <div className="replay-bar" aria-label="Move navigation">
         {steps.map(([step, label, Icon]) => (
           <button
