@@ -20,6 +20,7 @@ export function BoardPane({
   navigate,
   selectedSquare,
   onSquare,
+  onMove,
   promotion,
   onPromote,
   compact,
@@ -33,6 +34,7 @@ export function BoardPane({
   navigate: (step: Step) => void;
   selectedSquare?: string;
   onSquare?: (square: string) => void;
+  onMove?: (from: string, to: string) => void;
   promotion?: string[];
   onPromote?: (uci?: string) => void;
   compact?: boolean;
@@ -60,6 +62,7 @@ export function BoardPane({
           flipped={flipped}
           selectedSquare={selectedSquare}
           onSquare={onSquare}
+          onMove={onMove}
           legalUci={position?.legalUci ?? []}
           compact={compact}
           marks={node}

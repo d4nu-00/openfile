@@ -120,6 +120,61 @@ convention, not a traced one.
 The preview board in the database window does not draw: it shows a game
 that is not open for editing.
 
+## Moving pieces with mouse or touch
+
+On an editable game board, press a piece with the primary mouse button or a
+finger and move it at least 5 pixels to start dragging. The piece follows the
+pointer and its legal destinations appear; occupied destinations use a ring so
+the target piece stays visible. Releasing over a legal destination enters the
+move. Releasing over an illegal square or outside the board, pressing Escape,
+or losing the pointer cancels the drag. A drag does not also select the source
+square. Clicking a piece and then a destination remains available for mouse,
+touch and keyboard users. The read-only game-list preview does not accept
+moves.
+
+Promotions show the existing queen, rook, bishop and knight chooser after a
+legal drop. Standard castling uses the king's destination square. Chess960
+castling uses the legal king-to-rook target, including when the rook occupies
+that square; the king may be dragged onto the castling rook. The same rule
+applies to click-to-move. Board orientation changes only the screen mapping;
+dragging on a flipped board produces the same move. A flip or position change
+while a drag is active cancels it.
+
+The right button and Alt with the left button retain the annotation gesture
+above, even when the pointer starts on a movable piece. A plain click does not
+start a drag. Position Setup uses a piece drag to relocate a piece to any
+square, replacing an occupant; its palette and square clicks still place or
+remove pieces. Learn from Mistakes and Replay Training use the same legal drag
+and promotion behavior, without changing the game while practising.
+
+### Reference-app evidence and design choice
+
+The available ChessBase 18 `CBase18.exe` is a Windows executable, so this
+macOS development run did not observe its live pointer events. Existing local
+analysis of that executable found the annotation storage and the documented
+Alt/Shift/Ctrl colour convention, while its board mouse handler was not
+resolved (see the previous section). The binary's Chess960 game format records
+castling as a king-side or queen-side castling action, independently of the
+rook's starting square (see [formats](formats.md#classic-cbg-encoding-kinds-and-chess960)).
+Those findings keep annotation gestures separate from movement and avoid
+assuming a fixed rook square in Chess960. OpenFile's legal-move API represents
+Chess960 castling as king-to-rook UCI, so both dragging and clicking target the
+rook square. The reference executable did not establish a rule for drag
+threshold, cancellation, touch handling or visual target style; those are
+OpenFile design choices, covered by tests and the UI checks below.
+
+Running UI checks in the browser preview: a normal `e2–e4` drag entered the
+move, `e7–e5` entered it after flipping, Position Setup moved `d2–d4`
+without duplicating the pawn, and Replay Training accepted a dragged `d4xe5`
+answer. The preview has no configured analysis engine, so the review practice
+board was checked with component integration tests rather than a live review.
+
+![A move entered by dragging on the flipped board](media/board-drag-flipped.jpg)
+
+![A pawn relocated in Position Setup](media/board-setup-drag.jpg)
+
+![A dragged answer solved in Replay Training](media/board-training-drag.jpg)
+
 ## Annotation symbols from the keyboard
 
 ### What the reference app does

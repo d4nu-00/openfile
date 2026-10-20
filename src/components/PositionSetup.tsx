@@ -105,6 +105,12 @@ export function PositionSetup({
     else squares[square] = tool;
     update({ squares });
   }
+  function relocate(from: string, to: string) {
+    if (from === to || !setup.squares[from]) return;
+    const squares = { ...setup.squares, [to]: setup.squares[from] };
+    delete squares[from];
+    update({ squares });
+  }
   return (
     <div className="modal-backdrop">
       <form
@@ -121,7 +127,13 @@ export function PositionSetup({
         <h2>Position setup</h2>
         <div className="setup-body">
           <div className="setup-board">
-            <Board fen={fen} flipped={false} legalUci={[]} onSquare={place} />
+            <Board
+              fen={fen}
+              flipped={false}
+              legalUci={[]}
+              onSquare={place}
+              onRelocate={relocate}
+            />
           </div>
           <div className="setup-side">
             <div className="setup-palette" role="radiogroup" aria-label="Piece">

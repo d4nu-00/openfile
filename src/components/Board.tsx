@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { pieceImages } from "../board/pieces";
 import type { ArrowMark, SquareMark } from "../api/types";
 
@@ -38,6 +38,8 @@ export function Board({
   flipped,
   legalUci,
   onSquare,
+  onMove,
+  onRelocate,
   selectedSquare,
   compact,
   marks,
@@ -47,6 +49,10 @@ export function Board({
   flipped: boolean;
   legalUci: string[];
   onSquare?: (square: string) => void;
+  /** A legal move dropped from a piece onto its destination. */
+  onMove?: (from: string, to: string) => void;
+  /** Position setup: move a placed piece without consulting game legality. */
+  onRelocate?: (from: string, to: string) => void;
   selectedSquare?: string;
   compact?: boolean;
   marks?: { squares?: SquareMark[]; arrows?: ArrowMark[] };
@@ -55,6 +61,25 @@ export function Board({
 }) {
   const [drawing, setDrawing] = useState<DrawnMark>();
   const drawingRef = useRef<DrawnMark | undefined>(undefined);
+  const [dragging, setDragging] = useState<{
+    from: string;
+    to?: string;
+    piece: string;
+    x: number;
+    y: number;
+  }>();
+  const active = useRef<
+    | {
+        kind: "move" | "mark";
+        pointerId: number;
+        from: string;
+        startX: number;
+        startY: number;
+        piece?: string;
+        dragged: boolean;
+      }
+    | undefined
+  >(undefined);
   /** The left click that ends an Alt+drag selects no square. */
   const swallowClick = useRef(false);
   const marked: Record<string, string> = {};
@@ -72,6 +97,10 @@ export function Board({
     });
   const files = flipped ? "hgfedcba" : "abcdefgh";
   const ranks = flipped ? "12345678" : "87654321";
+  const hintFrom = dragging?.from ?? selectedSquare;
+  const canDrop = (from: string, to: string) =>
+    !!onRelocate ||
+    legalUci.some((m) => m.slice(0, 2) === from && m.slice(2, 4) === to);
   /** The square under the pointer, from the board's own rectangle. */
   const squareAt = (e: PointerEvent<HTMLDivElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -84,30 +113,127 @@ export function Board({
     drawingRef.current = mark;
     setDrawing(mark);
   };
-  const handlers = onMark && {
+  const cancelPointer = () => {
+    active.current = undefined;
+    swallowClick.current = false;
+    track(undefined);
+    setDragging(undefined);
+  };
+  useEffect(() => {
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && active.current) {
+        e.preventDefault();
+        active.current = undefined;
+        swallowClick.current = false;
+        drawingRef.current = undefined;
+        setDrawing(undefined);
+        setDragging(undefined);
+      }
+    };
+    window.addEventListener("keydown", escape);
+    return () => window.removeEventListener("keydown", escape);
+  }, []);
+  useEffect(() => {
+    active.current = undefined;
+    drawingRef.current = undefined;
+    setDrawing(undefined);
+    setDragging(undefined);
+  }, [fen, flipped]);
+  const handlers = {
     onPointerDown: (e: PointerEvent<HTMLDivElement>) => {
-      if (!(e.button === 2 || (e.button === 0 && e.altKey))) return;
+      if (active.current) return;
+      const isMark =
+        !!onMark && (e.button === 2 || (e.button === 0 && e.altKey));
+      if (!isMark && (e.button !== 0 || (!onMove && !onRelocate))) return;
       const from =
         (e.target as HTMLElement).closest<HTMLElement>("[data-square]")?.dataset
           .square ?? squareAt(e);
       if (!from) return;
-      e.preventDefault();
-      swallowClick.current = e.button === 0;
-      e.currentTarget.setPointerCapture?.(e.pointerId);
-      track({ from, to: from, color: drawColor(e) });
+      const piece = squares[from];
+      if (
+        !isMark &&
+        (!piece ||
+          (!onRelocate && !legalUci.some((m) => m.slice(0, 2) === from)))
+      )
+        return;
+      if (isMark) {
+        e.preventDefault();
+        swallowClick.current = e.button === 0;
+        track({ from, to: from, color: drawColor(e) });
+      }
+      active.current = {
+        kind: isMark ? "mark" : "move",
+        pointerId: e.pointerId,
+        from,
+        startX: e.clientX,
+        startY: e.clientY,
+        piece,
+        dragged: false,
+      };
+      if (isMark) e.currentTarget.setPointerCapture?.(e.pointerId);
     },
     onPointerMove: (e: PointerEvent<HTMLDivElement>) => {
-      const d = drawingRef.current;
-      const to = d && squareAt(e);
-      if (d && to && to !== d.to) track({ ...d, to });
+      const current = active.current;
+      if (!current || current.pointerId !== e.pointerId) return;
+      const to = squareAt(e);
+      if (current.kind === "mark") {
+        const d = drawingRef.current;
+        if (d && to && to !== d.to) track({ ...d, to });
+      } else {
+        if (
+          !current.dragged &&
+          Math.hypot(e.clientX - current.startX, e.clientY - current.startY) < 5
+        )
+          return;
+        if (!current.dragged) e.currentTarget.setPointerCapture?.(e.pointerId);
+        current.dragged = true;
+        e.preventDefault();
+        swallowClick.current = true;
+        const rect = e.currentTarget.getBoundingClientRect();
+        setDragging({
+          from: current.from,
+          to,
+          piece: current.piece!,
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        });
+      }
     },
-    onPointerUp: () => {
-      const d = drawingRef.current;
-      track(undefined);
-      if (d) onMark(d);
+    onPointerUp: (e: PointerEvent<HTMLDivElement>) => {
+      const current = active.current;
+      if (!current || current.pointerId !== e.pointerId) return;
+      active.current = undefined;
+      if (current.kind === "mark") {
+        const d = drawingRef.current;
+        track(undefined);
+        if (d) onMark?.(d);
+      } else {
+        const to = squareAt(e);
+        setDragging(undefined);
+        if (
+          current.dragged &&
+          to &&
+          to !== current.from &&
+          canDrop(current.from, to)
+        ) {
+          if (onRelocate) onRelocate(current.from, to);
+          else onMove?.(current.from, to);
+        }
+      }
+      if (swallowClick.current)
+        window.setTimeout(() => {
+          swallowClick.current = false;
+        }, 0);
     },
-    onPointerCancel: () => track(undefined),
-    onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
+    onPointerCancel: (e: PointerEvent<HTMLDivElement>) => {
+      if (active.current?.pointerId === e.pointerId) cancelPointer();
+    },
+    onLostPointerCapture: (e: PointerEvent<HTMLDivElement>) => {
+      if (active.current?.pointerId === e.pointerId) cancelPointer();
+    },
+    onContextMenu: (e: { preventDefault: () => void }) => {
+      if (onMark) e.preventDefault();
+    },
   };
   const arrows = [
     ...(marks?.arrows ?? []),
@@ -118,7 +244,8 @@ export function Board({
       role="grid"
       aria-label="Chess board"
       data-flipped={flipped}
-      className={compact ? "board compact" : "board"}
+      data-dragging={dragging?.from}
+      className={`${compact ? "board compact" : "board"}${onMove || onRelocate || onMark ? " interactive" : ""}`}
       {...handlers}
     >
       {[...ranks].map((r) => (
@@ -140,7 +267,13 @@ export function Board({
                   type="button"
                   aria-label={`${square} ${label}`}
                   aria-pressed={square === selectedSquare}
-                  className={`square ${(files.indexOf(f) + ranks.indexOf(r)) % 2 ? "dark" : "light"} ${selectedSquare === square ? "selected" : ""}`}
+                  className={`square ${(files.indexOf(f) + ranks.indexOf(r)) % 2 ? "dark" : "light"} ${selectedSquare === square ? "selected" : ""} ${dragging?.from === square ? "drag-origin" : ""}`}
+                  data-drop-target={
+                    dragging?.to === square &&
+                    square !== dragging.from &&
+                    canDrop(dragging.from, square)
+                  }
+                  data-occupied={!!p}
                   data-mark={
                     drawing?.from === square && drawing.to === square
                       ? markColors[drawing.color]
@@ -156,8 +289,7 @@ export function Board({
                   }}
                   data-legal={legalUci.some(
                     (m) =>
-                      m.slice(0, 2) === selectedSquare &&
-                      m.slice(2, 4) === square,
+                      m.slice(0, 2) === hintFrom && m.slice(2, 4) === square,
                   )}
                 >
                   {p && (
@@ -176,6 +308,15 @@ export function Board({
           })}
         </div>
       ))}
+      {dragging && (
+        <img
+          className="drag-piece"
+          src={pieceImages[dragging.piece]}
+          alt=""
+          draggable={false}
+          style={{ left: dragging.x, top: dragging.y }}
+        />
+      )}
       {!!arrows.length && (
         <svg
           className="board-arrows"

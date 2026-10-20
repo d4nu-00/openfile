@@ -113,7 +113,7 @@ Names in backticks are the reference app's command ids, for traceability.
 - [x] P1 🟢 Replay with first/previous/next/last and arrow keys (`GOTOBEGIN`, `GOTOEND`, `RETRACTMOVE`, `EXECMOVE`)
 - [ ] P2 🟢 Board design: square colours and textures, piece sets, table (`DESIGNBOARD`, `BOARD2D_BACKGROUND`, `BOARD2D_PIECES`, `DESIGNWOOD`)
 - [x] P1 🟢 Draw arrows and coloured squares on the board, stored as annotations *(right button or Alt+left; Shift red, Ctrl yellow; undoable, saved to 2CBH and PGN; Delete Colour Commentary `ANNODELETECOLOR` Ctrl+Alt+Y; see [game window](docs/game-window.md))*
-- [ ] P2 🟢 Drag-and-drop moves
+- [x] P2 🟢 Drag-and-drop moves *(mouse and touch on editable game, review and training boards; legal targets, promotion, Chess960 castling, flip and cancellation; Position Setup piece relocation; see [game window](docs/game-window.md#moving-pieces-with-mouse-or-touch))*
 - [ ] P2 🟢 Board sounds (`BOARDSOUNDS`)
 - [ ] P2 🟢 Show material balance and move tooltips (`NOTASHOWMATERIAL`, `NOTASHOWTOOLTIPS`)
 - [ ] P2 🟢 Big replay slider (`REPLAY_SLIDER`)
