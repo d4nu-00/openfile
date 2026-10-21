@@ -937,6 +937,16 @@ export function demoApi(): WorkbenchApi {
         annotatedCount: 0,
       };
     },
+    playingStyle: async () => {
+      throw new Error(
+        "Open a local database in the desktop app to compute a style report.",
+      );
+    },
+    cancelPlayingStyle: async () => {},
+    validatePlayingStyle: async () => {},
+    loadStyleEntry: async () => {
+      throw new Error("Generate a report from a local database first.");
+    },
     cancelDossier: async () => {},
     tournamentReport: async (db, tournamentId) => {
       const table = await api.crosstable!(db, tournamentId, "swiss");

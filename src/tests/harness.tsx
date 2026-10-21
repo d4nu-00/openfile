@@ -1389,6 +1389,16 @@ export function mockApi(firstDatabase = 1) {
           };
         },
       ),
+    playingStyle: vi
+      .fn<typeof backend.playingStyle>()
+      .mockResolvedValue(undefined),
+    cancelPlayingStyle: vi.fn().mockResolvedValue(undefined),
+    validatePlayingStyle: vi.fn().mockResolvedValue(undefined),
+    loadStyleEntry: vi
+      .fn<typeof backend.loadStyleEntry>()
+      .mockImplementation((db, _job, ordinal, request): Promise<GameResponse> =>
+        api.loadEntry(db, ordinal, request),
+      ),
     cancelDossier: vi.fn().mockResolvedValue(undefined),
     closePreparation: vi.fn().mockResolvedValue(undefined),
     preparedTree: vi

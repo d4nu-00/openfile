@@ -22,6 +22,7 @@ pub mod scan;
 pub mod search;
 pub mod sort;
 pub mod source;
+pub mod style_selection;
 pub mod tournament_report;
 pub mod tree;
 pub mod v2;

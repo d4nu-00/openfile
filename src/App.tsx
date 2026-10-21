@@ -95,6 +95,7 @@ import {
   GenerateRepertoireDialog,
   RepertoireReportDialog,
 } from "./components/RepertoireDialogs";
+import { PlayingStyleDialog } from "./components/PlayingStyleDialog";
 import { DossierDialog } from "./components/DossierDialog";
 import { TournamentReportDialog } from "./components/TournamentReportDialog";
 import { ErrorReportDialog } from "./components/ErrorReportDialog";
@@ -299,6 +300,15 @@ export function App({
     loading?: boolean;
     error?: string;
   }>();
+  const [playingStyle, setPlayingStyle] = useState<{
+    databaseId: string;
+    databaseName: string;
+    player: { id: number; name?: string };
+  }>();
+  useEffect(() => {
+    if (playingStyle && playingStyle.databaseId !== state.database?.databaseId)
+      setPlayingStyle(undefined);
+  }, [state.database?.databaseId, playingStyle]);
   /** The player dossier shown. */
   const [dossier, setDossier] = useState<{
     databaseId: string;
@@ -1957,6 +1967,21 @@ export function App({
       },
       enabled: !!state.database,
     },
+    "style-report": {
+      run: () => {
+        if (!state.database || statsPlayer === undefined) return;
+        const name =
+          listTab === "players" && chosenName.players
+            ? chosenName.players.name
+            : gamePlayers.find((p) => p.id === statsPlayer)?.name;
+        setPlayingStyle({
+          databaseId: state.database.databaseId,
+          databaseName: state.database.name ?? "Database",
+          player: { id: statsPlayer, name },
+        });
+      },
+      enabled: !!state.database && statsPlayer !== undefined,
+    },
     "player-dossier": {
       run: () => {
         if (statsPlayer === undefined) return;
@@ -2414,6 +2439,7 @@ export function App({
       palette ||
       !!symbolMenu ||
       !!maskOpen ||
+      !!playingStyle ||
       !!replay ||
       gameDataOpen ||
       setupOpen ||
@@ -3393,6 +3419,19 @@ export function App({
             if (stats.progress)
               void api.cancelPlayerStatistics(stats.databaseId);
             setStats(undefined);
+          }}
+        />
+      )}
+      {playingStyle && (
+        <PlayingStyleDialog
+          key={`${playingStyle.databaseId}-${playingStyle.player.id}`}
+          api={api}
+          {...playingStyle}
+          onClose={() => setPlayingStyle(undefined)}
+          onLoadGame={(ordinal, node, jobId) => {
+            setPlayingStyle(undefined);
+            setListTab("games");
+            void e.openEntry(ordinal, node, jobId);
           }}
         />
       )}

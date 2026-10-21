@@ -199,7 +199,7 @@ Names in backticks are the reference app's command ids, for traceability.
 - [x] P2 🟢 Error report: blunder statistics and estimated rating (`BLUNDER_REPORT`) *(traced: Quick/Slower depths 9/12, per-move loss and weights, error value, the Blunder Elo curve `0x1404705d0`; ported with the user's UCI engine: the reference app's curve and error value with the weights a UCI engine allows, plus severity, losses by size, phase, opponent, evaluation transitions and worst moves; within 82–292 points of three strong players' ratings with Stockfish at depth 9; complexity, shape, slope and GM reference charts not ported; see [error report](docs/error-report.md))*
 - [ ] P2 🟢 Filter graphs for the current game list: absolute counts and share of the full database by year, rating and game length, with clear handling of missing ratings.
 - [ ] P2 🟢 Personal play insights across reviewed games: filter move quality and results by opening, game phase, colour and opponent strength, and open the games behind each result.
-- [ ] P3 🟢 Style report (`STYLE_REPORT`)
+- [x] P3 🟢 Style report (`STYLE_REPORT`) — local descriptive metrics, explicit samples and supporting positions; [rules, reference findings and native validation](docs/playing-style.md). Native composite grades are not reproduced.
 - [ ] P3 🟢 Game overview and theme classification (`OVERVIEWBOARD`, `THEMECLASSIFYBOARD`)
 - [ ] P3 🟢 Piece probability and piece first-move statistics (`DBTOOLSPIECEPROBABILITY`, `DBTOOLSPIECEFIRSTMOVE`)
 - [ ] P3 🟢 Endgame classification summaries: sortable endgame types per game and comparisons between a player's or opening's endgames and the reference database.

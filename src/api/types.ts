@@ -1414,3 +1414,76 @@ export interface RepertoireReport {
   positionsTruncated: boolean;
   cancelled: boolean;
 }
+
+/** Local STYLE_REPORT: descriptive board measures, not personality ratings. */
+export interface StyleParams {
+  playerIds: number[];
+  white?: boolean | null;
+  yearFrom?: number | null;
+  yearTo?: number | null;
+  minOpponentElo?: number | null;
+  sampleLimit: number;
+}
+export interface StyleProgress {
+  stage: string;
+  done: string;
+  total: string;
+}
+export interface StyleRate {
+  numerator: number;
+  denominator: number;
+  value: number | null;
+}
+export interface StyleEvidence {
+  ordinal: string;
+  node: number;
+  ply: number;
+  san: string;
+}
+export interface StyleMetric extends StyleRate {
+  id: string;
+  label: string;
+  description: string;
+  minimum: number;
+  status?: "none" | "small" | "ok";
+  white: StyleRate;
+  black: StyleRate;
+  evidence: StyleEvidence[];
+}
+export interface StyleGame {
+  ordinal: string;
+  white: boolean;
+  opponent?: string | null;
+  date?: string | null;
+  result?: string | null;
+  plies: number;
+  cut?: boolean;
+}
+export interface StyleReport {
+  jobId: string;
+  players: { id: number; name?: string | null }[];
+  criteria: StyleParams;
+  database: string;
+  databaseEntries: string;
+  eligible: number;
+  selected: number;
+  analysed: number;
+  whiteGames: number;
+  blackGames: number;
+  deleted: number;
+  filtered: number;
+  skipped: number;
+  cutGames: number;
+  unknownDate?: number;
+  unknownOpponentElo?: number;
+  unknownResult?: number;
+  skippedSetup?: number;
+  skippedUnreadable?: number;
+  skippedUnsupported?: number;
+  skippedPartial?: number;
+  firstDate?: string | null;
+  lastDate?: string | null;
+  metrics: StyleMetric[];
+  games: StyleGame[];
+  elapsedMs: number;
+}

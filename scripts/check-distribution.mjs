@@ -50,6 +50,7 @@ const documents = new Set([
   "centipawn-analysis.md",
   "training.md",
   "game-review.md",
+  "playing-style.md",
   "replay-training.md",
 ]);
 export function allowedSourcePath(candidate) {
@@ -105,6 +106,8 @@ export function allowedSourcePath(candidate) {
   if (
     [
       "docs/superpowers/plans/2026-10-20-material-result-search.md",
+      "docs/superpowers/plans/2026-10-20-playing-style.md",
+      "docs/superpowers/specs/2026-10-20-playing-style-design.md",
       "docs/superpowers/plans/2026-10-18-filtered-opening-tree.md",
       "docs/superpowers/plans/2026-10-18-quick-search-expressions.md",
       "docs/superpowers/plans/2026-10-19-repertoire-workspace.md",

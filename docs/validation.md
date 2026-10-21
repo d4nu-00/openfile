@@ -1102,3 +1102,61 @@ its effects. The failure reproduced locally on attempt 4. Awaiting the initial
 render and position effects in React `act` passed 20 consecutive targeted runs;
 the drag and grading assertions remain unchanged. This is a test synchronization
 fix, with no change to board behavior.
+
+
+## Local playing-style report (2026-10-21)
+
+Implemented from fetched `origin/main` in an isolated worktree. Original checkout,
+reference database and unrelated REA sessions/artifacts were preserved. Fresh
+REA/Ghidra analysis traced command dispatch, dynamic options, selection, theme
+math, reference normalization, internal evaluation, rendering and cancellation.
+Addresses, executable hash, directly established behavior and unresolved questions
+are recorded in [playing style](playing-style.md). OpenFile independently computes
+ten transparent move/material measures, without a UCI engine or comparison grades.
+
+Synthetic tests cover both colours; explicit alias unions; filter-before-limit
+selection beyond 100,000 matches; deleted/unknown records; empty/small samples;
+checks, captures/en passant, castling, queen movement/exchanges/promotions,
+non-pawn inventories, sustained deficits and endgames; setup/unsupported/partial/
+corrupt records; replay caps; cancellation, supersession, closure/edit invalidation,
+source mutation and supporting-node navigation. UI tests cover criteria, aliases,
+measured zero versus missing evidence, complete analysed-game lists, errors,
+late callbacks and source-bound navigation. Independent focused review identified
+two races that were reproduced and fixed: late evidence validation affecting a
+newer report, and source mutation between validation and game loading. Both have
+regressions; loading now validates before and after and closes a stale document.
+
+Native acceptance used read-only byte-identical clones of the available Mega
+Database 2025 (11,151,119 entries) in a separately identified Tauri app. Exact
+identities Carlsen, Magnus #65470 and Nakamura, Hikaru #286135 were checked against
+the name list and neighbouring entries; no aliases were added. Both reports used
+both colours, no year/rating filter, latest 500 games and a 400-ply cap. Carlsen:
+500 analysed, 252 White/248 Black, 2024.05.14–2024.10.01. Nakamura: 498 analysed,
+250 White/248 Black, 2024.06.13–2024.09.24, two unreadable records skipped. Samples
+include mixed time controls. No career-wide or long-game-only claim is made.
+
+A separate python-chess 1.10.0 calculation matched all ten metric fractions,
+colour splits and every evidence SAN/ply in both reports. Native supporting links
+opened Carlsen–Firouzja at 45...Qxg7 (ply 90, nine non-pawn points each), and
+Nakamura–Naroditsky at 8.Kxd1 (ply 15, no queens), with the expected board and
+highlighted move. [Screenshots and full metric table](playing-style.md#native-ui-evidence)
+show real computed reports and supporting positions; synthetic fixtures are separate.
+
+Warm-cache release selection/replay totals were 0.369 s / 0.285 s, with full-index
+scans 0.172 s / 0.131 s and replay 0.197 s / 0.154 s, respectively. Prepared
+name-list lookup took 0.005 s / 0.002 s. Whole example processes including PGN
+validation export peaked at 12.4 / 12.3 MiB resident memory. Native debug UI
+computations took 3.04 s / 2.96 s. Engine cost: zero. These measurements exclude
+initial database opening/name-index construction; cloud placeholders can stall
+filesystem reads. Selection retains one 8,192-header chunk plus at most 2,000
+candidates. No result cache is persisted. Nine original database-family file
+signatures remained unchanged, and original/clone CBH hashes agree.
+
+Final local checks: **329 Rust tests** (23 new style tests), **195 frontend tests**
+(7 new style tests), Rust formatting, strict workspace/all-target Clippy,
+TypeScript, Prettier, production frontend build and locked native release build.
+The native acceptance app also builds successfully with embedded frontend assets.
+The frontend retains its existing >500 kB bundle advisory. The tracked-source
+allowlist permits the authored style documentation/plans and screenshots, without
+raw decompilation, private games or databases. Cross-platform CI is recorded by
+the unmerged PR.
