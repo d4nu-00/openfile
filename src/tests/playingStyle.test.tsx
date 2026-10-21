@@ -185,9 +185,19 @@ describe("local playing style", () => {
       within(ui.dialog).getByRole("button", { name: "Generate report" }),
     );
     const firstJob = ui.api.playingStyle.mock.calls[0][1];
-    await ui.user.click(
-      within(ui.dialog).getByRole("button", { name: "Stop" }),
-    );
+    // WebKit can apply the click default after React changes this button
+    // back to type=submit. Stopping must suppress that default submission.
+    const stopClick = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    });
+    await act(async () => {
+      within(ui.dialog)
+        .getByRole("button", { name: "Stop" })
+        .dispatchEvent(stopClick);
+    });
+    expect(stopClick.defaultPrevented).toBe(true);
+    expect(ui.api.playingStyle).toHaveBeenCalledTimes(1);
     expect(ui.api.cancelPlayingStyle).toHaveBeenCalledWith("db-1", firstJob);
     await ui.user.click(
       within(ui.dialog).getByRole("button", { name: "Generate report" }),

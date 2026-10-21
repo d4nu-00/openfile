@@ -46,4 +46,5 @@ Files: docs/playing-style.md, docs/validation.md, docs/media, feature_checklist.
 - [x] Measure large-database selection and replay costs.
 - [x] Run required Rust/frontend/distribution checks and native build.
 - [x] Obtain a focused independent review, fix findings and rerun relevant checks.
-- [ ] Commit, push, open and attach unmerged PR, monitor CI and fix failures.
+- [x] Commit, push, open and attach unmerged [PR #46](https://github.com/d4nu-00/openfile/pull/46).
+- Delivery requires monitoring the PR checks and fixing failures before finishing; the PR retains the current cross-platform CI record.

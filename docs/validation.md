@@ -1139,7 +1139,11 @@ A separate python-chess 1.10.0 calculation matched all ten metric fractions,
 colour splits and every evidence SAN/ply in both reports. Native supporting links
 opened Carlsen–Firouzja at 45...Qxg7 (ply 90, nine non-pawn points each), and
 Nakamura–Naroditsky at 8.Kxd1 (ply 15, no queens), with the expected board and
-highlighted move. [Screenshots and full metric table](playing-style.md#native-ui-evidence)
+highlighted move. Native Stop during a header scan was also checked: a WebKit
+form-default restart was reproduced, fixed with a prevented click default, and
+verified in the rebuilt app with a regression test. The stopped state persisted
+without publication; a subsequent explicit Generate returned the expected sample.
+[Screenshots and full metric table](playing-style.md#native-ui-evidence)
 show real computed reports and supporting positions; synthetic fixtures are separate.
 
 Warm-cache release selection/replay totals were 0.369 s / 0.285 s, with full-index

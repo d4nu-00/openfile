@@ -309,7 +309,7 @@ The full analysed-game table is also available, including negative examples.
 
 | Player | Activity | Structure/endings | Supporting position |
 |---|---|---|---|
-| Carlsen | [Report](media/style-carlsen-activity.png) | [Report](media/style-carlsen-structure.png) | [Entry 11148542](media/style-carlsen-evidence.png) |
+| Carlsen | [Report](media/style-carlsen-activity.png), [remaining activity cards](media/style-carlsen-activity-more.png) | [Report](media/style-carlsen-structure.png) | [Entry 11148542](media/style-carlsen-evidence.png) |
 | Nakamura | [Report](media/style-nakamura-activity.png), [remaining activity cards](media/style-nakamura-activity-more.png) | [Report](media/style-nakamura-structure.png) | [Entry 11146243](media/style-nakamura-evidence.png) |
 
 All retained screenshots were visually inspected. Carlsen's **Endgame reached**
@@ -325,3 +325,12 @@ The original CBH and validation clone have SHA-256
 All nine original database-family file sizes, modification times and file
 identities were unchanged after acceptance. No private PGN, database, native
 code or reference artwork is included in this repository.
+
+
+Native cancellation was additionally exercised during the full-database scan:
+**Stop** leaves [Report stopped](media/style-cancelled.png), re-enables criteria,
+and publishes no partial report. A WebKit-specific form default initially
+restarted the report after Stop synchronously changed that button back to a
+submit button. The click default is now prevented; a failing-then-passing
+regression checks that contract, and the rebuilt native app confirmed the fix.
+A subsequent explicit Generate completed the same 500-game Carlsen sample.

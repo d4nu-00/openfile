@@ -529,7 +529,15 @@ export function PlayingStyleDialog({
               </button>
             )}
             {running ? (
-              <button type="button" onClick={stop}>
+              <button
+                type="button"
+                onClick={(event) => {
+                  // Stopping changes this node back into a submit button.
+                  // Suppress WebKit's click default after that synchronous update.
+                  event.preventDefault();
+                  stop();
+                }}
+              >
                 Stop
               </button>
             ) : (
