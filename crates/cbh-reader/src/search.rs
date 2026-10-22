@@ -1,8 +1,8 @@
 //! Game-data search over a whole database (the reference app's search mask, game data
 //! tab). See docs/search.md. Name fields are resolved to id sets first; the
 //! entry index is then scanned in chunks without decoding any game.
+pub use crate::material::{CountRange, MaterialQuery, PieceCounts, Tally, mating_pieces};
 use crate::{CbhError, Database, DatabaseFormat, EntryKind, header::RawEntry};
-pub use crate::material::{CountRange, MaterialQuery, PieceCounts, Tally};
 use std::{collections::HashSet, sync::atomic::AtomicBool};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -731,6 +731,12 @@ impl GameFilter {
                 use shakmaty::Position;
                 if !self.material.matches_final(final_position(game)?.board()) {
                     return Ok(false);
+                }
+            }
+            if self.material.mate_by_enabled {
+                match mating_pieces(&final_position(game)?) {
+                    Some(tally) if self.material.mate_by.matches(&tally) => {}
+                    _ => return Ok(false),
                 }
             }
         }

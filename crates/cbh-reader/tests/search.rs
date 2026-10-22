@@ -534,6 +534,102 @@ fn material_tab_counts_pieces_of_the_last_position() {
     assert_eq!(hits(&mut db, json), [1, 2]);
 }
 
+/// A back-rank rook mate, a queen and knight mate, and a game that ends
+/// without mate.
+const MATES: &str = r#"[White "Rook mate, A"]
+[Black "B"]
+[SetUp "1"]
+[FEN "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1"]
+[Result "1-0"]
+
+1. Ra8# 1-0
+
+[White "Queen and knight mate, A"]
+[Black "B"]
+[SetUp "1"]
+[FEN "7k/6pp/8/6NQ/8/8/8/6K1 w - - 0 1"]
+[Result "1-0"]
+
+1. Qxh7# 1-0
+
+[White "No mate, A"]
+[Black "B"]
+[SetUp "1"]
+[FEN "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1"]
+[Result "*"]
+
+1. Kf1 *"#;
+
+#[test]
+fn mate_by_matches_the_pieces_involved_in_the_mate() {
+    let d = tempfile::tempdir().unwrap();
+    let path = d.path().join("Mates.2cbh");
+    let games = parse_pgn(MATES.as_bytes(), &GameLimits::default()).unwrap();
+    let mut w = Writer::create(&path).unwrap();
+    w.append_all(&games).unwrap();
+    drop(w);
+    let mut db = Database::open(&path, ReadLimits::default()).unwrap();
+    let exactly = |n: u8| CountRange {
+        min: Some(n),
+        max: Some(n),
+    };
+    let by = |mate_by: PieceCounts| GameFilter {
+        material: MaterialQuery {
+            mate_by_enabled: true,
+            mate_by,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    // Any mate: the game without mate never matches.
+    assert_eq!(hits(&mut db, by(PieceCounts::default())), [1, 2]);
+    // Rook only (the king is not involved in the back-rank mate).
+    let rook = PieceCounts {
+        rooks: exactly(1),
+        others_zero: true,
+        ..Default::default()
+    };
+    assert_eq!(hits(&mut db, by(rook)), [1]);
+    // Queen and one minor piece, nothing else.
+    let queen_knight = PieceCounts {
+        queens: exactly(1),
+        minors: exactly(1),
+        others_zero: true,
+        ..Default::default()
+    };
+    assert_eq!(hits(&mut db, by(queen_knight)), [2]);
+    let knight_only = PieceCounts {
+        knights: exactly(1),
+        ..Default::default()
+    };
+    assert_eq!(hits(&mut db, by(knight_only)), [2]);
+    // Switched off, the pieces are ignored.
+    let off = GameFilter {
+        material: MaterialQuery {
+            mate_by: rook,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    assert_eq!(hits(&mut db, off), [1, 2, 3]);
+    // Together with final material and another field.
+    let mut both = by(queen_knight);
+    both.material.white = PieceCounts {
+        queens: exactly(1),
+        ..Default::default()
+    };
+    both.results = vec!["1-0".into()];
+    assert_eq!(hits(&mut db, both.clone()), [2]);
+    both.material.white.queens = exactly(2);
+    assert!(hits(&mut db, both).is_empty());
+    // The criterion arrives from the frontend as camelCase JSON.
+    let json: GameFilter = serde_json::from_str(
+        r#"{"material":{"mateByEnabled":true,"mateBy":{"rooks":{"min":1,"max":1},"othersZero":true}}}"#,
+    )
+    .unwrap();
+    assert_eq!(hits(&mut db, json), [1]);
+}
+
 #[test]
 fn hit_limits_keep_the_first_hits_in_entry_order() {
     let (_d, mut db) = endings();

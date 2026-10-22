@@ -1,8 +1,28 @@
 //! Runs a game-data search and prints the hit count, timing and first hits.
 //!
 //! Usage: search --path <file.cbh|file.2cbh> --filter '<GameFilter JSON>'
-use cbh_reader::{Database, ReadLimits, search::GameFilter};
+use cbh_reader::{
+    Database, ReadLimits,
+    search::{GameFilter, Tally, final_position, mating_pieces},
+};
 use std::{path::PathBuf, sync::atomic::AtomicBool, time::Instant};
+
+/// The involved piece kinds as letters, e.g. "Q,N,K".
+fn piece_letters(t: &Tally) -> String {
+    let kinds = [
+        (t.queens, "Q"),
+        (t.rooks, "R"),
+        (t.bishops, "B"),
+        (t.knights, "N"),
+        (t.pawns, "P"),
+        (t.kings, "K"),
+    ];
+    kinds
+        .iter()
+        .flat_map(|&(n, letter)| std::iter::repeat_n(letter, n as usize))
+        .collect::<Vec<_>>()
+        .join(",")
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -21,8 +41,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut first = vec![];
     for &o in result.ordinals.iter().take(5) {
         let e = &db.page(o, 1)?.entries[0];
+        // For a game that ends in mate, the pieces involved in the mate.
+        let mate = db
+            .load(o)?
+            .game
+            .and_then(|game| mating_pieces(&final_position(&game).ok()?))
+            .map(|t| format!(" mate by {}", piece_letters(&t)))
+            .unwrap_or_default();
         first.push(format!(
-            "{o}: {} - {} {} {} {}",
+            "{o}: {} - {} {} {} {}{mate}",
             e.white.as_deref().unwrap_or("?"),
             e.black.as_deref().unwrap_or("?"),
             e.result.as_deref().unwrap_or("?"),

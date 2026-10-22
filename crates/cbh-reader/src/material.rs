@@ -64,8 +64,13 @@ pub struct Tally {
 
 impl Tally {
     pub fn of(board: &shakmaty::Board, color: shakmaty::Color) -> Tally {
+        Tally::of_squares(board, board.by_color(color))
+    }
+
+    /// The pieces of `board` standing on `squares`.
+    fn of_squares(board: &shakmaty::Board, squares: shakmaty::Bitboard) -> Tally {
         use shakmaty::Role;
-        let count = |role: Role| (board.by_color(color) & board.by_role(role)).count() as u8;
+        let count = |role: Role| (squares & board.by_role(role)).count() as u8;
         Tally {
             kings: count(Role::King),
             queens: count(Role::Queen),
@@ -139,6 +144,35 @@ impl MaterialQuery {
         (self.white.matches(&white) && self.black.matches(&black))
             || (self.either_colour && self.white.matches(&black) && self.black.matches(&white))
     }
+}
+
+/// The pieces of the mating side that take part in a mate, by kind; `None`
+/// unless `pos` is checkmate. A piece takes part when it gives check or
+/// attacks a square the mated king could otherwise flee to (empty, or holding
+/// a mating-side piece), with the mated king removed from the occupancy so a
+/// slider's attack runs on through its square. Pins, blockers and distant
+/// defenders of other attackers are not considered.
+pub fn mating_pieces(pos: &shakmaty::Chess) -> Option<Tally> {
+    use shakmaty::{
+        Bitboard, Position,
+        attacks::{attacks, king_attacks},
+    };
+    if !pos.is_checkmate() {
+        return None;
+    }
+    let board = pos.board();
+    let mated = pos.turn();
+    let king = board.king_of(mated)?;
+    let occupied = board.occupied() ^ Bitboard::from_square(king);
+    let escapes = king_attacks(king) & !board.by_color(mated);
+    let mut involved = Bitboard::EMPTY;
+    for sq in board.by_color(!mated) {
+        let reach = attacks(sq, board.piece_at(sq)?, occupied);
+        if reach.contains(king) || reach.intersects(escapes) {
+            involved.add(sq);
+        }
+    }
+    Some(Tally::of_squares(board, involved))
 }
 
 #[cfg(test)]
@@ -365,6 +399,84 @@ mod tests {
     fn an_empty_query_matches_everything() {
         let q = MaterialQuery::default();
         assert!(q.matches_final(&board("4k3/8/8/8/8/8/8/4K3 w - - 0 1")));
-        assert!(q.matches_final(&board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1")));
+        assert!(q.matches_final(&board(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"
+        )));
+    }
+
+    fn involved(fen: &str) -> Option<Tally> {
+        mating_pieces(&chess_core::model::parse_position(fen).unwrap())
+    }
+    fn only(k: u8, q: u8, r: u8, b: u8, n: u8, p: u8) -> Option<Tally> {
+        Some(Tally {
+            kings: k,
+            queens: q,
+            rooks: r,
+            bishops: b,
+            knights: n,
+            pawns: p,
+        })
+    }
+
+    #[test]
+    fn back_rank_mate_involves_only_the_rook() {
+        assert_eq!(
+            involved("R5k1/5ppp/8/8/8/8/8/6K1 b - - 0 1"),
+            only(0, 0, 1, 0, 0, 0)
+        );
+    }
+
+    #[test]
+    fn scholars_mate_involves_queen_and_the_bishop_defending_it() {
+        assert_eq!(
+            involved("r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4"),
+            only(0, 1, 0, 1, 0, 0)
+        );
+    }
+
+    #[test]
+    fn smothered_mate_involves_only_the_knight() {
+        assert_eq!(
+            involved("6rk/5Npp/8/8/8/8/8/6K1 b - - 0 1"),
+            only(0, 0, 0, 0, 1, 0)
+        );
+    }
+
+    #[test]
+    fn queen_and_king_mate() {
+        assert_eq!(
+            involved("k7/1Q6/2K5/8/8/8/8/8 b - - 0 1"),
+            only(1, 1, 0, 0, 0, 0)
+        );
+    }
+
+    #[test]
+    fn rook_king_and_pawn_mate() {
+        assert_eq!(
+            involved("R6k/8/5KP1/8/8/8/8/8 b - - 0 1"),
+            only(1, 0, 1, 0, 0, 1)
+        );
+    }
+
+    #[test]
+    fn black_can_be_the_mating_side() {
+        // Fool's mate: only the queen takes part, not the pawns or bishops.
+        assert_eq!(
+            involved("rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3"),
+            only(0, 1, 0, 0, 0, 0)
+        );
+    }
+
+    #[test]
+    fn positions_that_are_not_mate_have_no_mating_pieces() {
+        // Check that can be answered.
+        assert_eq!(involved("6k1/5ppp/8/8/8/8/8/R5K1 b - - 0 1"), None);
+        assert_eq!(involved("R5k1/5p1p/8/8/8/8/8/6K1 b - - 0 1"), None);
+        // Stalemate and the start position.
+        assert_eq!(involved("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"), None);
+        assert_eq!(
+            involved("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
+            None
+        );
     }
 }
