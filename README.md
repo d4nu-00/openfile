@@ -86,7 +86,7 @@ turns them into a database.
   layout presets.
 - **Search.** The search mask's game data tab covers players, colours, wins
   only, tournament, annotator, Elo, year, ECO, length, result, final position,
-  equal final material and full text. Its Annotations and Medals tabs find texts, symbols, colours,
+  equal final material and full text. Its Material tab finds piece counts in the final position and mates by a chosen combination of pieces; its Annotations and Medals tabs find texts, symbols, colours,
   training, critical positions and medals. **Find Position** and pattern
   searches find every game that reaches a board, faster with a search booster.
 - **Opening tree and reference search.** The Book pane shows games, score,
