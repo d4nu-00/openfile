@@ -1,6 +1,8 @@
 use cbh_reader::{
     Database, ReadLimits,
-    search::{EloMode, FinalMaterial, GameFilter, PlayerQuery},
+    search::{
+        CountRange, EloMode, FinalMaterial, GameFilter, MaterialQuery, PieceCounts, PlayerQuery,
+    },
     v2::write::Writer,
 };
 use chess_core::{GameLimits, parse_pgn};
@@ -453,6 +455,83 @@ fn final_material_compares_the_last_position_of_the_main_line() {
     let json: GameFilter =
         serde_json::from_str(r#"{"finalMaterial":{"equal":true,"countPawns":true}}"#).unwrap();
     assert_eq!(hits(&mut db, json), [1]);
+}
+
+#[test]
+fn material_tab_counts_pieces_of_the_last_position() {
+    let d = tempfile::tempdir().unwrap();
+    let path = d.path().join("Material.2cbh");
+    let games = parse_pgn(MATERIAL.as_bytes(), &GameLimits::default()).unwrap();
+    let mut w = Writer::create(&path).unwrap();
+    w.append_all(&games).unwrap();
+    drop(w);
+    let mut db = Database::open(&path, ReadLimits::default()).unwrap();
+    let exactly = |n: u8| CountRange {
+        min: Some(n),
+        max: Some(n),
+    };
+    let f = |m: MaterialQuery| GameFilter {
+        material: m,
+        ..Default::default()
+    };
+    let knight = PieceCounts {
+        knights: exactly(1),
+        others_zero: true,
+        ..Default::default()
+    };
+    let bishop = PieceCounts {
+        bishops: exactly(1),
+        others_zero: true,
+        ..Default::default()
+    };
+    // Off by default: every game.
+    assert_eq!(hits(&mut db, f(MaterialQuery::default())), [1, 2, 3]);
+    // White knight, Black bishop, nothing else: the first game only.
+    let q = MaterialQuery {
+        white: knight,
+        black: bishop,
+        ..Default::default()
+    };
+    assert_eq!(hits(&mut db, f(q)), [1]);
+    // Two white knights.
+    let two = MaterialQuery {
+        white: PieceCounts {
+            knights: exactly(2),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    assert_eq!(hits(&mut db, f(two)), [2]);
+    // The sides swapped only with either colour.
+    let swapped = MaterialQuery {
+        white: bishop,
+        black: knight,
+        ..Default::default()
+    };
+    assert!(hits(&mut db, f(swapped)).is_empty());
+    let either = MaterialQuery {
+        either_colour: true,
+        ..swapped
+    };
+    assert_eq!(hits(&mut db, f(either)), [1]);
+    // Combined with a header field.
+    let with_result = GameFilter {
+        results: vec!["0-1".into()],
+        ..f(MaterialQuery {
+            white: PieceCounts {
+                pawns: exactly(1),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+    };
+    assert_eq!(hits(&mut db, with_result), [3]);
+    // The criterion arrives from the frontend as camelCase JSON.
+    let json: GameFilter = serde_json::from_str(
+        r#"{"material":{"white":{"knights":{"min":1},"othersZero":true},"eitherColour":true}}"#,
+    )
+    .unwrap();
+    assert_eq!(hits(&mut db, json), [1, 2]);
 }
 
 #[test]

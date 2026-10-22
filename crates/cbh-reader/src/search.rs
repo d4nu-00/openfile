@@ -2,6 +2,7 @@
 //! tab). See docs/search.md. Name fields are resolved to id sets first; the
 //! entry index is then scanned in chunks without decoding any game.
 use crate::{CbhError, Database, DatabaseFormat, EntryKind, header::RawEntry};
+pub use crate::material::{CountRange, MaterialQuery, PieceCounts, Tally};
 use std::{collections::HashSet, sync::atomic::AtomicBool};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -69,6 +70,9 @@ pub struct GameFilter {
     pub check: bool,
     /// The main line's final position has equal pieces (see docs/search.md).
     pub final_material: FinalMaterial,
+    /// The Material tab: piece counts in the final position and the pieces
+    /// involved in a mate (see docs/search.md).
+    pub material: MaterialQuery,
     /// Case-insensitive text in any text annotation, in any language.
     pub full_text: String,
     /// Games whose annotations do not hold `full_text`.
@@ -662,6 +666,8 @@ impl GameFilter {
     fn reads_games(&self) -> bool {
         self.wants_ending()
             || self.final_material.equal
+            || self.material.final_active()
+            || self.material.mate_by_enabled
             || !self.full_text.trim().is_empty()
             || !self.annotations.is_empty()
     }
@@ -687,15 +693,19 @@ impl GameFilter {
             }
         }
         // The moves are decoded once for all criteria that need them.
-        let game =
-            if self.annotations.variations || self.wants_ending() || self.final_material.equal {
-                match db.moves_of(r)? {
-                    Some(game) => Some(game),
-                    None => return Ok(false),
-                }
-            } else {
-                None
-            };
+        let game = if self.annotations.variations
+            || self.wants_ending()
+            || self.final_material.equal
+            || self.material.final_active()
+            || self.material.mate_by_enabled
+        {
+            match db.moves_of(r)? {
+                Some(game) => Some(game),
+                None => return Ok(false),
+            }
+        } else {
+            None
+        };
         if let Some(game) = &game {
             if self.annotations.variations && !game.nodes.iter().any(|n| n.children.len() > 1) {
                 return Ok(false);
@@ -714,6 +724,12 @@ impl GameFilter {
             if self.final_material.equal {
                 use shakmaty::Position;
                 if !self.final_material.matches(final_position(game)?.board()) {
+                    return Ok(false);
+                }
+            }
+            if self.material.final_active() {
+                use shakmaty::Position;
+                if !self.material.matches_final(final_position(game)?.board()) {
                     return Ok(false);
                 }
             }
