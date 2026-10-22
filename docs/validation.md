@@ -1220,3 +1220,87 @@ strict workspace/all-target Clippy, TypeScript, Prettier, production frontend
 build, locked native release build and embedded-frontend native acceptance build.
 The existing bundle-size advisory remains. The unmerged PR records cross-platform
 CI. The tracked-source distribution audit passes for all 661 tracked paths.
+
+## Database views, properties and safe recovery (2026-10-22)
+
+Fresh REA/Ghidra analysis completed on the requested x64 CBase18 executable,
+SHA-256 `8d633b10ad97bd9f8fbbc33a89c279397850ca759c8375093deda4a9485e8dee`.
+76 retained request/results establish actual view run handlers, property
+dialog controls and Title/Type `.ini` storage, distinguish Usage as an access
+counter, and trace Check Integrity's in-place repair. Findings and explicit
+gaps are in [start screen](start-screen.md#fresh-reaghidra-evidence-2026-10-22)
+and [maintenance](maintenance.md#recover-readable-games). Raw decompilation
+remains outside this repository. Native view persistence storage, repair
+backup/rollback and Windows runtime behavior remain unverified. Recovery is
+an independently implemented OpenFile safe-copy operation, not a claimed port
+of a standalone native recovery command.
+
+All four layouts share selection, roving focus, Home/End/arrows and opening.
+Backend tests verify view/property persistence and bounded validation; UI
+tests cover missing files, property failure without lost inputs, group-change
+keyboard fallback and layout switching. Properties deliberately remain local
+settings, including OpenFile's freeform description and 20 own icons.
+
+Recovery tests independently damage counts, stream headers, moves,
+annotations, name references and truncated/missing companions. They verify
+complete decoded game equality, variations, special results, deletion/medals,
+opaque metadata and raw unknown annotation retention; nontrivial
+annotator/source/team ids remap without losing slot tails. Text and unknown
+entries are itemised unsupported. A 600-skip case verifies the 500-problem
+memory bound and untruncated streamed entry report. Cancellation during
+recovery and verification, stale/pending job identities, source mutation,
+new companions, overlap, existing/appearing destinations, failed writes and
+crash leftovers are covered. A Unix child imposes a real 1 KiB file-size limit
+to force an I/O write failure; cleanup and every source companion are checked.
+Another child exits during verification: nothing publishes, its isolated
+temporary directory survives, and a retry succeeds without overwriting it.
+
+Independent focused review found three issues, reproduced and fixed with
+regressions: a lowered declared count hiding physically complete records,
+Stop unavailable before first progress, and no keyboard tab stop after
+changing groups. Follow-up review confirmed the fixes and found no further
+actionable issue. Verification's bounded name-table scan can delay Stop;
+resource limits and filesystem-durability qualifications are documented.
+
+**Actual native acceptance:** a separately identified Tauri app with isolated
+settings used only disposable/synthetic databases for writes. Exercised Tile,
+Details, Symbols, Small Symbols; retained selection and keyboard opening;
+missing-file refusal; saving/reopening local properties on a missing symbol;
+Small Symbols restoration after app restart. A deliberately damaged 80-entry
+source could not open normally. Recovery, chosen directly through native
+pickers, produced exactly 76 recovered games, three corrupt and one unsupported
+text skip. All 76 complete decoded move trees, represented annotations,
+metadata, results, deletion marks and medals matched the known original;
+native Check Integrity reported 76 games, one deleted and no problems.
+
+Native progress/Stop on a 100,000-entry fixture left no result. Existing-folder
+refusal preserved a deliberate marker file and showed an actionable error.
+Opening the recovered result created an independent read-only tab. Existing
+integrity/doubles/compaction remained usable: healthy source 80/no problems,
+doubles compared 80/zero marked (four-ply fixture; positive comparisons remain
+in existing tests), separate editable copy compacted to 79/zero deleted and
+passed integrity. The large available classic database was used read only;
+native Go to entry reached the final row, 11,151,119. Original databases and
+unrelated worktrees were untouched.
+
+Eleven native screenshots were captured and visually inspected, linked from
+[start screen](start-screen.md#native-ui-evidence) and
+[maintenance](maintenance.md#native-acceptance-and-measurements-2026-10-22).
+They show only synthetic fixture data. Release recovery of 100,000 small games
+took 2.635 s including verification, 5.42 MiB CLI process peak RSS and
+61,608,868 bytes for the four output files, plus reports. Large read-only open /
+final 100 rows / last-game load took 2.83 / 10.90 / 1.13 ms and 3.61 MiB peak
+RSS. These warm-cache examples exclude native WebView memory and do not measure
+worst-case recovery allocations. Full limits and disk-growth caveats are in
+maintenance.
+
+Final local checks passed: **359 Rust tests** (including two isolated child
+helpers), **202 frontend tests / 40 files**, Cargo formatting, strict
+workspace/all-target Clippy, TypeScript, changed-source Prettier, production
+frontend build, locked native release build and embedded-frontend native
+acceptance build. The native release build completed with the existing >500 kB
+frontend advisory and a local Rust toolchain `rust-objcopy` debug-stripping
+warning (missing `libLLVM.dylib` rpath); the executable was produced. No package
+versions changed; the dependency inventory lock hash was refreshed for the
+added already-locked dependency edge. The source boundary and locked notice
+audit passed for all 685 tracked paths. PR checks provide cross-platform evidence.

@@ -46,6 +46,8 @@ import {
   type WorkbenchState,
 } from "./state/workbench";
 import { OptionsDialog } from "./components/OptionsDialog";
+import { DatabasePropertiesDialog } from "./components/DatabasePropertiesDialog";
+import { RecoveryDialog } from "./components/RecoveryDialog";
 import { useEditing } from "./state/editing";
 import { formatScore } from "./state/analysis";
 import { useKibitzers } from "./state/kibitzers";
@@ -184,7 +186,10 @@ export function App({
   useEffect(() => {
     void api
       .getSettings()
-      .then(setSettings)
+      .then((s) => {
+        setSettings(s);
+        setStartView(s.databaseView ?? "symbols");
+      })
       .catch(() => {});
   }, [api]);
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -332,6 +337,22 @@ export function App({
   const [startView, setStartView] = useState<StartView>("symbols");
   const [startSymbol, setStartSymbol] = useState<DatabaseSymbol>();
   const [startRefresh, setStartRefresh] = useState(0);
+  const [propertySymbol, setPropertySymbol] = useState<DatabaseSymbol>();
+  const [recovery, setRecovery] = useState<{ source?: string }>();
+  const viewSaves = useRef(Promise.resolve());
+  const changeStartView = (view: StartView) => {
+    setStartView(view);
+    viewSaves.current = viewSaves.current
+      .then(() => api.setDatabaseView(view))
+      .catch((err: unknown) => {
+        w.setDiagnostics([
+          {
+            code: "settings",
+            message: (err as { message?: string })?.message ?? String(err),
+          },
+        ]);
+      });
+  };
   const [flipped, setFlipped] = useState(false);
   const [ordinal, setOrdinal] = useState("1");
   const [square, setSquare] = useState<string>();
@@ -1924,14 +1945,33 @@ export function App({
       enabled: startShown && !!startSymbol?.favorite,
     },
     "view-symbols": {
-      run: () => setStartView("symbols"),
+      run: () => changeStartView("symbols"),
       pressed: startView === "symbols",
       enabled: startShown,
     },
     "view-details": {
-      run: () => setStartView("details"),
+      run: () => changeStartView("details"),
       pressed: startView === "details",
       enabled: startShown,
+    },
+    "view-tile": {
+      run: () => changeStartView("tile"),
+      pressed: startView === "tile",
+      enabled: startShown,
+    },
+    "view-small-symbols": {
+      run: () => changeStartView("smallSymbols"),
+      pressed: startView === "smallSymbols",
+      enabled: startShown,
+    },
+    "database-properties": {
+      run: () => setPropertySymbol(startSymbol),
+      enabled: startShown && !!startSymbol,
+    },
+    "recover-database": {
+      run: () =>
+        setRecovery({ source: startShown ? startSymbol?.path : undefined }),
+      enabled: !recovery,
     },
     statistics: {
       run: () => {
@@ -2634,7 +2674,8 @@ export function App({
               api={api}
               showFolders={showFolders}
               view={startView}
-              onView={setStartView}
+              onView={changeStartView}
+              onProperties={setPropertySymbol}
               onSelect={setStartSymbol}
               refresh={startRefresh}
               onOpen={(path) =>
@@ -3053,6 +3094,28 @@ export function App({
         />
       )}
       <UnsavedDialog question={e.question} answer={e.answer} />
+      {recovery && (
+        <RecoveryDialog
+          api={api}
+          initialSource={recovery.source}
+          onClose={() => setRecovery(undefined)}
+          onOpen={async (path) => {
+            await w.openDatabase(path);
+            setStartOpen(false);
+            setStartRefresh((n) => n + 1);
+          }}
+        />
+      )}
+      {propertySymbol && (
+        <DatabasePropertiesDialog
+          symbol={propertySymbol}
+          onClose={() => setPropertySymbol(undefined)}
+          save={async (properties) => {
+            await api.setDatabaseProperties(propertySymbol.path, properties);
+            setStartRefresh((n) => n + 1);
+          }}
+        />
+      )}
       {gameDataOpen && game && (
         <GameDataDialog
           tags={game.tags}
