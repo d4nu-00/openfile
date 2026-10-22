@@ -3,7 +3,8 @@
 //! Mode `legal` (also as a copy named `mock-uci-legal`) analyses any
 //! position: it offers `MultiPV`, and line *k*
 //! is the *k*-th legal move in UCI order, scored 30 − 20 (*k* − 1)
-//! centipawns, followed by the first legal reply.
+//! centipawns, followed by the first legal reply. A `searchmoves` list limits
+//! the lines to its moves.
 use shakmaty::{CastlingMode, Chess, Position, fen::Fen, uci::UciMove};
 use std::{
     io::{self, BufRead, Write},
@@ -89,7 +90,7 @@ fn main() {
                     }
                 }
             }
-            "go infinite" => {
+            _ if line == "go infinite" || line.starts_with("go infinite searchmoves ") => {
                 if mode == "process-death" {
                     std::process::exit(7);
                 }
@@ -110,6 +111,10 @@ fn main() {
                         .iter()
                         .map(|m| UciMove::from_standard(*m).to_string())
                         .collect();
+                    if let Some(only) = line.strip_prefix("go infinite searchmoves ") {
+                        let only: Vec<&str> = only.split_whitespace().collect();
+                        moves.retain(|m| only.contains(&m.as_str()));
+                    }
                     moves.sort();
                     for (k, uci) in moves.iter().take(lines).enumerate() {
                         let mut pv = uci.clone();
