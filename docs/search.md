@@ -117,8 +117,11 @@ when it lies within the bounds given, and no bound means any.
 
 **Piece counts.** A side's counts have a range for kings, queens, rooks,
 bishops, knights, minor pieces (bishops and knights together) and pawns. Every
-range given must match. With **No other pieces** (`othersZero`), every kind
-among queens, rooks, bishops, knights and pawns left at any must be 0:
+range given must match. With **No other pieces** (`othersZero`), every piece
+kind among queens, rooks, bishops and knights left at any must be 0. Pawns are
+not pieces: they keep their own range, so "R + minor, no other pieces" allows
+any pawns unless the pawn count is set too.
+Also:
 * bishops and knights are not forced to 0 when minor pieces are given, and
   minor pieces are not forced to 0 when bishops or knights are given;
 * kings are never forced.

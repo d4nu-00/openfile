@@ -474,13 +474,16 @@ fn material_tab_counts_pieces_of_the_last_position() {
         material: m,
         ..Default::default()
     };
+    // Pawns are not pieces, so they are set to 0 explicitly.
     let knight = PieceCounts {
         knights: exactly(1),
+        pawns: exactly(0),
         others_zero: true,
         ..Default::default()
     };
     let bishop = PieceCounts {
         bishops: exactly(1),
+        pawns: exactly(0),
         others_zero: true,
         ..Default::default()
     };
@@ -531,7 +534,8 @@ fn material_tab_counts_pieces_of_the_last_position() {
         r#"{"material":{"white":{"knights":{"min":1},"othersZero":true},"eitherColour":true}}"#,
     )
     .unwrap();
-    assert_eq!(hits(&mut db, json), [1, 2]);
+    // Pawns are not pieces: the knight with a spare pawn matches too.
+    assert_eq!(hits(&mut db, json), [1, 2, 3]);
 }
 
 /// A back-rank rook mate, a queen and knight mate, and a game that ends

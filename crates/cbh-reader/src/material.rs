@@ -32,7 +32,8 @@ pub struct PieceCounts {
     /// Bishops and knights together.
     pub minors: CountRange,
     pub pawns: CountRange,
-    /// Every kind left at "any" (kings excepted) must be 0.
+    /// Every piece kind left at "any" must be 0; pawns and kings are not
+    /// pieces here and keep their own ranges.
     pub others_zero: bool,
 }
 
@@ -100,7 +101,7 @@ impl PieceCounts {
     }
 
     /// Every range given holds for `tally`; with `others_zero`, so does 0 for
-    /// every other kind (kings excepted). Bishops and knights are not forced
+    /// every other piece kind (pawns and kings excepted). Bishops and knights are not forced
     /// to 0 when `minors` is given, and `minors` is not when either is given.
     pub fn matches(&self, tally: &Tally) -> bool {
         let minors = tally.bishops + tally.knights;
@@ -122,7 +123,6 @@ impl PieceCounts {
         let single_given = !self.bishops.is_any() || !self.knights.is_any();
         !(unset(&self.queens, tally.queens)
             || unset(&self.rooks, tally.rooks)
-            || unset(&self.pawns, tally.pawns)
             || (!minors_given
                 && (unset(&self.bishops, tally.bishops) || unset(&self.knights, tally.knights)))
             || (!single_given && unset(&self.minors, minors)))
@@ -264,10 +264,16 @@ mod tests {
             tally(1, 1, 0, 0, 0),
             tally(1, 0, 1, 0, 0),
             tally(1, 0, 0, 1, 0),
-            tally(1, 0, 0, 0, 1),
         ] {
             assert!(!counts.matches(&other), "{other:?}");
         }
+        // Pawns keep their own range: any unless given.
+        assert!(counts.matches(&tally(1, 0, 0, 0, 6)));
+        let no_pawns = PieceCounts {
+            pawns: exactly(0),
+            ..counts
+        };
+        assert!(!no_pawns.matches(&tally(1, 0, 0, 0, 1)));
         // Kings are never forced.
         assert!(
             PieceCounts {
@@ -288,7 +294,7 @@ mod tests {
         assert!(minors.matches(&tally(0, 0, 1, 0, 0)));
         assert!(minors.matches(&tally(0, 0, 0, 1, 0)));
         assert!(!minors.matches(&tally(0, 0, 1, 1, 0)));
-        assert!(!minors.matches(&tally(0, 0, 1, 0, 1)));
+        assert!(minors.matches(&tally(0, 0, 1, 0, 1)));
         // The other way: bishops given leave minors free, knights are forced.
         let bishop = PieceCounts {
             bishops: exactly(1),
@@ -361,8 +367,8 @@ mod tests {
             ..Default::default()
         };
         assert!(q.matches_final(&board("3rn1k1/8/8/8/8/8/8/3RB1K1 w - - 0 1")));
-        // A spare pawn is another piece.
-        assert!(!q.matches_final(&board("3rn1k1/p7/8/8/8/8/8/3RB1K1 w - - 0 1")));
+        // Pawns are not pieces: a spare pawn still matches.
+        assert!(q.matches_final(&board("3rn1k1/p7/8/8/8/8/8/3RB1K1 w - - 0 1")));
         // A second minor piece too.
         assert!(!q.matches_final(&board("3rn1k1/8/8/8/8/8/8/3RBNK1 w - - 0 1")));
     }
