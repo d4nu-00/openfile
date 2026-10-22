@@ -369,6 +369,8 @@ export interface GameFilter {
   mate?: boolean;
   stalemate?: boolean;
   check?: boolean;
+  /** The main line's final position has equal pieces; see docs/search.md. */
+  finalMaterial?: FinalMaterial;
   /** Text in the game's text annotations; with `fullTextNot`, games
    * without it. */
   fullText?: string;
@@ -377,6 +379,15 @@ export interface GameFilter {
   medals?: number;
   /** The Annotations tab; every criterion set must hold. */
   annotations?: AnnotationQuery;
+}
+/** The game data tab's final material criterion. */
+export interface FinalMaterial {
+  /** Both sides have the same queens, rooks and minor pieces. */
+  equal: boolean;
+  /** Compare bishops and knights separately instead of as minor pieces. */
+  separateMinors: boolean;
+  /** Pawn counts must be equal too. */
+  countPawns: boolean;
 }
 /** The search mask's Annotations tab (dialog 343; see docs/search.md). */
 export interface AnnotationQuery {

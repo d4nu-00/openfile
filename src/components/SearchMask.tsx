@@ -5,6 +5,7 @@ import {
   MEDAL_NAMES,
   type AnnotationQuery,
   type EloMode,
+  type FinalMaterial,
   type GameFilter,
   type PositionQuery,
 } from "../api/types";
@@ -39,7 +40,8 @@ const RESULTS: [string, string][] = [
 
 /**
  * The reference app's search mask. The game data tab has players, tournament,
- * annotator, Elo, year, ECO, moves, result, final position and text; the
+ * annotator, Elo, year, ECO, moves, result, final position, final material
+ * and text; the
  * position tab finds a pattern or a whole position. Searching filters the
  * game list.
  */
@@ -76,6 +78,13 @@ export function SearchMask({
   const anno = f.annotations ?? emptyAnnotations();
   const setAnno = (patch: Partial<AnnotationQuery>) =>
     set({ annotations: { ...anno, ...patch } });
+  const material: FinalMaterial = f.finalMaterial ?? {
+    equal: false,
+    separateMinors: false,
+    countPawns: false,
+  };
+  const setMaterial = (patch: Partial<FinalMaterial>) =>
+    set({ finalMaterial: { ...material, ...patch } });
   const medals = f.medals ?? 0;
   const player = (side: "white" | "black", label: string) => (
     <div className="mask-row">
@@ -371,6 +380,39 @@ export function SearchMask({
                 </label>
               ))}
             </fieldset>
+            <fieldset className="mask-row">
+              <legend className="mask-label">Final material</legend>
+              <label className="mask-check">
+                <input
+                  type="checkbox"
+                  checked={material.equal}
+                  onChange={(e) => setMaterial({ equal: e.target.checked })}
+                />
+                Equal pieces
+              </label>
+              <label className="mask-check">
+                <input
+                  type="checkbox"
+                  disabled={!material.equal}
+                  checked={!material.separateMinors}
+                  onChange={(e) =>
+                    setMaterial({ separateMinors: !e.target.checked })
+                  }
+                />
+                Bishop = Knight
+              </label>
+              <label className="mask-check">
+                <input
+                  type="checkbox"
+                  disabled={!material.equal}
+                  checked={material.countPawns}
+                  onChange={(e) =>
+                    setMaterial({ countPawns: e.target.checked })
+                  }
+                />
+                Count pawns
+              </label>
+            </fieldset>
             <div className="mask-row">
               <span className="mask-label">Full Text</span>
               <input
@@ -387,7 +429,11 @@ export function SearchMask({
                 NOT
               </label>
             </div>
-            {(f.mate || f.stalemate || f.check || f.fullText?.trim()) && (
+            {(f.mate ||
+              f.stalemate ||
+              f.check ||
+              material.equal ||
+              f.fullText?.trim()) && (
               <p className="hint">
                 Final positions and text are read from each game that matches
                 the other fields, so this search is slower.

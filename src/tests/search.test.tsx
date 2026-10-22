@@ -53,6 +53,69 @@ describe("search mask", () => {
   });
 });
 
+describe("final material search", () => {
+  it("sends equal pieces with the bishop and knight option", async () => {
+    const ui = renderWorkbench({ initialView: "database" });
+    await ui.user.keyboard("{Control>}f{/Control}");
+    const equal = ui.getByRole("checkbox", { name: "Equal pieces" });
+    const minors = ui.getByRole("checkbox", { name: "Bishop = Knight" });
+    const pawns = ui.getByRole("checkbox", { name: "Count pawns" });
+    // The options wait for the criterion; B = N is on unless turned off.
+    expect(minors).toBeDisabled();
+    expect(pawns).toBeDisabled();
+    expect(minors).toBeChecked();
+    await ui.user.click(equal);
+    expect(minors).toBeEnabled();
+    expect(pawns).toBeEnabled();
+    await ui.user.click(ui.getByLabelText("1-0"));
+    expect(ui.getByText(/this search is slower/)).toBeVisible();
+    await ui.user.click(ui.getByRole("button", { name: "Search" }));
+    expect(ui.api.searchGames).toHaveBeenLastCalledWith(
+      "db-1",
+      expect.objectContaining({
+        results: ["1-0"],
+        finalMaterial: {
+          equal: true,
+          separateMinors: false,
+          countPawns: false,
+        },
+      }),
+      expect.any(String),
+      expect.any(Function),
+    );
+
+    await ui.user.keyboard("{Control>}f{/Control}");
+    await ui.user.click(ui.getByRole("checkbox", { name: "Bishop = Knight" }));
+    await ui.user.click(ui.getByRole("checkbox", { name: "Count pawns" }));
+    await ui.user.click(ui.getByRole("button", { name: "Search" }));
+    expect(ui.api.searchGames).toHaveBeenLastCalledWith(
+      "db-1",
+      expect.objectContaining({
+        finalMaterial: { equal: true, separateMinors: true, countPawns: true },
+      }),
+      expect.any(String),
+      expect.any(Function),
+    );
+
+    // Reset all clears the criterion.
+    await ui.user.keyboard("{Control>}f{/Control}");
+    await ui.user.click(ui.getByRole("button", { name: "Reset all" }));
+    expect(
+      ui.getByRole("checkbox", { name: "Equal pieces" }),
+    ).not.toBeChecked();
+    expect(ui.getByRole("checkbox", { name: "Bishop = Knight" })).toBeChecked();
+    await ui.user.click(ui.getByRole("button", { name: "Search" }));
+    expect(ui.api.searchGames).toHaveBeenLastCalledWith(
+      "db-1",
+      expect.not.objectContaining({
+        finalMaterial: expect.objectContaining({ equal: true }),
+      }),
+      expect.any(String),
+      expect.any(Function),
+    );
+  });
+});
+
 describe("search progress", () => {
   it("shows progress and cancels from the status bar", async () => {
     const ui = renderWorkbench({ initialView: "database" });
