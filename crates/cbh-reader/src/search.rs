@@ -67,6 +67,8 @@ pub struct GameFilter {
     pub mate: bool,
     pub stalemate: bool,
     pub check: bool,
+    /// The main line's final position has equal pieces (see docs/search.md).
+    pub final_material: FinalMaterial,
     /// Case-insensitive text in any text annotation, in any language.
     pub full_text: String,
     /// Games whose annotations do not hold `full_text`.
@@ -76,6 +78,38 @@ pub struct GameFilter {
     pub medals: u16,
     /// The search mask's Annotations tab (dialog 343).
     pub annotations: AnnotationQuery,
+}
+
+/// Final-position material criterion of the game data tab (the workbench's own
+/// design; see docs/search.md).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct FinalMaterial {
+    /// Both sides have the same queens, rooks and minor pieces.
+    pub equal: bool,
+    /// Compare bishops and knights separately instead of as minor pieces.
+    pub separate_minors: bool,
+    /// Pawn counts must be equal too.
+    pub count_pawns: bool,
+}
+
+impl FinalMaterial {
+    /// Whether White and Black hold the same pieces on `board`.
+    pub fn matches(&self, board: &shakmaty::Board) -> bool {
+        use shakmaty::{Color, Role};
+        let count =
+            |color: Color, role: Role| (board.by_color(color) & board.by_role(role)).count();
+        let same = |role: Role| count(Color::White, role) == count(Color::Black, role);
+        let minors = |color: Color| count(color, Role::Bishop) + count(color, Role::Knight);
+        same(Role::Queen)
+            && same(Role::Rook)
+            && if self.separate_minors {
+                same(Role::Bishop) && same(Role::Knight)
+            } else {
+                minors(Color::White) == minors(Color::Black)
+            }
+            && (!self.count_pawns || same(Role::Pawn))
+    }
 }
 
 /// The search mask's Annotations tab (dialog 343, `CAnnoMaskDialog`; see
@@ -196,14 +230,19 @@ pub enum Ending {
     Other,
 }
 
-/// How the main line of `game` ends.
-pub fn ending(game: &chess_core::Game) -> Result<Ending, CbhError> {
-    use shakmaty::Position;
+/// The position at the end of the main line of `game`.
+pub fn final_position(game: &chess_core::Game) -> Result<shakmaty::Chess, CbhError> {
     let mut id = 0;
     while let Some(&next) = game.nodes[id as usize].children.first() {
         id = next;
     }
-    let pos = game.chess_position(id)?;
+    Ok(game.chess_position(id)?)
+}
+
+/// How the main line of `game` ends.
+pub fn ending(game: &chess_core::Game) -> Result<Ending, CbhError> {
+    use shakmaty::Position;
+    let pos = final_position(game)?;
     Ok(if pos.is_checkmate() {
         Ending::Mate
     } else if pos.is_stalemate() {
@@ -621,7 +660,10 @@ impl GameFilter {
     }
     /// The filter needs more than the entry index.
     fn reads_games(&self) -> bool {
-        self.wants_ending() || !self.full_text.trim().is_empty() || !self.annotations.is_empty()
+        self.wants_ending()
+            || self.final_material.equal
+            || !self.full_text.trim().is_empty()
+            || !self.annotations.is_empty()
     }
     /// The parts of the filter that read the game: its final position and
     /// its text annotations. Games that cannot be read do not match.
@@ -644,26 +686,36 @@ impl GameFilter {
                 return Ok(false);
             }
         }
-        if self.annotations.variations {
-            let Some(game) = db.moves_of(r)? else {
-                return Ok(false);
+        // The moves are decoded once for all criteria that need them.
+        let game =
+            if self.annotations.variations || self.wants_ending() || self.final_material.equal {
+                match db.moves_of(r)? {
+                    Some(game) => Some(game),
+                    None => return Ok(false),
+                }
+            } else {
+                None
             };
-            if !game.nodes.iter().any(|n| n.children.len() > 1) {
+        if let Some(game) = &game {
+            if self.annotations.variations && !game.nodes.iter().any(|n| n.children.len() > 1) {
                 return Ok(false);
             }
-        }
-        if self.wants_ending() {
-            let Some(game) = db.moves_of(r)? else {
-                return Ok(false);
-            };
-            let ok = match ending(&game)? {
-                Ending::Mate => self.mate,
-                Ending::Stalemate => self.stalemate,
-                Ending::Check => self.check,
-                Ending::Other => false,
-            };
-            if !ok {
-                return Ok(false);
+            if self.wants_ending() {
+                let ok = match ending(game)? {
+                    Ending::Mate => self.mate,
+                    Ending::Stalemate => self.stalemate,
+                    Ending::Check => self.check,
+                    Ending::Other => false,
+                };
+                if !ok {
+                    return Ok(false);
+                }
+            }
+            if self.final_material.equal {
+                use shakmaty::Position;
+                if !self.final_material.matches(final_position(game)?.board()) {
+                    return Ok(false);
+                }
             }
         }
         Ok(true)
@@ -845,5 +897,77 @@ impl DatabaseFormat {
             Self::Classic => 46,
             Self::New => crate::v2::record::RECORD,
         }
+    }
+}
+
+#[cfg(test)]
+mod material_tests {
+    use super::FinalMaterial;
+    use shakmaty::Position;
+
+    fn equal(fen: &str, m: FinalMaterial) -> bool {
+        let pos = chess_core::model::parse_position(fen).unwrap();
+        m.matches(pos.board())
+    }
+    const ON: FinalMaterial = FinalMaterial {
+        equal: true,
+        separate_minors: false,
+        count_pawns: false,
+    };
+
+    #[test]
+    fn bare_kings_are_equal() {
+        assert!(equal("8/8/4k3/8/8/4K3/8/8 w - - 0 1", ON));
+    }
+
+    #[test]
+    fn bishop_against_knight_is_equal_unless_minors_are_separate() {
+        let fen = "8/8/4k3/3b4/8/4K3/3N4/8 w - - 0 1";
+        assert!(equal(fen, ON));
+        let separate = FinalMaterial {
+            separate_minors: true,
+            ..ON
+        };
+        assert!(!equal(fen, separate));
+        // The same piece on both sides stays equal.
+        assert!(equal("8/8/4k3/3n4/8/4K3/3N4/8 w - - 0 1", separate));
+    }
+
+    #[test]
+    fn two_bishops_against_two_knights() {
+        let fen = "8/8/4k3/2nn4/8/4K3/2BB4/8 w - - 0 1";
+        assert!(equal(fen, ON));
+        let separate = FinalMaterial {
+            separate_minors: true,
+            ..ON
+        };
+        assert!(!equal(fen, separate));
+        // Bishop and knight against two knights: two minors a side when
+        // pooled, but not when separate.
+        let mixed = "8/8/4k3/2nn4/8/4K3/2BN4/8 w - - 0 1";
+        assert!(equal(mixed, ON));
+        assert!(!equal(mixed, separate));
+    }
+
+    #[test]
+    fn queen_against_two_rooks_is_unequal() {
+        assert!(!equal("8/8/4k3/3rr3/8/4K3/3Q4/8 w - - 0 1", ON));
+    }
+
+    #[test]
+    fn rook_against_bishop_is_unequal() {
+        assert!(!equal("8/8/4k3/3b4/8/4K3/3R4/8 w - - 0 1", ON));
+    }
+
+    #[test]
+    fn pawns_count_only_when_asked() {
+        let fen = "8/8/4k3/8/8/4K3/3P4/8 w - - 0 1";
+        assert!(equal(fen, ON));
+        let pawns = FinalMaterial {
+            count_pawns: true,
+            ..ON
+        };
+        assert!(!equal(fen, pawns));
+        assert!(equal("8/3p4/4k3/8/8/4K3/3P4/8 w - - 0 1", pawns));
     }
 }

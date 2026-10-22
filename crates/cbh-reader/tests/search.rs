@@ -1,6 +1,6 @@
 use cbh_reader::{
     Database, ReadLimits,
-    search::{EloMode, GameFilter, PlayerQuery},
+    search::{EloMode, FinalMaterial, GameFilter, PlayerQuery},
     v2::write::Writer,
 };
 use chess_core::{GameLimits, parse_pgn};
@@ -385,6 +385,74 @@ fn final_positions_and_full_text() {
         ),
         [2, 3]
     );
+}
+
+/// Final positions: bishop against knight, a piece up, a spare pawn.
+const MATERIAL: &str = r#"[White "Equal, A"]
+[Black "B"]
+[SetUp "1"]
+[FEN "8/8/4k3/3b4/8/4K3/3N4/8 w - - 0 1"]
+[Result "1-0"]
+
+1. Kd3 Kd6 1-0
+
+[White "Piece up, A"]
+[Black "B"]
+[SetUp "1"]
+[FEN "8/8/4k3/3b4/8/4K3/3NN3/8 w - - 0 1"]
+[Result "1-0"]
+
+1. Kd3 Kd6 1-0
+
+[White "Spare pawn, A"]
+[Black "B"]
+[SetUp "1"]
+[FEN "8/8/4k3/3b4/8/4K3/P2N4/8 w - - 0 1"]
+[Result "0-1"]
+
+1. Kd3 Kd6 0-1"#;
+
+#[test]
+fn final_material_compares_the_last_position_of_the_main_line() {
+    let d = tempfile::tempdir().unwrap();
+    let path = d.path().join("Material.2cbh");
+    let games = parse_pgn(MATERIAL.as_bytes(), &GameLimits::default()).unwrap();
+    let mut w = Writer::create(&path).unwrap();
+    w.append_all(&games).unwrap();
+    drop(w);
+    let mut db = Database::open(&path, ReadLimits::default()).unwrap();
+    let f = |m: FinalMaterial, results: &[&str]| GameFilter {
+        final_material: m,
+        results: results.iter().map(|r| r.to_string()).collect(),
+        ..Default::default()
+    };
+    let equal = FinalMaterial {
+        equal: true,
+        ..Default::default()
+    };
+    // Off by default: every game.
+    assert_eq!(hits(&mut db, f(FinalMaterial::default(), &[])), [1, 2, 3]);
+    // Bishop against knight, a spare pawn ignored.
+    assert_eq!(hits(&mut db, f(equal, &[])), [1, 3]);
+    // Combined with a header field.
+    assert_eq!(hits(&mut db, f(equal, &["1-0"])), [1]);
+    assert_eq!(hits(&mut db, f(equal, &["0-1"])), [3]);
+    // Bishops and knights apart: neither is equal.
+    let separate = FinalMaterial {
+        separate_minors: true,
+        ..equal
+    };
+    assert!(hits(&mut db, f(separate, &[])).is_empty());
+    // Pawns counted: the spare pawn counts.
+    let pawns = FinalMaterial {
+        count_pawns: true,
+        ..equal
+    };
+    assert_eq!(hits(&mut db, f(pawns, &[])), [1]);
+    // The criterion arrives from the frontend as camelCase JSON.
+    let json: GameFilter =
+        serde_json::from_str(r#"{"finalMaterial":{"equal":true,"countPawns":true}}"#).unwrap();
+    assert_eq!(hits(&mut db, json), [1]);
 }
 
 #[test]
