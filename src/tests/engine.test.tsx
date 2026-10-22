@@ -721,3 +721,101 @@ it("keeps a wrong first attempt in the needs-practice count", async () => {
   );
   expect(within(dialog).getByText(/1 needs practice/)).toBeVisible();
 });
+it("leaves the best move out for Next Best and Search Better", async () => {
+  const ui = renderWorkbench();
+  await start(ui);
+  emit(ui, 0, "111", 31);
+  expect(await ui.findByText("+0.31")).toBeVisible();
+  await ui.user.keyboard("y");
+  await waitFor(() => expect(ui.api.startAnalysis).toHaveBeenCalledTimes(2));
+  expect(ui.api.startAnalysis.mock.calls[1][5]).toEqual({
+    threat: false,
+    exclude: ["e7e5"],
+  });
+  expect(ui.getByLabelText("Left out")).toHaveTextContent("e5 (+0.31)");
+  // Search Better: the next line must score more than the left-out move.
+  const args = ui.api.startAnalysis.mock.calls[1];
+  act(() =>
+    args[4]({
+      engineId: args[0],
+      requestId: args[3],
+      payload: {
+        kind: "info",
+        depth: 18,
+        multipv: 1,
+        score: { kind: "cp", value: 20 },
+        rootTurn: "white",
+        pv: ["d4"],
+        rawPv: ["d2d4"],
+        diagnostics: [],
+      },
+    }),
+  );
+  await ui.findByText("+0.20");
+  await ui.user.keyboard("{Shift>}Y{/Shift}");
+  await waitFor(() => expect(ui.api.startAnalysis).toHaveBeenCalledTimes(3));
+  expect(ui.api.startAnalysis.mock.calls[2][5]).toEqual({
+    threat: false,
+    exclude: ["e7e5", "d2d4"],
+  });
+  expect(ui.getByLabelText("Search Better")).toHaveTextContent(
+    "Looking for a move that scores more than +0.20",
+  );
+  const third = ui.api.startAnalysis.mock.calls[2];
+  act(() =>
+    third[4]({
+      engineId: third[0],
+      requestId: third[3],
+      payload: {
+        kind: "info",
+        depth: 20,
+        multipv: 1,
+        score: { kind: "cp", value: 45 },
+        rootTurn: "white",
+        pv: ["c4"],
+        rawPv: ["c2c4"],
+        diagnostics: [],
+      },
+    }),
+  );
+  await waitFor(() =>
+    expect(ui.getByLabelText("Search Better")).toHaveTextContent(
+      "Found a move that scores more than +0.20",
+    ),
+  );
+  // Another position starts with every move again.
+  await ui.user.click(ui.getByRole("button", { name: "e4" }));
+  await waitFor(() => expect(ui.api.startAnalysis).toHaveBeenCalledTimes(4));
+  expect(ui.api.startAnalysis.mock.calls[3][5]).toBeUndefined();
+  expect(ui.queryByLabelText("Left out")).toBeNull();
+});
+it("analyses the threat and keeps a locked engine on its position", async () => {
+  const ui = renderWorkbench();
+  await start(ui);
+  emit(ui, 0, "111");
+  await ui.user.keyboard("x");
+  await waitFor(() => expect(ui.api.startAnalysis).toHaveBeenCalledTimes(2));
+  expect(ui.api.startAnalysis.mock.calls[1][5]).toEqual({
+    threat: true,
+    exclude: [],
+  });
+  expect(ui.getByRole("button", { name: /Threat/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await ui.user.keyboard("x");
+  await waitFor(() => expect(ui.api.startAnalysis).toHaveBeenCalledTimes(3));
+  expect(ui.api.startAnalysis.mock.calls[2][5]).toBeUndefined();
+  // Lock Engine: moving on the board does not restart the engine.
+  await ui.user.keyboard("{Control>}{Alt>}l{/Alt}{/Control}");
+  expect(await ui.findByText("Locked on the start position")).toBeVisible();
+  await ui.user.click(ui.getByRole("button", { name: "e4" }));
+  await new Promise((r) => setTimeout(r, 50));
+  expect(ui.api.startAnalysis).toHaveBeenCalledTimes(3);
+  // Unlocking follows the board again.
+  await ui.user.click(ui.getByRole("button", { name: /Lock/ }));
+  await waitFor(() => expect(ui.api.startAnalysis).toHaveBeenCalledTimes(4));
+  expect(ui.api.startAnalysis.mock.calls[3][2]).not.toBe(
+    ui.api.startAnalysis.mock.calls[2][2],
+  );
+});

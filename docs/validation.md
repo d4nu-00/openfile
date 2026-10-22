@@ -1220,3 +1220,23 @@ strict workspace/all-target Clippy, TypeScript, Prettier, production frontend
 build, locked native release build and embedded-frontend native acceptance build.
 The existing bundle-size advisory remains. The unmerged PR records cross-platform
 CI. The tracked-source distribution audit passes for all 661 tracked paths.
+
+## Engine search commands (2026-10-22)
+
+* **Engine crate.** A test sends `go infinite searchmoves …` to the mock
+  engine, which then limits its lines to those moves. A search move that is
+  illegal in the position is refused before anything is sent.
+* **App tests.** Analyse threat's null move gives the other side the move and
+  drops the en passant square; a side in check is refused. Next Best leaves
+  18 of the 20 opening moves after two are excluded, ignores an unreadable
+  move, and refuses to exclude every move.
+* **Frontend tests:**
+  * Y, Shift+Y and X restart the kibitzer with the right search mode.
+  * Search Better reports whether the new best line beats the move left out.
+  * A move on the board clears the moves left out.
+  * Lock Engine keeps the engine on its position; releasing the lock follows
+    the board.
+* **Real engine.** Stockfish 17 with `position startpos moves e2e4` and
+  `go depth 14 searchmoves g8f6 b8c6` chose b8c6, one of the allowed moves.
+  A threat position (a null move with White to move again, the queen on h5
+  and the bishop on c4) gave Qxf7 mate as its best move.

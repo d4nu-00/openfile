@@ -128,6 +128,82 @@ struct Active {
     stopped: Arc<AtomicBool>,
     worker: JoinHandle<()>,
 }
+/// How a kibitzer searches the position shown: the reference app's Analyse
+/// Threat (the other side to move) and Next Best / Search Better (best moves
+/// left out through UCI `searchmoves`).
+#[derive(Clone, Debug, Default, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchMode {
+    #[serde(default)]
+    pub threat: bool,
+    /// Moves (UCI) the search leaves out.
+    #[serde(default)]
+    pub exclude: Vec<String>,
+}
+/// Moves a kibitzer may leave out.
+pub const MAX_EXCLUDED: usize = 256;
+impl SearchMode {
+    /// The position and search moves to send: after a null move for a threat,
+    /// and every legal move but the excluded ones for Next Best.
+    #[allow(clippy::type_complexity)]
+    pub fn apply(
+        &self,
+        start_fen: String,
+        history: Vec<String>,
+        fen: String,
+        turn: String,
+    ) -> Result<(String, Vec<String>, String, String, Vec<String>), AppError> {
+        use shakmaty::{EnPassantMode, Position, fen::Fen};
+        if !self.threat && self.exclude.is_empty() {
+            return Ok((start_fen, history, fen, turn, vec![]));
+        }
+        if self.exclude.len() > MAX_EXCLUDED {
+            return Err(AppError::new("engine", "Too many excluded moves"));
+        }
+        let mut position = chess_core::model::parse_position(&fen)?;
+        let (start_fen, history, fen, turn) = if self.threat {
+            if position.is_check() {
+                return Err(AppError::new(
+                    "engine",
+                    "The side to move is in check, so there is no threat to analyse",
+                ));
+            }
+            // A null move: the other side moves next. The game's moves are
+            // not sent, so the engine sees no repetitions before it.
+            position = position
+                .swap_turn()
+                .map_err(|_| AppError::new("engine", "The other side cannot move here"))?;
+            let fen = Fen::from_position(&position, EnPassantMode::Legal).to_string();
+            let turn = if position.turn().is_white() {
+                "white"
+            } else {
+                "black"
+            };
+            (fen.clone(), vec![], fen, turn.to_string())
+        } else {
+            (start_fen, history, fen, turn)
+        };
+        if self.exclude.is_empty() {
+            return Ok((start_fen, history, fen, turn, vec![]));
+        }
+        let mode = position.castles().mode();
+        let excluded: Vec<shakmaty::Move> = self
+            .exclude
+            .iter()
+            .filter_map(|uci| uci.parse::<UciMove>().ok()?.to_move(&position).ok())
+            .collect();
+        let search: Vec<String> = position
+            .legal_moves()
+            .into_iter()
+            .filter(|m| !excluded.contains(m))
+            .map(|m| UciMove::from_move(m, mode).to_string())
+            .collect();
+        if search.is_empty() {
+            return Err(AppError::new("engine", "Every legal move is left out"));
+        }
+        Ok((start_fen, history, fen, turn, search))
+    }
+}
 /// Kibitzers running at once.
 pub const MAX_KIBITZERS: usize = 4;
 #[derive(Default)]
@@ -280,17 +356,21 @@ impl EngineManager {
             .map(|a| a.inner.clone())
             .ok_or_else(|| AppError::new("invalidHandle", "Engine is closed or unknown"))
     }
+    #[allow(clippy::too_many_arguments)]
     pub fn start(
         &self,
         id: &str,
         document_id: String,
         node: u32,
         request_id: String,
+        mode: SearchMode,
         registry: &Registry,
         sink: Sink,
     ) -> Result<(), AppError> {
         let (start_fen, history, fen, root_turn) =
             registry.analysis_position(&document_id, node)?;
+        let (start_fen, history, fen, root_turn, search_moves) =
+            mode.apply(start_fen, history, fen, root_turn)?;
         let inner = self.running(id)?;
         let mut r = inner.lock().map_err(error)?;
         if r.failed {
@@ -313,6 +393,7 @@ impl EngineManager {
         r.session
             .analyse(AnalysisRequest {
                 request_id: request_id.clone(),
+                search_moves,
                 start_fen,
                 history,
                 root_turn,
@@ -440,6 +521,7 @@ pub async fn set_engine_option(
     blocking(move || s.set_option(&engine_id, &name, &value)).await
 }
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn start_analysis(
     state: tauri::State<'_, Arc<EngineManager>>,
     registry: tauri::State<'_, Arc<Registry>>,
@@ -447,6 +529,7 @@ pub async fn start_analysis(
     document_id: String,
     node_id: u32,
     request_id: String,
+    mode: Option<SearchMode>,
     events: tauri::ipc::Channel<EngineEventDto>,
 ) -> Result<(), AppError> {
     let s = state.inner().clone();
@@ -458,6 +541,7 @@ pub async fn start_analysis(
             document_id,
             node_id,
             request_id,
+            mode.unwrap_or_default(),
             &registry,
             sink,
         )

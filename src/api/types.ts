@@ -303,6 +303,14 @@ export interface AnalysisInfoDto {
   rawPv?: string[];
   diagnostics: string[];
 }
+/**
+ * How a kibitzer searches: Analyse Threat (the other side to move) and the
+ * moves Next Best / Search Better leave out (UCI).
+ */
+export interface SearchMode {
+  threat: boolean;
+  exclude: string[];
+}
 export interface EngineEventDto {
   engineId: string;
   requestId: string;

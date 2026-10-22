@@ -1,6 +1,10 @@
-import { Minus, Plus } from "lucide-react";
+import { Crosshair, Lock, Minus, Plus, SkipForward } from "lucide-react";
 import { formatScore } from "../state/analysis";
-import type { KibitzerView, useKibitzers } from "../state/kibitzers";
+import {
+  scoreCp,
+  type KibitzerView,
+  type useKibitzers,
+} from "../state/kibitzers";
 import type { WorkbenchState } from "../state/workbench";
 import { EngineOptions } from "./EngineOptions";
 
@@ -58,6 +62,7 @@ function KibitzerPane({
         <span role="status">{view.status}</span>
       </div>
       {view.error && <p role="alert">{view.error}</p>}
+      <SearchMode k={k} view={view} />
       <EngineOptions
         options={view.engine.options}
         disabled={view.busy}
@@ -97,6 +102,82 @@ function KibitzerPane({
         </tbody>
       </table>
     </section>
+  );
+}
+
+/**
+ * Analyse Threat, Next Best / Search Better and Lock Engine: buttons and what
+ * the kibitzer is doing with them.
+ */
+function SearchMode({
+  k,
+  view,
+}: {
+  k: ReturnType<typeof useKibitzers>;
+  view: KibitzerView;
+}) {
+  const best = view.lines.find((l) => l.multipv === 1);
+  const last = view.excluded.at(-1);
+  const target = view.target;
+  const better =
+    target && best?.score ? scoreCp(best.score) > target.cp : undefined;
+  const side = best?.rootTurn === "black" ? "Black" : "White";
+  return (
+    <div className="engine-mode" aria-label="Engine search">
+      <button
+        type="button"
+        aria-pressed={view.threat}
+        disabled={!view.enabled || view.busy}
+        title="Analyse threat (X)"
+        onClick={() => k.toggleThreat(view.key)}
+      >
+        <Crosshair size={12} aria-hidden /> Threat
+      </button>
+      <button
+        type="button"
+        disabled={!view.enabled || !view.lines.length}
+        title="Next Best (Y)"
+        onClick={() => k.leaveOutBest("next", view.key)}
+      >
+        <SkipForward size={12} aria-hidden /> Next best
+      </button>
+      <button
+        type="button"
+        aria-pressed={!!view.locked}
+        disabled={!view.enabled}
+        title="Lock Engine (Ctrl+Alt+L)"
+        onClick={() => k.toggleLock(view.key)}
+      >
+        <Lock size={12} aria-hidden /> Lock
+      </button>
+      {view.locked && (
+        <span className="engine-badge">Locked on {view.locked.label}</span>
+      )}
+      {view.threat && best && (
+        <span className="engine-badge">Threat: {side} moves again</span>
+      )}
+      {view.excluded.length > 0 && (
+        <span aria-label="Left out">
+          Left out:{" "}
+          {view.excluded
+            .map(
+              (e) =>
+                e.san +
+                (e.score
+                  ? ` (${formatScore(e.score, e.rootTurn, "white")})`
+                  : ""),
+            )
+            .join(", ")}
+        </span>
+      )}
+      {target && last && (
+        <span role="status" aria-label="Search Better">
+          {better
+            ? `Found a move that scores more than ${formatScore({ kind: "cp", value: target.cp }, last.rootTurn, "white")}`
+            : `Looking for a move that scores more than ${formatScore({ kind: "cp", value: target.cp }, last.rootTurn, "white")}`}
+        </span>
+      )}
+    </div>
   );
 }
 

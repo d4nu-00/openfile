@@ -360,6 +360,7 @@ pub(crate) fn evaluate_line(
         }
         let request = AnalysisRequest {
             request_id: format!("{tag}-{i}"),
+            search_moves: Vec::new(),
             start_fen: start_fen.to_string(),
             history: moves[..i].to_vec(),
             root_turn: if line[i].turn().is_white() {

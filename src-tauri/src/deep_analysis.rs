@@ -227,6 +227,7 @@ impl Analyst for EngineAnalyst<'_> {
         self.session
             .analyse(AnalysisRequest {
                 request_id: id.clone(),
+                search_moves: Vec::new(),
                 start_fen: self.start_fen.clone(),
                 history: history.to_vec(),
                 root_turn: if position.turn().is_white() {
