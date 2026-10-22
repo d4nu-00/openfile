@@ -1296,3 +1296,14 @@ CI. The tracked-source distribution audit passes for all 661 tracked paths.
   (deleted after), Stockfish 17 at Seconds 0, release build. 19 games were
   replaced in 274 s and one, with no moves after its opening, was skipped.
   The CSV had 37 players.
+
+## Engine analysis history (2026-10-22)
+
+* The protocol test reads UCI `time` in milliseconds and refuses a malformed
+  value.
+* A frontend test sends four lines for one position (e4 at depths 10 and 12,
+  then d4 at 14 and 15). History shows two rows, latest first: d4 chosen at
+  2.5 s with depth 15 and +0.28, then e4 at 0.1 s with depth 12 and +0.25.
+  Selecting another move empties it.
+* Stockfish 17 sends `time` in its info lines (for example `info depth 14 …
+  time 74 pv …`), so real rows carry the engine's own times.

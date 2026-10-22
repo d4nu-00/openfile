@@ -10,6 +10,7 @@ fn pv_conversion_uses_exact_root_and_stops_at_first_illegal_move() {
             bound: None,
         }),
         pv: Some(vec!["e7e5".into(), "a1a8".into(), "g1f3".into()]),
+        time: Some(1234),
     };
     let dto = render_info(
         info,

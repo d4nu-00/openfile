@@ -1,4 +1,11 @@
-import { Crosshair, Lock, Minus, Plus, SkipForward } from "lucide-react";
+import {
+  Crosshair,
+  History,
+  Lock,
+  Minus,
+  Plus,
+  SkipForward,
+} from "lucide-react";
 import { formatScore } from "../state/analysis";
 import {
   scoreCp,
@@ -68,40 +75,84 @@ function KibitzerPane({
         disabled={view.busy}
         apply={(n, v) => k.option(view.key, n, v)}
       />
-      <table aria-label="Engine analysis">
-        <thead>
-          <tr>
-            <th>Line</th>
-            <th>Depth</th>
-            <th>Nodes</th>
-            <th>Score</th>
-            <th>Principal variation</th>
-          </tr>
-        </thead>
-        <tbody>
-          {view.lines.map((line) => (
-            <tr key={line.multipv}>
-              <td>{line.multipv}</td>
-              <td>{line.depth ?? "—"}</td>
-              <td>{line.nodes ?? "—"}</td>
-              <td>
-                {line.score
-                  ? formatScore(line.score, line.rootTurn, "white")
-                  : "—"}
-              </td>
-              <td>
-                {line.pv?.join(" ")}
-                {line.diagnostics.map((d, i) => (
-                  <div role="alert" key={i}>
-                    {d}
-                  </div>
-                ))}
-              </td>
+      {view.showHistory ? (
+        <HistoryTable view={view} />
+      ) : (
+        <table aria-label="Engine analysis">
+          <thead>
+            <tr>
+              <th>Line</th>
+              <th>Depth</th>
+              <th>Nodes</th>
+              <th>Score</th>
+              <th>Principal variation</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {view.lines.map((line) => (
+              <tr key={line.multipv}>
+                <td>{line.multipv}</td>
+                <td>{line.depth ?? "—"}</td>
+                <td>{line.nodes ?? "—"}</td>
+                <td>
+                  {line.score
+                    ? formatScore(line.score, line.rootTurn, "white")
+                    : "—"}
+                </td>
+                <td>
+                  {line.pv?.join(" ")}
+                  {line.diagnostics.map((d, i) => (
+                    <div role="alert" key={i}>
+                      {d}
+                    </div>
+                  ))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </section>
+  );
+}
+
+/** "0.8 s", "12.4 s", "3:05". */
+function elapsed(ms: number) {
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)} s`;
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** The engine's choices for the position, latest first. */
+function HistoryTable({ view }: { view: KibitzerView }) {
+  return (
+    <table aria-label="Engine history">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Depth</th>
+          <th>Score</th>
+          <th>Best line</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[...view.history].reverse().map((h, i) => (
+          <tr key={`${h.move}-${h.time}`} data-current={i === 0}>
+            <td>{elapsed(h.time)}</td>
+            <td>{h.depth ?? "—"}</td>
+            <td>{h.score ? formatScore(h.score, h.rootTurn, "white") : "—"}</td>
+            <td>
+              <strong>{h.pv[0] ?? h.move}</strong> {h.pv.slice(1).join(" ")}
+            </td>
+          </tr>
+        ))}
+        {!view.history.length && (
+          <tr>
+            <td colSpan={4}>No choice yet.</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
   );
 }
 
@@ -140,6 +191,14 @@ function SearchMode({
         onClick={() => k.leaveOutBest("next", view.key)}
       >
         <SkipForward size={12} aria-hidden /> Next best
+      </button>
+      <button
+        type="button"
+        aria-pressed={view.showHistory}
+        title="Show how the engine's choice changed"
+        onClick={() => k.toggleHistory(view.key)}
+      >
+        <History size={12} aria-hidden /> History
       </button>
       <button
         type="button"

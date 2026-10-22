@@ -11,11 +11,14 @@ pub struct AnalysisInfo {
     pub multipv: u32,
     pub score: Option<Score>,
     pub pv: Option<Vec<String>>,
+    /// Milliseconds the engine has searched (UCI `time`).
+    pub time: Option<u64>,
 }
 impl AnalysisInfo {
     pub(crate) fn inherit_missing(&mut self, previous: &Self) {
         self.depth = self.depth.or(previous.depth);
         self.nodes = self.nodes.or(previous.nodes);
+        self.time = self.time.or(previous.time);
         if self.score.is_none() {
             self.score = previous.score.clone();
         }
@@ -114,6 +117,7 @@ pub fn parse_line(line: &str) -> Result<Option<UciResponse>, EngineError> {
                 multipv: 1,
                 score: None,
                 pv: None,
+                time: None,
             };
             let mut i = 1;
             while i < t.len() {
@@ -122,6 +126,7 @@ pub fn parse_line(line: &str) -> Result<Option<UciResponse>, EngineError> {
                 match field {
                     "depth" => info.depth = Some(number(&t, &mut i, "depth")?),
                     "nodes" => info.nodes = Some(number(&t, &mut i, "nodes")?),
+                    "time" => info.time = Some(number(&t, &mut i, "time")?),
                     "multipv" => {
                         info.multipv = number(&t, &mut i, "multipv")?;
                         if info.multipv == 0 {
