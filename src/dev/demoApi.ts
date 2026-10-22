@@ -347,7 +347,14 @@ export function demoApi(): WorkbenchApi {
     },
     nodes,
   });
-  let settings: AppSettings = { maxGameTabs: 8, engines: [] };
+  let settings: AppSettings = {
+    maxGameTabs: 8,
+    // A stand-in default engine, so Instant Analysis runs in the preview.
+    engines: [
+      { id: "demo", name: "Demo engine", path: "/demo/engine", options: {} },
+    ],
+    defaultEngine: "demo",
+  };
   const replayProgress: ReplayProgressMap = {};
   const repertoireEntries: RepertoirePosition[] = [];
   const demoSnapshot = (line: Line, side: WorkspaceSide) => {
@@ -485,6 +492,28 @@ export function demoApi(): WorkbenchApi {
       };
     },
     cancelCentipawnAnalysis: async () => {},
+    instantAnalysis: async (_doc, params, onProgress) => {
+      // Browser preview: a made-up curve for the sample game's main line.
+      const total = demoNodes.length;
+      const profile = Array.from({ length: total }, (_, ply) => ({
+        ply,
+        cp: Math.round(40 * Math.sin(ply / 3) + ply * 12),
+        depth: 1,
+      }));
+      const done = {
+        revision: String(revision),
+        pass: 1,
+        millisPerPosition: params.level * 35,
+        done: total,
+        total,
+        profile,
+        finished: true,
+        cancelled: false,
+      };
+      onProgress(done);
+      return done;
+    },
+    cancelInstantAnalysis: async () => {},
     deepAnalysis: async (_doc, params) => ({
       cancelled: false,
       iterations: 0,

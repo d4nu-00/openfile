@@ -113,6 +113,35 @@ export interface GameView {
   tags: Record<string, string>;
   startFen: string;
   nodes: GameNode[];
+  /** The evaluation profile stored with the game (docs/evaluation-profile.md). */
+  profile?: ProfilePoint[];
+}
+/** One evaluation of a profile, from White's side. */
+export interface ProfilePoint {
+  /** Plies from the start; 0 is the start position. */
+  ply: number;
+  cp?: number;
+  /** Moves to mate, positive when White mates. */
+  mate?: number;
+  /** Instant analysis's pass, or a stored depth. */
+  depth: number;
+}
+/** Instant Analysis's state while it runs and at the end. */
+export interface InstantProgress {
+  revision: string;
+  pass: number;
+  millisPerPosition: number;
+  done: number;
+  total: number;
+  profile: ProfilePoint[];
+  finished: boolean;
+  cancelled: boolean;
+}
+export interface InstantParams {
+  engine: string;
+  options: Record<string, string>;
+  level: number;
+  endless: boolean;
 }
 export interface OpenDatabaseResponse {
   requestId: string;
@@ -1117,7 +1146,22 @@ export interface AppSettings {
   defaultEngine?: string;
   /** The folder of Syzygy tablebase files. */
   tablebaseDir?: string;
+  /** Instant Analysis: on/off, 1–6 (× 35 ms per position), Endless. */
+  instantAnalysis?: InstantSettings;
+  /** The Evaluation Profile pane, and the profile above the notation. */
+  evalProfilePane?: boolean;
+  evalProfileNotation?: boolean;
 }
+export interface InstantSettings {
+  enabled: boolean;
+  level: number;
+  endless: boolean;
+}
+export const defaultInstant: InstantSettings = {
+  enabled: false,
+  level: 3,
+  endless: false,
+};
 export const defaultSettings: AppSettings = { maxGameTabs: 8, engines: [] };
 export interface ReferenceResponse {
   requestId: string;

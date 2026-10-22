@@ -4,6 +4,7 @@ import { Database, LayoutGrid, Search, X } from "lucide-react";
 import { backend, type WorkbenchApi } from "./api/client";
 import {
   annotationsIncomplete,
+  defaultInstant,
   defaultSettings,
   emptyFilter,
   type AppSettings,
@@ -49,6 +50,8 @@ import { OptionsDialog } from "./components/OptionsDialog";
 import { useEditing } from "./state/editing";
 import { formatScore } from "./state/analysis";
 import { useKibitzers } from "./state/kibitzers";
+import { mainLine, useInstantAnalysis } from "./state/evalProfile";
+import { EvalProfile } from "./components/EvalProfile";
 import { EngineManagement } from "./components/EngineManagement";
 import { TablebasePane } from "./components/TablebasePane";
 import { BlunderCheckDialog } from "./components/BlunderCheckDialog";
@@ -388,6 +391,107 @@ export function App({
     return undefined;
   }
   const inGame = view === "game";
+  // Instant Analysis follows the game tab shown, not the preview.
+  const instant = useInstantAnalysis(
+    api,
+    settings,
+    inGame ? state.document?.documentId : undefined,
+    inGame ? game : undefined,
+  );
+  const lineIds = useMemo(() => mainLine(game), [game]);
+  /** The evaluation profile shown: instant analysis's, else the game's own. */
+  function profileView(compact: boolean) {
+    if (!game) return null;
+    const ran = instant.state;
+    const points = ran?.progress?.profile.length
+      ? ran.progress.profile
+      : (game.profile ?? []);
+    const current = lineIds.indexOf(selected);
+    const p = ran?.progress;
+    const status = ran ? (
+      <span className="eval-profile-status" role="status">
+        {ran.error ??
+          (p
+            ? `Instant analysis: pass ${p.pass}, ${p.done}/${p.total} positions at ${p.millisPerPosition} ms`
+            : "Instant analysis starting")}
+        {ran.running ? (
+          <button type="button" onClick={() => instant.stop()}>
+            Stop
+          </button>
+        ) : (
+          !ran.error &&
+          !p?.finished && (
+            <button type="button" onClick={() => instant.restart()}>
+              Restart
+            </button>
+          )
+        )}
+      </span>
+    ) : game.profile?.length ? (
+      <span className="eval-profile-status">Profile stored with the game</span>
+    ) : undefined;
+    return (
+      <EvalProfile
+        points={points}
+        plies={lineIds.length - 1}
+        current={current >= 0 ? current : undefined}
+        san={(ply) => game.nodes[lineIds[ply]]?.san ?? ""}
+        whiteFirst={game.startFen.split(" ")[1] !== "b"}
+        compact={compact}
+        onSelect={(ply) => {
+          const id = lineIds[ply];
+          if (id !== undefined) void w.selectNode(id);
+        }}
+        status={
+          <>
+            {status}
+            {!compact && settings.instantAnalysis?.enabled && (
+              <span className="instant-options">
+                <label>
+                  Time{" "}
+                  <select
+                    aria-label="Instant analysis time"
+                    value={settings.instantAnalysis.level}
+                    onChange={(ev) =>
+                      void saveSettings({
+                        ...settings,
+                        instantAnalysis: {
+                          ...settings.instantAnalysis!,
+                          level: Number(ev.target.value),
+                        },
+                      })
+                    }
+                  >
+                    {[1, 2, 3, 4, 5, 6].map((n) => (
+                      <option key={n} value={n}>
+                        {n * 35} ms
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={settings.instantAnalysis.endless}
+                    onChange={(ev) =>
+                      void saveSettings({
+                        ...settings,
+                        instantAnalysis: {
+                          ...settings.instantAnalysis!,
+                          endless: ev.target.checked,
+                        },
+                      })
+                    }
+                  />{" "}
+                  Endless
+                </label>
+              </span>
+            )}
+          </>
+        }
+      />
+    );
+  }
   const bookPrepared =
     bookPrep && bookPrep.databaseId === state.database?.databaseId
       ? bookPrep
@@ -2215,6 +2319,36 @@ export function App({
       run: () => k.lines(-1),
       enabled: !!k.current && !k.current.busy && k.current.multipv > 1,
     },
+    "toggle-ev-profile": {
+      run: () =>
+        saveSettings({
+          ...settings,
+          evalProfilePane: !settings.evalProfilePane,
+        }),
+      enabled: !!game,
+      pressed: !!settings.evalProfilePane,
+    },
+    "nota-eval-profile": {
+      run: () =>
+        saveSettings({
+          ...settings,
+          evalProfileNotation: !settings.evalProfileNotation,
+        }),
+      enabled: !!game,
+      pressed: !!settings.evalProfileNotation,
+    },
+    "instant-analysis": {
+      run: () => {
+        const now = settings.instantAnalysis ?? defaultInstant;
+        return saveSettings({
+          ...settings,
+          instantAnalysis: { ...now, enabled: !now.enabled },
+          // The curve is where its results show.
+          evalProfilePane: !now.enabled || settings.evalProfilePane,
+        });
+      },
+      pressed: !!settings.instantAnalysis?.enabled,
+    },
     "analyse-threat": {
       run: () => k.toggleThreat(),
       enabled: !!k.current?.enabled && !k.current.busy,
@@ -2552,18 +2686,21 @@ export function App({
   );
 
   const notation = game ? (
-    <NotationTree
-      nodes={game.nodes}
-      selection={selected}
-      onSelect={(id) => void w.selectNode(id)}
-      startFen={game.startFen}
-      folded={folded}
-      onUnfold={(id) => setFold(id, false)}
-      onTraining={(id) => {
-        void w.selectNode(id);
-        setTraining({ node: id });
-      }}
-    />
+    <>
+      {settings.evalProfileNotation && profileView(true)}
+      <NotationTree
+        nodes={game.nodes}
+        selection={selected}
+        onSelect={(id) => void w.selectNode(id)}
+        startFen={game.startFen}
+        folded={folded}
+        onUnfold={(id) => setFold(id, false)}
+        onTraining={(id) => {
+          void w.selectNode(id);
+          setTraining({ node: id });
+        }}
+      />
+    </>
   ) : (
     <div className="empty-state">
       Select a game to replay its moves and variations.
@@ -3049,6 +3186,7 @@ export function App({
               <Group orientation="horizontal" className="split">
                 <Panel id="kibitzer" minSize="20">
                   <section className="pane analysis-pane" aria-label="Engine">
+                    {settings.evalProfilePane && profileView(false)}
                     <EnginePanel k={k} state={state} />
                   </section>
                 </Panel>
