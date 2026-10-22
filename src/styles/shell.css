@@ -2708,3 +2708,27 @@ kbd {
     margin: auto;
   }
 }
+
+/* The search mask's Material tab */
+.search-mask .mask-material {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.search-mask .mask-material-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--pane-border);
+  padding: 6px 8px;
+  margin: 0;
+}
+.search-mask .mask-material-grid {
+  display: grid;
+  gap: 4px 8px;
+  align-items: center;
+}
+.search-mask .mask-material-head {
+  font-weight: 600;
+  text-align: center;
+}

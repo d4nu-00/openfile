@@ -116,6 +116,134 @@ describe("final material search", () => {
   });
 });
 
+describe("material tab", () => {
+  const any = {};
+  const counts = (patch = {}) => ({
+    kings: any,
+    queens: any,
+    rooks: any,
+    bishops: any,
+    knights: any,
+    minors: any,
+    pawns: any,
+    othersZero: false,
+    ...patch,
+  });
+  const openMaterial = async () => {
+    const ui = renderWorkbench({ initialView: "database" });
+    await ui.user.keyboard("{Control>}f{/Control}");
+    await ui.user.click(ui.getByRole("tab", { name: "Material" }));
+    return ui;
+  };
+
+  it("sends the pieces involved in a mate", async () => {
+    const ui = await openMaterial();
+    // The selects wait for the checkbox.
+    expect(ui.getByLabelText("Mating queens")).toBeDisabled();
+    await ui.user.click(
+      ui.getByRole("checkbox", { name: "Final position is mate by" }),
+    );
+    expect(ui.getByLabelText("Mating queens")).toBeEnabled();
+    await ui.user.selectOptions(ui.getByLabelText("Mating queens"), "1");
+    await ui.user.selectOptions(ui.getByLabelText("Mating minor pieces"), "1");
+    await ui.user.click(
+      ui.getByRole("checkbox", { name: "Mate by: no other pieces" }),
+    );
+    expect(ui.getByText(/this search is slower/)).toBeVisible();
+    await ui.user.click(ui.getByRole("button", { name: "Search" }));
+    expect(ui.api.searchGames).toHaveBeenLastCalledWith(
+      "db-1",
+      expect.objectContaining({
+        material: {
+          white: counts(),
+          black: counts(),
+          eitherColour: false,
+          mateByEnabled: true,
+          mateBy: counts({
+            queens: { min: 1, max: 1 },
+            minors: { min: 1, max: 1 },
+            othersZero: true,
+          }),
+        },
+      }),
+      expect.any(String),
+      expect.any(Function),
+    );
+  });
+
+  it("shows bishops and knights apart when Bishop = Knight is off", async () => {
+    const ui = await openMaterial();
+    expect(ui.getByLabelText("White minor pieces")).toBeVisible();
+    expect(ui.getByLabelText("Mating minor pieces")).toBeVisible();
+    expect(ui.queryByLabelText("Mating bishops")).toBeNull();
+    await ui.user.selectOptions(ui.getByLabelText("White minor pieces"), "2");
+    await ui.user.click(ui.getByRole("checkbox", { name: "Bishop = Knight" }));
+    expect(ui.getByLabelText("Mating bishops")).toBeVisible();
+    expect(ui.getByLabelText("Mating knights")).toBeVisible();
+    expect(ui.getByLabelText("White bishops")).toBeVisible();
+    expect(ui.getByLabelText("Black knights")).toBeVisible();
+    expect(ui.queryByLabelText("White minor pieces")).toBeNull();
+    expect(ui.queryByLabelText("Mating minor pieces")).toBeNull();
+    // The hidden Minor column no longer counts.
+    await ui.user.selectOptions(ui.getByLabelText("White bishops"), "1+");
+    await ui.user.click(ui.getByRole("button", { name: "Search" }));
+    expect(ui.api.searchGames).toHaveBeenLastCalledWith(
+      "db-1",
+      expect.objectContaining({
+        material: expect.objectContaining({
+          white: counts({ bishops: { min: 1 } }),
+        }),
+      }),
+      expect.any(String),
+      expect.any(Function),
+    );
+  });
+
+  it("sends final piece counts for either colour and resets", async () => {
+    const ui = await openMaterial();
+    await ui.user.selectOptions(ui.getByLabelText("White rooks"), "1+");
+    await ui.user.selectOptions(ui.getByLabelText("Black pawns"), "8");
+    await ui.user.click(ui.getByRole("checkbox", { name: "Either colour" }));
+    await ui.user.click(ui.getByRole("checkbox", { name: "No other pieces" }));
+    await ui.user.click(ui.getByRole("button", { name: "Search" }));
+    expect(ui.api.searchGames).toHaveBeenLastCalledWith(
+      "db-1",
+      expect.objectContaining({
+        material: {
+          white: counts({ rooks: { min: 1 }, othersZero: true }),
+          black: counts({ pawns: { min: 8, max: 8 }, othersZero: true }),
+          eitherColour: true,
+          mateByEnabled: false,
+          mateBy: counts(),
+        },
+      }),
+      expect.any(String),
+      expect.any(Function),
+    );
+
+    await ui.user.keyboard("{Control>}f{/Control}");
+    await ui.user.click(ui.getByRole("tab", { name: "Material" }));
+    expect(ui.getByLabelText("White rooks")).toHaveValue("1+");
+    await ui.user.click(ui.getByRole("button", { name: "Reset all" }));
+    expect(ui.getByLabelText("White rooks")).toHaveValue("any");
+    expect(
+      ui.getByRole("checkbox", { name: "Either colour" }),
+    ).not.toBeChecked();
+    expect(
+      ui.getByRole("checkbox", { name: "No other pieces" }),
+    ).not.toBeChecked();
+    await ui.user.click(ui.getByRole("button", { name: "Search" }));
+    expect(ui.api.searchGames).toHaveBeenLastCalledWith(
+      "db-1",
+      expect.not.objectContaining({
+        material: expect.anything(),
+      }),
+      expect.any(String),
+      expect.any(Function),
+    );
+  });
+});
+
 describe("search progress", () => {
   it("shows progress and cancels from the status bar", async () => {
     const ui = renderWorkbench({ initialView: "database" });

@@ -371,6 +371,8 @@ export interface GameFilter {
   check?: boolean;
   /** The main line's final position has equal pieces; see docs/search.md. */
   finalMaterial?: FinalMaterial;
+  /** The Material tab: piece counts and mate-by pieces; see docs/search.md. */
+  material?: MaterialQuery;
   /** Text in the game's text annotations; with `fullTextNot`, games
    * without it. */
   fullText?: string;
@@ -389,6 +391,52 @@ export interface FinalMaterial {
   /** Pawn counts must be equal too. */
   countPawns: boolean;
 }
+/** Inclusive bounds on a piece count; absent means open. */
+export interface CountRange {
+  min?: number;
+  max?: number;
+}
+/** Ranges on one side's pieces; `minors` is bishops and knights together. */
+export interface PieceCounts {
+  kings: CountRange;
+  queens: CountRange;
+  rooks: CountRange;
+  bishops: CountRange;
+  knights: CountRange;
+  minors: CountRange;
+  pawns: CountRange;
+  /** Every kind left at "any" (kings excepted) must be 0. */
+  othersZero: boolean;
+}
+/** The Material tab (the workbench's own design; see docs/search.md). */
+export interface MaterialQuery {
+  /** The pieces in the main line's final position. */
+  white: PieceCounts;
+  black: PieceCounts;
+  /** The sides may also match the other way round. */
+  eitherColour: boolean;
+  /** The game ends in mate and the mating side's pieces involved in the
+   * mate match `mateBy`. */
+  mateByEnabled: boolean;
+  mateBy: PieceCounts;
+}
+export const emptyPieceCounts = (): PieceCounts => ({
+  kings: {},
+  queens: {},
+  rooks: {},
+  bishops: {},
+  knights: {},
+  minors: {},
+  pawns: {},
+  othersZero: false,
+});
+export const emptyMaterial = (): MaterialQuery => ({
+  white: emptyPieceCounts(),
+  black: emptyPieceCounts(),
+  eitherColour: false,
+  mateByEnabled: false,
+  mateBy: emptyPieceCounts(),
+});
 /** The search mask's Annotations tab (dialog 343; see docs/search.md). */
 export interface AnnotationQuery {
   text1: string;
