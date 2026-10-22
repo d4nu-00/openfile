@@ -55,6 +55,7 @@ import type {
   NamePage,
   Crosstable,
   CrossLayout,
+  ExportResponse,
   PasteResponse,
   ConvertEstimate,
   ConvertResponse,
@@ -147,6 +148,11 @@ export const backend = {
   chooseSave: () =>
     save({
       defaultPath: "game.pgn",
+      filters: [{ name: "PGN", extensions: ["pgn"] }],
+    }),
+  chooseSavePgn: (defaultName: string) =>
+    save({
+      defaultPath: defaultName,
       filters: [{ name: "PGN", extensions: ["pgn"] }],
     }),
   openPgn: (path: string, requestId: string) =>
@@ -586,6 +592,24 @@ export const backend = {
   },
   cancelPaste: (databaseId: string) =>
     invoke<void>("cancel_paste", { databaseId }),
+  /** Export PGN: writes the games in the given rows of the list to a file. */
+  exportRowsPgn: async (
+    databaseId: string,
+    ranges: { start: string; end: string }[],
+    path: string,
+    onProgress: (p: { done: string; total: string }) => void,
+  ) => {
+    const events = new Channel<{ done: string; total: string }>();
+    events.onmessage = onProgress;
+    return invoke<ExportResponse>("export_rows_pgn", {
+      databaseId,
+      ranges,
+      path,
+      events,
+    });
+  },
+  cancelExport: (databaseId: string) =>
+    invoke<void>("cancel_export", { databaseId }),
   /** Delete: marks the rows' games deleted, or undeletes them all. */
   deleteRows: (databaseId: string, ranges: { start: string; end: string }[]) =>
     invoke<string>("delete_rows", { databaseId, ranges }),
@@ -593,6 +617,11 @@ export const backend = {
     ask(
       `Append ${games} games to this database? Annotations that are not decoded, or that the .2cbh format cannot store, are left out; the games affected are counted.`,
       { title: "Paste games", kind: "warning" },
+    ),
+  confirmExportPgn: (games: string) =>
+    ask(
+      `Export ${games} games as PGN? Critical-position marks and training questions, which PGN cannot hold, are left out.`,
+      { title: "Export PGN", kind: "warning" },
     ),
   crosstable: (
     databaseId: string,

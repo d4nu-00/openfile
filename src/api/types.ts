@@ -1230,6 +1230,15 @@ export interface PasteResponse {
   /** Chess960 games left out: 2CBH cannot hold them yet. */
   chess960?: string;
 }
+export interface ExportResponse {
+  written: string;
+  /** Entries that are not games, or whose moves could not be read. */
+  skipped: string;
+  /** Games written without critical-position marks or training questions. */
+  stripped: string;
+  cancelled: boolean;
+  destination: string;
+}
 /** Tablebase annotations of a game's main line (workbench). */
 export interface TablebaseAnnotation {
   revision: string;

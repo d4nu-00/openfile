@@ -850,6 +850,7 @@ export function App({
   /** Games copied and waiting to be pasted, and a running paste. */
   const [clipGames, setClipGames] = useState(0);
   const [pastingGames, setPastingGames] = useState<string>();
+  const [exportingGames, setExportingGames] = useState<string>();
   /** A maintenance job: Check Integrity, Find Double Games or Remove
    * Deleted Games, with its progress and result. */
   const [classified, setClassified] = useState<Classification>();
@@ -1275,6 +1276,40 @@ export function App({
       w.setDiagnostics([{ code: "paste", message: explain(err) }]);
     } finally {
       setPastingGames(undefined);
+    }
+  }
+  /** Export PGN: the selection's games, or the chosen row's, to a file. */
+  async function exportGames() {
+    const db = state.database;
+    const ranges = chosenRanges();
+    if (!db || !ranges.length || exportingGames) return;
+    const games = ranges.reduce(
+      (n, r) => n + Number(r.end) - Number(r.start),
+      0,
+    );
+    if (!(await api.confirmExportPgn(String(games)))) return;
+    const path = await api.chooseSavePgn("games.pgn");
+    if (!path) return;
+    setExportingGames("starting…");
+    try {
+      const result = await api.exportRowsPgn(db.databaseId, ranges, path, (p) =>
+        setExportingGames(`${p.done} of ${p.total}`),
+      );
+      w.setStatus(
+        result.cancelled
+          ? "Export cancelled"
+          : `Exported ${result.written} games to ${result.destination}${
+              result.skipped !== "0" ? `, ${result.skipped} skipped` : ""
+            }${
+              result.stripped !== "0"
+                ? `, annotations left out of ${result.stripped}`
+                : ""
+            }`,
+      );
+    } catch (err) {
+      w.setDiagnostics([{ code: "export", message: explain(err) }]);
+    } finally {
+      setExportingGames(undefined);
     }
   }
   /** Delete: the selection's games, or the loaded game. */
@@ -1743,6 +1778,10 @@ export function App({
     "db-paste": {
       run: () => pasteGames(),
       enabled: !!state.database?.writable && clipGames > 0 && !pastingGames,
+    },
+    "db-export-pgn": {
+      run: () => exportGames(),
+      enabled: !!state.database && w.rowCount > 0 && !exportingGames,
     },
     "mark-games": {
       run: () => markGames(),
@@ -2679,6 +2718,20 @@ export function App({
                         onClick={() =>
                           state.database &&
                           void api.cancelPaste(state.database.databaseId)
+                        }
+                      >
+                        Cancel
+                      </button>
+                    </span>
+                  )}
+                  {exportingGames && (
+                    <span className="sorting">
+                      Exporting: {exportingGames}
+                      <button
+                        className="link-button"
+                        onClick={() =>
+                          state.database &&
+                          void api.cancelExport(state.database.databaseId)
                         }
                       >
                         Cancel

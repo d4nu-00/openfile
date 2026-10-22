@@ -636,6 +636,21 @@ export function demoApi(): WorkbenchApi {
       treeStale: false,
     }),
     cancelPaste: async () => {},
+    chooseSavePgn: async (name: string) => `/demo/${name}`,
+    exportRowsPgn: async (
+      _db: string,
+      ranges: { start: string; end: string }[],
+      path: string,
+    ) => ({
+      written: String(
+        ranges.reduce((n, r) => n + Number(r.end) - Number(r.start), 0),
+      ),
+      skipped: "0",
+      stripped: "0",
+      cancelled: false,
+      destination: path,
+    }),
+    cancelExport: async () => {},
     chooseConvertTarget: async (name: string) => `/demo/${name} (2CBH).2cbh`,
     convertEstimate: async () => ({
       games: "2400",
@@ -692,6 +707,7 @@ export function demoApi(): WorkbenchApi {
     confirmRemoveDeleted: async () => false,
     deleteRows: async () => "0",
     confirmPaste: async () => false,
+    confirmExportPgn: async () => true,
     readNames: async (_db, kind, start, limit, requestId) => ({
       requestId,
       rows: demoNames(kind).slice(Number(start) - 1, Number(start) - 1 + limit),

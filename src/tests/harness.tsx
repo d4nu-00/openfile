@@ -902,6 +902,31 @@ export function mockApi(firstDatabase = 1) {
       };
     }),
     cancelPaste: vi.fn().mockResolvedValue(undefined),
+    chooseSavePgn: vi.fn().mockResolvedValue("/synthetic/games.pgn"),
+    exportRowsPgn: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          ranges: { start: string; end: string }[],
+          path: string,
+          onProgress,
+        ) => {
+          const games = ranges.reduce(
+            (n, r) => n + Number(r.end) - Number(r.start),
+            0,
+          );
+          onProgress({ done: String(games), total: String(games) });
+          return {
+            written: String(games),
+            skipped: "0",
+            stripped: "0",
+            cancelled: false,
+            destination: path,
+          };
+        },
+      ),
+    cancelExport: vi.fn().mockResolvedValue(undefined),
     chooseConvertTarget: vi.fn().mockResolvedValue("/dbs/Converted.2cbh"),
     convertEstimate: vi.fn().mockResolvedValue({
       games: "404",
@@ -996,6 +1021,7 @@ export function mockApi(firstDatabase = 1) {
           ),
       ),
     confirmPaste: vi.fn().mockResolvedValue(true),
+    confirmExportPgn: vi.fn().mockResolvedValue(true),
     readNames: vi
       .fn()
       .mockImplementation(
