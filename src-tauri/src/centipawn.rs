@@ -230,14 +230,9 @@ impl Registry {
         id: &str,
         params: &CentipawnParams,
         cancel: &AtomicBool,
-        mut progress: impl FnMut(u32, u32),
+        progress: impl FnMut(u32, u32),
     ) -> Result<CentipawnReport, AppError> {
-        if params.seconds > MAX_SECONDS {
-            return Err(AppError::new(
-                "invalidParameters",
-                format!("The time per move must be from 0 to {MAX_SECONDS} seconds"),
-            ));
-        }
+        check(params)?;
         let (game, revision) = {
             let d = self.document(id)?;
             let d = d
@@ -245,189 +240,309 @@ impl Registry {
                 .map_err(|_| AppError::new("state", "Document unavailable"))?;
             (d.game.clone(), d.revision)
         };
-        let millis = millis_per_move(params.seconds);
-        // Book moves: the reference app skips the opening table's line, at
-        // least ten plies; nothing when the table does not know the game.
-        let book = chess_core::eco::classify_game(&game).map_or(0, |c| c.ply.max(MIN_BOOK_PLIES));
-        let mut nodes = vec![0u32];
-        while let Some(&next) = game.nodes[*nodes.last().unwrap() as usize].children.first() {
-            if nodes.len() > MAX_PLIES {
-                break;
-            }
-            nodes.push(next);
+        if !has_moves_after_book(&game) {
+            return Err(no_moves());
         }
-        let mut line = vec![chess_core::model::parse_position(&game.start_fen)?];
-        let mut moves = vec![];
-        for &n in &nodes[1..] {
-            let Some(uci) = game.nodes[n as usize].uci.clone() else {
-                break;
-            };
-            let Ok(next) = chess_core::model::apply_uci(line.last().unwrap().clone(), &uci) else {
-                break;
-            };
-            moves.push(uci);
-            line.push(next);
+        let mut session = start_engine(params)?;
+        let result = analyse_game(&game, params, &mut session, cancel, progress);
+        let _ = session.shutdown();
+        let mut report = result?.report;
+        report.revision = revision.to_string();
+        Ok(report)
+    }
+}
+
+pub(crate) fn check(params: &CentipawnParams) -> Result<(), AppError> {
+    if params.seconds > MAX_SECONDS {
+        return Err(AppError::new(
+            "invalidParameters",
+            format!("The time per move must be from 0 to {MAX_SECONDS} seconds"),
+        ));
+    }
+    Ok(())
+}
+
+fn no_moves() -> AppError {
+    AppError::new(
+        "noMoves",
+        "The game has no moves after its opening to analyse",
+    )
+}
+
+/// Plies of opening the reference app skips in `game`: the opening table's
+/// line, at least ten plies; nothing when the table does not know the game.
+fn book_plies(game: &chess_core::Game) -> u16 {
+    chess_core::eco::classify_game(game).map_or(0, |c| c.ply.max(MIN_BOOK_PLIES))
+}
+
+/// Whether the main line goes on after the opening.
+pub(crate) fn has_moves_after_book(game: &chess_core::Game) -> bool {
+    let book = usize::from(book_plies(game));
+    let mut at = 0usize;
+    let mut plies = 0;
+    while let Some(&next) = game.nodes[at].children.first() {
+        plies += 1;
+        if plies > book {
+            return true;
         }
-        // Moves counted: those after the book (ply number above `book`).
-        let counted = |i: usize| i + 1 > usize::from(book);
-        let needed: Vec<bool> = (0..line.len())
-            .map(|i| (i < moves.len() && counted(i)) || (i > 0 && counted(i - 1)))
-            .collect();
-        let total = needed.iter().filter(|&&n| n).count() as u32;
-        let mut report = CentipawnReport {
-            revision: revision.to_string(),
-            cancelled: false,
-            positions: 0,
-            book_plies: book,
-            millis_per_move: millis,
-            white: SideSummary::default(),
-            black: SideSummary::default(),
-            items: vec![],
-            moves: vec![],
-        };
-        if total == 0 {
-            return Err(AppError::new(
-                "noMoves",
-                "The game has no moves after its opening to analyse",
-            ));
-        }
-        let mut session = EngineSession::spawn(
-            EngineSpec {
-                executable: params.engine.clone(),
-                arguments: vec![],
-            },
-            Duration::from_secs(5),
-        )
-        .map_err(|e| AppError::new("engine", e.to_string()))?;
-        crate::tablebases::configure_engine(&mut session);
-        let result = (|| -> Result<CentipawnReport, AppError> {
-            for (name, value) in &params.options {
-                crate::engine_commands::standard_option(name, value)?;
-                if session.options().iter().any(|o| &o.name == name) {
-                    session
-                        .set_option(name, value)
-                        .map_err(|e| AppError::new("engine", e.to_string()))?;
-                }
-            }
-            if session.options().iter().any(|o| o.name == "MultiPV") {
+        at = next as usize;
+    }
+    false
+}
+
+/// Starts `params`'s engine for Centipawn Analysis: its options, one line.
+pub(crate) fn start_engine(params: &CentipawnParams) -> Result<EngineSession, AppError> {
+    let mut session = EngineSession::spawn(
+        EngineSpec {
+            executable: params.engine.clone(),
+            arguments: vec![],
+        },
+        Duration::from_secs(5),
+    )
+    .map_err(|e| AppError::new("engine", e.to_string()))?;
+    crate::tablebases::configure_engine(&mut session);
+    let configured = (|| -> Result<(), AppError> {
+        for (name, value) in &params.options {
+            crate::engine_commands::standard_option(name, value)?;
+            if session.options().iter().any(|o| &o.name == name) {
                 session
-                    .set_option("MultiPV", "1")
+                    .set_option(name, value)
                     .map_err(|e| AppError::new("engine", e.to_string()))?;
             }
-            progress(0, total);
-            let mut done = 0;
-            let Some(evals) = evaluate_line(
-                &mut session,
-                &game.start_fen,
-                &moves,
-                &line,
-                &needed,
-                millis,
-                None,
-                cancel,
-                "centipawn",
-                || {
-                    done += 1;
-                    progress(done, total);
-                },
-            )?
-            else {
-                report.cancelled = true;
-                report.positions = done;
-                return Ok(report);
-            };
-            report.positions = done;
-            if evals.iter().all(Option::is_none) {
-                return Err(AppError::new(
-                    "engine",
-                    "The engine could not analyse this game",
-                ));
-            }
-            let mut records: HashMap<bool, Vec<crate::error_report::MoveRecord>> = HashMap::new();
-            for i in 0..moves.len() {
-                if !counted(i) {
-                    continue;
-                }
-                let Some(m) = move_loss(&line, &moves, &evals, i) else {
-                    continue;
-                };
-                let white = line[i].turn().is_white();
-                let side = if white {
-                    &mut report.white
-                } else {
-                    &mut report.black
-                };
-                side.moves += 1;
-                let engine_move = m.best.as_deref() == Some(moves[i].as_str());
-                let category = classify(engine_move, m.before, m.after);
-                let best_line = evals[i]
-                    .as_ref()
-                    .map(|(_, pv)| crate::deep_analysis::san_line(&line[i], pv))
-                    .unwrap_or_default();
-                report.moves.push(ReviewedMove {
-                    node: nodes[i + 1],
-                    ply: (i + 1) as u16,
-                    move_number: line[i].fullmoves().get(),
-                    san: game
-                        .san_at(nodes[i + 1])
-                        .ok()
-                        .flatten()
-                        .unwrap_or_else(|| moves[i].clone()),
-                    white,
-                    loss: m.loss,
-                    category,
-                    best_line,
-                    best_uci: m.best.clone(),
-                });
-                records
-                    .entry(white)
-                    .or_default()
-                    .push(record(&m, i, nodes[i + 1], white));
-                let Some(category) = category else {
-                    continue;
-                };
-                side.categories[category as usize] += 1;
-                if params.every_move || category.is_error() {
-                    let mut text = category.label().to_string();
-                    if category >= Category::Mistake {
-                        text.push_str(&format!(" ({})", pawns(m.before, m.after)));
-                    }
-                    report.items.push(TextItem {
-                        node: nodes[i + 1],
-                        comment: text,
-                    });
-                }
-            }
-            for (white, side) in [(true, &mut report.white), (false, &mut report.black)] {
-                let r = records.remove(&white).unwrap_or_default();
-                if !r.is_empty() {
-                    side.average_loss =
-                        Some(r.iter().map(|m| f64::from(m.loss)).sum::<f64>() / r.len() as f64);
-                    side.accuracy = Some(
-                        r.iter()
-                            .map(|m| 100.0 * (-f64::from(m.loss) / 150.0).exp())
-                            .sum::<f64>()
-                            / r.len() as f64,
-                    );
-                    // The reference app gives the weighted value once the
-                    // weights pass 4.
-                    if r.iter().map(|m| m.weight).sum::<f64>() > 4.0 {
-                        side.error_value = error_value(&r);
-                    }
-                }
-            }
-            report.items.insert(
-                0,
-                TextItem {
-                    node: 0,
-                    comment: summary_text(&report.white, &report.black, book),
-                },
-            );
-            Ok(report)
-        })();
+        }
+        if session.options().iter().any(|o| o.name == "MultiPV") {
+            session
+                .set_option("MultiPV", "1")
+                .map_err(|e| AppError::new("engine", e.to_string()))?;
+        }
+        Ok(())
+    })();
+    if let Err(e) = configured {
         let _ = session.shutdown();
-        result
+        return Err(e);
     }
+    Ok(session)
+}
+
+/// Moves whose weights make up a game's weight in the database list's
+/// statistics (`0x1404035c0` sums the 40 largest).
+pub const GAME_WEIGHT_MOVES: usize = 40;
+
+/// One game's Centipawn Analysis.
+pub(crate) struct GameAnalysis {
+    pub report: CentipawnReport,
+    /// The evaluations as an evaluation profile (type 0x26), by ply.
+    pub profile: Vec<u32>,
+    /// The database list's game weight: the 40 largest move weights × 100.
+    pub weight: i32,
+    /// The database list's value for White and Black ("BV"): the error value
+    /// when both sides' weights pass 4, otherwise the centipawn loss; rounded.
+    pub values: [i32; 2],
+}
+
+/// Centipawn Analysis of `game`'s main line with an engine already started.
+pub(crate) fn analyse_game(
+    game: &chess_core::Game,
+    params: &CentipawnParams,
+    session: &mut EngineSession,
+    cancel: &AtomicBool,
+    mut progress: impl FnMut(u32, u32),
+) -> Result<GameAnalysis, AppError> {
+    let millis = millis_per_move(params.seconds);
+    let book = book_plies(game);
+    let mut nodes = vec![0u32];
+    while let Some(&next) = game.nodes[*nodes.last().unwrap() as usize].children.first() {
+        if nodes.len() > MAX_PLIES {
+            break;
+        }
+        nodes.push(next);
+    }
+    let mut line = vec![chess_core::model::parse_position(&game.start_fen)?];
+    let mut moves = vec![];
+    for &n in &nodes[1..] {
+        let Some(uci) = game.nodes[n as usize].uci.clone() else {
+            break;
+        };
+        let Ok(next) = chess_core::model::apply_uci(line.last().unwrap().clone(), &uci) else {
+            break;
+        };
+        moves.push(uci);
+        line.push(next);
+    }
+    // Moves counted: those after the book (ply number above `book`).
+    let counted = |i: usize| i + 1 > usize::from(book);
+    let needed: Vec<bool> = (0..line.len())
+        .map(|i| (i < moves.len() && counted(i)) || (i > 0 && counted(i - 1)))
+        .collect();
+    let total = needed.iter().filter(|&&n| n).count() as u32;
+    let mut report = CentipawnReport {
+        revision: String::new(),
+        cancelled: false,
+        positions: 0,
+        book_plies: book,
+        millis_per_move: millis,
+        white: SideSummary::default(),
+        black: SideSummary::default(),
+        items: vec![],
+        moves: vec![],
+    };
+    if total == 0 {
+        return Err(no_moves());
+    }
+    let mut weights = vec![];
+    let mut sums = [0.0f64; 2];
+    (|| -> Result<GameAnalysis, AppError> {
+        progress(0, total);
+        let mut done = 0;
+        let Some(evals) = evaluate_line(
+            session,
+            &game.start_fen,
+            &moves,
+            &line,
+            &needed,
+            millis,
+            None,
+            cancel,
+            "centipawn",
+            || {
+                done += 1;
+                progress(done, total);
+            },
+        )?
+        else {
+            report.cancelled = true;
+            report.positions = done;
+            return Ok(GameAnalysis {
+                report,
+                profile: vec![],
+                weight: 0,
+                values: [0, 0],
+            });
+        };
+        report.positions = done;
+        if evals.iter().all(Option::is_none) {
+            return Err(AppError::new(
+                "engine",
+                "The engine could not analyse this game",
+            ));
+        }
+        let mut records: HashMap<bool, Vec<crate::error_report::MoveRecord>> = HashMap::new();
+        for i in 0..moves.len() {
+            if !counted(i) {
+                continue;
+            }
+            let Some(m) = move_loss(&line, &moves, &evals, i) else {
+                continue;
+            };
+            let white = line[i].turn().is_white();
+            let side = if white {
+                &mut report.white
+            } else {
+                &mut report.black
+            };
+            side.moves += 1;
+            let engine_move = m.best.as_deref() == Some(moves[i].as_str());
+            let category = classify(engine_move, m.before, m.after);
+            let best_line = evals[i]
+                .as_ref()
+                .map(|(_, pv)| crate::deep_analysis::san_line(&line[i], pv))
+                .unwrap_or_default();
+            report.moves.push(ReviewedMove {
+                node: nodes[i + 1],
+                ply: (i + 1) as u16,
+                move_number: line[i].fullmoves().get(),
+                san: game
+                    .san_at(nodes[i + 1])
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| moves[i].clone()),
+                white,
+                loss: m.loss,
+                category,
+                best_line,
+                best_uci: m.best.clone(),
+            });
+            records
+                .entry(white)
+                .or_default()
+                .push(record(&m, i, nodes[i + 1], white));
+            weights.push(m.weight);
+            sums[usize::from(!white)] += m.weight;
+            let Some(category) = category else {
+                continue;
+            };
+            side.categories[category as usize] += 1;
+            if params.every_move || category.is_error() {
+                let mut text = category.label().to_string();
+                if category >= Category::Mistake {
+                    text.push_str(&format!(" ({})", pawns(m.before, m.after)));
+                }
+                report.items.push(TextItem {
+                    node: nodes[i + 1],
+                    comment: text,
+                });
+            }
+        }
+        for (white, side) in [(true, &mut report.white), (false, &mut report.black)] {
+            let r = records.remove(&white).unwrap_or_default();
+            if !r.is_empty() {
+                side.average_loss =
+                    Some(r.iter().map(|m| f64::from(m.loss)).sum::<f64>() / r.len() as f64);
+                side.accuracy = Some(
+                    r.iter()
+                        .map(|m| 100.0 * (-f64::from(m.loss) / 150.0).exp())
+                        .sum::<f64>()
+                        / r.len() as f64,
+                );
+                // The reference app gives the weighted value once the
+                // weights pass 4.
+                if r.iter().map(|m| m.weight).sum::<f64>() > 4.0 {
+                    side.error_value = error_value(&r);
+                }
+            }
+        }
+        report.items.insert(
+            0,
+            TextItem {
+                node: 0,
+                comment: summary_text(&report.white, &report.black, book),
+            },
+        );
+        let profile = profile_of(&line, &evals);
+        weights.sort_by(|a: &f64, b| b.total_cmp(a));
+        let weight = (weights.iter().take(GAME_WEIGHT_MOVES).sum::<f64>() * 100.0).round() as i32;
+        let both = sums[0] > 4.0 && sums[1] > 4.0;
+        let value = |side: &SideSummary| {
+            let v = if both {
+                side.error_value
+            } else {
+                side.average_loss
+            };
+            v.unwrap_or(0.0).round() as i32
+        };
+        let values = [value(&report.white), value(&report.black)];
+        Ok(GameAnalysis {
+            report,
+            profile,
+            weight,
+            values,
+        })
+    })()
+}
+
+/// The evaluations of the main line as a packed profile: White's view, pass
+/// 1, empty where a position was not evaluated.
+fn profile_of(line: &[shakmaty::Chess], evals: &[crate::error_report::LineEval]) -> Vec<u32> {
+    let last = evals.iter().rposition(Option::is_some);
+    let Some(last) = last else {
+        return vec![];
+    };
+    (0..=last)
+        .map(|i| match &evals[i] {
+            Some((cp, _)) => crate::evaluation_profile::pack(*cp, line[i].turn().is_white(), 1),
+            None => crate::evaluation_profile::EMPTY,
+        })
+        .collect()
 }
 
 /// A move as the Error Report's statistics take it.
