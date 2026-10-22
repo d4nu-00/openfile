@@ -1277,13 +1277,14 @@ Native progress/Stop on a 100,000-entry fixture left no result. Existing-folder
 refusal preserved a deliberate marker file and showed an actionable error.
 Opening the recovered result created an independent read-only tab. Existing
 integrity/doubles/compaction remained usable: healthy source 80/no problems,
-doubles compared 80/zero marked (four-ply fixture; positive comparisons remain
-in existing tests), separate editable copy compacted to 79/zero deleted and
+doubles compared 80/zero marked (four-ply fixture), then a separate two-game
+eight-ply fixture marked game 2 and kept game 1, with clean integrity afterward.
+A separate editable copy compacted to 79/zero deleted and
 passed integrity. The large available classic database was used read only;
 native Go to entry reached the final row, 11,151,119. Original databases and
 unrelated worktrees were untouched.
 
-Eleven native screenshots were captured and visually inspected, linked from
+Twelve native screenshots were captured and visually inspected, linked from
 [start screen](start-screen.md#native-ui-evidence) and
 [maintenance](maintenance.md#native-acceptance-and-measurements-2026-10-22).
 They show only synthetic fixture data. Release recovery of 100,000 small games
@@ -1303,4 +1304,5 @@ frontend advisory and a local Rust toolchain `rust-objcopy` debug-stripping
 warning (missing `libLLVM.dylib` rpath); the executable was produced. No package
 versions changed; the dependency inventory lock hash was refreshed for the
 added already-locked dependency edge. The source boundary and locked notice
-audit passed for all 685 tracked paths. PR checks provide cross-platform evidence.
+audit passed for all 686 tracked paths. Cross-platform CI evidence is maintained
+on the [unmerged delivery PR](https://github.com/d4nu-00/openfile/pull/51).

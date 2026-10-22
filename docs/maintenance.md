@@ -366,8 +366,9 @@ Native progress and Stop were exercised on 100,000 entries: no result was
 published after Stop. A subsequently created destination with a marker file
 was refused and preserved. Existing Check Integrity passed on the original;
 Find Double Games compared 80 and marked zero (these four-ply fixtures fall
-below its minimum comparison length; positive pairing remains covered by
-existing tests). Compaction on another disposable copy removed one deleted
+below its minimum comparison length). A separate two-game, eight-ply duplicate
+fixture then marked game 2 and kept game 1; integrity reported two games, one
+deleted and no problems. Compaction on another disposable copy removed one deleted
 game, retained 79 and passed integrity afterwards. Large native read-only
 browsing reached entry 11,151,119 of the available classic database.
 
@@ -390,7 +391,8 @@ All native screenshots were captured and visually inspected:
 [progress](media/database-recovery-progress.png),
 [stopped](media/database-recovery-stopped.png),
 [destination conflict](media/database-recovery-collision.png), and
-[compaction](media/database-compaction.png).
+[compaction](media/database-compaction.png), and
+[positive duplicate marking](media/database-doubles.png).
 
 ## Follow-on §2 work
 
