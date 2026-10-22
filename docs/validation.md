@@ -1307,3 +1307,31 @@ CI. The tracked-source distribution audit passes for all 661 tracked paths.
   Selecting another move empties it.
 * Stockfish 17 sends `time` in its info lines (for example `info depth 14 …
   time 74 pv …`), so real rows carry the engine's own times.
+
+## Move medals, times, diagrams, pawn structures, piece paths, evaluations (2026-10-22)
+
+* **Format.** Read-only and warm, through the reader's `load`:
+  * Entries 1–24,783 of both families give the same extras on the same moves
+    (63 games, 67 moves in 2CBH). The classic file has two more medals, on
+    entries 9014 and 20115. In their 2CBH copies a game quotation (0x13),
+    which the 2CBA reader cannot size yet, stops the reading earlier.
+  * Classic 11,000,001–11,150,000: 8,040 move times in 100 games, read in
+    36.7 s. Every hour, minute and second byte is below 60, and 23 have a
+    non-zero fourth byte. These games stay Partial for types 0x16, 0x17 and
+    0x24, which are not decoded.
+  * Classic 3,000,001–3,100,000: 972 annotated moves in 557 games, read in
+    23.9 s. All 244 pawn structures are 3. All 112 piece paths are the
+    colour code 3 and the square their move lands on.
+  * A classic slice from 8,000,001 holds 6 stored evaluations, with
+    score, kind and depth (e.g. 0, 0, 46).
+* **Tests:**
+  * a reader test for all six types in the classic layout, then through the
+    2CBH writer and back;
+  * chess-core tests: setting and clearing each mark, refusing a time or
+    path at the start and an invalid time, and a PGN round trip of
+    `[%emt]` and `[%eval]` (including a mate);
+  * Delete Commentary: "text" keeps them; "evaluation and time" removes
+    them;
+  * frontend tests: medal names, time packing, the notation marks, the
+    board's pawn squares and path arrows, and the Set Medal, Move Time and
+    Insert Diagram edits.
