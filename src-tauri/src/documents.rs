@@ -150,7 +150,10 @@ pub struct AnalysisItem {
 }
 
 /// Adds `items` to `game`; nothing changes unless all of them apply.
-fn add_analysis(game: &mut chess_core::Game, items: Vec<AnalysisItem>) -> Result<(), AppError> {
+pub(crate) fn add_analysis(
+    game: &mut chess_core::Game,
+    items: Vec<AnalysisItem>,
+) -> Result<(), AppError> {
     if items.len() > 2_000 {
         return Err(AppError::new(
             "limitExceeded",

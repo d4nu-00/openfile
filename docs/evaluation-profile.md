@@ -81,6 +81,11 @@ The default values were not traced.
   in the notation window.
 * Delete Commentary has its own check box for profiles
   (`V_B_EVAL_PROFILE`).
+* The analysis behind Centipawn Analysis and the Error Report also stores
+  its evaluations as the game's profile (`0x1404161f0` → `0x140c4e370`,
+  `0x1401a86d0`), unless it runs quietly. That is the likely source of the
+  depths 17–127 in the test database. The workbench's database-list Centipawn
+  Analysis stores them too (see [centipawn analysis](centipawn-analysis.md)).
 * "Generate Eval Profiles" (51461) and "Find games with Similar Eval Profile"
   (51462/51463) are database commands. They were not traced.
 

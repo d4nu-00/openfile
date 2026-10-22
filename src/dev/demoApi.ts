@@ -514,6 +514,50 @@ export function demoApi(): WorkbenchApi {
       return done;
     },
     cancelInstantAnalysis: async () => {},
+    centipawnList: async (_db, _ranges, params, onProgress) => {
+      // Browser preview: two made-up players.
+      onProgress({ game: 1, games: 1, done: 1, total: 1, label: "Demo" });
+      const players = [
+        {
+          name: "Player  A",
+          elo: 2500,
+          perform: 2591,
+          points: 1.5,
+          games: [
+            {
+              opponent: "Player  B",
+              opponentElo: 2400,
+              halfPoints: 2,
+              value: 21,
+              weight: 6400,
+            },
+            {
+              opponent: "Player  B",
+              opponentElo: 2400,
+              halfPoints: 1,
+              value: 30,
+              weight: 5200,
+            },
+          ],
+          weightedAverage: 25.03,
+        },
+      ];
+      return {
+        cancelled: false,
+        error: null,
+        games: 2,
+        analysed: 2,
+        replaced: 2,
+        skippedCount: 0,
+        skipped: [],
+        millisPerMove: params.seconds ? params.seconds * 750 : 200,
+        players,
+        csv: "Player Name,Elo,Perform,Points\n",
+      };
+    },
+    cancelCentipawnList: async () => {},
+    chooseCsv: async () => null,
+    saveCsv: async () => {},
     deepAnalysis: async (_doc, params) => ({
       cancelled: false,
       iterations: 0,

@@ -52,6 +52,7 @@ import { formatScore } from "./state/analysis";
 import { useKibitzers } from "./state/kibitzers";
 import { mainLine, useInstantAnalysis } from "./state/evalProfile";
 import { EvalProfile } from "./components/EvalProfile";
+import { CentipawnListDialog } from "./components/CentipawnListDialog";
 import { EngineManagement } from "./components/EngineManagement";
 import { TablebasePane } from "./components/TablebasePane";
 import { BlunderCheckDialog } from "./components/BlunderCheckDialog";
@@ -208,6 +209,13 @@ export function App({
   }>();
   /** The document Centipawn Analysis runs on. */
   const [centipawn, setCentipawn] = useState<string>();
+  /** Centipawn Analysis of the chosen list rows. */
+  const [centipawnList, setCentipawnList] = useState<{
+    databaseId: string;
+    name: string;
+    ranges: { start: string; end: string }[];
+    selected: number;
+  }>();
   const [gameReview, setGameReview] = useState<{
     documentId: string;
     line: string;
@@ -2249,6 +2257,23 @@ export function App({
       run: () => void createJobs(),
       enabled: !!state.database?.writable && w.rowCount > 0,
     },
+    "centipawn-list": {
+      run: () => {
+        const db = state.database;
+        const ranges = chosenRanges();
+        if (!db?.writable || !ranges.length) return;
+        setCentipawnList({
+          databaseId: db.databaseId,
+          name: db.name ?? "Database",
+          ranges,
+          selected: ranges.reduce(
+            (n, r) => n + Number(r.end) - Number(r.start),
+            0,
+          ),
+        });
+      },
+      enabled: !!state.database?.writable && w.rowCount > 0,
+    },
     "training-annotation": {
       run: () => selected !== 0 && setTraining({ node: selected }),
       enabled: !!state.document?.documentId && selected !== 0,
@@ -3387,6 +3412,20 @@ export function App({
           api={api}
           source={replay.source}
           onClose={() => setReplay(undefined)}
+        />
+      )}
+      {centipawnList && (
+        <CentipawnListDialog
+          api={api}
+          databaseId={centipawnList.databaseId}
+          databaseName={centipawnList.name}
+          ranges={centipawnList.ranges}
+          selected={centipawnList.selected}
+          engines={settings.engines}
+          defaultEngine={settings.defaultEngine}
+          onChooseFile={api.pickEngine}
+          onDone={() => void w.refreshList()}
+          onClose={() => setCentipawnList(undefined)}
         />
       )}
       {centipawn && (

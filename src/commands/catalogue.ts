@@ -1099,6 +1099,13 @@ const list: CommandMeta[] = [
     views: db,
   },
   {
+    id: "centipawn-list",
+    label: "Centipawn Analysis",
+    tip: "Analyse the selected games, replace each with the annotated game and count each player's centipawn loss",
+    icon: Gauge,
+    views: db,
+  },
+  {
     id: "centipawn-analysis",
     label: "Centipawn Analysis",
     tip: "Compares the game's moves with an engine's and counts the centipawns each side lost",
@@ -1391,6 +1398,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             S("create-analysis-jobs"),
             S("open-analysis-jobs"),
             S("new-analysis-jobs"),
+            S("centipawn-list"),
           ],
         },
       ],
