@@ -1070,6 +1070,29 @@ pub async fn paste_games(
     .await
 }
 #[tauri::command]
+pub async fn export_rows_pgn(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+    ranges: Vec<crate::clipboard::RowRange>,
+    path: PathBuf,
+    events: tauri::ipc::Channel<crate::export::ExportProgress>,
+) -> Result<crate::export::ExportResponse, AppError> {
+    let s = state.inner().clone();
+    blocking(move || {
+        let mut last = std::time::Instant::now();
+        s.export_rows_pgn(database_id, ranges, path, |done, total| {
+            if last.elapsed().as_millis() >= 250 || done == total {
+                last = std::time::Instant::now();
+                let _ = events.send(crate::export::ExportProgress {
+                    done: done.to_string(),
+                    total: total.to_string(),
+                });
+            }
+        })
+    })
+    .await
+}
+#[tauri::command]
 pub async fn convert_estimate(
     state: tauri::State<'_, Arc<Registry>>,
     database_id: String,
@@ -1185,6 +1208,13 @@ pub fn cancel_paste(
     database_id: String,
 ) -> Result<(), AppError> {
     state.cancel_paste(database_id)
+}
+#[tauri::command]
+pub fn cancel_export(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_export(database_id)
 }
 #[tauri::command]
 pub async fn delete_rows(

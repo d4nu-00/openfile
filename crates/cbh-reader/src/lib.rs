@@ -13,6 +13,7 @@ pub mod maintain;
 pub mod moves;
 pub mod name_list;
 pub mod pattern;
+pub mod pgn_export;
 pub mod player_stats;
 pub mod position;
 pub mod prepare;

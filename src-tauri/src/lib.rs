@@ -11,6 +11,7 @@ pub mod documents;
 pub mod dossier;
 pub mod engine_commands;
 pub mod error_report;
+pub mod export;
 pub mod library;
 pub mod lists;
 pub mod maintenance;
@@ -253,6 +254,8 @@ pub fn run() {
             commands::clip_size,
             commands::paste_games,
             commands::cancel_paste,
+            commands::export_rows_pgn,
+            commands::cancel_export,
             commands::convert_estimate,
             commands::convert_database,
             commands::cancel_convert,

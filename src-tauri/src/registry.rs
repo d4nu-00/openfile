@@ -66,6 +66,8 @@ pub(crate) struct State {
     /// Games copied in a database window, and running pastes.
     pub(crate) clip: Option<Arc<crate::clipboard::Clip>>,
     pub(crate) paste_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    /// Running PGN exports of a database's list.
+    pub(crate) export_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     /// Running conversions to 2CBH, by source database.
     pub(crate) maintenance_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     pub(crate) convert_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
@@ -379,6 +381,7 @@ impl Registry {
             &mut state.crosstable_cancels,
             &mut state.statistics_cancels,
             &mut state.paste_cancels,
+            &mut state.export_cancels,
             &mut state.search_cancels,
             &mut state.tree_cancels,
             &mut state.reference_cancels,
