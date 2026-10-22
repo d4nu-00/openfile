@@ -11,6 +11,7 @@ pub mod documents;
 pub mod dossier;
 pub mod engine_commands;
 pub mod error_report;
+pub mod evaluation_profile;
 pub mod library;
 pub mod lists;
 pub mod maintenance;
@@ -178,6 +179,9 @@ pub fn run() {
         .manage(repertoire_workspace::RepertoireWorkspace::default())
         .manage(replay_training::ReplayTrainingStore::default())
         .manage(std::sync::Arc::new(centipawn::CentipawnJobs::default()))
+        .manage(std::sync::Arc::new(
+            evaluation_profile::InstantJobs::default(),
+        ))
         .manage(std::sync::Arc::new(deep_analysis::DeepJobs::default()))
         .manage(std::sync::Arc::new(tablebases::Tablebases::default()))
         .manage(ExitPolicy::default())
@@ -246,6 +250,8 @@ pub fn run() {
             error_report::selection_players,
             centipawn::centipawn_analysis,
             centipawn::cancel_centipawn_analysis,
+            evaluation_profile::instant_analysis,
+            evaluation_profile::cancel_instant_analysis,
             repertoire::frequent_players,
             repertoire::generate_repertoire,
             repertoire::repertoire_report,

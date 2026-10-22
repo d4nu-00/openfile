@@ -622,14 +622,15 @@ impl Registry {
                 ));
             }
             if !allow_incomplete
-                && d.game
-                    .nodes
-                    .iter()
-                    .any(|n| n.critical.is_some() || n.training.is_some())
+                && (!d.game.profile.is_empty()
+                    || d.game
+                        .nodes
+                        .iter()
+                        .any(|n| n.critical.is_some() || n.training.is_some()))
             {
                 return Err(AppError::new(
                     "incompleteAnnotations",
-                    "PGN cannot hold critical position marks or training questions; acknowledge their omission before exporting",
+                    "PGN cannot hold critical position marks, training questions or evaluation profiles; acknowledge their omission before exporting",
                 ));
             }
             (d.game.clone(), d.revision, d.source_paths.clone())

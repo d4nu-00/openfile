@@ -370,7 +370,14 @@ pub(crate) fn evaluate_line(
             }
             .into(),
         };
-        match evaluate_to(session, request, &line[i], cap, depth, cancel) {
+        // Time-limited evaluations go through the session's cache.
+        let eval = match depth {
+            None => {
+                crate::evaluation_profile::cached_evaluate(session, request, &line[i], cap, cancel)
+            }
+            Some(_) => evaluate_to(session, request, &line[i], cap, depth, cancel),
+        };
+        match eval {
             Ok(Some(e)) => evals[i] = Some((e.cp, e.pv)),
             Ok(None) => return Ok(None),
             Err(e) if e.code == "engine" && evals.iter().all(Option::is_none) => break,

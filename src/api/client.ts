@@ -9,6 +9,8 @@ import type {
   EngineResponse,
   EngineEventDto,
   SearchMode,
+  InstantParams,
+  InstantProgress,
   DocumentResponse,
   PgnCollectionResponse,
   SaveResponse,
@@ -861,6 +863,21 @@ export const backend = {
   },
   cancelCentipawnAnalysis: (documentId: string) =>
     invoke<void>("cancel_centipawn_analysis", { documentId }),
+  /** Instant Analysis of the document's main line; one runs at a time. */
+  instantAnalysis: (
+    documentId: string,
+    params: InstantParams,
+    onProgress: (p: InstantProgress) => void,
+  ) => {
+    const events = new Channel<InstantProgress>();
+    events.onmessage = onProgress;
+    return invoke<InstantProgress>("instant_analysis", {
+      documentId,
+      params,
+      events,
+    });
+  },
+  cancelInstantAnalysis: () => invoke<void>("cancel_instant_analysis"),
   cancelBlunderCheck: (documentId: string) =>
     invoke<void>("cancel_blunder_check", { documentId }),
   /** Deep Analysis of one position; the tree comes back as lines. */

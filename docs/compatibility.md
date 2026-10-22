@@ -132,6 +132,13 @@ imports are bounded to 20 MiB/2,000 games/100,000 aggregate nodes by default.
 Missing companions, corrupt records and unsupported records are reported
 separately; an unsupported game is not silently flattened into a partial game.
 
+Evaluation profiles (annotation type 0x26) are read from both families and
+written back to 2CBH unchanged. Scores and mates are shown. About 0.2 % of
+recent test-database games carry one. Kind 32 (5 entries in 177 profiles) is
+kept but not shown (see [evaluation profile](evaluation-profile.md)). Instant Analysis
+uses the reference app's time per position; its own profile is shown but not
+stored in the game.
+
 Local UCI engine analysis covers standard chess and Chess960. A Chess960
 position is sent with `UCI_Chess960` set to true, and only to engines that
 offer that option. Other variant rules cannot be enabled. Deep Analysis

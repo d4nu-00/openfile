@@ -140,6 +140,8 @@ impl Game {
         self.tags.insert("SetUp".into(), "1".into());
         self.tags.insert("FEN".into(), fen.clone());
         self.start_fen = fen;
+        // The profile counts plies from the old start.
+        self.profile.clear();
         Ok(0)
     }
 
@@ -344,6 +346,7 @@ impl Game {
                     n.squares.clear();
                     n.arrows.clear();
                 }
+                self.profile.clear();
                 let map = self.retain(&main);
                 Ok(path
                     .iter()

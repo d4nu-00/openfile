@@ -10,6 +10,11 @@ pub struct Game {
     pub tags: BTreeMap<String, String>,
     pub start_fen: String,
     pub nodes: Vec<Node>,
+    /// The evaluation profile stored with the game (CBA type 0x26): one
+    /// packed evaluation per main-line ply, entry 0 the start position. Empty
+    /// for none. See docs/evaluation-profile.md.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub profile: Vec<u32>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Node {
@@ -95,6 +100,7 @@ impl Game {
         Ok(Self {
             tags,
             start_fen,
+            profile: vec![],
             nodes: vec![Node {
                 id: 0,
                 parent: None,
