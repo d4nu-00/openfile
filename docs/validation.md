@@ -1102,3 +1102,121 @@ its effects. The failure reproduced locally on attempt 4. Awaiting the initial
 render and position effects in React `act` passed 20 consecutive targeted runs;
 the drag and grading assertions remain unchanged. This is a test synchronization
 fix, with no change to board behavior.
+
+
+## Initial descriptive playing-style report (2026-10-21; superseded)
+
+Implemented from fetched `origin/main` in an isolated worktree. Original checkout,
+reference database and unrelated REA sessions/artifacts were preserved. Fresh
+REA/Ghidra analysis traced command dispatch, dynamic options, selection, theme
+math, reference normalization, internal evaluation, rendering and cancellation.
+Addresses, executable hash, directly established behavior and unresolved questions
+are recorded in [playing style](playing-style.md). OpenFile independently computes
+ten transparent move/material measures, without a UCI engine or comparison grades.
+
+Synthetic tests cover both colours; explicit alias unions; filter-before-limit
+selection beyond 100,000 matches; deleted/unknown records; empty/small samples;
+checks, captures/en passant, castling, queen movement/exchanges/promotions,
+non-pawn inventories, sustained deficits and endgames; setup/unsupported/partial/
+corrupt records; replay caps; cancellation, supersession, closure/edit invalidation,
+source mutation and supporting-node navigation. UI tests cover criteria, aliases,
+measured zero versus missing evidence, complete analysed-game lists, errors,
+late callbacks and source-bound navigation. Independent focused review identified
+two races that were reproduced and fixed: late evidence validation affecting a
+newer report, and source mutation between validation and game loading. Both have
+regressions; loading now validates before and after and closes a stale document.
+
+Native acceptance used read-only byte-identical clones of the available Mega
+Database 2025 (11,151,119 entries) in a separately identified Tauri app. Exact
+identities Carlsen, Magnus #65470 and Nakamura, Hikaru #286135 were checked against
+the name list and neighbouring entries; no aliases were added. Both reports used
+both colours, no year/rating filter, latest 500 games and a 400-ply cap. Carlsen:
+500 analysed, 252 White/248 Black, 2024.05.14–2024.10.01. Nakamura: 498 analysed,
+250 White/248 Black, 2024.06.13–2024.09.24, two unreadable records skipped. Samples
+include mixed time controls. No career-wide or long-game-only claim is made.
+
+A separate python-chess 1.10.0 calculation matched all ten metric fractions,
+colour splits and every evidence SAN/ply in both reports. Native supporting links
+opened Carlsen–Firouzja at 45...Qxg7 (ply 90, nine non-pawn points each), and
+Nakamura–Naroditsky at 8.Kxd1 (ply 15, no queens), with the expected board and
+highlighted move. Native Stop during a header scan was also checked: a WebKit
+form-default restart was reproduced, fixed with a prevented click default, and
+verified in the rebuilt app with a regression test. The stopped state persisted
+without publication; a subsequent explicit Generate returned the expected sample.
+The original screenshots were superseded by the native-dimension replacement
+below; these historical measurements do not validate the replacement.
+
+Warm-cache release selection/replay totals were 0.369 s / 0.285 s, with full-index
+scans 0.172 s / 0.131 s and replay 0.197 s / 0.154 s, respectively. Prepared
+name-list lookup took 0.005 s / 0.002 s. Whole example processes including PGN
+validation export peaked at 12.4 / 12.3 MiB resident memory. Native debug UI
+computations took 3.04 s / 2.96 s. Engine cost: zero. These measurements exclude
+initial database opening/name-index construction; cloud placeholders can stall
+filesystem reads. Selection retains one 8,192-header chunk plus at most 2,000
+candidates. No result cache is persisted. Nine original database-family file
+signatures remained unchanged, and original/clone CBH hashes agree.
+
+Final local checks: **329 Rust tests** (23 new style tests), **195 frontend tests**
+(7 new style tests), Rust formatting, strict workspace/all-target Clippy,
+TypeScript, Prettier, production frontend build and locked native release build.
+The native acceptance app also builds successfully with embedded frontend assets.
+The frontend retains its existing >500 kB bundle advisory. The tracked-source
+allowlist permits the authored style documentation/plans and screenshots, without
+raw decompilation, private games or databases. Cross-platform CI is recorded by
+the unmerged PR.
+
+
+## Native-dimension replacement (2026-10-22)
+
+The initial ten-metric report is superseded by the eight ChessBase dimensions.
+Fresh REA/Ghidra evidence covers 82 functions and 17 batches; the categorical-grade
+initialization defect was confirmed in assembly. Score and Decided Games use
+recovered formulas, result denominators, references and normalization. Tenacity
+exposes verified draw inputs, but its complete score and the other five composite
+scores remain unavailable. All categorical grades remain unavailable. The
+checklist deliberately marks native coverage partial; no displayed Windows
+ChessBase comparison or full native compatibility is claimed. Full evidence,
+formulas and dependencies are in [playing style](playing-style.md).
+
+Reader fixtures verify classic and 2LID tournament metadata, record bounds,
+legacy stream remapping, Simultaneous/Blitz/Rapid/Long precedence, unknown category
+policy and native minimum stored length before the bounded sample. Runtime tests
+cover both colours, canonical forfeits, unknown denominators, measured zero,
+missing colours, all eight dimensions, absent grades/proxy scores, Tenacity draw
+inputs, source validity and evidence. UI tests retain cancellation/supersession,
+source-bound navigation and stale-callback guards and cover game-category filters.
+A deterministic regression cancels within a 1,024-record header batch at 256 rows;
+cancellation is now checked before each metadata lookup. Independent review
+confirmed both findings fixed and no residual actionable concerns.
+
+Actual rebuilt native UI acceptance used read-only byte-identical Mega Database
+2025 clones (11,151,119 entries), exact Carlsen #65470/Nakamura #286135 identities,
+no aliases, both colours, Long only, no year/rating bounds and latest 500 eligible
+games. Carlsen: 492 analysed, 247 White/245 Black, 2016.09.12–2024.09.21, eight
+setups skipped; Score 77.1442%, Decided Games 35.5805%. Nakamura: 483 analysed,
+246 White/237 Black, 2015.10.19–2024.06.07, seventeen setups skipped; Score
+67.2984%, Decided Games 15.7021%. These normalized composites are neither game
+fractions nor player percentiles. The other six score cards remain unavailable.
+
+Independent raw CBH/CBT reads reproduced selection, eligible counts and category
+filtering; separate python-chess 1.10.0 replay matched result totals, both raw and
+normalized calculations, draw inputs and every evidence SAN/ply. Native links
+opened Carlsen–Schitco at 42.g5 (entry 11131908, ply 83), and
+Praggnanandhaa–Nakamura at 31.Rxe8+ (entry 10932339, ply 61), with the expected
+board and highlighted move. Native Stop during scanning remained stopped without
+publication. [Inspected screenshots](playing-style.md#native-ui-evidence) retain
+both real reports, inputs, missing dimensions, supporting positions and Stop.
+
+Warm-cache release totals were 0.408/0.351 s: header selection 0.189/0.159 s,
+replay 0.218/0.191 s; prepared name lookup 0.003/0.002 s. Whole validation/export
+processes peaked at 16.5/15.9 MiB RSS. An initial name-index build took 0.461 s and
+peaked at 71.3 MiB process RSS. Database opening is excluded; engine cost is zero.
+Native debug UI computations took 3.14/3.32 s.
+All nine original source signatures stayed unchanged; original/clone CBH hashes
+match. No private database, sample PGN or proprietary asset is distributed.
+
+Final local checks: **342 Rust tests**, **196 frontend tests**, Cargo formatting,
+strict workspace/all-target Clippy, TypeScript, Prettier, production frontend
+build, locked native release build and embedded-frontend native acceptance build.
+The existing bundle-size advisory remains. The unmerged PR records cross-platform
+CI. The tracked-source distribution audit passes for all 661 tracked paths.

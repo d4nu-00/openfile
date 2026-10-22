@@ -873,10 +873,11 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     ordinal: string,
     node = 0,
     place?: (slot: GameSlot) => Promise<boolean>,
+    styleJobId?: string,
   ) {
     const db = current.current.database;
     if (!db) return Promise.resolve();
-    const done = loadEntryNow(db, ordinal, node, place);
+    const done = loadEntryNow(db, ordinal, node, place, styleJobId);
     loading.current = { databaseId: db.databaseId, ordinal, done };
     void done.finally(() => {
       if (loading.current?.done === done) loading.current = undefined;
@@ -888,6 +889,7 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     ordinal: string,
     node: number,
     place?: (slot: GameSlot) => Promise<boolean>,
+    styleJobId?: string,
   ) {
     const request = gates.game.begin();
     gates.position.begin();
@@ -895,7 +897,9 @@ export function useWorkbench(api: WorkbenchApi, initial: WorkbenchState = {}) {
     setStatus(`Loading entry ${ordinal}…`);
     let candidate: string | undefined;
     try {
-      const document = await api.loadEntry(db.databaseId, ordinal, request);
+      const document = styleJobId
+        ? await api.loadStyleEntry(db.databaseId, styleJobId, ordinal, request)
+        : await api.loadEntry(db.databaseId, ordinal, request);
       candidate = document.documentId;
       if (
         !gates.game.accept(document.requestId) ||

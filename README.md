@@ -35,7 +35,7 @@ artwork or games ship with it.
 | Browse | Analyse | Prepare |
 | :--- | :--- | :--- |
 | Open `.cbh` and `.2cbh` databases, even 11 million games | Any UCI engine, MultiPV, several kibitzers | Prepare against White or Black |
-| Sort, filter and search by game data, position, annotations, medals | Blunder check, deep analysis, analysis jobs | Player statistics and dossier |
+| Sort, filter and search by game data, position, annotations, medals | Blunder check, deep analysis, analysis jobs | Player statistics, dossier and playing style |
 | Opening tree, reference search, crosstables | Syzygy tablebases in analysis and notation | Personal White/Black repertoire workspace, opening, tournament and error reports |
 | Edit games and write `.2cbh`; PGN in and out | Comments, symbols, arrows, variation tools | A familiar ribbon, shortcuts and themes |
 
@@ -100,8 +100,8 @@ turns them into a database.
   White/Black** show a player's results, opponents and repertoire. Round-robin
   and Swiss crosstables show tiebreaks, performance and FIDE category.
 - **Reports.** Opening reports, tournament reports with round-by-round
-  standings, and an error report that estimates a player's strength from their
-  mistakes.
+  standings, an error report that estimates a player's strength from their
+  mistakes, and a partial reconstruction of the native playing-style dimensions, with recovered Score/Decided Games calculations and supporting positions.
 - **Edit and write.** Enter moves and variations, promote, fold and reorder
   lines, add comments, symbols, arrows and coloured squares, edit game data and
   set up positions, with up to 100 undo steps. Save, replace, delete and mark
@@ -318,7 +318,7 @@ and reported as unsupported.
 | Lists and search | [Game list](docs/game-list.md) · [Search](docs/search.md) · [Position search](docs/position-search.md) |
 | Openings | [Opening tree](docs/opening-tree.md) · [Repertoire workspace](docs/repertoire-workspace.md) · [Openings](docs/openings.md) |
 | Games and engines | [Game window](docs/game-window.md) · [Replay training](docs/replay-training.md) · [Engines](docs/engines.md) · [Analysis](docs/analysis.md) · [Game review](docs/game-review.md) |
-| Players and reports | [Player statistics](docs/player-statistics.md) · [Dossier](docs/player-dossier.md) · [Preparation](docs/preparation.md) · [Tournament report](docs/tournament-report.md) · [Error report](docs/error-report.md) |
+| Players and reports | [Player statistics](docs/player-statistics.md) · [Dossier](docs/player-dossier.md) · [Preparation](docs/preparation.md) · [Tournament report](docs/tournament-report.md) · [Error report](docs/error-report.md) · [Playing style](docs/playing-style.md) |
 | Design | [Design](docs/design.md) · [UI shell](docs/ui-shell.md) · [Validation](docs/validation.md) |
 
 ## Verify

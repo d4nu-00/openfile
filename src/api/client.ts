@@ -3,6 +3,9 @@ import { listen } from "@tauri-apps/api/event";
 import { invoke, isTauri, Channel } from "@tauri-apps/api/core";
 import { ask, open, save } from "@tauri-apps/plugin-dialog";
 import type {
+  StyleParams,
+  StyleProgress,
+  StyleReport,
   EngineResponse,
   EngineEventDto,
   DocumentResponse,
@@ -673,6 +676,39 @@ export const backend = {
       playerId,
       white,
       line,
+      requestId,
+    }),
+  playingStyle: async (
+    databaseId: string,
+    jobId: string,
+    params: StyleParams,
+    onProgress: (p: StyleProgress) => void,
+  ) => {
+    const events = new Channel<StyleProgress>();
+    events.onmessage = onProgress;
+    return (
+      (await invoke<StyleReport | null>("playing_style", {
+        databaseId,
+        jobId,
+        params,
+        events,
+      })) ?? undefined
+    );
+  },
+  cancelPlayingStyle: (databaseId: string, jobId: string) =>
+    invoke<void>("cancel_playing_style", { databaseId, jobId }),
+  validatePlayingStyle: (databaseId: string, jobId: string) =>
+    invoke<void>("validate_playing_style", { databaseId, jobId }),
+  loadStyleEntry: (
+    databaseId: string,
+    jobId: string,
+    ordinal: string,
+    requestId: string,
+  ) =>
+    invoke<GameResponse>("load_style_entry", {
+      databaseId,
+      jobId,
+      ordinal,
       requestId,
     }),
   /** A player's dossier; undefined when cancelled. */

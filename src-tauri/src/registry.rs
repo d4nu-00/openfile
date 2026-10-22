@@ -61,6 +61,7 @@ pub(crate) struct State {
     /// Each database's preparation against a player, and running ones.
     pub(crate) preparations: HashMap<String, Arc<crate::prepare::Prepared>>,
     pub(crate) prepare_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    pub(crate) style_jobs: HashMap<String, crate::playing_style::StyleJob>,
     /// Running dossiers.
     pub(crate) dossier_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     /// Games copied in a database window, and running pastes.
@@ -367,6 +368,9 @@ impl Registry {
         state.sorts.remove(&id);
         state.name_lists.retain(|(db, _), _| *db != id);
         state.player_games.remove(&id);
+        if let Some(job) = state.style_jobs.remove(&id) {
+            job.cancel();
+        }
         state.preparations.remove(&id);
         if let Some((_, cancel)) = state.filtered_tree_cancels.remove(&id) {
             cancel.store(true, std::sync::atomic::Ordering::Relaxed);

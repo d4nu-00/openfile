@@ -16,6 +16,7 @@ pub mod lists;
 pub mod maintenance;
 pub mod names;
 pub mod openings;
+pub mod playing_style;
 pub mod prepare;
 pub mod registry;
 pub mod repertoire;
@@ -27,6 +28,7 @@ pub mod settings;
 #[cfg(all(debug_assertions, target_os = "macos"))]
 pub mod snapshot;
 pub mod statistics;
+pub mod style_dimensions;
 pub mod tablebases;
 pub mod trees;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -235,6 +237,10 @@ pub fn run() {
             commands::cancel_dossier,
             commands::tournament_report,
             commands::show_entries,
+            playing_style::playing_style,
+            playing_style::cancel_playing_style,
+            playing_style::validate_playing_style,
+            playing_style::load_style_entry,
             error_report::error_report,
             error_report::cancel_error_report,
             error_report::selection_players,

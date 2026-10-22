@@ -1414,3 +1414,86 @@ export interface RepertoireReport {
   positionsTruncated: boolean;
   cancelled: boolean;
 }
+
+/** Recovered native STYLE_REPORT dimensions with explicit missing dependencies. */
+export interface StyleParams {
+  gameTypes: number;
+  playerIds: number[];
+  white?: boolean | null;
+  yearFrom?: number | null;
+  yearTo?: number | null;
+  minOpponentElo?: number | null;
+  sampleLimit: number;
+}
+export interface StyleProgress {
+  stage: string;
+  done: string;
+  total: string;
+}
+export interface StyleEvidence {
+  ordinal: string;
+  node: number;
+  ply: number;
+  san: string;
+}
+export interface NativeStyleInput {
+  label: string;
+  numerator: number | null;
+  denominator: number | null;
+  value: number | null;
+  reference: number | null;
+}
+export interface NativeStyleDimension {
+  id: string;
+  label: string;
+  description: string;
+  rawScore: number | null;
+  normalized: number | null;
+  normalization: [number, number];
+  grade: string | null;
+  gradeReason: string;
+  status: "available" | "partial" | "insufficient" | "unavailable";
+  unavailableReason: string | null;
+  inputs: NativeStyleInput[];
+  evidence: StyleEvidence[];
+}
+export interface StyleGame {
+  storedMoves?: number;
+  ordinal: string;
+  white: boolean;
+  opponent?: string | null;
+  date?: string | null;
+  result?: string | null;
+  plies: number;
+  cut?: boolean;
+}
+export interface StyleReport {
+  jobId: string;
+  players: { id: number; name?: string | null }[];
+  criteria: StyleParams;
+  database: string;
+  databaseEntries: string;
+  eligible: number;
+  selected: number;
+  analysed: number;
+  whiteGames: number;
+  blackGames: number;
+  deleted: number;
+  filtered: number;
+  skipped: number;
+  cutGames: number;
+  unknownDate?: number;
+  unknownOpponentElo?: number;
+  unknownResult?: number;
+  skippedSetup?: number;
+  skippedUnreadable?: number;
+  skippedUnsupported?: number;
+  skippedPartial?: number;
+  firstDate?: string | null;
+  lastDate?: string | null;
+  tooShort: number;
+  unknownCategory: number;
+  dimensions: NativeStyleDimension[];
+  games: StyleGame[];
+  elapsedMs: number;
+}
