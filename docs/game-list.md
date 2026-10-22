@@ -284,6 +284,25 @@ database. It works only with a .2cbh database opened for editing.
   stays current. Only a paste that would take the journal past 10,000
   entries makes it stale; the status then says it needs rebuilding.
 
+**Export PGN** writes the selected games, or the chosen row, to a `.pgn`
+file. It is in the Copy group of the database ribbon.
+* The games are written in list order, through the current search and sort,
+  one after another with a blank line between, at most 1,000,000 at once.
+  Progress shows in the status bar, with a Cancel link.
+* Before it starts, the user agrees that critical-position marks and training
+  questions, which PGN cannot hold, are left out. The status counts the games
+  affected, and the entries skipped because they are not games or their moves
+  cannot be read.
+* The games are read through a second handle on the database, so the list
+  stays usable.
+* The text goes to a temporary file beside the target and is renamed over it
+  when the export completes. An error or Cancel removes the temporary file and
+  leaves any existing target untouched.
+* The database's own files are protected: a destination that is one of them,
+  or has a database extension, is refused.
+* Engine comments are not separated out; whatever the game holds as text is
+  written.
+
 **Results PGN cannot express.** PGN has no forfeits or "0-0". When a game is
 loaded, a stored result of +:-, =:=, -:+ or 0-0 is kept in a `CBResult` tag.
 The writer stores that code again while the PGN Result still agrees with it,

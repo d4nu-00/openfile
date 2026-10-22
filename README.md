@@ -85,8 +85,8 @@ turns them into a database.
   to search every command. Several games open in tabs, plus board windows and
   layout presets.
 - **Search.** The search mask's game data tab covers players, colours, wins
-  only, tournament, annotator, Elo, year, ECO, length, result, final position
-  and full text. Its Annotations and Medals tabs find texts, symbols, colours,
+  only, tournament, annotator, Elo, year, ECO, length, result, final position,
+  equal final material and full text. Its Annotations and Medals tabs find texts, symbols, colours,
   training, critical positions and medals. **Find Position** and pattern
   searches find every game that reaches a board, faster with a search booster.
 - **Opening tree and reference search.** The Book pane shows games, score,
@@ -113,7 +113,8 @@ turns them into a database.
   analysis and analysis jobs run unattended. Guided game review lets you
   retry critical positions and track which ones need practice. Syzygy
   tablebases answer endgames.
-- **PGN in and out.** Import PGN collections, and export or copy games as PGN.
+- **PGN in and out.** Import PGN collections, and export or copy games as PGN;
+  **Export PGN** writes the selected games of a list to a file.
 - **Private and safe.** A database is only written when you open it for
   editing. The app keeps its indexes (search booster, opening tree, sort
   orders, name lists) in its own data folder, never beside your files.

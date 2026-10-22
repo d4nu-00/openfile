@@ -26,6 +26,7 @@ A filter combines any of these fields; every given field must match:
 | Moves | Inclusive range of the stored main-line move count |
 | Result | Any of 1-0, 0-1, ½-½, 0-0; forfeits count as their PGN result |
 | Mate, Stalem., Check | The main line ends in one of those set; Check means check that is not mate |
+| Final material: Equal pieces, Bishop = Knight, Count pawns | The main line's final position has equal pieces, as defined below |
 | Full Text, NOT | Case-insensitive text in any text annotation, before or after a move, in any language; with NOT, games without it |
 
 Text entries never match. Deleted games match unless the filter excludes them.
@@ -77,6 +78,19 @@ other field:
 * for the final position, its move tree is decoded and the main line's end
   is tested;
 * for text, only its annotation record is read.
+
+**Final material** is the workbench's own design; the reference app's Material
+tab was not traced. In the main line's final position, White and Black must
+have the same number of queens, the same number of rooks and the same number
+of minor pieces.
+* With Bishop = Knight on (the default), bishops and knights are one class,
+  so a bishop against a knight is equal. With it off, bishops and knights are
+  compared separately.
+* Pawns are ignored unless Count pawns is on, which also requires equal pawn
+  counts. Kings are always one each.
+* The criterion is tested in the same pass as Mate, Stalem. and Check: the
+  moves are decoded once, only for games that passed the other fields, and
+  a game that cannot be decoded never matches.
 
 Two things were not traced: whether the reference app reads the main line's end or a
 stored flag, and whether its Check includes mate. The workbench's choices are
