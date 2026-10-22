@@ -11,6 +11,8 @@ import type {
   SearchMode,
   InstantParams,
   InstantProgress,
+  CentipawnListProgress,
+  CentipawnListReport,
   DocumentResponse,
   PgnCollectionResponse,
   SaveResponse,
@@ -878,6 +880,31 @@ export const backend = {
     });
   },
   cancelInstantAnalysis: () => invoke<void>("cancel_instant_analysis"),
+  /** Centipawn Analysis of the chosen rows of a 2CBH opened for editing. */
+  centipawnList: (
+    databaseId: string,
+    ranges: { start: string; end: string }[],
+    params: CentipawnParams,
+    onProgress: (p: CentipawnListProgress) => void,
+  ) => {
+    const events = new Channel<CentipawnListProgress>();
+    events.onmessage = onProgress;
+    return invoke<CentipawnListReport>("centipawn_list", {
+      databaseId,
+      ranges,
+      params,
+      events,
+    });
+  },
+  cancelCentipawnList: () => invoke<void>("cancel_centipawn_list"),
+  chooseCsv: (name: string) =>
+    save({
+      title: "Save the player statistics",
+      defaultPath: name,
+      filters: [{ name: "CSV", extensions: ["csv"] }],
+    }),
+  saveCsv: (path: string, text: string) =>
+    invoke<void>("save_csv", { path, text }),
   cancelBlunderCheck: (documentId: string) =>
     invoke<void>("cancel_blunder_check", { documentId }),
   /** Deep Analysis of one position; the tree comes back as lines. */

@@ -126,6 +126,42 @@ export interface ProfilePoint {
   /** Instant analysis's pass, or a stored depth. */
   depth: number;
 }
+/** Centipawn Analysis of the selected games of a list (docs/centipawn-analysis.md). */
+export interface CentipawnPlayerGame {
+  opponent: string;
+  opponentElo: number;
+  halfPoints?: number | null;
+  value: number;
+  /** × 100 */
+  weight: number;
+}
+export interface CentipawnPlayerRow {
+  name: string;
+  elo: number;
+  perform?: number | null;
+  points: number;
+  games: CentipawnPlayerGame[];
+  weightedAverage?: number | null;
+}
+export interface CentipawnListReport {
+  cancelled: boolean;
+  error?: string | null;
+  games: number;
+  analysed: number;
+  replaced: number;
+  skippedCount: number;
+  skipped: { ordinal: string; reason: string }[];
+  millisPerMove: number;
+  players: CentipawnPlayerRow[];
+  csv: string;
+}
+export interface CentipawnListProgress {
+  game: number;
+  games: number;
+  done: number;
+  total: number;
+  label: string;
+}
 /** Instant Analysis's state while it runs and at the end. */
 export interface InstantProgress {
   revision: string;

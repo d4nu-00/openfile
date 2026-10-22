@@ -1564,6 +1564,38 @@ kbd {
 .modal.centipawn select {
   max-width: 260px;
 }
+.modal.centipawn-list {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 6px;
+  width: min(640px, calc(100vw - 32px));
+  cursor: default;
+  max-height: min(88vh, 900px);
+  overflow-y: auto;
+}
+.modal.centipawn-list .mask-row {
+  flex-wrap: wrap;
+}
+.modal.centipawn-list select {
+  max-width: 260px;
+}
+.modal.centipawn-list .table-scroll {
+  max-height: 320px;
+  overflow: auto;
+}
+.modal.centipawn-list table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.modal.centipawn-list th,
+.modal.centipawn-list td {
+  padding: 2px 6px;
+  text-align: left;
+}
+.modal.centipawn-list .num {
+  text-align: right;
+}
 .centipawn .centipawn-result {
   display: flex;
   flex-direction: column;

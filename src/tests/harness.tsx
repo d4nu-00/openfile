@@ -353,6 +353,21 @@ export function mockApi(
       cancelled: false,
     }),
     cancelInstantAnalysis: vi.fn().mockResolvedValue(undefined),
+    centipawnList: vi.fn().mockResolvedValue({
+      cancelled: false,
+      error: null,
+      games: 0,
+      analysed: 0,
+      replaced: 0,
+      skippedCount: 0,
+      skipped: [],
+      millisPerMove: 750,
+      players: [],
+      csv: "",
+    }),
+    cancelCentipawnList: vi.fn().mockResolvedValue(undefined),
+    chooseCsv: vi.fn().mockResolvedValue("/synthetic/stats.csv"),
+    saveCsv: vi.fn().mockResolvedValue(undefined),
     deepAnalysis: vi
       .fn()
       .mockImplementation(
