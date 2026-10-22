@@ -78,6 +78,31 @@ pub struct AppSettings {
     /// Folders shown beside My Databases.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub folder_shortcuts: Vec<PathBuf>,
+    /// Instant Analysis (the reference app's `V_INSTANT`, `V_IDEPTH`,
+    /// `V_ENDLESS`).
+    pub instant_analysis: InstantSettings,
+    /// The Evaluation Profile pane, and the profile above the notation.
+    pub eval_profile_pane: bool,
+    pub eval_profile_notation: bool,
+}
+
+/// Instant Analysis's settings; see docs/evaluation-profile.md.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct InstantSettings {
+    pub enabled: bool,
+    /// 1 to 6: × 35 ms per position. 3 is the workbench's default.
+    pub level: u8,
+    pub endless: bool,
+}
+impl Default for InstantSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            level: 3,
+            endless: false,
+        }
+    }
 }
 
 impl Default for AppSettings {
@@ -90,6 +115,9 @@ impl Default for AppSettings {
             recent_databases: vec![],
             favorites: vec![],
             folder_shortcuts: vec![],
+            instant_analysis: InstantSettings::default(),
+            eval_profile_pane: false,
+            eval_profile_notation: false,
         }
     }
 }
@@ -143,6 +171,9 @@ impl AppSettings {
             .is_some_and(|d| !d.is_absolute())
         {
             return invalid("The tablebase folder must be an absolute path");
+        }
+        if !(1..=6).contains(&self.instant_analysis.level) {
+            return invalid("The instant analysis level must be from 1 to 6");
         }
         if let Some(id) = &self.default_engine
             && !ids.contains(id)

@@ -196,6 +196,8 @@ pub struct GameView {
     pub tags: std::collections::BTreeMap<String, String>,
     pub start_fen: String,
     pub nodes: Vec<GameNode>,
+    /// The evaluation profile stored with the game, by main-line ply.
+    pub profile: Vec<crate::evaluation_profile::ProfilePoint>,
 }
 impl GameView {
     pub fn from_game(game: &chess_core::Game) -> Result<Self, AppError> {
@@ -263,6 +265,7 @@ impl GameView {
             tags: game.tags.clone(),
             start_fen: game.start_fen.clone(),
             nodes,
+            profile: crate::evaluation_profile::decode(&game.profile),
         })
     }
 }
