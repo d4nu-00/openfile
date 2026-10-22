@@ -1272,3 +1272,27 @@ CI. The tracked-source distribution audit passes for all 661 tracked paths.
   That is about 0.12 s per position against the 105 ms asked. The repeat
   costs the engine's start only. Centipawn Analysis asks 200 ms per position,
   more than the cache holds, so it evaluates afresh.
+
+## Centipawn Analysis of a database list (2026-10-22)
+
+* **Unit tests:**
+  * the performance formula: 75 % against 2400 and 2600 gives 2691; 100 %
+    and 0 % give ±800; unrated opponents and unknown results are left out;
+  * the statistics' map (names with commas made spaces, each player's first
+    rating), the weighted average, the row and game orders, and the CSV's
+    header and row layout.
+* **App tests** use a scratch 2CBH and the mock engine, which loses 34 cp
+  each move:
+  * two games are analysed and replaced, and a short game is skipped;
+  * each player's values are 34, and Points and Perform agree with the hand
+    calculation (2591);
+  * the replaced entry holds the summary text and an evaluation profile;
+  * a run stopped at once writes nothing;
+  * a PGN collection is refused, since only a 2CBH opened for editing can be
+    written.
+* **Frontend test:** the dialog sends the selection and parameters, shows the
+  players, and saves the CSV to the chosen path under the default name.
+* **Real engine:** 20 classic test-database games copied to a scratch 2CBH
+  (deleted after), Stockfish 17 at Seconds 0, release build. 19 games were
+  replaced in 274 s and one, with no moves after its opening, was skipped.
+  The CSV had 37 players.

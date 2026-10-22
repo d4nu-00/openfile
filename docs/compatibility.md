@@ -132,6 +132,11 @@ imports are bounded to 20 MiB/2,000 games/100,000 aggregate nodes by default.
 Missing companions, corrupt records and unsupported records are reported
 separately; an unsupported game is not silently flattened into a partial game.
 
+Centipawn Analysis of a database list writes the reference app's per-player
+CSV columns; its game weights come from the workbench's move weights rather
+than the reference app's engine complexity, and Weighted Av is printed
+unscaled (see [centipawn analysis](centipawn-analysis.md)).
+
 Evaluation profiles (annotation type 0x26) are read from both families and
 written back to 2CBH unchanged. Scores and mates are shown. About 0.2 % of
 recent test-database games carry one. Kind 32 (5 entries in 177 profiles) is
