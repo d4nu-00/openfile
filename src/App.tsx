@@ -522,6 +522,16 @@ export function App({
   }
   /** The best line of the active kibitzer, for the position shown. */
   function bestLine() {
+    // Threat lines start after a null move, and a locked engine's lines
+    // belong to its own position: neither pastes at the current move.
+    const locked = k.current?.locked;
+    if (
+      k.current?.threat ||
+      (locked &&
+        (locked.documentId !== state.document?.documentId ||
+          locked.nodeId !== state.position?.nodeId))
+    )
+      return undefined;
     const lines = k.current?.lines ?? [];
     const line = lines.find((l) => l.multipv === 1) ?? lines[0];
     return line?.rawPv?.length && game ? line : undefined;
@@ -2205,6 +2215,37 @@ export function App({
       run: () => k.lines(-1),
       enabled: !!k.current && !k.current.busy && k.current.multipv > 1,
     },
+    "analyse-threat": {
+      run: () => k.toggleThreat(),
+      enabled: !!k.current?.enabled && !k.current.busy,
+      pressed: !!k.current?.threat,
+    },
+    "next-best": {
+      run: () => k.leaveOutBest("next"),
+      enabled: !!k.current?.enabled && !!k.current.lines.length,
+    },
+    "search-better": {
+      run: () => k.leaveOutBest("better"),
+      enabled: !!k.current?.enabled && !!k.current.lines.length,
+    },
+    "search-clearly-better": {
+      run: () => k.leaveOutBest("clearly"),
+      enabled: !!k.current?.enabled && !!k.current.lines.length,
+    },
+    "lock-engine": {
+      run: () => k.toggleLock(),
+      enabled: !!k.current?.enabled && !!state.document,
+      pressed: !!k.current?.locked,
+    },
+    "goto-lock": {
+      run: () => {
+        const locked = k.current?.locked;
+        if (locked) void w.selectNode(locked.nodeId);
+      },
+      enabled:
+        !!k.current?.locked &&
+        k.current.locked.documentId === state.document?.documentId,
+    },
     "paste-engine-variation": {
       run: () => pasteEngine(true),
       enabled: !busy && !!bestLine(),
@@ -2425,8 +2466,15 @@ export function App({
   useEffect(() => {
     if (!startupCommand) return;
     setStartupCommand(undefined);
+    // "a,b" runs a, then b with the bindings as they are after a.
+    const [first, ...rest] = startupCommand.split(",");
     void (async () => {
-      await bindings[startupCommand]?.run();
+      await bindings[first]?.run();
+      if (rest.length) {
+        await new Promise((r) => setTimeout(r, 2000));
+        setStartupCommand(rest.join(","));
+        return;
+      }
       // Let the result render before the picture is taken.
       await new Promise((r) => setTimeout(r, 500));
       await api.startupShown().catch(() => {});

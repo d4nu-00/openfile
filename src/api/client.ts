@@ -8,6 +8,7 @@ import type {
   StyleReport,
   EngineResponse,
   EngineEventDto,
+  SearchMode,
   DocumentResponse,
   PgnCollectionResponse,
   SaveResponse,
@@ -111,6 +112,7 @@ export const backend = {
     nodeId: number,
     requestId: string,
     onEvent: (event: EngineEventDto) => void,
+    mode?: SearchMode,
   ) => {
     const events = new Channel<EngineEventDto>();
     events.onmessage = onEvent;
@@ -120,6 +122,7 @@ export const backend = {
         documentId,
         nodeId,
         requestId,
+        mode: mode ?? null,
         events,
       });
     } catch (e) {

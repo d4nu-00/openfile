@@ -1392,6 +1392,30 @@ kbd {
   min-width: 1.5em;
   text-align: center;
 }
+.engine-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 2px 8px;
+}
+.engine-mode button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  padding: 1px 6px;
+}
+.engine-mode button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+.engine-badge {
+  padding: 0 6px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: var(--accent-fg);
+}
 .kibitzer + .kibitzer {
   border-top: 1px solid var(--pane-border);
 }
