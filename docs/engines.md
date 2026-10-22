@@ -252,6 +252,26 @@ illegal one. App tests cover the null move, a refused threat in check, and
 the moves left to search. Frontend tests cover Next Best, Search Better's
 verdict, the threat toggle and the lock.
 
+## Engine analysis history
+
+Status: implemented on branch `engine-history` (2026-10-22). This is an
+OpenFile feature; the reference app's "Display old moves (Next Best)" (3205)
+only shows the moves Next Best left out.
+
+* **History** in a kibitzer pane switches between the current lines and the
+  engine's history for the position. The history keeps one row per choice:
+  each time the best line's first move changes, a row starts. It holds the
+  search time when the engine chose that move, and the latest depth, score
+  and line while it stayed best. The latest choice comes first.
+* The time is the engine's UCI `time`, now read from its `info` lines; an
+  engine that sends none gets the time since the analysis started.
+* A new position, a threat, Next Best or a restart starts a new history. At
+  most 200 choices are kept, the oldest dropped first.
+
+Tests: the protocol test reads `time`; a frontend test sends four lines with
+two choices and checks the rows, their order and the reset on a new
+position.
+
 ## Tactical Analysis (Blunder Check)
 
 ### What the reference app does
