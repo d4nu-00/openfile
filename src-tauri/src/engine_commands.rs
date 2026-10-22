@@ -29,6 +29,9 @@ pub struct InfoDto {
     pub pv: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw_pv: Option<Vec<String>>,
+    /// Milliseconds the engine has searched.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time: Option<u64>,
     pub diagnostics: Vec<String>,
 }
 pub fn render_info(info: AnalysisInfo, fen: &str, turn: &str) -> InfoDto {
@@ -40,6 +43,7 @@ pub fn render_info(info: AnalysisInfo, fen: &str, turn: &str) -> InfoDto {
         root_turn: turn.into(),
         pv: info.pv.as_ref().map(|_| vec![]),
         raw_pv: info.pv,
+        time: info.time,
         diagnostics: vec![],
     };
     let mut position = match chess_core::model::parse_position(fen) {

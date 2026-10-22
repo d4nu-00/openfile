@@ -151,3 +151,11 @@ fn position_commands_validate_fen_and_every_move() {
     assert!(position_command(&format!("{fen}\nquit"), &[]).is_err());
     assert!(position_command(fen, &["e2e4\nquit".into()]).is_err());
 }
+#[test]
+fn search_time_is_read_in_milliseconds() {
+    let i = info("info depth 20 seldepth 28 time 1534 nodes 99 score cp 12 pv e2e4");
+    assert_eq!(i.time, Some(1534));
+    assert_eq!(i.depth, Some(20));
+    assert_eq!(info("info depth 1 pv e2e4").time, None);
+    assert!(parse_line("info time soon").is_err());
+}
