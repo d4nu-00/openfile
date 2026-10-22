@@ -319,7 +319,10 @@ or a guarantee against a malicious writer preserving all file metadata.
 
 An exclusive atomic directory rename publishes the whole result: macOS
 `renamex_np(RENAME_EXCL)`, Linux `renameat2(RENAME_NOREPLACE)`, or Windows
-directory rename, which refuses an existing destination. Existing files,
+[`MoveFileW`](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefilew),
+whose documented target must be absent. General Rust directory rename is not
+used on Windows: CI demonstrated that it could replace an empty destination
+created during verification. Existing files,
 directories and symlinks are never replaced. Source/destination overlap is
 refused after resolving the parent directory. A destination appearing during
 verification also wins the race and is preserved.

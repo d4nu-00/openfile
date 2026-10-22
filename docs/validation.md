@@ -1259,7 +1259,12 @@ Independent focused review found three issues, reproduced and fixed with
 regressions: a lowered declared count hiding physically complete records,
 Stop unavailable before first progress, and no keyboard tab stop after
 changing groups. Follow-up review confirmed the fixes and found no further
-actionable issue. Verification's bounded name-table scan can delay Stop;
+actionable issue. Subsequent Windows CI caught another defect: general
+directory rename replaced an empty destination appearing during verification.
+Windows publication now explicitly calls `MoveFileW`, requiring an absent
+target. The original failing end-to-end regression is unchanged; a direct
+publication test also covers files, empty folders and populated folders.
+Verification's bounded name-table scan can delay Stop;
 resource limits and filesystem-durability qualifications are documented.
 
 **Actual native acceptance:** a separately identified Tauri app with isolated
@@ -1295,7 +1300,7 @@ RSS. These warm-cache examples exclude native WebView memory and do not measure
 worst-case recovery allocations. Full limits and disk-growth caveats are in
 maintenance.
 
-Final local checks passed: **359 Rust tests** (including two isolated child
+Final local checks passed: **360 Rust tests** (including two isolated child
 helpers), **202 frontend tests / 40 files**, Cargo formatting, strict
 workspace/all-target Clippy, TypeScript, changed-source Prettier, production
 frontend build, locked native release build and embedded-frontend native
