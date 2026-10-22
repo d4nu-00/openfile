@@ -310,3 +310,58 @@ fn evaluation_profiles_write_back_unchanged() {
     apply(&mut back, parse_new(&payload).unwrap(), Order::Line);
     assert_eq!(back.profile, PROFILE);
 }
+
+#[test]
+fn move_extras_read_from_both_layouts_and_write_back() {
+    let medal = 0x0000_1008u32.to_be_bytes();
+    let time = 0x0000_2c00u32.to_be_bytes();
+    let eval = [35u8, 0, 0, 0, 22, 0];
+    let classic = classic_record(
+        5,
+        &[
+            (0, 0x06, &[]),
+            (0, 0x22, &medal),
+            (0, 0x07, &time),
+            (1, 0x14, &[3]),
+            (1, 0x15, &[3, 37]),
+            (2, 0x21, &eval),
+        ],
+    );
+    let mut from_classic = game();
+    let (status, notes) = apply(
+        &mut from_classic,
+        parse_classic(&classic, 5).unwrap(),
+        Order::Stream,
+    );
+    assert_eq!(status, DataStatus::Available, "{notes:?}");
+    // Stream order: e4, e5, d4.
+    let e4 = from_classic.nodes[1].extras.as_ref().unwrap();
+    assert!(e4.diagram);
+    assert_eq!(e4.medal, 0x1008);
+    assert_eq!(e4.move_time_text().as_deref(), Some("0:00:44"));
+    let e5 = from_classic.nodes[2].extras.as_ref().unwrap();
+    assert_eq!(
+        (e5.pawn_structure, e5.piece_path.clone()),
+        (Some(3), vec![3, 37])
+    );
+    assert_eq!(
+        from_classic.nodes[3]
+            .extras
+            .as_ref()
+            .unwrap()
+            .evaluation_fields(),
+        Some((35, 0, 22))
+    );
+    // The 2CBH writer writes them back; read again, they are the same.
+    let (payload, omitted) = cbh_reader::v2::encode::encode_annotations(&from_classic);
+    assert!(omitted.notes.is_empty());
+    let mut back = game();
+    let (status, _) = apply(&mut back, parse_new(&payload).unwrap(), Order::Line);
+    assert_eq!(status, DataStatus::Available);
+    for n in 1..4 {
+        assert_eq!(
+            back.nodes[n].extras, from_classic.nodes[n].extras,
+            "node {n}"
+        );
+    }
+}
