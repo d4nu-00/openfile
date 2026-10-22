@@ -443,6 +443,25 @@ pub fn encode_annotations(game: &Game) -> (Vec<u8>, Omitted) {
             training(t, &mut entries, &mut omitted);
             count += 1;
         }
+        if position == -1 && !game.profile.is_empty() {
+            if game.profile.len() > crate::annotations::PROFILE_ENTRIES {
+                omitted.notes.push(format!(
+                    "An evaluation profile of {} entries exceeds 2,001",
+                    game.profile.len()
+                ));
+            } else {
+                // Presence byte, then the sub-block: LE32 length, LE16 count
+                // and the packed evaluations (`0x140c4ec00`).
+                entries.extend(crate::annotations::EVAL_PROFILE.to_le_bytes());
+                entries.push(1);
+                entries.extend(((2 + 4 * game.profile.len()) as u32).to_le_bytes());
+                entries.extend((game.profile.len() as u16).to_le_bytes());
+                for value in &game.profile {
+                    entries.extend(value.to_le_bytes());
+                }
+                count += 1;
+            }
+        }
         match node.critical {
             Some(kind @ 1..=3) => {
                 entries.extend(CRITICAL.to_le_bytes());
