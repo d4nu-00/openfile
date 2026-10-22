@@ -197,6 +197,26 @@ export function mockApi(
           n.training = edit.training ?? undefined;
           n.trainingMoves = edit.training ? edit.moves : undefined;
           revision++;
+        } else if (edit.kind === "setExtra") {
+          const n = game.nodes[edit.node];
+          const x = n.extras ?? {
+            medal: 0,
+            diagram: false,
+            pawnStructure: false,
+          };
+          const e = edit.extra;
+          if (e.kind === "medal") x.medal = e.bits;
+          else if (e.kind === "diagram") x.diagram = e.on;
+          else if (e.kind === "pawnStructure") x.pawnStructure = e.on;
+          else if (e.kind === "piecePath")
+            x.piecePath = e.on ? n.uci?.slice(2, 4) : undefined;
+          else if (e.kind === "moveTime")
+            x.moveTime =
+              e.time === null
+                ? undefined
+                : `${e.time >>> 24}:${String((e.time >>> 16) & 255).padStart(2, "0")}:${String((e.time >>> 8) & 255).padStart(2, "0")}`;
+          n.extras = x;
+          revision++;
         } else if (edit.kind === "setMarks") {
           game.nodes[edit.node].squares = edit.squares;
           game.nodes[edit.node].arrows = edit.arrows;
