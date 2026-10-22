@@ -347,6 +347,7 @@ impl Registry {
                 }
                 let request = AnalysisRequest {
                     request_id: format!("blunder-{i}"),
+                    search_moves: Vec::new(),
                     start_fen: game.start_fen.clone(),
                     history: moves[..i].to_vec(),
                     root_turn: if positions[i].turn().is_white() {
