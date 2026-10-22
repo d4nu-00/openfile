@@ -366,6 +366,8 @@ export interface AnalysisInfoDto {
   rootTurn: Color;
   pv?: string[];
   rawPv?: string[];
+  /** Milliseconds the engine has searched (UCI `time`). */
+  time?: number;
   diagnostics: string[];
 }
 /**

@@ -819,3 +819,48 @@ it("analyses the threat and keeps a locked engine on its position", async () => 
     ui.api.startAnalysis.mock.calls[2][2],
   );
 });
+it("keeps the engine's choices as it revises them", async () => {
+  const ui = renderWorkbench();
+  await start(ui);
+  const args = ui.api.startAnalysis.mock.calls[0];
+  const send = (
+    depth: number,
+    cp: number,
+    uci: string,
+    san: string,
+    time?: number,
+  ) =>
+    act(() =>
+      args[4]({
+        engineId: args[0],
+        requestId: args[3],
+        payload: {
+          kind: "info",
+          depth,
+          multipv: 1,
+          score: { kind: "cp", value: cp },
+          rootTurn: "white",
+          pv: [san, "e5"],
+          rawPv: [uci, "e7e5"],
+          time,
+          diagnostics: [],
+        },
+      }),
+    );
+  send(10, 20, "e2e4", "e4", 100);
+  send(12, 25, "e2e4", "e4", 400);
+  send(14, 31, "d2d4", "d4", 2500);
+  send(15, 28, "d2d4", "d4", 61_000);
+  await ui.user.click(ui.getByRole("button", { name: /History/ }));
+  const table = await ui.findByRole("table", { name: "Engine history" });
+  const rows = within(table).getAllByRole("row").slice(1);
+  // Latest choice first, with its latest depth and score.
+  expect(rows).toHaveLength(2);
+  expect(rows[0]).toHaveTextContent("2.5 s15+0.28d4 e5");
+  expect(rows[1]).toHaveTextContent("0.1 s12+0.25e4 e5");
+  // Another position starts a new history.
+  await ui.user.click(ui.getByRole("button", { name: "e4" }));
+  await waitFor(() =>
+    expect(within(table).getByText("No choice yet.")).toBeVisible(),
+  );
+});
