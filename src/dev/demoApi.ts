@@ -556,6 +556,17 @@ export function demoApi(): WorkbenchApi {
       };
     },
     cancelCentipawnList: async () => {},
+    findNovelty: async () => ({
+      // Browser preview: the sample game's 9...b5 is new.
+      novelty: { ply: 18, node: 18 },
+      knownPly: 17,
+      total: 0,
+      games: [],
+      queries: 18,
+      notSearched: false,
+      cancelled: false,
+    }),
+    cancelFindNovelty: async () => {},
     chooseCsv: async () => null,
     saveCsv: async () => {},
     deepAnalysis: async (_doc, params) => ({

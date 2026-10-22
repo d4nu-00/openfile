@@ -12,6 +12,7 @@ import type {
   InstantParams,
   InstantProgress,
   CentipawnListProgress,
+  NoveltyReport,
   CentipawnListReport,
   DocumentResponse,
   PgnCollectionResponse,
@@ -897,6 +898,10 @@ export const backend = {
     });
   },
   cancelCentipawnList: () => invoke<void>("cancel_centipawn_list"),
+  /** Find Novelty of a document against a database. */
+  findNovelty: (documentId: string, databaseId: string) =>
+    invoke<NoveltyReport>("find_novelty", { documentId, databaseId }),
+  cancelFindNovelty: () => invoke<void>("cancel_find_novelty"),
   chooseCsv: (name: string) =>
     save({
       title: "Save the player statistics",
