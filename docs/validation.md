@@ -1335,3 +1335,17 @@ CI. The tracked-source distribution audit passes for all 661 tracked paths.
   * frontend tests: medal names, time packing, the notation marks, the
     board's pawn squares and path arrows, and the Set Medal, Move Time and
     Insert Diagram edits.
+
+## Find Novelty (2026-10-22)
+
+* App test on a scratch 2CBH (two reference games): a new line's novelty at
+  ply 4 after 5 questions, with both games listed. A game of the database
+  finds its novelty at ply 5, its own entry left out. A line other games
+  cover has none, and a stopped search finds nothing.
+* Frontend tests: Shift+F6 sends the document and database, shows the
+  novelty, the count and the first games, selects the novelty, and reports a
+  database that cannot be searched move by move.
+* Classic test database with its opening tree, release build, read-only,
+  warm: 200 random entries in 19.3 s (about 23 questions a game). A halving
+  search would have given the same novelty for 193 of the 200; the other 7
+  return to the known games by a transposition.
