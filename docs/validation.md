@@ -1240,3 +1240,35 @@ CI. The tracked-source distribution audit passes for all 661 tracked paths.
   `go depth 14 searchmoves g8f6 b8c6` chose b8c6, one of the allowed moves.
   A threat position (a null move with White to move again, the queen on h5
   and the bishop on c4) gave Qxf7 mate as its best move.
+
+## Evaluation profile and instant analysis (2026-10-22)
+
+* **Format.** Read-only and warm, with a probe through the reader's `load`:
+  * the classic and 2CBH families of the test database decode the same 177
+    profiles for entries 1–24,783, digest for digest. Every profile sits at
+    the game's start, and every 2CBA sub-block is exactly 2 + 4n bytes long;
+  * 121 profiles have one entry per main-line ply plus the start. 48 are
+    shorter and 8 longer;
+  * mates are positive in 110 of the mate entries of 1–0 games, and negative
+    in 80 of the mate entries of 0–1 games, so the scores are from White's
+    side;
+  * classic entries 11,000,001–11,100,000 hold 210 profiles, all decoded and
+    none reported as unsupported, read in 20.5 s.
+* **Tests.** Reader tests cover both layouts, the count limit, a wrong length
+  and an absent profile. The 2CBH writer round-trips a profile. App tests run
+  instant analysis on the mock engine: every ply is filled, a second run comes
+  from the cache, and a cancelled run evaluates nothing. Frontend tests cover
+  the critical-move rule, the instant analysis parameters, progress, Stop,
+  jumping to a critical move, and the profile above the notation.
+* **Real engine.** Release build, Stockfish 17, level 3 (105 ms per
+  position), the classic test database read-only:
+
+  | Game | Positions | Fresh | From the cache | Centipawn Analysis at 0 s |
+  |---|---|---|---|---|
+  | entry 144 | 92 | 11.1 s | 0.20 s | 19.7 s |
+  | entry 731 | 58 | 6.9 s | 0.22 s | 8.3 s |
+  | entry 11,000,000 | 74 | 8.5 s | 0.21 s | 13.6 s |
+
+  That is about 0.12 s per position against the 105 ms asked. The repeat
+  costs the engine's start only. Centipawn Analysis asks 200 ms per position,
+  more than the cache holds, so it evaluates afresh.
