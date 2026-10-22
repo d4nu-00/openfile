@@ -2983,3 +2983,33 @@ kbd {
     grid-template-columns: 1fr;
   }
 }
+
+.style-game-types {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.2rem;
+  align-items: center;
+}
+.style-game-types > label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.style-game-types > p {
+  flex-basis: 100%;
+}
+.style-availability {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.style-inputs {
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.style-inputs td:first-child {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}

@@ -219,6 +219,7 @@ impl NameIndex {
             return Ok(TournamentText {
                 event: missing(),
                 site: missing(),
+                flags: None,
             });
         };
         let mut fields = Fields {
@@ -227,7 +228,18 @@ impl NameIndex {
         };
         let site = fields.text()?;
         let event = fields.text()?;
-        let v = TournamentText { event, site };
+        // The full tournament stream stores LE32 date, then LE16 flags.
+        // Respect the declared payload boundary: old names-only records may
+        // still have zero slot padding, which is not verified metadata.
+        let flags = bytes.get(fields.at..fields.at + 6).map(|tail| {
+            let raw = u16::from_le_bytes(tail[4..6].try_into().unwrap());
+            if raw & 31 == 5 {
+                (raw & !31).wrapping_add(0x103)
+            } else {
+                raw
+            }
+        });
+        let v = TournamentText { event, site, flags };
         self.cache
             .put((TOURNAMENT, id), Cached::Tournament(v.clone()));
         Ok(v)

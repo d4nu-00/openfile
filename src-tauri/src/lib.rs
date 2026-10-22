@@ -28,6 +28,7 @@ pub mod settings;
 #[cfg(all(debug_assertions, target_os = "macos"))]
 pub mod snapshot;
 pub mod statistics;
+pub mod style_dimensions;
 pub mod tablebases;
 pub mod trees;
 use std::sync::atomic::{AtomicBool, Ordering};

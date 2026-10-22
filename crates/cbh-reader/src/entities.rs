@@ -9,6 +9,8 @@ pub struct EntityText {
 pub struct TournamentText {
     pub event: EntityText,
     pub site: EntityText,
+    /// Verified tournament flags; absent when metadata is unavailable.
+    pub flags: Option<u16>,
 }
 /// A source: title, publisher and publication date (`YYYY.MM.DD`).
 #[derive(Clone, Debug)]
@@ -300,12 +302,14 @@ impl EntityTables {
             return Ok(TournamentText {
                 event: missing(),
                 site: missing(),
+                flags: None,
             });
         };
         let row = table.record(id)?;
         let v = TournamentText {
             event: field(&row[9..49]),
             site: field(&row[49..79]),
+            flags: Some(u16::from_le_bytes(row[83..85].try_into().unwrap())),
         };
         self.cache
             .put((TOURNAMENT, id), Cached::Tournament(v.clone()));

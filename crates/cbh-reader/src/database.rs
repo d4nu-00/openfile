@@ -450,6 +450,13 @@ impl Database {
         let t = self.entities.tournament(id)?;
         Ok((t.event.text, t.site.text))
     }
+    /// Tournament names and verified flags, using the bounded name cache.
+    pub fn tournament_metadata(
+        &mut self,
+        id: u32,
+    ) -> Result<crate::entities::TournamentText, CbhError> {
+        self.entities.tournament(id)
+    }
     pub(crate) fn format(&self) -> DatabaseFormat {
         self.format
     }

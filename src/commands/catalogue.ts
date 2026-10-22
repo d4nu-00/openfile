@@ -432,7 +432,7 @@ const list: CommandMeta[] = [
   {
     id: "style-report",
     label: "Style report",
-    tip: "Analyse the selected player’s recorded playing style with supporting games",
+    tip: "Show style dimensions with available scores and supporting games",
     icon: Gauge,
     views: both,
   },

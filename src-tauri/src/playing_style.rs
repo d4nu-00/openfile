@@ -1,10 +1,15 @@
-//! Independent descriptions of recorded board behaviour, not hidden reference scores.
-use crate::{commands::AppError, registry::Registry};
+//! Source-bound sampling for independently implemented recovered STYLE_REPORT calculations.
+pub use crate::style_dimensions::NativeEvidence as StyleEvidence;
+use crate::{
+    commands::AppError,
+    registry::Registry,
+    style_dimensions::{NativeDimension, NativeInput, NativeResults, dimensions},
+};
 pub use cbh_reader::style_selection::StyleCriteria as StyleParams;
 use cbh_reader::{DataStatus, source::SourceFile};
 use chess_core::Game;
 use serde::Serialize;
-use shakmaty::{Chess, Color, Move, Position, Role, san::SanPlus, uci::UciMove};
+use shakmaty::{Chess, Position, san::SanPlus, uci::UciMove};
 use std::{
     sync::{
         Arc,
@@ -13,7 +18,7 @@ use std::{
     time::Instant,
 };
 pub const MAX_PLIES: usize = 400;
-const MAX_EVIDENCE: usize = 8;
+const MAX_EVIDENCE: usize = 7;
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StyleProgress {
@@ -46,36 +51,6 @@ pub struct StylePlayer {
     pub id: u32,
     pub name: Option<String>,
 }
-#[derive(Debug, Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StyleRate {
-    pub numerator: u64,
-    pub denominator: u64,
-    pub value: Option<f64>,
-}
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StyleEvidence {
-    pub ordinal: String,
-    pub node: u32,
-    pub ply: u32,
-    pub san: String,
-}
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StyleMetric {
-    pub id: String,
-    pub label: String,
-    pub description: String,
-    pub numerator: u64,
-    pub denominator: u64,
-    pub value: Option<f64>,
-    pub minimum: u64,
-    pub status: String,
-    pub white: StyleRate,
-    pub black: StyleRate,
-    pub evidence: Vec<StyleEvidence>,
-}
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StyleGame {
@@ -86,6 +61,7 @@ pub struct StyleGame {
     pub result: Option<String>,
     pub plies: u32,
     pub cut: bool,
+    pub stored_moves: u8,
 }
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -102,9 +78,11 @@ pub struct StyleReport {
     pub black_games: u32,
     pub deleted: u64,
     pub filtered: u64,
+    pub too_short: u64,
     pub unknown_date: u64,
     pub unknown_opponent_elo: u64,
     pub unknown_result: u64,
+    pub unknown_category: u64,
     pub skipped: u32,
     pub skipped_setup: u32,
     pub skipped_unreadable: u32,
@@ -113,7 +91,7 @@ pub struct StyleReport {
     pub cut_games: u32,
     pub first_date: Option<String>,
     pub last_date: Option<String>,
-    pub metrics: Vec<StyleMetric>,
+    pub dimensions: Vec<NativeDimension>,
     pub games: Vec<StyleGame>,
     pub elapsed_ms: u64,
 }
@@ -128,102 +106,20 @@ impl StyleJob {
         self.cancel.store(true, Ordering::Relaxed);
     }
 }
-fn percent(n: u64, d: u64) -> Option<f64> {
-    (d > 0).then(|| 100.0 * n as f64 / d as f64)
-}
-impl StyleRate {
-    fn add(&mut self, n: u64, d: u64) {
-        self.numerator += n;
-        self.denominator += d;
-        self.value = percent(self.numerator, self.denominator);
-    }
-}
-impl StyleMetric {
-    fn add(&mut self, white: bool, o: &Observation, ordinal: u64) {
-        self.numerator += o.n;
-        self.denominator += o.d;
-        self.value = percent(self.numerator, self.denominator);
-        if white {
-            &mut self.white
-        } else {
-            &mut self.black
-        }
-        .add(o.n, o.d);
-        self.status = if self.denominator == 0 {
-            "none"
-        } else if self.denominator < self.minimum {
-            "small"
-        } else {
-            "ok"
-        }
-        .into();
-        if self.evidence.len() < MAX_EVIDENCE
-            && let Some((node, ply, san)) = &o.evidence
-        {
-            self.evidence.push(StyleEvidence {
-                ordinal: ordinal.to_string(),
-                node: *node,
-                ply: *ply,
-                san: san.clone(),
-            });
-        }
-    }
-}
-fn metrics() -> Vec<StyleMetric> {
-    [
-        ("checks","Checking moves","Checking moves / all observed player moves (including mate).",100),
-        ("captures","Capturing moves","Capturing moves / all observed player moves, including en passant. Captures do not establish exchanges or aggression.",100),
-        ("earlyQueen","Early queen move","Games with a queen move in the first 10 own moves / games reaching 10 own moves or already showing the event. Short unobserved windows are excluded.",20),
-        ("kingsideCastle","Kingside castling by move 20","Games castled kingside within 20 own moves / games reaching 20 own moves or already castled within that window.",20),
-        ("queensideCastle","Queenside castling by move 20","Games castled queenside within 20 own moves / games reaching 20 own moves or already castled within that window.",20),
-        ("oppositeCastle","Opposite-side castling","Games castled on opposite sides / games where both players' castling is observed.",20),
-        ("queenless30","Queenless by move 30","Games with neither queen present by ply 60 / games reaching ply 60 or showing the event earlier. Promoted queens count.",20),
-        ("imbalance20","Material imbalance at move 20","Games with different White/Black non-pawn piece inventories at ply 40 / games reaching ply 40. Counts piece types, including promoted pieces.",20),
-        ("sustainedDeficit","Sustained material deficit","Games with a material deficit of at least 3 points after an own move and still at least 3 before the next own move / complete observed games or games showing the event before the replay cap. P=1,N=B=3,R=5,Q=9. This does not establish an intentional or sound sacrifice.",20),
-        ("endgame","Endgame reached","Games where both sides have at most 13 non-pawn material points / complete observed games or games showing the event before the replay cap. N=B=3,R=5,Q=9; kings excluded.",20),
-    ].into_iter().map(|(id,label,description,minimum)|StyleMetric{id:id.into(),label:label.into(),description:description.into(),numerator:0,denominator:0,value:None,minimum,status:"none".into(),white:StyleRate::default(),black:StyleRate::default(),evidence:vec![]}).collect()
-}
-#[derive(Default, Clone)]
-struct Observation {
-    n: u64,
-    d: u64,
-    evidence: Option<(u32, u32, String)>,
-}
-impl Observation {
-    fn event(&mut self, node: u32, ply: u32, san: &str) {
-        self.n += 1;
-        if self.evidence.is_none() {
-            self.evidence = Some((node, ply, san.into()));
-        }
-    }
-}
 struct Replay {
-    obs: Vec<Observation>,
     plies: u32,
     cut: bool,
+    last_node: u32,
+    last_san: String,
 }
-fn inventory(p: &Chess, c: Color) -> [u32; 4] {
-    [Role::Knight, Role::Bishop, Role::Rook, Role::Queen]
-        .map(|r| (p.board().by_color(c) & p.board().by_role(r)).count() as u32)
-}
-fn points(p: &Chess, c: Color, pawns: bool) -> i32 {
-    let a = inventory(p, c);
-    (a[0] * 3 + a[1] * 3 + a[2] * 5 + a[3] * 9) as i32
-        + if pawns {
-            (p.board().by_color(c) & p.board().by_role(Role::Pawn)).count() as i32
-        } else {
-            0
-        }
-}
-/// Replay only legal main-line plies. Original IDs navigate in the game viewer.
-fn replay(game: &Game, white: bool, cancel: &AtomicBool) -> Result<Option<Replay>, ()> {
+
+/// Validate only legal main-line plies and retain original node IDs. Result
+/// dimensions describe the whole recorded game, so their supporting link opens
+/// the last observed position; a capped game is explicitly marked as cut.
+fn replay(game: &Game, cancel: &AtomicBool) -> Result<Option<Replay>, ()> {
     let mut pos = Chess::default();
     let mut node = 0u32;
-    let mut own = 0u32;
-    let mut obs = vec![Observation::default(); 10];
-    let mut castles: [Option<bool>; 2] = [None, None];
-    let mut early_castle = None;
-    let mut prev_deficit = false;
+    let mut last_san = String::new();
     let mut plies = 0;
     for ply in 1..=MAX_PLIES {
         if cancel.load(Ordering::Relaxed) {
@@ -237,83 +133,35 @@ fn replay(game: &Game, white: bool, cancel: &AtomicBool) -> Result<Option<Replay
         if child.id != next || child.parent != Some(node) || next == 0 {
             return Err(());
         }
-        let uci = child.uci.as_deref().ok_or(())?;
-        let m = UciMove::from_ascii(uci.as_bytes())
+        let m = UciMove::from_ascii(child.uci.as_deref().ok_or(())?.as_bytes())
             .map_err(|_| ())?
             .to_move(&pos)
             .map_err(|_| ())?;
-        let mover = pos.turn();
-        let is_own = mover.is_white() == white;
-        let san = SanPlus::from_move(pos.clone(), m).to_string();
-        if let Move::Castle { king, rook } = m {
-            let kingside = rook.file() > king.file();
-            castles[usize::from(!mover.is_white())] = Some(kingside);
-            if is_own && own < 20 {
-                early_castle = Some(kingside);
-                obs[if kingside { 3 } else { 4 }].event(next, ply as u32, &san);
-            }
-            if let [Some(w), Some(b)] = castles
-                && w != b
-                && obs[5].n == 0
-            {
-                obs[5].event(next, ply as u32, &san);
-            }
-        }
+        last_san = SanPlus::from_move(pos.clone(), m).to_string();
         pos.play_unchecked(m);
-        if !is_own
-            && prev_deficit
-            && obs[8].n == 0
-            && points(&pos, !mover, true) - points(&pos, mover, true) <= -3
-        {
-            obs[8].event(next, ply as u32, &san);
-        }
-        if is_own {
-            own += 1;
-            obs[0].d += 1;
-            obs[1].d += 1;
-            if pos.is_check() {
-                obs[0].event(next, ply as u32, &san);
-            }
-            if m.is_capture() {
-                obs[1].event(next, ply as u32, &san);
-            }
-            if own <= 10 && m.role() == Role::Queen && obs[2].n == 0 {
-                obs[2].event(next, ply as u32, &san);
-            }
-            prev_deficit = points(&pos, mover, true) - points(&pos, !mover, true) <= -3;
-        }
-        if ply <= 60 && pos.board().by_role(Role::Queen).is_empty() && obs[6].n == 0 {
-            obs[6].event(next, ply as u32, &san);
-        }
-        if ply == 40 {
-            obs[7].d = 1;
-            if inventory(&pos, Color::White) != inventory(&pos, Color::Black) {
-                obs[7].event(next, ply as u32, &san);
-            }
-        }
-        if points(&pos, Color::White, false) <= 13
-            && points(&pos, Color::Black, false) <= 13
-            && obs[9].n == 0
-        {
-            obs[9].event(next, ply as u32, &san);
-        }
-        plies = ply as u32;
         node = next;
-    }
-    if plies == 0 {
-        return Err(());
+        plies = ply as u32;
     }
     let cut = !game.nodes.get(node as usize).ok_or(())?.children.is_empty();
-    obs[2].d = u64::from(own >= 10 || obs[2].n > 0);
-    obs[3].d = u64::from(own >= 20 || early_castle.is_some());
-    obs[4].d = obs[3].d;
-    obs[5].d = u64::from(castles.iter().all(Option::is_some));
-    obs[6].d = u64::from(plies >= 60 || obs[6].n > 0);
-    for i in [8, 9] {
-        obs[i].d = u64::from(!cut || obs[i].n > 0);
-    }
-    Ok(Some(Replay { obs, plies, cut }))
+    Ok(Some(Replay {
+        plies,
+        cut,
+        last_node: node,
+        last_san,
+    }))
 }
+
+fn record_result(results: &mut NativeResults, code: u8, white: bool) {
+    results.games += 1;
+    match code {
+        1 | 5 => results.draws += 1,
+        0 | 4 if !white => results.wins += 1,
+        2 | 6 if white => results.wins += 1,
+        0 | 2 | 4 | 6 => {}
+        _ => results.unknown += 1,
+    }
+}
+
 impl Registry {
     fn begin_style_job(
         &self,
@@ -436,9 +284,11 @@ impl Registry {
             black_games: 0,
             deleted: found.deleted,
             filtered: found.filtered,
+            too_short: found.too_short,
             unknown_date: found.unknown_date,
             unknown_opponent_elo: found.unknown_opponent_elo,
             unknown_result: found.unknown_result,
+            unknown_category: found.unknown_category,
             skipped: 0,
             skipped_setup: 0,
             skipped_unreadable: 0,
@@ -447,11 +297,16 @@ impl Registry {
             cut_games: 0,
             first_date: None,
             last_date: None,
-            metrics: metrics(),
+            dimensions: vec![],
             games: vec![],
             elapsed_ms: 0,
         };
         let total = found.games.len();
+        let mut white_results = NativeResults::default();
+        let mut black_results = NativeResults::default();
+        let mut result_evidence = Vec::new();
+        let mut short_draws = 0_u64;
+        let mut draw_length = 0_u64;
         for (done, g) in found.games.iter().enumerate() {
             progress(StyleProgress {
                 stage: "replay".into(),
@@ -499,7 +354,7 @@ impl Registry {
                 report.skipped_setup += 1;
                 continue;
             }
-            let line = match replay(&game, g.white, &cancel) {
+            let line = match replay(&game, &cancel) {
                 Ok(Some(l)) => l,
                 Ok(None) => return Ok(None),
                 Err(()) => {
@@ -507,8 +362,29 @@ impl Registry {
                     continue;
                 }
             };
-            for (m, o) in report.metrics.iter_mut().zip(&line.obs) {
-                m.add(g.white, o, g.ordinal);
+            record_result(
+                if g.white {
+                    &mut white_results
+                } else {
+                    &mut black_results
+                },
+                g.result,
+                g.white,
+            );
+            if result_evidence.len() < MAX_EVIDENCE
+                && line.last_node > 0
+                && matches!(g.result, 0..=2 | 4..=6)
+            {
+                result_evidence.push(StyleEvidence {
+                    ordinal: g.ordinal.to_string(),
+                    node: line.last_node,
+                    ply: line.plies,
+                    san: line.last_san,
+                });
+            }
+            if matches!(g.result, 1 | 5) {
+                short_draws += u64::from(g.stored_moves < 26);
+                draw_length += u64::from(g.stored_moves);
             }
             report.analysed += 1;
             if g.white {
@@ -538,7 +414,37 @@ impl Registry {
                 result: loaded.summary.result,
                 plies: line.plies,
                 cut: line.cut,
+                stored_moves: g.stored_moves,
             });
+        }
+        report.dimensions = dimensions(white_results, black_results);
+        // These verified Tenacity components are useful evidence, but cannot
+        // replace its unresolved exchange-opportunity terms.
+        let draw_inputs = report.dimensions[2].inputs.clone();
+        let tenacity = &mut report.dimensions[3];
+        tenacity.inputs = draw_inputs;
+        let draws = white_results.draws + black_results.draws;
+        for (label, numerator, denominator, reference) in [
+            (
+                "Short draws (stored length below 26)",
+                short_draws,
+                u64::from(report.analysed),
+                0.13,
+            ),
+            ("Mean stored draw length", draw_length, draws, 40.1),
+        ] {
+            tenacity.inputs.push(NativeInput {
+                label: label.into(),
+                numerator: Some(numerator as f64),
+                denominator: Some(denominator),
+                value: (denominator > 0).then(|| numerator as f64 / denominator as f64),
+                reference: Some(reference),
+            });
+        }
+        for dimension in &mut report.dimensions {
+            if dimension.id == "score" || dimension.id == "decidedGames" {
+                dimension.evidence = result_evidence.clone();
+            }
         }
         report.skipped = report.selected - report.analysed;
         report.elapsed_ms = started.elapsed().as_millis() as u64;
@@ -738,32 +644,16 @@ mod tests {
         ));
     }
     #[test]
-    fn promotions_are_pieces_and_promotion_moves_are_not_queen_moves() {
+    fn promotions_are_validated_without_substituting_a_style_property() {
         let game = parse_pgn(
             b"1. a4 h5 2. a5 h4 3. a6 h3 4. axb7 hxg2 5. bxa8=Q gxh1=Q *",
             &GameLimits::default(),
         )
         .unwrap()
         .remove(0);
-        let after = game.chess_position(10).unwrap();
-        assert_eq!(inventory(&after, Color::White), [2, 2, 1, 2]);
-        assert_eq!(inventory(&after, Color::Black), [2, 2, 1, 2]);
-        assert_eq!(points(&after, Color::White, false), 35);
-        for white in [true, false] {
-            let r = replay(&game, white, &AtomicBool::new(false))
-                .unwrap()
-                .unwrap();
-            assert_eq!((r.obs[1].n, r.obs[1].d), (2, 5));
-            assert_eq!((r.obs[2].n, r.obs[2].d), (0, 0));
-        }
-    }
-    #[test]
-    fn material_points_include_promoted_queens_and_exclude_kings_and_pawns_for_endgames() {
-        let p = chess_core::model::parse_position("4k3/pppp4/8/8/8/8/PPPP4/1NB1K1Q1 w - - 0 1")
-            .unwrap();
-        assert_eq!(points(&p, Color::White, false), 15);
-        assert_eq!(points(&p, Color::White, true), 19);
-        assert_eq!(points(&p, Color::Black, false), 0);
+        let line = replay(&game, &AtomicBool::new(false)).unwrap().unwrap();
+        assert_eq!((line.plies, line.last_node, line.cut), (10, 10, false));
+        assert_eq!(Some(line.last_san), game.san_at(10).unwrap());
     }
     #[test]
     fn null_and_illegal_moves_are_rejected_instead_of_counting_partial_lines() {
@@ -773,7 +663,7 @@ mod tests {
         for uci in ["0000", "e7e4"] {
             let mut invalid = game.clone();
             invalid.nodes[2].uci = Some(uci.into());
-            assert!(replay(&invalid, true, &AtomicBool::new(false)).is_err());
+            assert!(replay(&invalid, &AtomicBool::new(false)).is_err());
         }
     }
     #[test]

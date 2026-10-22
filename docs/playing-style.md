@@ -1,105 +1,131 @@
-# Local playing-style report
+# Playing-style report: recovered native dimensions
 
 **Style report** (`STYLE_REPORT`) is available from Home → Lists in the database
-window and Home → Database in a game window, and from command search. Choose a
-player in Players, or use the White player of the displayed game. The report
-uses the open database independently of the current game-list search.
+window, Home → Database in a game window, and command search. Select an exact
+player in Players, or use the White player of the displayed game. The current
+report replaces the initial ten descriptive measures with ChessBase 18's eight
+native dimensions, in their original order. It is a **partial reconstruction**,
+not a claim of matching a displayed ChessBase report.
 
-## OpenFile's independent measures
+| Dimension | Current calculation |
+|---|---|
+| Score | Recovered raw formula, comparison values and normalization |
+| Theory | Unavailable: needs native opening-position taxonomy and evaluation inputs |
+| Decided Games | Recovered raw formula, comparison values and normalization |
+| Tenacity | Unavailable: exchange-opportunity counters and phase conventions remain unresolved |
+| Aggressiveness | Unavailable: essential native thematic and king-safety properties are missing |
+| Risk | Unavailable: native thematic, king-safety and asymmetric-material detectors are missing |
+| Positional Play | Unavailable: native positional-theme properties and their eligibility are missing |
+| Endgame Affinity | Unavailable: native stable-phase, evaluation and performance subsets are missing |
 
-These are descriptive observations from recorded standard-chess main lines,
-not personality ratings, measures of playing strength or replicas of the
-reference application's grades. No player name enters a metric calculation.
-No engine, stored evaluation, online account or private service is needed.
-Engine analysis cost is **zero**. Intent, soundness, positional understanding
-and tenacity cannot reliably be determined by the material/move counts below.
+The unavailable dimensions do not use the former capture/check/material measures
+under new names. Their cards state the missing dependencies. No engine or private
+service is launched for the currently computed result dimensions. A generic UCI
+centipawn score would not reproduce the missing native positional properties.
 
-Every card shows the numerator, denominator, percentage and separate White and
-Black tallies. A zero denominator displays **— / Insufficient evidence**; a
-measured zero displays **0.0%**. Fewer than 100 observed moves for a move rate,
-or 20 eligible games for a game rate, is labelled **Small sample**. These are
-OpenFile's disclosure thresholds, not statistical significance or native
-thresholds. Each colour is flagged separately. There is no comparison
-population, percentile, normalization or universal aggressive/positional label.
+## Verified result calculations
 
-| Measure | Numerator | Denominator |
-|---|---|---|
-| Checking moves | Player moves giving check, including mate | All observed player moves |
-| Capturing moves | Player captures, including en passant | All observed player moves |
-| Early queen move | Games with a queen move in the first 10 own moves | Games reaching 10 own moves or showing that event earlier |
-| Kingside / queenside castling by move 20 | Games castling on that side within the first 20 own moves | Games reaching 20 own moves or already castled within that window |
-| Opposite-side castling | Games in which both kings castle on different sides | Games with both castles observed |
-| Queenless by move 30 | Games with a position containing neither queen by ply 60 | Games reaching ply 60 or showing that event earlier |
-| Material imbalance at move 20 | Games with different White/Black inventories of knights, bishops, rooks or queens at ply 40 | Games reaching ply 40 |
-| Sustained material deficit | Games at least 3 material points down after an own move and still so before the next own move | Complete observed lines, or lines where the event occurs before the replay cap |
-| Endgame reached | Games reaching a position where each side has at most 13 non-pawn material points | Complete observed lines, or lines where the event occurs before the replay cap |
+For each player colour, let N be **all processed games** of that colour. A win
+contributes one point, a draw half a point, and every other result zero points.
+Unknown results remain in N, contribute zero points and zero draws, and are
+explicitly disclosed. Forfeits use their canonical win/draw/loss kind. This is
+the recovered native aggregation rule; unknown is not silently interpreted as a
+known loss in the displayed input tallies.
 
-Material weights are P=1, N=B=3, R=5, Q=9; kings have no material value.
-Promoted pieces count by their resulting type. Queenlessness means an observed
-position without queens; later promotion does not erase that earlier event.
-A capture is not necessarily an exchange; a sustained deficit is not necessarily
-a sacrifice. Short games and incomplete observation windows are excluded from
-the corresponding denominator instead of being counted as negative evidence.
-This event-or-full-window rule itself favours observed early events in short
-records, so rates should be read as the stated sample fractions.
+- **Score** = `1.2 × (White points/N / 0.55 − 1) + (Black points/N / 0.55 − 1)`.
+- **Decided Games** = `−1.5 × (White draws/N / 0.543 − 1) − (Black draws/N / 0.543 − 1)`.
 
-## Selection, limits and supporting evidence
+The reference's preferred result groups have count one and points 0.55. The
+standard player aggregation leaves its preferred groups empty and uses the
+actual-result fallback groups, which gives the Score formula above. The fixed
+0.543 draw fractions and 0.55 point rates are recovered numeric initialization
+facts. The native renderer calls its reference GMs, but its players, dates and
+sampling provenance are unresolved. These are not statistics recalculated from
+the user's database and are not runtime population percentiles.
 
-The primary player is an exact database player ID. **Include another spelling /
-identity** searches the database's own name list and lets the user explicitly
-add up to 15 more identities. Names are never merged automatically. An entry
-matching multiple chosen identities is counted once; if both sides match,
-White is used unless Black-only was requested. This unusual case may indicate
-that two distinct people were selected as aliases.
+Native normalized value is `100 × max(0, (raw − lower)/(upper − lower))`. Score
+uses bounds `[−1.5, 1]`; Decided Games uses `[−0.5, 1]`. A raw zero therefore
+normalizes to 60% for Score and 33.33% for Decided Games. **Values can exceed
+100%**: these are composite normalized scores, not fractions of games. Native
+plot widths have a separate cap; the displayed percentage is not upper-clamped.
 
-Colour, inclusive year range and minimum opponent Elo are applied **before**
-sampling. Unknown years/ratings are included without a corresponding filter
-and excluded when that filter needs the missing value. Unknown results are
-allowed because the board measures do not use results. Deleted games are
-excluded and counted. Text entries are excluded. Metadata-unknown counts refer
-to all nondeleted identity matches before the optional filters, rather than
-only the sampled games.
+An empty sample produces no score. A missing colour's observed rate stays
+unavailable, while the recovered arithmetic's zero-rate fallback is disclosed
+and the result is marked partial. Unknown results similarly mark the computation
+partial. The report shows the actual numerator, denominator and reference value
+for each colour. An OpenFile advisory flags fewer than 20 processed games; that
+is a disclosure threshold, not a recovered native significance rule.
 
-A single header scan retains the latest dated games, then highest entry number
-for date ties. Undated games follow dated games. The default is 500 selected
-games, configurable from 1 to 2,000. This is a recent sample, not a random or
-career-representative sample. The sample is chosen before move decoding;
-skipped games are counted and are not silently replaced with older ones.
+Tenacity exposes its verified draw inputs: colour-specific draw fractions,
+short draws (stored length below 26) divided by all processed games, and mean
+stored draw length. Their fixed reference values are 0.543, 0.13 and 40.1,
+respectively. Its composite score remains unavailable because exchange counters
+and phase conventions have not been reproduced; the known terms are not summed
+into a misleading partial score.
 
-The report identifies the database, entry count, exact selected identities,
-criteria, eligible/selected/analysed counts, actual analysed date range and
-colour split. It separately counts skipped setups, unreadable, unsupported
-and partial move data. Setups and Chess960 are excluded to keep the opening
-windows comparable. Stored annotations and evaluations are not used. Only the
-main line is measured, up to 400 plies per game. A cut line contributes its
-observed move rates and completed fixed windows; an unobserved later endgame
-or deficit is not turned into a measured absence.
+### Categorical grades
 
-**Supporting positions** opens up to eight examples per metric, at most one
-per game, at the original node in the game viewer. **Analysed games** lists all
-analysed entry numbers and permits inspection of negative examples too. Evidence
-comes from computed positions rather than reputation or annotation labels.
+The native categorical-grade wrappers read the prior output grade before
+normalizing the raw result. Fresh assembly inspection confirms that the first
+call's output slot is not visibly initialized and subsequent dimensions reuse
+the prior grade. OpenFile does not reproduce undefined stack state or invent a
+replacement categorical grade. Cards show **Categorical grade unavailable**.
+The raw calculations and explicit mathematical normalization are independent of
+that defective gate. The static code contains Very Low/Low/Medium/High/Very High
+labels and 25/60/80 cutpoints, but that alone does not establish displayed-grade
+parity. No running Windows ChessBase report comparison has been performed.
 
-## Responsiveness and source validity
+## Selection, limits and evidence
 
-The scan/replay runs in a blocking worker outside the UI thread, using bounded
-header chunks and an O(sample limit) latest-game heap. Decoding is sequential
-and uses the reader's existing per-record limits. Replay checks cancellation
-between plies. Progress distinguishes the full-database scan from sampled
-replay. Stop and Close discard pending results. Each run has a unique identity;
-older progress/results cannot replace a newer run, even for the same player.
+Player identities are exact database IDs; the user can explicitly add up to 15
+additional identities. No automatic alias expansion is claimed. Duplicate entry
+matches count once, with White precedence when both sides match unless Black-only
+was requested. The report is independent of the active game-list search.
 
-The registry cancels superseded jobs and cancels/removes them on database close
-or edits. Publication verifies source identities, lengths and modification
-times. Supporting-position navigation revalidates the published job and source
-signatures. A changed source requires a fresh report. This follows the existing
-reader's filesystem-signature model; it does not hash an entire commercial
-corpus. The only retained backend state is a current job watermark and source
-signatures. There is **no result cache**, so changes to criteria or the
-measurement rules always recompute. No report/cache is written beside a source
-database.
+Recovered native selection rules reject deleted entries and stored game lengths
+below five and support year and game-category filtering. OpenFile also provides
+colour and minimum-opponent-rating filters. All filters run before sampling.
+Long games are the default; Blitz/bullet, Rapid and Simultaneous are opt-ins. Categories use verified tournament flags plus native name fallbacks,
+with Simultaneous taking precedence over Blitz, Rapid and Long. Unknown category
+metadata is excluded by narrower masks; selecting all four categories includes
+it and reports its count. That malformed/missing-metadata policy is OpenFile's
+explicit choice, not a claim about native file-error behavior.
 
-## Reference investigation
+Year and minimum-opponent-rating filters exclude unknown values that they need.
+The sample retains latest valid dates first, then highest entry number. Undated
+games follow dated games. Default sample limit is 500, maximum 2,000, chosen
+before decoding; skipped records are not silently replaced. The native style
+path has no traced sample limit, so this remains an explicit OpenFile resource
+limit and the report is not a career-wide or random sample.
+
+Only legal standard-start main lines are validated, up to 400 plies per game.
+Setups/Chess960, unreadable, unsupported and partial records are skipped and
+counted. Cut records remain marked; result dimensions use the recorded header
+result and all processed games, without pretending a truncated position history
+provides the missing native style properties. Stored lengths remain distinct
+from decoded plies. All analysed entries can be opened. Result-dimension support
+links open up to seven games at their last observed legal main-line position;
+these illustrate whole-game outcomes, not a claim that the last move caused a
+style score.
+
+## Jobs and source validity
+
+The full header scan and replay run outside the UI thread, retaining an
+8,192-header chunk and an O(sample-limit) heap. Existing bounded name caches are
+used for category metadata. Cancellation is checked before every record's
+metadata lookup; within-batch progress is reported every 256 headers and UI
+events are throttled to 100 ms. Progress distinguishes selection from replay. Stop
+and Close discard pending results; unique generation IDs prevent stale callbacks
+from replacing newer results. The WebKit Stop default-submission regression is
+retained. Database close/edit invalidates current jobs.
+
+Publication and evidence navigation verify source identities, lengths and
+modification times. Evidence loading validates before and after the ordinary
+load and closes a stale document. The registry retains only a current watermark
+and source signatures, not a report cache. No result/cache is written beside a
+source database. The source-signature model does not hash the entire corpus.
+
+## Initial reference investigation (20 October 2026)
 
 ### Scope and identity
 
@@ -228,109 +254,219 @@ Caution: Ghidra sometimes loses live register parameters or SSE returns under in
 Cleanup: final evidence bundle and analysis snapshot were saved successfully. REA close returned `cleanup_incomplete` for provider-client; a subsequent OS process inspection confirmed both this session’s Ghidra Java process and its REA Node client were gone. The separate failed-session A idle Node client was explicitly stopped after exact command-path/PID verification. No unrelated session was stopped. Unexecuted post-close retry requests remain as provenance only.
 
 
-## Real-player acceptance and performance
 
-Acceptance uses the available **Mega Database 2025** classic database,
-11,151,119 entries (512,951,520-byte CBH index). Exact identities are
-**Carlsen, Magnus #65470** and **Nakamura, Hikaru #286135**. Neighbouring name
-list entries were inspected; distinct people such as Carlsen, Morten and
-Nakamura, Julia Yumi Ono were not merged. No extra aliases were selected.
-These examples establish the selected identities in this database, not that
-all possible aliases anywhere in the corpus have been found.
+## Follow-up native investigation (21 October 2026)
 
-Both reports use both colours, no year/rating restriction, unknown metadata
-included, deleted games excluded, latest-date sampling with a 500-game limit,
-and the 400-ply replay cap. Time controls are not filtered: the samples mix
-recorded event types, and **are not long-game-only reports** like the native
-default. Filtering named time controls is not implemented because the reader
-has no reliable universal time-control field for these records.
+Research only. This supplements the initial investigation above, which remains the entry/selection, eight-formula, renderer and workflow inventory. No product code or unrelated research sessions were modified. All results below concern executable SHA256 `8d633b10ad97bd9f8fbbc33a89c279397850ca759c8375093deda4a9485e8dee`, `extracted/update/CBase18.exe`, x86_64 PE. Fresh Ghidra12.1.4 source-immutable import through actual REA MCP. This is static evidence; no Windows execution, runtime report comparison, or engine parity claim.
 
-| Context | Carlsen | Nakamura |
+### Reproduction feasibility
+
+| Native dimension | Formula recovery | Essential inputs available from ordinary decoded game/header? | Remaining barrier |
+|---|---|---|---|
+| Score | Complete | Yes, actual result and role | Preserve unknown results in denominator; role2 belongs to both colors. Explicit product policy for missing color. |
+| Theory | Formula complete; reference mean and diversity now derived | Matched opening code/depth require native board-position taxonomy; selected-position evaluation requires evaluator | Eco.cbcod/Eco.cod or service-supplied compatible taxonomy; exact native evaluation selection. |
+| Decided Games | Complete | Yes, draw flag and role | Missing color policy; unknown results remain denominator. |
+| Tenacity | Formula complete | Draw/length components yes; two exchange statistics require native exchange predicates and phase conventions | Exchange recognition, static exchange evaluation and move representation not yet independently reproduced. Do not omit these terms silently. |
+| Aggressiveness | Coefficients and thresholds complete | Some board properties are reconstructable; essential properties use native position-analysis machinery | Theme detectors, internal evaluation properties, king safety, phase/window semantics. |
+| Risk | Coefficients and thresholds complete | Same caveat | Same internal properties; asymmetrical-material detector and king safety. |
+| Positional Play | Coefficients and thresholds complete | Same caveat | Same detectors; a raw bishop-pair count is not equivalent to native theme property. |
+| Endgame Affinity | Full native formula retained, guards present | Material boundaries and rated result tallies partly recoverable locally | Stable-material transition, evaluation at selected positions, exchange aggregates, exact category populations and availability guard. |
+
+A faithful implementation can expose Score and Decided raw and normalized values now. The other six must identify their unresolved inputs, instead of calculating with guessed substitutes or dropping native terms. This is an implementation assessment, not an assertion that the native behavior cannot eventually be reconstructed.
+
+### Score, Decided and native grade initialization
+
+Direct observations from retained `4a1f20`, `4904e0`, `486ef0` and `49a130`:
+
+* Role0=White,1=Black,2=average. Role2 satisfies both color predicates; result scoring for role2 uses White's result. Actual result0=Blackwin,1=draw,2=Whitewin,3=unknown.
+* Counts increment before checking result; unknown results contribute zero points and zero draws, but remain in each color denominator. No games produces native rate0.
+* Preferred statistics at profile+b8/d0 are cleared by constructor and not filled by the retained standard `4904e0` aggregation path; its actual-result fallback groups+88/a0 are populated. Reference preferred groups have count1, points.55.
+* Raw Score `1.2*(whitePointsRate/.55-1)+(blackPointsRate/.55-1)`.
+* Raw Decided `-1.5*(whiteDrawFraction/.543-1)-(blackDrawFraction/.543-1)`.
+* Native normalization is `max(0,(raw-lower)/(upper-lower))`, with no upper clamp for displayed percentage. Bounds: Score[-1.5,1], Theory[-2.5,3], Decided[-.5,1], Tenacity[-2,2], Aggression[0,6], Risk[0,2], Positional[0,7], Endgame[0,3].
+
+The categorical-grade dependency is a real ABI-level observation, not only a decompiler artifact. `grade-callsite.asm` shows `4ae240` passes address `[rsp+60]` without an earlier visible initialization; `grade-dispatch.asm` shows `4a86e0` writes raw score at output+8, then tests the preexisting output DWORD before normalization. Raw scorer returns XMM0; there is no hidden result struct initializing this DWORD. First iteration may read uninitialized stack; later iterations reuse previous categorical grade. Do not reproduce undefined stack behavior. Raw scores and mathematical normalization have independent meaning; claiming native categorical-grade parity is unsupported. Threshold wrappers compare25,60,80 after this seed gate. This limitation must be disclosed wherever grades are discussed.
+
+### Theory: opening classification is a position lookup
+
+Direct functions: `48efb0`, `b54800`, `b54a50`, `b54f90`, `b556b0`, `495930`, `44a680`.
+
+`48efb0` calls global classifier `b54800(..., game, 1)`, copies its two outputs into Data+30 and+34. Therefore the **style** branch uses `b54a50`, not the flag0 alternate path. It advances a cloned board to the classifier's maximum ply, then binary-searches compressed board positions and walks backward one mainline move until it finds a match. Returns matched ushort classification code and current board index. Data+34 is a matched ply/index, not stored header fullmoves. Data+30 is not simply header ECOraw. Transpositions can classify by board position.
+
+Loader `b54f90` looks in the native configured directory for `Eco.cbcod`, falls back to `Eco.cod`; reads a two-byte maximum ply and 26-byte records containing a two-byte code and compressed position. The CBCOD variant changes the king nibble in the encoded comparison. Missing-file branch passes an identifier0x35e through `6548f0` to global service `DAT_142295bf0`, callback`b545d0`; there is no evidence that this is a self-contained embedded taxonomy. Service internals and successful missing-file behavior remain unresolved.
+
+Per-color builder `495930` averages Data+34 for roles matching that color or2 and counts each Data+30 key in a support map. `44a680` computes total N (accumulated as integer after each double addition), concentration `sum((count/N)^2)`, then `1/concentration/ln(N)`. Empty/zero concentration returns0; N1 leaves inverse concentration undivided. Raw assembly `theory-diversity.asm` confirms map values are **doubles** at node+28 despite wrong inferred integer casts in pseudocode.
+
+Only named numeric reference statistics were derived; no raw taxonomy, serialized profile, support map or code asset is proposed for product use. `theory-reference-named-statistics.json`: White and Black mean matched ply16.6; both reference support histograms contain496entries totaling93343; their diversity is14.145274396489253. Cohort provenance remains unresolved; renderer calls it GMs. These facts came from `49a130` numeric initializers and independently applying `44a680` arithmetic.
+
+Theory raw formula in prior notes: relative White mean depth +1.5 relative Black mean depth +.2 relative White diversity +.15 relative Black diversity +2 relative White selected-position evaluation -2.5 relative Black evaluation. Both evaluation-reference means.22. Header ECO and existing OpenFile16-ply player tree do not supply the required inputs.
+
+### Theme thresholds and aggregation
+
+Authored `theme-thresholds-support.json` maps all41 verified native property labels to exact strict-greater thresholds and required-positive support counts from `4a3be0` and `4a46b0`. Existing B artifacts hold full Aggression/Risk/Positional coefficient tables; C's `reference-theme-frequencies.json` independently decodes only the needed named baseline frequencies.
+
+`4922d0` scans a bounded position sequence, returns the maximum sliding-window sum divided by window length, and a count of positive property values encountered across the scanned range. Support count is cumulative across that range, not only inside the winning window. If support is below the property-specific requirement, `4a46b0` zeroes a positive property result; required support shrinks to `max(1,trunc(.75*windowLength))` for short windows. Cache is Data+368 +8*(side+2*theme), initialnegative.
+
+`4973b0` provides theme-specific scan ends: ordinary themes end just before first endgame phase; Gambit caps at start+12; pawn-majority, bishop-pair, opposite-bishop and bad-bishop themes can use the last position. Start convention is full-line0 when Data+18 is set; otherwise material-derived Data+50 ifpositive, else min(20,max(0,endBeforeEndgame-1)). Do not conflate Data+34 matched opening depth with Data+50 material phase boundary.
+
+`498c90` is a41-way property switch, many values call native board property accessors and analysis structures. Ghidra incorrectly types it and its lambda as returning void, losing XMM0 expressions in the pseudocode. Its retained pseudocode is evidence of dependencies, not a complete trustworthy implementation specification. `48fd70` copies numerous values from internal analysis object via`21ef30`, `21f400`, etc.; `21ef30` dispatches through a per-side object's virtual+10. Missing return types and internal implementations remain barriers. King attacks, sharpness, calmness, successful defense and piece strength must not be invented from similarly named strings or general chess intuition.
+
+### Scalar fields used by the remaining dimensions
+
+Define L=`4975a0` analyzed length. Native endBeforeEndgame is firstphase-1 when1<=firstphase<decodedPositionCount, otherwise last retained position. If full-line flag is true, start0; otherwise Data+50 whenpositive, else min(20,max(0,endBeforeEndgame-1)). L=endBeforeEndgame-start+1. This is a **position/ply interval**, separate from stored header length.
+
+Direct mappings from `4904e0`, callbacks, `48d4b0`, observation emitters:
+
+| Profile field | Exact numeric source | Semantic certainty |
+|---|---|---|
+|+320|10*mean(Data+5c/L), zero if L<=0; callback4a5700|Exchange-related counter; detector details unresolved.|
+|+328|10*mean(Data+60/L); callback4a58c0|Exchange-related counter when3c4b80 succeeds on relevant side.|
+|+330|10*mean(Data+64/L); callback4a5970|Exchange-related counter for remembered move matching.|
+|+338|10*mean(Data+68/L); callback4a57a0|Counter when45b780 detects a move affecting exchange opportunity.|
+|+340|Mean per-game own-side mean of nonzero per-position+90 before endgame;494b40|Native observation labels prove king-safety requirement: lower=not worried about king safety, higher=needs king safety. Underlying virtual property still unresolved.|
+|+348|Same for opposite side|Opponent king-safety property.|
+|+308|Count Data+78>=0 / all games|Native observation labels prove asymmetric-material frequency;3e3660 uses material signatures, balanceabs<=100 and persistence3e3960, not a generic unequal material count.|
+|+310|Among games L>10, fraction where499e50>0.6L|Queenless-interval frequency; low yields native label 'Keeps Queens on Board'.|
+|+370|Predicate-frequency from499f30; selected predicate4a5640|Short win near endgame phase, not result-point rate. See original predicate guard.|
+
+`3e4290` sets Data+7c to first position at or after Data+50 where both sides' queen counts are zero; else-1. `499e50` measures the interval from this queenless marker to endgame (or line end), only if marker precedes endBeforeEndgame-1. Thus profile310 is not 'queen exchanges per move'.
+
+`48d4b0` weights exchange-related counters by integer pieceValue/100. Piece codes table:0=0,1=king15000,2=queen900,3/4=bishop/knight325,5=rook500,6=pawn100. `3c4b80` clones a board, generates legal capture candidates, requires equal piece type and static exchange score0 from`b429f0`, and tests original move opportunities. `45b780` tests whether a subsequent move prevents/changes such an exchange opportunity, including ray-interposition geometry. Exact counter names would be an inference; retain numeric definitions until independent fixtures verify.
+
+`499f30` returns (predicateCount, predicateCount/allGames, performance). Its second field is frequency; this settles+370 meaning. Ghidra loses some performance call parameters; use assembly when implementing.
+
+### Endgame boundaries and evaluation
+
+`3e4120`: scans material history backward from the final position for last position with nonpawn material total>3100 and some bishop/knight/rook material; queen900,minor325,rook500. It then calls `3e3850(history,index,1)` and caches firstphase. A simple 'material <=31' first encounter does not match this backward stable-transition convention.
+
+`3e4860`: scans backward for last position where either side has>1 nonpawn piece, then calls the same stable-transition helper, caches technicalphase and returns material-balance sign from that phase. `3e3850` searches subsequent equal material-signature entries while accounting for a history flag and has fallback branches; exact flag construction remains unresolved.
+
+`48f430` classifies an endgame only if firstphase>=1 and firstphase<decodedPositionCount-20. Evalabs<50 means equal; abs>=71 classifies favorable/worse with role sign;50..70 gap and no qualifying evaluation fall back to actual result as in prior evidence. Technicalphase predicates `48c530/48c5a0` require enough remaining positions (>11) plus balance sign. Do not substitute a fixed move40 or generic queenless boundary.
+
+`b55f40` exact evaluation contract:
+
+* If typeword!=-1, use low3bits. Kind0 or3 returns signed16 payload. Kind1 maps mate distance d>0 to30000-d and d<=0 to -30000-d. Kind2 uses28000 instead. Otherkind returns32767 sentinel.
+* Typeword==-1 uses W/D/L counts. If total<1 return32767. p=(wins+.5draws)/total. p<=0 returns-30000; p>=1 returns30000. Otherwise lround(200*log10(p/(1-p))), clamp[-25000,25000].
+* Native evaluation-side normalization occurs elsewhere; this accessor alone does not prove centipawns are White-relative or bound handling. Existing UCI helper discarding bounds and mapping all mates±30000 is not a faithful typed adapter.
+
+### Rated performance and relative endgame scores
+
+`48e1c0` and `c49250/c492c0` recovered, with `performance-helper.asm` verifying surprising smoothing placement. N=rated subset count; O=sumOpponent/N; A=sumOwn; S=subset points. Constructor stores countN+1 and int64(O+A). Query percentage argument is `100*(S+.5)/N +1`, **not** `100*(S+.5)/(N+1)`. Helper computes delta400log10(p/(1-p)), p=percentage/100, endpoints±800, then int((O+A)/(N+1)+delta+.5) when rating sum nonzero. Returned performance=.5*(helperInteger+O). N0→0. The +.5 cast is C++ truncation, not generic round-to-nearest for negative values; separate specialnegative handling exists only when storedratingSum0.
+
+`4a1f20` includes only games with both ratings nonzero in this performance subset. It also calls a rating-bound helper with one rating limited±400, but visible sumOwn/sumOpponent use the stored Data rating fields; do not assume an existing FIDE DP table is equivalent. For complete caller ABI validation retain original assembly and summed-rating inputs.
+
+`4a6a50` compares player/reference rates with multiplier and positive-only option. When its last flag istrue it first divides each by respective overall point rate, choosing preferred overall group+e8 ifcount>0 elsefallback+70 and reference counterpart. It requires nonzero denominators for the adjustment. This is not a raw win fraction difference.
+
+### Tournament category bytes
+
+Native selection predicates in B use canonical CBTournament+3c: Simul low5bits7/namecontains' sim', Blitz highbits0x20/nameblitzorbullet, Rapid0x40/namerapid, Long neitherBlitznorRapid. PrecedenceSimul,Blitz,Rapid,Long.
+
+`1dc0f0` writer and `1db310` constructor prove classic90-byte name payload: dateLE32 at+0x46, flagsLE16 at+0x4a. Existing classic99-byte CBT records include9-byte treeprefix, giving record date79..83 and flags83..85. Constructor reads signed16; bit tests onlowbits areunchanged. This constructor does **not** apply legacytype5 remap.
+
+For full stream reader `1ddba0(param3=1)`, sequence is siteUTF8string,eventUTF8string,4-byteLEdate,LE16flags,LE16nextfield,byte,byte,LE16nextfield. `f075c0` date wrapper ultimately`f08c60` copies4rawbytes and suppresses values<=0x220. `f07ac0` copies2rawbytes. Low5type5 in stream reader is remapped to `(flags&~31)+0x103`. Same remap exists in compact legacy reader1ddec0. Existing2LID names implementation uses exactly the two leading strings and currently ignores tail. Linking this full stream variant to every2LID producer/version still needs a fixture roundtrip; the byte sequence and remap are direct native facts, file-format mapping is a strong inference based on matching names layout.
+
+### Evidence index and residual unknowns
+
+Each named request JSON contains complete REA result and evidence ID. Key batches:
+
+* scalar-callees: ev_43af4d0633f734b046e595b5c09ae300d3532434ac4d2b23ff00a9d1d48377be
+* theme-inputs: ev_d650eee57c387375b0be302d147f52e56a972aba524af89d22de364bd8243420
+* phases-and-eval: ev_61337a2ce1c503a2b2fe8bf654ae911b5f0e3ec762a0ee4379b9c1dfa257771b
+* endgame-and-metadata: ev_b5de90d56c3060508dcd1e32845554f1434684d1d6af4a09890cb837de9778cf
+* opening-source-tournament-fields: ev_b0b509f83444eeb921548369d69200ff0c5275a46b8a5e1b45abc7d44aab6e0c
+* style-opening-fastpath: ev_d9cbaa6096b35915cd76e915a3d0648d7e199d678abc998edf63eb05c8c58c3a
+* exchange-scalars-queen-marker: ev_bf7cc1903c9d2a4442114921c524901023d53023b936695ffed5c39db0238d1d
+* tournament-serialization: ev_b25603065f54e15513e85043173aed876a8727998e872a273497d4dd0601478d
+* tournament-final-byte-contract: ev_372ebf875975795320b4d5a4ec3700f28fb07ab45541b566c51abdb0df9b80bc
+* classic-tournament-constructor: ev_02ba8b05e6287d0f38c97738774ca5274a82ecf2b374bac492b3a5afa38e5ab0
+
+All fresh function pseudocode in `pseudocode/`; raw assembly independently saved for grade ABI, constructor fields, diversity and performance. Research notes separate exact numeric facts from inferred semantic labels. The full source functions remain available for later refinement.
+
+Unresolved: GM reference population dates/selection and reproducibility; exact native engine selection/version/search settings and bound handling; missing-opening-table service protocol; internal theme-property calculations/return types; stable-material history flag construction; exact exchange predicate fixtures; full2LID variant coverage; categorical-grade seed behavior under actual runtime compiler stack state. No strings-only or mathematical-formula-only evidence establishes native score compatibility for the six unavailable dimensions.
+
+
+## Native acceptance and performance
+
+The replacement was verified in the rebuilt macOS Tauri app against read-only,
+byte-identical temporary clones of Mega Database 2025 (11,151,119 entries).
+Exact name-list identities and nearby entries were checked: **Carlsen, Magnus
+#65470** and **Nakamura, Hikaru #286135**. No aliases were added; this is not a
+claim of exhaustive alias discovery. Both reports use both colours, Long only,
+no year/rating filter, latest 500 eligible games and the 400-ply replay cap.
+
+| Observed result | Carlsen | Nakamura |
 |---|---:|---:|
-| Eligible nondeleted games | 6,925 | 9,288 |
-| Selected / analysed | 500 / 500 | 500 / 498 |
-| Analysed White / Black | 252 / 248 | 250 / 248 |
-| Actual analysed dates | 2024.05.14–2024.10.01 | 2024.06.13–2024.09.24 |
-| Skipped / cut at replay cap | 0 / 0 | 2 unreadable / 0 |
-| Checking moves | 1,477 / 22,485 (6.6%) | 1,453 / 24,647 (5.9%) |
-| Capturing moves | 4,736 / 22,485 (21.1%) | 4,686 / 24,647 (19.0%) |
-| Early queen move | 166 / 500 (33.2%) | 234 / 498 (47.0%) |
-| Kingside castle by move 20 | 380 / 498 (76.3%) | 345 / 497 (69.4%) |
-| Queenside castle by move 20 | 42 / 498 (8.4%) | 55 / 497 (11.1%) |
-| Opposite-side castles | 43 / 402 (10.7%) | 36 / 372 (9.7%) |
-| Queenless by move 30 | 202 / 440 (45.9%) | 177 / 459 (38.6%) |
-| Non-pawn imbalance at move 20 | 257 / 490 (52.4%) | 249 / 491 (50.7%) |
-| Sustained material deficit | 83 / 500 (16.6%) | 78 / 498 (15.7%) |
-| Endgame reached | 320 / 500 (64.0%) | 310 / 498 (62.2%) |
+| Eligible before sampling | 2,056 | 1,814 |
+| Sampled / analysed | 500 / 492 | 500 / 483 |
+| Skipped setup games | 8 | 17 |
+| White games / wins / draws | 247 / 117 / 115 | 246 / 90 / 141 |
+| Black games / wins / draws | 245 / 68 / 157 | 237 / 49 / 152 |
+| Analysed date range | 2016.09.12–2024.09.21 | 2015.10.19–2024.06.07 |
+| Score raw / normalized | 0.4286044782 / 77.14417913% | 0.1824599811 / 67.29839924% |
+| Decided Games raw / normalized | 0.0337073788 / 35.58049192% | −0.2644683398 / 15.70211068% |
+| Short draws / all processed | 15 / 492 | 31 / 483 |
+| Stored draw-length sum / draws | 12,702 / 272 | 11,985 / 293 |
 
-`src-tauri/examples/playing_style.rs` reads the source without write access,
-checks exact identities, reports timing and optionally exports the analysed
-samples to a separately chosen PGN path for validation. A separate Python
-implementation using python-chess 1.10.0 replayed those PGNs and independently
-matched all ten numerators/denominators, both colour splits, and every shown
-evidence move's SAN/ply. The private PGNs and report JSON are temporary external
-validation artifacts, not product fixtures or redistributed databases.
+Neither sample has unknown results, unreadable/unsupported/partial skips or a
+400-ply cut. These are recent **Long-category samples**, not career totals. The
+span reflects how often the selected player has eligible Long games in this
+corpus; it is not a fixed-length time window. Long does not itself exclude
+Chess960/setup records; those are subsequently skipped by OpenFile's replay rule.
 
-Release example runs on the development Mac with filesystem cache warm:
+An independent Python validator read the classic 46-byte headers and 99-byte
+CBT tournament rows directly, reproducing category precedence, deletion,
+stored-length filtering, eligible counts and the latest-500 selection. Separate
+python-chess 1.10.0 PGN/result replay matched both colour populations, both raw
+and normalized scores, Tenacity's known draw inputs, every supporting SAN/ply
+and each analysed game's replay length. Six composite scores and all categorical
+grades were confirmed absent. The independent export and raw-data checks remain
+outside the repository; no private game collection is distributed.
 
-| Stage | Carlsen | Nakamura |
-|---|---:|---:|
-| Prepared name-list lookup | 0.005 s | 0.002 s |
-| Full 11.15M-header scan and bounded selection | 0.172 s | 0.131 s |
-| Replay, metrics and report assembly | 0.197 s | 0.154 s |
-| Total report computation | 0.369 s | 0.285 s |
-| Engine processes / engine analysis time | 0 / 0 s | 0 / 0 s |
-| Whole example process, including separate PGN export | 0.92 s | 0.41 s |
-| Whole-process peak resident memory | 12.4 MiB | 12.3 MiB |
-
-These times exclude opening the database and preparing/finding the name-list
-identity. They are representative local warm-cache measurements, not promised
-latencies on cloud placeholders or remote disks. Native debug builds take
-longer: final 500-game UI runs took 3.04 s for Carlsen and 2.96 s for Nakamura. Selection memory is bounded
-by the chosen sample and one 8,192-header chunk; decoded game memory is bounded
-by the reader's per-game limits. The existing player-name index has its own
-larger storage/build cost, described in [player statistics](player-statistics.md).
-
-Native validation uses byte-identical APFS clones of the same source family,
-made read-only in temporary storage, and a separately identified validation app
-with separate settings. This avoids macOS blocking the temporary app's access
-to Documents, and leaves the user's installed app and reference database
-unchanged. Source signatures are checked before and after acceptance.
-
+Native supporting links opened **Carlsen–Schitco**, entry 11131908, at **42.g5**
+(ply/node 83), and **Praggnanandhaa–Nakamura**, entry 10932339, at **31.Rxe8+**
+(ply/node 61). The expected board, highlighted move and source entry were
+inspected. These whole-game outcomes support Score/Decided Games; no causal
+claim is made about the last move. Stop was exercised during the full header
+scan, remained stopped without publishing a partial report, and has both the
+WebKit click-default and within-batch cancellation regressions.
 
 ### Native UI evidence
 
-These are computed reports in the running macOS Tauri app, not preview fixtures.
-Open a game or select the exact player in Players, choose **Style report**, keep
-both colours and the 500-game limit, then choose **Generate report**. Inspect
-**Activity & openings**, scroll to its remaining cards, and switch to
-**Structure & endings**. The fixed player heading remains visible while scrolling.
-The full analysed-game table is also available, including negative examples.
+All images below are actual app captures, visually inspected. They replace the
+superseded ten-metric screenshots. Only two cards contain computed scores;
+missing calculations remain visible throughout.
 
-| Player | Activity | Structure/endings | Supporting position |
-|---|---|---|---|
-| Carlsen | [Report](media/style-carlsen-activity.png), [remaining activity cards](media/style-carlsen-activity-more.png) | [Report](media/style-carlsen-structure.png) | [Entry 11148542](media/style-carlsen-evidence.png) |
-| Nakamura | [Report](media/style-nakamura-activity.png), [remaining activity cards](media/style-nakamura-activity-more.png) | [Report](media/style-nakamura-structure.png) | [Entry 11146243](media/style-nakamura-evidence.png) |
+- Carlsen: [sample and scores](media/style-native-carlsen.png),
+  [result inputs and Decided Games](media/style-native-carlsen-inputs.png),
+  [unavailable composite dimensions](media/style-native-carlsen-unavailable.png),
+  [supporting position](media/style-native-carlsen-evidence.png).
+- Nakamura: [sample and scores](media/style-native-nakamura.png),
+  [known draw inputs](media/style-native-nakamura-tenacity.png),
+  [unavailable composite dimensions](media/style-native-nakamura-unavailable.png),
+  [supporting position](media/style-native-nakamura-evidence.png).
+- [Stopped native scan](media/style-native-cancelled.png).
 
-All retained screenshots were visually inspected. Carlsen's **Endgame reached**
-support opens Carlsen–Firouzja, entry 11148542, at ply 90 / 45...Qxg7; both
-sides then have nine non-pawn material points. Nakamura's **Queenless by move 30**
-support opens Nakamura–Naroditsky, entry 11146243, at ply 15 / 8.Kxd1; the board
-has neither queen. The native board, highlighted notation and move status were
-checked against these moves. Source-bound navigation opens a fresh document
-rather than reusing an existing potentially edited game tab.
+### Performance and verification
 
-The original CBH and validation clone have SHA-256
+Warm-cache release runs over all 11,151,119 headers took **0.408 s** for Carlsen
+and **0.351 s** for Nakamura: selection 0.189/0.159 s and replay 0.218/0.191 s.
+Prepared name-list lookup took 0.003/0.002 s. Whole validation processes,
+including independent PGN export, peaked at **16.5/15.9 MiB RSS**. The first run
+also built the name index: lookup 0.461 s, whole-process RSS 71.3 MiB. These
+measurements exclude initial database opening and filesystem-placeholder delays;
+they are representative measurements, not latency guarantees. Engine cost is
+zero. Native debug UI computations took 3.14/3.32 s, as recorded in the screenshots.
+
+The nine original database-family sizes, modification times and inodes remained
+unchanged. Original and clone CBH SHA-256 both equal
 `1750ba956d38339091392c7adea9e26bb2cfce1f1438d876fdeb76d8e0789845`.
-All nine original database-family file sizes, modification times and file
-identities were unchanged after acceptance. No private PGN, database, native
-code or reference artwork is included in this repository.
+Original checkout changes and unrelated research sessions were preserved.
 
-
-Native cancellation was additionally exercised during the full-database scan:
-**Stop** leaves [Report stopped](media/style-cancelled.png), re-enables criteria,
-and publishes no partial report. A WebKit-specific form default initially
-restarted the report after Stop synchronously changed that button back to a
-submit button. The click default is now prevented; a failing-then-passing
-regression checks that contract, and the rebuilt native app confirmed the fix.
-A subsequent explicit Generate completed the same 500-game Carlsen sample.
+Final local checks: **342 Rust tests**, **196 frontend tests**, formatting,
+strict workspace/all-target Clippy, TypeScript, Prettier and production frontend
+build pass. Locked native release and separately identified embedded-frontend
+acceptance app builds pass. The existing frontend bundle-size advisory remains.
+Focused independent review found a metadata-scan cancellation delay and an
+attribution overstatement in the selection docs; both were fixed, with no
+residual actionable concerns. The distribution boundary audit passes for all 661 tracked paths.
+The native coverage checklist remains **partial**.

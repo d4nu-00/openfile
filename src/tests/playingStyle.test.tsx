@@ -6,7 +6,7 @@ import { renderWorkbench } from "./harness";
 export const styleReport: StyleReport = {
   jobId: "test",
   players: [{ id: 3, name: "Player 3, A" }],
-  criteria: { playerIds: [3], sampleLimit: 500 },
+  criteria: { playerIds: [3], sampleLimit: 500, gameTypes: 4 },
   database: "Synthetic",
   databaseEntries: "401",
   eligible: 12,
@@ -16,49 +16,54 @@ export const styleReport: StyleReport = {
   blackGames: 4,
   deleted: 1,
   filtered: 2,
+  tooShort: 1,
+  unknownCategory: 0,
   skipped: 2,
   cutGames: 0,
   firstDate: "2020.01.01",
   lastDate: "2024.12.31",
   elapsedMs: 123,
-  metrics: [
-    {
-      id: "checks",
-      label: "Checking moves",
-      description: "Own moves giving check / all own moves.",
-      numerator: 0,
-      denominator: 240,
-      value: 0,
-      minimum: 100,
-      white: { numerator: 0, denominator: 140, value: 0 },
-      black: { numerator: 0, denominator: 100, value: 0 },
-      evidence: [],
-    },
-    {
-      id: "captures",
-      label: "Capturing moves",
-      description: "Own captures / all own moves.",
-      numerator: 40,
-      denominator: 240,
-      value: 100 / 6,
-      minimum: 100,
-      white: { numerator: 24, denominator: 140, value: 120 / 7 },
-      black: { numerator: 16, denominator: 100, value: 16 },
-      evidence: [{ ordinal: "3", node: 1, ply: 1, san: "e4" }],
-    },
-    {
-      id: "endgame",
-      label: "Endgames reached",
-      description: "Both sides have at most 13 nonpawn points.",
-      numerator: 0,
-      denominator: 0,
-      value: null,
-      minimum: 5,
-      white: { numerator: 0, denominator: 0, value: null },
-      black: { numerator: 0, denominator: 0, value: null },
-      evidence: [],
-    },
-  ],
+  dimensions: [
+    ["score", "Score", 0, 60],
+    ["theory", "Theory", null, null],
+    ["decidedGames", "Decided Games", 2.5, 200],
+    ["tenacity", "Tenacity", null, null],
+    ["aggressiveness", "Aggressiveness", null, null],
+    ["risk", "Risk", null, null],
+    ["positionalPlay", "Positional Play", null, null],
+    ["endgameAffinity", "Endgame Affinity", null, null],
+  ].map(([id, label, rawScore, normalized]) => ({
+    id: id as string,
+    label: label as string,
+    description: "Recovered native composite calculation.",
+    rawScore: rawScore as number | null,
+    normalized: normalized as number | null,
+    normalization: (id === "decidedGames" ? [-0.5, 1] : [-1.5, 1]) as [
+      number,
+      number,
+    ],
+    grade: null,
+    gradeReason: "Native categorical grading is not verified.",
+    status: rawScore == null ? "unavailable" : "available",
+    unavailableReason:
+      rawScore == null
+        ? "Requires native positional inputs that are not yet reproducible."
+        : null,
+    inputs:
+      rawScore == null
+        ? []
+        : [
+            {
+              label: "White points per game",
+              numerator: 5.5,
+              denominator: 10,
+              value: 0.55,
+              reference: 0.55,
+            },
+          ],
+    evidence:
+      id === "score" ? [{ ordinal: "3", node: 1, ply: 1, san: "e4" }] : [],
+  })),
   games: [
     {
       ordinal: "3",
@@ -85,7 +90,7 @@ async function openStyle() {
 }
 
 describe("local playing style", () => {
-  it("sends explicit criteria, shows measured zeros and missing evidence, and opens a supporting position", async () => {
+  it("shows the eight native dimensions, separates recovered values from unavailable inputs, and opens supporting evidence", async () => {
     const ui = await openStyle();
     ui.api.playingStyle.mockImplementation(async (_db, jobId, params) => ({
       ...styleReport,
@@ -107,6 +112,7 @@ describe("local playing style", () => {
       expect.any(String),
       expect.objectContaining({
         playerIds: [3],
+        gameTypes: 4,
         sampleLimit: 80,
         yearFrom: 2020,
         white: false,
@@ -116,22 +122,42 @@ describe("local playing style", () => {
     expect(
       await within(ui.dialog).findByText(/10 games analysed/),
     ).toBeVisible();
-    const checks = within(ui.dialog).getByRole("region", {
-      name: "Checking moves",
-    });
+    const score = within(ui.dialog).getByRole("region", { name: "Score" });
     expect(
-      within(checks).getByText("0.0%", { selector: "strong" }),
+      within(score).getByText("60.0%", { selector: "strong" }),
     ).toBeVisible();
-    expect(within(checks).getByText("0 / 240")).toBeVisible();
-    await ui.user.click(
-      within(ui.dialog).getByRole("button", { name: "Structure & endings" }),
-    );
+    expect(within(score).getByText(/Raw score.*0\.000/)).toBeVisible();
     expect(
-      within(ui.dialog).getAllByText("Insufficient evidence").length,
-    ).toBeGreaterThan(0);
-    await ui.user.click(
-      within(ui.dialog).getByRole("button", { name: "Activity & openings" }),
-    );
+      within(score).getByText("Categorical grade unavailable"),
+    ).toBeVisible();
+    for (const label of [
+      "Theory",
+      "Decided Games",
+      "Tenacity",
+      "Aggressiveness",
+      "Risk",
+      "Positional Play",
+      "Endgame Affinity",
+    ])
+      expect(
+        within(ui.dialog).getByRole("region", { name: label }),
+      ).toBeInTheDocument();
+    expect(
+      within(
+        within(ui.dialog).getByRole("region", { name: "Decided Games" }),
+      ).getByText("200.0%", { selector: "strong" }),
+    ).toBeVisible();
+    expect(within(ui.dialog).getByText(/Small sample:/)).toBeVisible();
+    const theory = within(ui.dialog).getByRole("region", { name: "Theory" });
+    expect(within(theory).getByText("—", { selector: "strong" })).toBeVisible();
+    expect(
+      within(theory).getByText(/Requires native positional inputs/),
+    ).toBeVisible();
+    expect(
+      within(ui.dialog).queryByRole("region", { name: "Checking moves" }),
+    ).toBeNull();
+    await ui.user.click(within(score).getByText("Calculation & inputs"));
+    expect(within(score).getByText("White points per game")).toBeVisible();
     await ui.user.click(
       within(ui.dialog).getByText("Supporting positions (1 shown)"),
     );
@@ -159,6 +185,41 @@ describe("local playing style", () => {
         expect.any(String),
       ),
     );
+  });
+
+  it("defaults to Long games and requires at least one native game category", async () => {
+    const ui = await openStyle();
+    ui.api.playingStyle.mockImplementation(async (_db, jobId, criteria) => ({
+      ...styleReport,
+      jobId,
+      criteria,
+    }));
+    const generate = within(ui.dialog).getByRole("button", {
+      name: "Generate report",
+    });
+    expect(
+      within(ui.dialog).getByRole("checkbox", { name: "Long" }),
+    ).toBeChecked();
+    await ui.user.click(
+      within(ui.dialog).getByRole("checkbox", { name: "Long" }),
+    );
+    expect(generate).toBeDisabled();
+    await ui.user.click(
+      within(ui.dialog).getByRole("checkbox", { name: "Blitz / bullet" }),
+    );
+    expect(generate).toBeEnabled();
+    await ui.user.click(generate);
+    expect(ui.api.playingStyle).toHaveBeenCalledWith(
+      "db-1",
+      expect.any(String),
+      expect.objectContaining({ gameTypes: 1 }),
+      expect.any(Function),
+    );
+    expect(
+      await within(ui.dialog).findByText(
+        /2 of 8 dimensions have a computed score/,
+      ),
+    ).toBeVisible();
   });
 
   it("rejects a late result and progress after Stop and a newer generation", async () => {

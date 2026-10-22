@@ -118,3 +118,30 @@ fn classic_names_decode_utf8_windows_1252_and_figurines() {
     assert_eq!(decode_name(b"1.b3 e5 2.\xa5b2 \xa4c6"), "1.b3 e5 2.♗b2 ♘c6");
     assert_eq!(decode_name(b"\xa2b1 \xa3d5 \xa6fd8"), "♔b1 ♕d5 ♖fd8");
 }
+
+#[test]
+fn classic_tournament_flags_are_read_after_tree_prefix_and_cached_with_names() {
+    for start in [28, 32] {
+        let dir = tempfile::tempdir().unwrap();
+        let header = dir.path().join("Flags.cbh");
+        std::fs::write(&header, []).unwrap();
+        let path = dir.path().join("Flags.cbt");
+        table(&path, 99, start, 1);
+        let mut bytes = std::fs::read(&path).unwrap();
+        bytes[start + 9..start + 17].copy_from_slice(b"Festival");
+        bytes[start + 79..start + 83]
+            .copy_from_slice(&((2025u32 << 9) | (1 << 5) | 1).to_le_bytes());
+        bytes[start + 83..start + 85].copy_from_slice(&0x25u16.to_le_bytes());
+        std::fs::write(&path, bytes).unwrap();
+        let mut tables =
+            EntityTables::open(&CompanionSet::discover(&header).unwrap(), 4096).unwrap();
+        let tournament = tables.tournament(0).unwrap();
+        assert_eq!(tournament.event.text.as_deref(), Some("Festival"));
+        // Type-five remapping belongs to the newer stream format, not CBT.
+        assert_eq!(tournament.flags, Some(0x25));
+        let read = tables.bytes_read();
+        assert_eq!(tables.tournament(0).unwrap().flags, Some(0x25));
+        assert_eq!(tables.bytes_read(), read);
+        assert!(tables.cached_bytes() <= 4096);
+    }
+}

@@ -3,94 +3,268 @@ use chess_core::{GameLimits, parse_pgn};
 use openfile::{
     playing_style::{StyleParams, StyleReport},
     registry::Registry,
+    style_dimensions::NativeDimension,
 };
+
+const FIVE_MOVES: &str = "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. d3 d6 5. Nc3 Nf6";
+
+fn game(white: &str, black: &str, result: &str, tags: &str, moves: &str) -> String {
+    format!(
+        "[White \"{white}\"]\n[Black \"{black}\"]\n[Result \"{result}\"]\n{tags}\n{moves} {result}\n\n"
+    )
+}
+
 fn fixture(text: &str) -> (tempfile::TempDir, Registry, String, u32) {
     let d = tempfile::tempdir().unwrap();
     let path = d.path().join("Style.2cbh");
     let games = parse_pgn(text.as_bytes(), &GameLimits::default()).unwrap();
-    let mut w = Writer::create(&path).unwrap();
-    w.append_all(&games).unwrap();
-    drop(w);
+    let mut writer = Writer::create(&path).unwrap();
+    writer.append_all(&games).unwrap();
+    drop(writer);
     let mut reader = Database::open(&path, ReadLimits::default()).unwrap();
-    let id = reader.page(1, 1).unwrap().entries[0].white_id.unwrap();
-    drop(reader);
-    let r = Registry::default();
-    let db = r.open_database(path, "o".into()).unwrap().database_id;
-    (d, r, db, id)
+    let player = reader.page(1, 1).unwrap().entries[0].white_id.unwrap();
+    let registry = Registry::default();
+    let database = registry
+        .open_database(path, "open".into())
+        .unwrap()
+        .database_id;
+    (d, registry, database, player)
 }
-fn metric(r: &StyleReport, id: &str) -> (u64, u64) {
-    let m = r.metrics.iter().find(|m| m.id == id).unwrap();
-    (m.numerator, m.denominator)
-}
-#[test]
-fn counts_recorded_checks_captures_both_colours_and_unknown_metadata() {
-    let (_d, r, db, id) = fixture(
-        r#"[White "Alpha"]
-[Black "Other"]
 
-1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7# *
-
-[White "Other"]
-[Black "Alpha"]
-
-1. f3 e5 2. g4 Qh4# *"#,
-    );
-    let p = StyleParams {
-        player_ids: vec![id],
+fn params(player: u32) -> StyleParams {
+    StyleParams {
+        player_ids: vec![player],
+        game_types: 15,
         ..Default::default()
-    };
-    let report = r
-        .playing_style(db, "one".into(), &p, |_| {})
+    }
+}
+
+fn dimension<'a>(report: &'a StyleReport, id: &str) -> &'a NativeDimension {
+    report
+        .dimensions
+        .iter()
+        .find(|dimension| dimension.id == id)
+        .unwrap()
+}
+
+fn close(actual: Option<f64>, expected: f64) {
+    assert!((actual.expect("calculated native value") - expected).abs() < 1e-10);
+}
+
+fn assert_eight_dimensions_and_no_proxy_values(report: &StyleReport) {
+    let expected = [
+        ("score", "Score"),
+        ("theory", "Theory"),
+        ("decidedGames", "Decided Games"),
+        ("tenacity", "Tenacity"),
+        ("aggressiveness", "Aggressiveness"),
+        ("risk", "Risk"),
+        ("positionalPlay", "Positional Play"),
+        ("endgameAffinity", "Endgame Affinity"),
+    ];
+    assert_eq!(report.dimensions.len(), expected.len());
+    for (dimension, (id, label)) in report.dimensions.iter().zip(expected) {
+        assert_eq!(dimension.id, id);
+        assert_eq!(dimension.label, label);
+        assert!(dimension.grade.is_none());
+        assert!(dimension.grade_reason.contains("uninitialized"));
+        if id != "score" && id != "decidedGames" {
+            assert!(
+                dimension.raw_score.is_none(),
+                "{id} cannot use a descriptive proxy"
+            );
+            assert!(dimension.normalized.is_none());
+            assert!(dimension.unavailable_reason.is_some());
+            assert!(dimension.evidence.is_empty());
+        }
+    }
+    let wire = serde_json::to_value(report).unwrap();
+    assert!(wire.get("dimensions").is_some());
+    assert!(wire.get("metrics").is_none());
+}
+
+fn assert_source_bound_evidence(
+    d: &tempfile::TempDir,
+    registry: &Registry,
+    database: &str,
+    report: &StyleReport,
+) {
+    let mut reader = Database::open(&d.path().join("Style.2cbh"), ReadLimits::default()).unwrap();
+    for id in ["score", "decidedGames"] {
+        let evidence = &dimension(report, id).evidence;
+        assert!(evidence.len() <= 7);
+        for item in evidence {
+            let entry = report
+                .games
+                .iter()
+                .find(|game| game.ordinal == item.ordinal)
+                .unwrap();
+            let source = reader
+                .load(item.ordinal.parse().unwrap())
+                .unwrap()
+                .game
+                .unwrap();
+            let mut end = 0;
+            for _ in 0..400 {
+                let Some(&next) = source.nodes[end as usize].children.first() else {
+                    break;
+                };
+                end = next;
+            }
+            assert_eq!(
+                item.node, end,
+                "result evidence uses the last legally replayed main-line node"
+            );
+            assert_eq!(item.ply, entry.plies);
+            assert_eq!(source.path_to(item.node).unwrap().len(), item.ply as usize);
+            assert_eq!(
+                source.san_at(item.node).unwrap().as_deref(),
+                Some(item.san.as_str())
+            );
+            let loaded = registry
+                .load_style_entry(
+                    database.into(),
+                    report.job_id.clone(),
+                    item.ordinal.clone(),
+                    "evidence".into(),
+                )
+                .unwrap();
+            let document = loaded.document_id.unwrap();
+            registry
+                .position_at(document.clone(), item.node, "position".into())
+                .unwrap();
+            registry.close_document(document).unwrap();
+        }
+    }
+}
+
+#[test]
+fn native_result_math_uses_both_colours_and_retains_source_bound_evidence() {
+    let mut text = String::new();
+    for result in ["1-0", "1/2-1/2", "0-1"] {
+        text.push_str(&game("Alpha", "Other", result, "", FIVE_MOVES));
+    }
+    for result in ["0-1", "1/2-1/2"] {
+        text.push_str(&game("Other", "Alpha", result, "", FIVE_MOVES));
+    }
+    let (d, registry, database, player) = fixture(&text);
+    let report = registry
+        .playing_style(database.clone(), "results".into(), &params(player), |_| {})
         .unwrap()
         .unwrap();
     assert_eq!(
         (report.analysed, report.white_games, report.black_games),
-        (2, 1, 1)
+        (5, 3, 2)
     );
-    assert_eq!(metric(&report, "checks"), (2, 6));
-    assert_eq!(metric(&report, "captures"), (1, 6));
-    assert_eq!(metric(&report, "earlyQueen"), (2, 2));
-    assert_eq!(metric(&report, "kingsideCastle"), (0, 0));
-    assert_eq!(metric(&report, "endgame"), (0, 2));
-    assert_eq!(report.unknown_result, 2);
-    assert_eq!(report.unknown_opponent_elo, 2);
-    let checks = report.metrics.iter().find(|m| m.id == "checks").unwrap();
-    assert_eq!((checks.white.numerator, checks.black.numerator), (1, 1));
-    assert!((checks.value.unwrap() - 100.0 / 3.0).abs() < 0.00001);
-    for e in &checks.evidence {
-        assert!(e.node > 0);
-        assert!(e.san.ends_with('#'));
-    }
+    // White: 1.5 points / 3 games; Black: 1.5 / 2.
+    close(dimension(&report, "score").raw_score, 0.2545454545454545);
+    close(dimension(&report, "score").normalized, 70.18181818181819);
+    // Draw fractions 1/3 and 1/2; raw = 2.5 - 1/.543.
+    close(
+        dimension(&report, "decidedGames").raw_score,
+        0.6583793738489871,
+    );
+    close(
+        dimension(&report, "decidedGames").normalized,
+        77.22529158993247,
+    );
+    let tenacity = dimension(&report, "tenacity");
+    let short = tenacity
+        .inputs
+        .iter()
+        .find(|i| i.label == "Short draws (stored length below 26)")
+        .unwrap();
+    close(short.numerator, 2.0);
+    assert_eq!(short.denominator, Some(5));
+    close(short.value, 0.4);
+    close(short.reference, 0.13);
+    let length = tenacity
+        .inputs
+        .iter()
+        .find(|i| i.label == "Mean stored draw length")
+        .unwrap();
+    close(length.numerator, 10.0);
+    assert_eq!(length.denominator, Some(2));
+    close(length.value, 5.0);
+    close(length.reference, 40.1);
+    assert!(
+        tenacity.raw_score.is_none(),
+        "known draw components cannot replace the missing native exchange terms"
+    );
+    assert_eq!(dimension(&report, "score").status, "available");
+    assert_eq!(report.unknown_result, 0);
+    assert_eq!(report.unknown_opponent_elo, 5);
+    assert_eight_dimensions_and_no_proxy_values(&report);
+    assert!(!dimension(&report, "score").evidence.is_empty());
+    assert!(!dimension(&report, "decidedGames").evidence.is_empty());
+    assert_source_bound_evidence(&d, &registry, &database, &report);
 }
+
+#[test]
+fn canonical_forfeits_and_unknown_results_follow_native_all_game_denominators() {
+    let text = game("Alpha", "Other", "*", "", FIVE_MOVES).repeat(2)
+        + &game("Other", "Alpha", "*", "", FIVE_MOVES).repeat(2);
+    let (d, registry, database, player) = fixture(&text);
+    registry.close_database(database).unwrap();
+    let path = d.path().join("Style.2cbh");
+    let mut header = std::fs::read(&path).unwrap();
+    // 6 White forfeit win; 5 forfeit draw; 4 Black forfeit win; 3 unknown.
+    for (ordinal, code) in [(1, 6), (2, 5), (3, 4), (4, 3)] {
+        header[ordinal * 192 + 88] = code;
+    }
+    std::fs::write(&path, header).unwrap();
+    let database = registry
+        .open_database(path, "reopen".into())
+        .unwrap()
+        .database_id;
+    let report = registry
+        .playing_style(database.clone(), "forfeits".into(), &params(player), |_| {})
+        .unwrap()
+        .unwrap();
+    assert_eq!((report.analysed, report.unknown_result), (4, 1));
+    // White scores .75; Black scores .5 because the unknown game remains counted.
+    close(dimension(&report, "score").raw_score, 0.34545454545454546);
+    close(dimension(&report, "score").normalized, 73.81818181818181);
+    close(
+        dimension(&report, "decidedGames").normalized,
+        107.91896869244935,
+    );
+    for id in ["score", "decidedGames"] {
+        let dim = dimension(&report, id);
+        assert_eq!(dim.status, "partial");
+        assert!(dim.unavailable_reason.as_ref().unwrap().contains("unknown"));
+        assert!(dim.inputs.iter().any(|input| input.label.contains("Black")
+            && input.label.contains("unknown")
+            && input.numerator == Some(1.0)
+            && input.denominator == Some(2)));
+    }
+    assert_source_bound_evidence(&d, &registry, &database, &report);
+}
+
 #[test]
 fn cancelled_and_obsolete_jobs_cannot_publish_and_close_cancels() {
-    let (_d, r, db, id) = fixture(
-        r#"[White "Alpha"]
-[Black "Other"]
-
-1. e4 e5 *"#,
-    );
-    let p = StyleParams {
-        player_ids: vec![id],
-        ..Default::default()
-    };
+    let (_d, registry, database, player) = fixture(&game("Alpha", "Other", "1-0", "", FIVE_MOVES));
+    let params = params(player);
     let mut fired = false;
-    let out = r
-        .playing_style(db.clone(), "old".into(), &p, |_| {
+    let out = registry
+        .playing_style(database.clone(), "old".into(), &params, |_| {
             if !fired {
                 fired = true;
-                r.cancel_playing_style(db.clone(), "old".into()).unwrap();
+                registry
+                    .cancel_playing_style(database.clone(), "old".into())
+                    .unwrap();
             }
         })
         .unwrap();
     assert!(out.is_none());
     let mut nested = false;
-    let out = r
-        .playing_style(db.clone(), "older".into(), &p, |_| {
+    let out = registry
+        .playing_style(database.clone(), "older".into(), &params, |_| {
             if !nested {
                 nested = true;
                 assert!(
-                    r.playing_style(db.clone(), "newer".into(), &p, |_| {})
+                    registry
+                        .playing_style(database.clone(), "newer".into(), &params, |_| {})
                         .unwrap()
                         .is_some()
                 );
@@ -98,69 +272,40 @@ fn cancelled_and_obsolete_jobs_cannot_publish_and_close_cancels() {
         })
         .unwrap();
     assert!(out.is_none());
+    // An obsolete cancellation must not invalidate the newer report.
+    registry
+        .cancel_playing_style(database.clone(), "older".into())
+        .unwrap();
+    registry
+        .validate_playing_style(database.clone(), "newer".into())
+        .unwrap();
     let mut closed = false;
-    let out = r
-        .playing_style(db.clone(), "close".into(), &p, |_| {
+    let out = registry
+        .playing_style(database.clone(), "close".into(), &params, |_| {
             if !closed {
                 closed = true;
-                r.close_database(db.clone()).unwrap();
+                registry.close_database(database.clone()).unwrap();
             }
         })
         .unwrap();
     assert!(out.is_none());
 }
-#[test]
-fn sustained_deficit_is_observed_on_the_reply_even_if_the_record_ends_there() {
-    let (_d, r, db, id) = fixture(
-        r#"[White "Alpha"]
-[Black "Other"]
 
-1. e4 e5 2. Qh5 Nc6 3. Qxe5+ Nxe5 4. Nf3 Nc6 *"#,
-    );
-    let report = r
-        .playing_style(
-            db,
-            "deficit".into(),
-            &StyleParams {
-                player_ids: vec![id],
-                ..Default::default()
-            },
-            |_| {},
-        )
-        .unwrap()
-        .unwrap();
-    assert_eq!(metric(&report, "sustainedDeficit"), (1, 1));
-    assert_eq!(
-        report
-            .metrics
-            .iter()
-            .find(|m| m.id == "sustainedDeficit")
-            .unwrap()
-            .evidence[0]
-            .ply,
-        8
-    );
-}
 #[test]
-fn verifies_sources_before_publishing_and_again_before_evidence_navigation() {
+fn verifies_sources_before_publication_and_before_source_bound_navigation() {
     use std::io::Write;
-    let (d, r, db, id) = fixture(
-        r#"[White "Alpha"]
-[Black "Other"]
-
-1. e4 e5 *"#,
-    );
-    let p = StyleParams {
-        player_ids: vec![id],
-        ..Default::default()
-    };
-    r.playing_style(db.clone(), "visible".into(), &p, |_| {})
+    let (d, registry, database, player) = fixture(&game("Alpha", "Other", "1-0", "", FIVE_MOVES));
+    let params = params(player);
+    registry
+        .playing_style(database.clone(), "visible".into(), &params, |_| {})
         .unwrap()
         .unwrap();
-    r.validate_playing_style(db.clone(), "visible".into())
+    registry
+        .validate_playing_style(database.clone(), "visible".into())
         .unwrap();
     assert!(
-        r.validate_playing_style(db.clone(), "other".into())
+        registry
+            .validate_playing_style(database.clone(), "other".into())
             .is_err()
     );
     std::fs::OpenOptions::new()
@@ -170,13 +315,18 @@ fn verifies_sources_before_publishing_and_again_before_evidence_navigation() {
         .write_all(&[0])
         .unwrap();
     assert_eq!(
-        r.validate_playing_style(db.clone(), "visible".into())
+        registry
+            .load_style_entry(
+                database.clone(),
+                "visible".into(),
+                "1".into(),
+                "stale".into()
+            )
             .unwrap_err()
             .code,
         "sourceChanged"
     );
-    // A fresh handle sees the changed header. Mutate it again at the final callback.
-    let out = r.playing_style(db, "publish".into(), &p, |event| {
+    let out = registry.playing_style(database, "publish".into(), &params, |event| {
         if event.stage == "replay" && event.done == event.total {
             std::fs::OpenOptions::new()
                 .append(true)
@@ -188,23 +338,31 @@ fn verifies_sources_before_publishing_and_again_before_evidence_navigation() {
     });
     assert_eq!(out.unwrap_err().code, "sourceChanged");
 }
-#[test]
-fn keeps_primary_identity_first_when_alias_has_a_smaller_id() {
-    let (d, r, db, first) = fixture(
-        r#"[White "Alias"]
-[Black "Primary"]
 
-1. e4 e5 *"#,
-    );
-    let mut reader = Database::open(&d.path().join("Style.2cbh"), ReadLimits::default()).unwrap();
+#[test]
+fn alias_union_preserves_primary_identity_counts_once_and_excludes_deleted_games() {
+    let text = game("Alias", "Primary", "1-0", "", FIVE_MOVES)
+        + &game("Primary", "Other", "0-1", "", FIVE_MOVES);
+    let (d, registry, database, alias) = fixture(&text);
+    registry.close_database(database).unwrap();
+    let path = d.path().join("Style.2cbh");
+    let mut writer = Writer::open(&path).unwrap();
+    writer.set_deleted(2, true).unwrap();
+    drop(writer);
+    let mut reader = Database::open(&path, ReadLimits::default()).unwrap();
     let primary = reader.page(1, 1).unwrap().entries[0].black_id.unwrap();
-    assert!(primary > first);
-    let report = r
+    assert!(primary > alias);
+    let database = registry
+        .open_database(path, "reopen".into())
+        .unwrap()
+        .database_id;
+    let report = registry
         .playing_style(
-            db,
+            database,
             "aliases".into(),
             &StyleParams {
-                player_ids: vec![primary, first, primary],
+                player_ids: vec![primary, alias, primary],
+                game_types: 15,
                 ..Default::default()
             },
             |_| {},
@@ -213,94 +371,148 @@ fn keeps_primary_identity_first_when_alias_has_a_smaller_id() {
         .unwrap();
     assert_eq!(
         report.players.iter().map(|p| p.id).collect::<Vec<_>>(),
-        vec![primary, first]
+        vec![primary, alias]
     );
-    assert_eq!(report.criteria.player_ids, vec![primary, first]);
+    assert_eq!(report.criteria.player_ids, vec![primary, alias]);
+    assert_eq!(
+        (
+            report.eligible,
+            report.deleted,
+            report.analysed,
+            report.white_games
+        ),
+        (1, 1, 1, 1)
+    );
+    assert_eq!(report.games[0].ordinal, "1");
 }
+
 #[test]
-fn castling_windows_and_opposite_sides_use_observable_denominators() {
-    let (_d, r, db, id) = fixture(
-        r#"[White "Alpha"]
-[Black "Other"]
-
-1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. O-O Nf6 *
-
-[White "Alpha"]
-[Black "Other"]
-
-1. d4 d5 2. Nc3 Nf6 3. Bf4 e6 4. Qd2 Be7 5. O-O-O O-O *
-
-[White "Other"]
-[Black "Alpha"]
-
-1. e4 e5 *"#,
+fn native_minimum_length_is_applied_before_latest_sample_limiting() {
+    let text = game(
+        "Alpha",
+        "Other",
+        "1-0",
+        "[Date \"2020.01.01\"]\n",
+        FIVE_MOVES,
+    ) + &game(
+        "Alpha",
+        "Other",
+        "0-1",
+        "[Date \"2027.01.01\"]\n",
+        "1. e4 e5",
     );
-    let report = r
+    let (_d, registry, database, player) = fixture(&text);
+    let report = registry
         .playing_style(
-            db,
-            "castles".into(),
+            database,
+            "minimum".into(),
             &StyleParams {
-                player_ids: vec![id],
-                ..Default::default()
+                sample_limit: 1,
+                ..params(player)
             },
             |_| {},
         )
         .unwrap()
         .unwrap();
-    assert_eq!(metric(&report, "kingsideCastle"), (1, 2));
-    assert_eq!(metric(&report, "queensideCastle"), (1, 2));
-    assert_eq!(metric(&report, "oppositeCastle"), (1, 1));
-    let m = report
-        .metrics
-        .iter()
-        .find(|m| m.id == "queensideCastle")
-        .unwrap();
-    assert_eq!(m.black.denominator, 0);
+    assert_eq!(
+        (
+            report.too_short,
+            report.eligible,
+            report.selected,
+            report.analysed
+        ),
+        (1, 1, 1, 1)
+    );
+    assert_eq!(report.games[0].ordinal, "1");
 }
+
 #[test]
-fn capped_games_do_not_supply_absence_denominators_and_variations_do_not_count() {
-    let mut text = String::from("[White \"Alpha\"]\n[Black \"Other\"]\n\n");
+fn long_recorded_results_survive_replay_caps_and_variations_do_not_change_evidence_path() {
+    let mut text = String::from("[White \"Alpha\"]\n[Black \"Other\"]\n[Result \"1-0\"]\n\n");
     for _ in 0..101 {
         text.push_str("Nf3 Nf6 Ng1 Ng8 ");
     }
-    text.push('*');
-    text.push_str("\n\n[White \"Alpha\"]\n[Black \"Other\"]\n\n1. e4 (1. d4 d5) e5 *");
-    let (_d, r, db, id) = fixture(&text);
-    let report = r
-        .playing_style(
-            db,
-            "cut".into(),
-            &StyleParams {
-                player_ids: vec![id],
-                ..Default::default()
-            },
-            |_| {},
-        )
+    text.push_str("1-0\n\n");
+    text.push_str(&game(
+        "Other",
+        "Alpha",
+        "0-1",
+        "",
+        "1. e4 (1. d4 d5) e5 2. Nf3 Nc6 3. Bc4 Bc5 4. d3 d6 5. Nc3 Nf6",
+    ));
+    let (d, registry, database, player) = fixture(&text);
+    let report = registry
+        .playing_style(database.clone(), "cut".into(), &params(player), |_| {})
         .unwrap()
         .unwrap();
-    assert_eq!(report.cut_games, 1);
-    assert_eq!(report.games.iter().find(|g| g.cut).unwrap().plies, 400);
-    assert_eq!(metric(&report, "checks"), (0, 201));
-    assert_eq!(metric(&report, "endgame"), (0, 1));
-    assert_eq!(metric(&report, "sustainedDeficit"), (0, 1));
-    assert_eq!(metric(&report, "imbalance20"), (0, 1));
-    assert_eq!(metric(&report, "queenless30"), (0, 1));
-    assert_eq!(metric(&report, "earlyQueen"), (0, 1));
+    assert_eq!((report.analysed, report.cut_games), (2, 1));
+    assert_eq!(
+        report.games.iter().find(|game| game.cut).unwrap().plies,
+        400
+    );
+    assert_eq!(
+        report.games.iter().find(|game| !game.cut).unwrap().plies,
+        10
+    );
+    close(dimension(&report, "score").raw_score, 1.8);
+    close(dimension(&report, "score").normalized, 132.0);
+    assert_eight_dimensions_and_no_proxy_values(&report);
+    assert_source_bound_evidence(&d, &registry, &database, &report);
 }
+
 #[test]
-fn handles_empty_sample_setup_and_en_passant_and_bounds_evidence() {
-    let mut text = String::new();
-    for _ in 0..12 {
-        text.push_str("[White \"Alpha\"]\n[Black \"Other\"]\n\n1. e4 a5 2. e5 d5 3. exd6 *\n\n");
-    }
-    text.push_str("[White \"Alpha\"]\n[Black \"Other\"]\n[SetUp \"1\"]\n[FEN \"4k3/8/8/8/8/8/P7/4K3 w - - 0 1\"]\n\n1. a4 *");
-    let (_d, r, db, id) = fixture(&text);
-    let p = StyleParams {
-        player_ids: vec![id],
-        ..Default::default()
-    };
-    let report = r
-        .playing_style(db.clone(), "ep".into(), &p, |_| {})
+fn legal_castling_and_promotions_are_replayed_without_substituting_positional_scores() {
+    let text = game(
+        "Alpha",
+        "Other",
+        "1-0",
+        "",
+        "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. O-O Nf6 5. d3 d6",
+    ) + &game(
+        "Other",
+        "Alpha",
+        "1/2-1/2",
+        "",
+        "1. d4 d5 2. Nc3 Nf6 3. Bf4 e6 4. Qd2 Be7 5. O-O-O O-O",
+    ) + &game(
+        "Alpha",
+        "Other",
+        "0-1",
+        "",
+        "1. a4 h5 2. a5 h4 3. a6 h3 4. axb7 hxg2 5. bxa8=Q gxh1=Q",
+    );
+    let (d, registry, database, player) = fixture(&text);
+    let report = registry
+        .playing_style(database.clone(), "special".into(), &params(player), |_| {})
+        .unwrap()
+        .unwrap();
+    assert_eq!((report.analysed, report.skipped), (3, 0));
+    assert!(report.games.iter().all(|game| game.plies == 10));
+    assert_eight_dimensions_and_no_proxy_values(&report);
+    assert_source_bound_evidence(&d, &registry, &database, &report);
+}
+
+#[test]
+fn excludes_setup_handles_en_passant_bounds_evidence_and_reports_an_empty_filtered_sample() {
+    let mut text = game(
+        "Alpha",
+        "Other",
+        "1-0",
+        "",
+        "1. e4 a5 2. e5 d5 3. exd6 Nc6 4. Nf3 exd6 5. Bc4 Nf6",
+    )
+    .repeat(12);
+    text.push_str(&game(
+        "Alpha",
+        "Other",
+        "1-0",
+        "[SetUp \"1\"]\n[FEN \"4k3/8/8/8/8/8/P7/4K3 w - - 0 1\"]\n",
+        "1. a4 Ke7 2. a5 Kd6 3. a6 Ke5 4. a7 Kd4 5. a8=Q Kc3",
+    ));
+    let (d, registry, database, player) = fixture(&text);
+    let params = params(player);
+    let report = registry
+        .playing_style(database.clone(), "ep".into(), &params, |_| {})
         .unwrap()
         .unwrap();
     assert_eq!(
@@ -312,24 +524,16 @@ fn handles_empty_sample_setup_and_en_passant_and_bounds_evidence() {
         ),
         (13, 12, 1, 1)
     );
-    assert_eq!(metric(&report, "captures"), (12, 36));
-    assert_eq!(
-        report
-            .metrics
-            .iter()
-            .find(|m| m.id == "captures")
-            .unwrap()
-            .evidence
-            .len(),
-        8
-    );
-    let empty = r
+    assert_eq!(dimension(&report, "score").evidence.len(), 7);
+    assert_eq!(dimension(&report, "decidedGames").evidence.len(), 7);
+    assert_source_bound_evidence(&d, &registry, &database, &report);
+    let empty = registry
         .playing_style(
-            db,
+            database,
             "empty".into(),
             &StyleParams {
                 year_from: Some(2026),
-                ..p
+                ..params
             },
             |_| {},
         )
@@ -338,30 +542,32 @@ fn handles_empty_sample_setup_and_en_passant_and_bounds_evidence() {
     assert_eq!(empty.analysed, 0);
     assert!(
         empty
-            .metrics
+            .dimensions
             .iter()
-            .all(|m| m.value.is_none() && m.status == "none")
+            .all(|dimension| dimension.raw_score.is_none()
+                && dimension.normalized.is_none()
+                && dimension.status == "insufficient")
     );
+    assert_eight_dimensions_and_no_proxy_values(&empty);
 }
+
 #[test]
 fn corrupt_unsupported_partial_and_null_move_records_are_counted_and_excluded() {
     use cbh_reader::v2::block::{MARKER, checksum};
-    let text = "[White \"Alpha\"]\n[Black \"Other\"]\n\n1. e4 *\n\n".repeat(5);
-    let (d, r, db, id) = fixture(&text);
-    r.close_database(db).unwrap();
+    let text = game("Alpha", "Other", "1-0", "", FIVE_MOVES).repeat(5);
+    let (d, registry, database, player) = fixture(&text);
+    registry.close_database(database).unwrap();
     let path = d.path().join("Style.2cbh");
     let moves = d.path().join("Style.2cbg");
     let mut header = std::fs::read(&path).unwrap();
     let mut stream = std::fs::read(&moves).unwrap();
-    // New frames: a damaged move, an unsupported start, uninterpreted move flag,
-    // and a syntactically supported null move. The fifth stays valid.
     for (ordinal, words) in [
         (1, vec![0xfffc_u16, 0xb02d, 0xffff]),
         (2, vec![0xfff0, 0xffff]),
         (3, vec![0xfffc, 0xad3f, 0xfffe, 0xffff]),
         (4, vec![0xfffc, 0xfffa, 0xffff]),
     ] {
-        let payload: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
+        let payload: Vec<u8> = words.iter().flat_map(|word| word.to_le_bytes()).collect();
         let offset = stream.len() as u64;
         let padding = (8 - (payload.len() + 34) % 8) % 8;
         let total = (34 + payload.len() + padding) as u64;
@@ -379,17 +585,12 @@ fn corrupt_unsupported_partial_and_null_move_records_are_counted_and_excluded() 
     stream[..8].copy_from_slice(&len.to_le_bytes());
     std::fs::write(&moves, stream).unwrap();
     std::fs::write(&path, header).unwrap();
-    let db = r.open_database(path, "reopen".into()).unwrap().database_id;
-    let report = r
-        .playing_style(
-            db,
-            "bad".into(),
-            &StyleParams {
-                player_ids: vec![id],
-                ..Default::default()
-            },
-            |_| {},
-        )
+    let database = registry
+        .open_database(path, "reopen".into())
+        .unwrap()
+        .database_id;
+    let report = registry
+        .playing_style(database.clone(), "bad".into(), &params(player), |_| {})
         .unwrap()
         .unwrap();
     assert_eq!(
@@ -402,82 +603,29 @@ fn corrupt_unsupported_partial_and_null_move_records_are_counted_and_excluded() 
         ),
         (1, 4, 2, 1, 1)
     );
-    assert_eq!(metric(&report, "captures"), (0, 1));
-}
-#[test]
-fn queenless_imbalanced_endgames_and_material_deficits_have_exact_positions() {
-    // Deterministically generated legal capture sequence, kept explicit so its
-    // piece inventories and event positions can be independently reviewed.
-    let (d, r, db, id) = fixture(
-        r#"[White "Alpha"]
-[Black "Other"]
-
-1. g3 Nh6 2. b4 f6 3. a4 c6 4. Nf3 e6 5. b5 cxb5 6. axb5 d5 7. Rxa7 Rxa7 8. e4 dxe4 9. Ba3 Qxd2+ 10. Kxd2 Bxa3 11. Nxa3 Rxa3 12. c3 Rxc3 13. Kxc3 exf3 14. Qxf3 Kd8 15. Qxf6+ gxf6 16. Kb2 Nd7 17. Be2 Rf8 18. Bh5 Ke7 19. Kc1 Nb6 20. Kc2 f5 21. Be2 Rf6 22. Kb1 e5 23. Rc1 Na4 24. Rxc8 *"#,
-    );
-    let p = StyleParams {
-        player_ids: vec![id],
-        ..Default::default()
-    };
-    let report = r
-        .playing_style(db.clone(), "material".into(), &p, |_| {})
-        .unwrap()
-        .unwrap();
-    for key in ["queenless30", "imbalance20", "sustainedDeficit", "endgame"] {
-        assert_eq!(metric(&report, key), (1, 1), "{key}");
-    }
-    for (key, ply) in [
-        ("queenless30", 30),
-        ("imbalance20", 40),
-        ("sustainedDeficit", 16),
-        ("endgame", 47),
-    ] {
-        let m = report.metrics.iter().find(|m| m.id == key).unwrap();
-        assert_eq!(m.evidence[0].ply, ply, "{key}");
-    }
-    let mut reader = Database::open(&d.path().join("Style.2cbh"), ReadLimits::default()).unwrap();
-    let black = reader.page(1, 1).unwrap().entries[0].black_id.unwrap();
-    let report = r
-        .playing_style(
-            db,
-            "materialBlack".into(),
-            &StyleParams {
-                player_ids: vec![black],
-                ..Default::default()
-            },
-            |_| {},
-        )
-        .unwrap()
-        .unwrap();
-    assert_eq!(metric(&report, "endgame"), (1, 1));
-    assert_eq!(metric(&report, "queenless30"), (1, 1));
-    assert_eq!(report.black_games, 1);
+    // Failed move records must not contaminate the surviving game's result inputs.
+    assert_eq!(dimension(&report, "score").inputs[0].denominator, Some(1));
+    assert_source_bound_evidence(&d, &registry, &database, &report);
 }
 
 #[test]
 fn partial_date_range_follows_packed_date_order_instead_of_question_mark_sorting() {
-    let (_d, r, db, id) = fixture(
-        r#"[White "Alpha"]
-[Black "Other"]
-[Date "2025.??.??"]
-
-1. e4 *
-
-[White "Alpha"]
-[Black "Other"]
-[Date "2025.06.01"]
-
-1. e4 *"#,
+    let text = game(
+        "Alpha",
+        "Other",
+        "1-0",
+        "[Date \"2025.??.??\"]\n",
+        FIVE_MOVES,
+    ) + &game(
+        "Alpha",
+        "Other",
+        "1/2-1/2",
+        "[Date \"2025.06.01\"]\n",
+        FIVE_MOVES,
     );
-    let report = r
-        .playing_style(
-            db,
-            "dates".into(),
-            &StyleParams {
-                player_ids: vec![id],
-                ..Default::default()
-            },
-            |_| {},
-        )
+    let (_d, registry, database, player) = fixture(&text);
+    let report = registry
+        .playing_style(database, "dates".into(), &params(player), |_| {})
         .unwrap()
         .unwrap();
     assert_eq!(report.first_date.as_deref(), Some("2025.??.??"));
@@ -486,35 +634,8 @@ fn partial_date_range_follows_packed_date_order_instead_of_question_mark_sorting
         report
             .games
             .iter()
-            .map(|g| g.ordinal.as_str())
+            .map(|game| game.ordinal.as_str())
             .collect::<Vec<_>>(),
         vec!["2", "1"]
     );
-}
-
-#[test]
-fn endgame_and_deficit_events_observed_before_the_cap_remain_positive_evidence() {
-    let mut text = String::from(
-        "[White \"Alpha\"]\n[Black \"Other\"]\n\n1. g3 Nh6 2. b4 f6 3. a4 c6 4. Nf3 e6 5. b5 cxb5 6. axb5 d5 7. Rxa7 Rxa7 8. e4 dxe4 9. Ba3 Qxd2+ 10. Kxd2 Bxa3 11. Nxa3 Rxa3 12. c3 Rxc3 13. Kxc3 exf3 14. Qxf3 Kd8 15. Qxf6+ gxf6 16. Kb2 Nd7 17. Be2 Rf8 18. Bh5 Ke7 19. Kc1 Nb6 20. Kc2 f5 21. Be2 Rf6 22. Kb1 e5 23. Rc1 Na4 24. Rxc8 Nb6 ",
-    );
-    for _ in 0..100 {
-        text.push_str("Bf1 Na4 Be2 Nb6 ");
-    }
-    text.push('*');
-    let (_d, r, db, id) = fixture(&text);
-    let report = r
-        .playing_style(
-            db,
-            "positiveCut".into(),
-            &StyleParams {
-                player_ids: vec![id],
-                ..Default::default()
-            },
-            |_| {},
-        )
-        .unwrap()
-        .unwrap();
-    assert_eq!(report.cut_games, 1);
-    assert_eq!(metric(&report, "endgame"), (1, 1));
-    assert_eq!(metric(&report, "sustainedDeficit"), (1, 1));
 }

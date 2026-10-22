@@ -101,7 +101,7 @@ turns them into a database.
   and Swiss crosstables show tiebreaks, performance and FIDE category.
 - **Reports.** Opening reports, tournament reports with round-by-round
   standings, an error report that estimates a player's strength from their
-  mistakes, and local playing-style measurements with supporting positions.
+  mistakes, and a partial reconstruction of the native playing-style dimensions, with recovered Score/Decided Games calculations and supporting positions.
 - **Edit and write.** Enter moves and variations, promote, fold and reorder
   lines, add comments, symbols, arrows and coloured squares, edit game data and
   set up positions, with up to 100 undo steps. Save, replace, delete and mark

@@ -1415,8 +1415,9 @@ export interface RepertoireReport {
   cancelled: boolean;
 }
 
-/** Local STYLE_REPORT: descriptive board measures, not personality ratings. */
+/** Recovered native STYLE_REPORT dimensions with explicit missing dependencies. */
 export interface StyleParams {
+  gameTypes: number;
   playerIds: number[];
   white?: boolean | null;
   yearFrom?: number | null;
@@ -1429,28 +1430,35 @@ export interface StyleProgress {
   done: string;
   total: string;
 }
-export interface StyleRate {
-  numerator: number;
-  denominator: number;
-  value: number | null;
-}
 export interface StyleEvidence {
   ordinal: string;
   node: number;
   ply: number;
   san: string;
 }
-export interface StyleMetric extends StyleRate {
+export interface NativeStyleInput {
+  label: string;
+  numerator: number | null;
+  denominator: number | null;
+  value: number | null;
+  reference: number | null;
+}
+export interface NativeStyleDimension {
   id: string;
   label: string;
   description: string;
-  minimum: number;
-  status?: "none" | "small" | "ok";
-  white: StyleRate;
-  black: StyleRate;
+  rawScore: number | null;
+  normalized: number | null;
+  normalization: [number, number];
+  grade: string | null;
+  gradeReason: string;
+  status: "available" | "partial" | "insufficient" | "unavailable";
+  unavailableReason: string | null;
+  inputs: NativeStyleInput[];
   evidence: StyleEvidence[];
 }
 export interface StyleGame {
+  storedMoves?: number;
   ordinal: string;
   white: boolean;
   opponent?: string | null;
@@ -1483,7 +1491,9 @@ export interface StyleReport {
   skippedPartial?: number;
   firstDate?: string | null;
   lastDate?: string | null;
-  metrics: StyleMetric[];
+  tooShort: number;
+  unknownCategory: number;
+  dimensions: NativeStyleDimension[];
   games: StyleGame[];
   elapsedMs: number;
 }

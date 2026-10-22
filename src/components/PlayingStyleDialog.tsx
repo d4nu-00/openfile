@@ -1,78 +1,90 @@
 import { useEffect, useRef, useState } from "react";
 import type { WorkbenchApi } from "../api/client";
 import type {
+  NativeStyleDimension,
   StyleEvidence,
-  StyleMetric,
   StyleParams,
-  StyleRate,
   StyleReport,
 } from "../api/types";
 
 type Player = { id: number; name?: string | null };
-const activityIds = new Set([
-  "checks",
-  "captures",
-  "earlyQueen",
-  "kingsideCastle",
-  "queensideCastle",
-  "oppositeCastle",
-]);
-const percent = (rate: StyleRate) =>
-  rate.value == null ? "—" : `${rate.value.toFixed(1)}%`;
 const date = (value?: string | null) =>
   value?.replace(/(?:\.\?\?)+$/, "") ?? "unknown date";
+const number = (value: number | null) =>
+  value == null ? "—" : value.toFixed(3);
 
-function Metric({
-  metric: m,
+function Dimension({
+  dimension: d,
   onEvidence,
 }: {
-  metric: StyleMetric;
+  dimension: NativeStyleDimension;
   onEvidence: (e: StyleEvidence) => void;
 }) {
   return (
-    <section className="style-metric" aria-label={m.label}>
+    <section className="style-metric" aria-label={d.label}>
       <div className="style-metric-heading">
-        <h3>{m.label}</h3>
-        <strong>{percent(m)}</strong>
+        <h3>{d.label}</h3>
+        <strong>
+          {d.normalized == null ? "—" : `${d.normalized.toFixed(1)}%`}
+        </strong>
       </div>
-      <p className="style-definition">{m.description}</p>
+      <p className="style-definition">{d.description}</p>
       <div className="style-counts">
+        <span>Raw score {number(d.rawScore)}</span>
         <span>
-          {m.numerator} / {m.denominator}
-        </span>
-        <span>
-          {m.denominator === 0
-            ? "Insufficient evidence"
-            : m.denominator < m.minimum
-              ? `Small sample · below ${m.minimum}`
-              : "Observed sample"}
-        </span>
-      </div>
-      <div className="style-colours">
-        <span>
-          White <b>{percent(m.white)}</b>{" "}
-          <small>
-            ({m.white.numerator}/{m.white.denominator})
-          </small>
-          {m.white.denominator > 0 && m.white.denominator < m.minimum
-            ? " · small"
-            : ""}
-        </span>
-        <span>
-          Black <b>{percent(m.black)}</b>{" "}
-          <small>
-            ({m.black.numerator}/{m.black.denominator})
-          </small>
-          {m.black.denominator > 0 && m.black.denominator < m.minimum
-            ? " · small"
-            : ""}
+          {d.status === "available"
+            ? "Recovered calculation"
+            : d.status === "partial"
+              ? "Partial evidence"
+              : d.status === "insufficient"
+                ? "Insufficient evidence"
+                : "Not yet reproduced"}
         </span>
       </div>
-      {m.evidence.length > 0 && (
+      {d.unavailableReason && (
+        <p className="style-availability">{d.unavailableReason}</p>
+      )}
+      <p className="style-note">{d.grade ?? "Categorical grade unavailable"}</p>
+      <details>
+        <summary>Calculation &amp; inputs</summary>
+        <p className="style-note">
+          Native normalization range: {d.normalization[0]} to{" "}
+          {d.normalization[1]}. The normalized score is not a frequency or
+          percentile and can exceed 100%.
+        </p>
+        <p className="style-note">{d.gradeReason}</p>
+        {d.inputs.length > 0 && (
+          <table className="stat-table style-inputs">
+            <thead>
+              <tr>
+                <th>Input</th>
+                <th>Observed</th>
+                <th>Numerator / games</th>
+                <th>Reference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {d.inputs.map((input, i) => (
+                <tr key={i}>
+                  <td>{input.label}</td>
+                  <td>{number(input.value)}</td>
+                  <td>
+                    {input.numerator == null || input.denominator == null
+                      ? "—"
+                      : `${input.numerator} / ${input.denominator}`}
+                  </td>
+                  <td>{number(input.reference)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </details>
+      {d.evidence.length > 0 && (
         <details>
-          <summary>Supporting positions ({m.evidence.length} shown)</summary>
+          <summary>Supporting positions ({d.evidence.length} shown)</summary>
           <div className="style-evidence">
-            {m.evidence.map((e) => (
+            {d.evidence.map((e) => (
               <button
                 type="button"
                 key={`${e.ordinal}-${e.node}`}
@@ -106,6 +118,7 @@ export function PlayingStyleDialog({
 }) {
   const [players, setPlayers] = useState<Player[]>([player]);
   const [colour, setColour] = useState("both");
+  const [gameTypes, setGameTypes] = useState(4);
   const [yearFrom, setYearFrom] = useState("");
   const [yearTo, setYearTo] = useState("");
   const [minElo, setMinElo] = useState("");
@@ -117,7 +130,7 @@ export function PlayingStyleDialog({
   const [report, setReport] = useState<StyleReport>();
   const [running, setRunning] = useState<string>();
   const [error, setError] = useState<string>();
-  const [section, setSection] = useState("activity");
+  const [section, setSection] = useState("dimensions");
   const [editCriteria, setEditCriteria] = useState(true);
   const active = useRef<string | undefined>(undefined);
   const reportGeneration = useRef(0);
@@ -149,6 +162,7 @@ export function PlayingStyleDialog({
     const live = () => mounted.current && active.current === id;
     const params: StyleParams = {
       playerIds: players.map((p) => p.id),
+      gameTypes,
       sampleLimit: Number(limit),
       white: colour === "both" ? null : colour === "white",
       yearFrom: yearFrom ? Number(yearFrom) : null,
@@ -171,7 +185,7 @@ export function PlayingStyleDialog({
       if (result && result.jobId === id) {
         setReport(result);
         setEditCriteria(false);
-        setSection("activity");
+        setSection("dimensions");
       } else
         setError(
           "Report stopped or superseded. Generate again for the current source.",
@@ -225,7 +239,17 @@ export function PlayingStyleDialog({
   const criteria = report?.criteria;
   const criteriaText =
     criteria &&
-    `${criteria.white == null ? "Both colours" : criteria.white ? "White only" : "Black only"} · ${criteria.yearFrom ?? "any year"}–${criteria.yearTo ?? "present"} · opponent Elo ${criteria.minOpponentElo ? `≥ ${criteria.minOpponentElo}` : "any / unknown included"} · maximum ${criteria.sampleLimit}`;
+    `${criteria.white == null ? "Both colours" : criteria.white ? "White only" : "Black only"} · ${criteria.yearFrom ?? "any year"}–${criteria.yearTo ?? "present"} · opponent Elo ${criteria.minOpponentElo ? `≥ ${criteria.minOpponentElo}` : "any / unknown included"} · maximum ${criteria.sampleLimit} · ${(
+      [
+        [4, "Long"],
+        [1, "Blitz / bullet"],
+        [2, "Rapid"],
+        [8, "Simultaneous"],
+      ] as const
+    )
+      .filter(([bit]) => (criteria.gameTypes & bit) !== 0)
+      .map(([, label]) => label)
+      .join(", ")}`;
   return (
     <div className="modal-backdrop">
       <form
@@ -336,6 +360,34 @@ export function PlayingStyleDialog({
                   />
                 </label>
               </div>
+              <div
+                className="style-game-types"
+                role="group"
+                aria-label="Game types"
+              >
+                {(
+                  [
+                    [4, "Long"],
+                    [1, "Blitz / bullet"],
+                    [2, "Rapid"],
+                    [8, "Simultaneous"],
+                  ] as const
+                ).map(([bit, label]) => (
+                  <label key={bit}>
+                    <input
+                      type="checkbox"
+                      checked={(gameTypes & bit) !== 0}
+                      onChange={() => setGameTypes(gameTypes ^ bit)}
+                    />
+                    {label}
+                  </label>
+                ))}
+                <p className="style-note">
+                  Native default: Long games. Missing category metadata is
+                  included only when all four types are selected. Games with
+                  fewer than five stored moves are excluded.
+                </p>
+              </div>
               <details className="style-aliases">
                 <summary>Include another spelling / identity</summary>
                 <p>
@@ -400,11 +452,23 @@ export function PlayingStyleDialog({
                   {report.analysed} games analysed · {report.whiteGames} White /{" "}
                   {report.blackGames} Black
                 </strong>
+                {report.analysed > 0 && report.analysed < 20 && (
+                  <p className="style-note">
+                    Small sample: fewer than 20 processed games (OpenFile
+                    disclosure, not a recovered native cutoff).
+                  </p>
+                )}
                 <p>
                   {report.selected} sampled from {report.eligible} eligible ·{" "}
                   {date(report.firstDate)} to {date(report.lastDate)}
                 </p>
                 <p>{criteriaText}</p>
+                <p className="style-availability">
+                  {report.dimensions.filter((d) => d.rawScore != null).length}{" "}
+                  of {report.dimensions.length} dimensions have a computed
+                  score. Missing native inputs and categorical grades remain
+                  unavailable.
+                </p>
                 <p>
                   Identities:{" "}
                   {report.players
@@ -413,14 +477,17 @@ export function PlayingStyleDialog({
                 </p>
                 <p>
                   {report.deleted} deleted · {report.filtered} outside filters ·{" "}
+                  {report.tooShort} shorter than five stored moves ·{" "}
+                  {report.unknownCategory} unknown categories before sampling ·{" "}
                   {report.skipped} skipped · {report.cutGames} cut at 400 plies
                   · {(report.elapsedMs / 1000).toFixed(2)} s
                 </p>
                 <p className="style-note">
-                  {report.unknownDate ?? 0} unknown dates ·{" "}
+                  Before filters: {report.unknownDate ?? 0} unknown dates ·{" "}
                   {report.unknownOpponentElo ?? 0} unknown opponent ratings ·{" "}
-                  {report.unknownResult ?? 0} unknown results. Results are not
-                  required for board measures.
+                  {report.unknownResult ?? 0} unknown results. Unknown results
+                  remain in the native result denominators and contribute zero
+                  points; sample inputs are listed on each computed dimension.
                 </p>
                 {report.skipped > 0 && (
                   <p className="style-note">
@@ -433,8 +500,7 @@ export function PlayingStyleDialog({
               </section>
               <nav className="style-tabs" aria-label="Report sections">
                 {[
-                  ["activity", "Activity & openings"],
-                  ["structure", "Structure & endings"],
+                  ["dimensions", "Style dimensions"],
                   ["games", "Analysed games"],
                 ].map(([key, title]) => (
                   <button
@@ -449,17 +515,13 @@ export function PlayingStyleDialog({
               </nav>
               {section !== "games" ? (
                 <div className="style-metrics">
-                  {report.metrics
-                    .filter(
-                      (m) => activityIds.has(m.id) === (section === "activity"),
-                    )
-                    .map((m) => (
-                      <Metric
-                        key={m.id}
-                        metric={m}
-                        onEvidence={(e) => void evidence(e.ordinal, e.node)}
-                      />
-                    ))}
+                  {report.dimensions.map((dimension) => (
+                    <Dimension
+                      key={dimension.id}
+                      dimension={dimension}
+                      onEvidence={(e) => void evidence(e.ordinal, e.node)}
+                    />
+                  ))}
                 </div>
               ) : (
                 <section aria-label="Analysed games">
@@ -476,6 +538,7 @@ export function PlayingStyleDialog({
                           <th>Opponent</th>
                           <th>Date</th>
                           <th>Result</th>
+                          <th>Stored moves</th>
                           <th>Plies read</th>
                         </tr>
                       </thead>
@@ -494,6 +557,7 @@ export function PlayingStyleDialog({
                             <td>{g.opponent ?? "Unknown"}</td>
                             <td>{date(g.date)}</td>
                             <td>{g.result ?? "*"}</td>
+                            <td>{g.storedMoves ?? "—"}</td>
                             <td>
                               {g.plies}
                               {g.cut ? " (cut)" : ""}
@@ -506,18 +570,20 @@ export function PlayingStyleDialog({
                 </section>
               )}
               <p className="style-note">
-                Descriptive observations from this sample, without an engine or
-                comparison population. Checks do not measure attack quality;
-                captures do not prove a preference for exchanges; a material
-                deficit does not prove a sacrifice. Small samples are flagged,
-                and no observations display as “—”.
+                The eight dimensions follow the recovered ChessBase report
+                structure. Only calculations with established inputs are shown.
+                Missing native repertoire, positional or evaluation inputs
+                remain unavailable. Normalized values are composite scores, not
+                percentages of games or player percentiles. Exact categorical
+                grading is not verified.
               </p>
             </>
           )}
         </div>
         <footer className="modal-actions">
           <span className="style-note">
-            Local moves only · no engine time · no result cache
+            Recovered native rules · unavailable inputs disclosed · no result
+            cache
           </span>
           <div>
             {report && (
@@ -541,7 +607,7 @@ export function PlayingStyleDialog({
                 Stop
               </button>
             ) : (
-              <button type="submit">
+              <button type="submit" disabled={gameTypes === 0}>
                 {report ? "Generate again" : "Generate report"}
               </button>
             )}
