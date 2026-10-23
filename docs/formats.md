@@ -298,7 +298,8 @@ The type ids come from the annotation factory `0x1401a2ae0`:
 | `0x84`, `0x85` | Squares and arrows shown before the move | No |
 | `0x18` | Critical position: one byte, 1 opening (the repertoire's "blue" move), 2 middlegame, 3 endgame | Yes, read and written (see [repertoire](repertoire.md)) |
 | `0x09` | Training question: kind, seconds, score, question, wrong-answer text, two hints and graded answers | Yes, read and written (see [training](training.md)) |
-| `0x07` time, `0x13` game quotation, `0x14` pawn structure, `0x15` piece path, `0x22` medal, `0x23` variation colour, `0x26` evaluation profile, others | Various | No, counted in a diagnostic |
+| `0x26` | Evaluation profile at the game's start: one packed evaluation per main-line ply | Yes, read and written (see [evaluation profile](evaluation-profile.md)) |
+| `0x07` time, `0x13` game quotation, `0x14` pawn structure, `0x15` piece path, `0x21` stored evaluation, `0x22` medal, `0x23` variation colour, others | Various | No, counted in a diagnostic |
 
 **Positions.** Position −1 is the start of the game. Position *k* is the
 (k+1)-th move, but the two files count moves in different orders:

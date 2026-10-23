@@ -93,7 +93,10 @@ export function mockRows(start: number, limit: number, count = 401) {
     rows.push(page.entries[i - 1] ?? { ...summary, ordinal: String(i) });
   return rows;
 }
-export function mockApi(firstDatabase = 1) {
+export function mockApi(
+  firstDatabase = 1,
+  initialSettings: Partial<AppSettings> = {},
+) {
   // Each opened database gets its own id, as the backend's do.
   let nextDatabase = firstDatabase;
   let game = structuredClone(selected.game!);
@@ -101,6 +104,7 @@ export function mockApi(firstDatabase = 1) {
   let settings: AppSettings = {
     maxGameTabs: 8,
     engines: [],
+    ...initialSettings,
   };
   // The list shows these entries while a search is active.
   let searching = false;
@@ -338,6 +342,32 @@ export function mockApi(firstDatabase = 1) {
         },
       ),
     cancelCentipawnAnalysis: vi.fn().mockResolvedValue(undefined),
+    instantAnalysis: vi.fn().mockResolvedValue({
+      revision: "0",
+      pass: 1,
+      millisPerPosition: 105,
+      done: 0,
+      total: 0,
+      profile: [],
+      finished: true,
+      cancelled: false,
+    }),
+    cancelInstantAnalysis: vi.fn().mockResolvedValue(undefined),
+    centipawnList: vi.fn().mockResolvedValue({
+      cancelled: false,
+      error: null,
+      games: 0,
+      analysed: 0,
+      replaced: 0,
+      skippedCount: 0,
+      skipped: [],
+      millisPerMove: 750,
+      players: [],
+      csv: "",
+    }),
+    cancelCentipawnList: vi.fn().mockResolvedValue(undefined),
+    chooseCsv: vi.fn().mockResolvedValue("/synthetic/stats.csv"),
+    saveCsv: vi.fn().mockResolvedValue(undefined),
     deepAnalysis: vi
       .fn()
       .mockImplementation(
@@ -1728,14 +1758,16 @@ export function renderWorkbench({
   position,
   initialView = clean ? "database" : "game",
   search,
+  settings,
 }: {
   dirty?: boolean;
   clean?: boolean;
   position?: PositionResponse;
   initialView?: "database" | "game";
   search?: ActiveSearch;
+  settings?: Partial<AppSettings>;
 } = {}) {
-  const api = mockApi(clean ? 1 : 2);
+  const api = mockApi(clean ? 1 : 2, settings);
   const user = userEvent.setup();
   const view = render(
     <App

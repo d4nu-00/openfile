@@ -5,6 +5,7 @@ import type {
   EngineEventDto,
   EngineResponse,
   InstalledEngine,
+  ScoreDto,
 } from "../api/types";
 import type { WorkbenchApi } from "../api/client";
 import type { WorkbenchState } from "./workbench";
@@ -16,6 +17,54 @@ const explain = (e: unknown) =>
 
 /** Kibitzers running at once (the backend allows as many). */
 export const MAX_KIBITZERS = 4;
+
+/** A best move that Next Best or Search Better left out. */
+export interface ExcludedMove {
+  uci: string;
+  san: string;
+  /** Its score when it was left out, for the side to move. */
+  score?: ScoreDto;
+  rootTurn: AnalysisInfoDto["rootTurn"];
+}
+/** The position a locked kibitzer stays on. */
+export interface LockedRoot {
+  documentId: string;
+  nodeId: number;
+  /** The move that leads to it, e.g. "12...Nf6". */
+  label: string;
+}
+/**
+ * Search Better's target: a move must score more than this, in centipawns
+ * for the side to move. Search Clearly Better adds a margin.
+ */
+export interface BetterTarget {
+  cp: number;
+  clearly: boolean;
+}
+/** Centipawns of Search Clearly Better's margin (the workbench's choice). */
+export const CLEARLY_BETTER_MARGIN = 50;
+/** A score in centipawns for ordering; mates count as 30,000 less the distance. */
+export function scoreCp(score: ScoreDto) {
+  if (score.kind === "cp") return score.value;
+  return score.moves > 0 ? 30000 - score.moves : -30000 - score.moves;
+}
+
+/**
+ * One choice of the engine for the analysed position: its best move from the
+ * time it first chose it, with the latest depth, score and line it had while
+ * it stayed best.
+ */
+export interface HistoryEntry {
+  move: string;
+  /** Milliseconds of search when the engine chose it. */
+  time: number;
+  depth?: number;
+  score?: ScoreDto;
+  rootTurn: AnalysisInfoDto["rootTurn"];
+  pv: string[];
+}
+/** Choices a kibitzer's history keeps at most. */
+export const MAX_HISTORY = 200;
 
 /** What a kibitzer pane shows. */
 export interface KibitzerView {
@@ -30,6 +79,18 @@ export interface KibitzerView {
   lines: AnalysisInfoDto[];
   /** Lines the engine computes (its MultiPV option), 1 if it has none. */
   multipv: number;
+  /** Lock Engine: the position it stays on while the board moves. */
+  locked?: LockedRoot;
+  /** Analyse Threat: the other side moves next. */
+  threat: boolean;
+  /** Best moves left out by Next Best and Search Better. */
+  excluded: ExcludedMove[];
+  /** Search Better's target, when it was used last. */
+  target?: BetterTarget;
+  /** The engine's choices for the position, oldest first. */
+  history: HistoryEntry[];
+  /** The pane shows the history instead of the current lines. */
+  showHistory: boolean;
 }
 
 /**
@@ -40,9 +101,15 @@ class Kibitzer {
   view: KibitzerView;
   private gate = new AnalysisGate();
   private pending = new Map<number, AnalysisInfoDto>();
+  private choices: HistoryEntry[] = [];
+  /** When the current request started, for engines that send no time. */
+  private started = 0;
   private dirty = false;
   private off?: () => void;
+  /** The position analysed: the board's, or the locked one. */
   private root?: { documentId: string; nodeId: number };
+  /** The board's position, which a locked kibitzer does not follow. */
+  private board?: { documentId: string; nodeId: number };
   constructor(
     private api: WorkbenchApi,
     key: string,
@@ -61,6 +128,10 @@ class Kibitzer {
       error: "",
       lines: [],
       multipv: Number(multipv?.default ?? 1) || 1,
+      threat: false,
+      excluded: [],
+      history: [],
+      showHistory: false,
     };
   }
   private set(patch: Partial<KibitzerView>) {
@@ -73,6 +144,7 @@ class Kibitzer {
     this.dirty = false;
     this.set({
       lines: [...this.pending.values()].sort((a, b) => a.multipv - b.multipv),
+      history: [...this.choices],
     });
   }
   private drop() {
@@ -80,15 +152,51 @@ class Kibitzer {
     this.off?.();
     this.off = undefined;
     this.pending.clear();
+    this.choices = [];
     this.dirty = false;
+  }
+  /** Records line 1 in the history: a new choice, or the same one deeper. */
+  private record(line: AnalysisInfoDto) {
+    const move = line.rawPv?.[0];
+    if (!move) return;
+    const last = this.choices.at(-1);
+    const entry = {
+      depth: line.depth,
+      score: line.score,
+      rootTurn: line.rootTurn,
+      pv: line.pv ?? [],
+    };
+    if (last?.move === move) Object.assign(last, entry);
+    else {
+      this.choices.push({
+        move,
+        time: line.time ?? Date.now() - this.started,
+        ...entry,
+      });
+      if (this.choices.length > MAX_HISTORY) this.choices.shift();
+    }
+  }
+  /** Shows the history or the current lines. */
+  toggleHistory() {
+    this.set({ showHistory: !this.view.showHistory });
   }
   /** The board shows another position: its old lines no longer apply. */
   follow(documentId: string | undefined, nodeId: number | undefined) {
     const root =
       documentId && nodeId !== undefined ? { documentId, nodeId } : undefined;
+    this.board = root;
+    // A locked kibitzer stays on its position.
+    if (this.view.locked) return;
     this.root = root;
     this.drop();
-    this.set({ lines: [] });
+    // Threat and left-out moves belong to the position they were asked for.
+    this.set({
+      lines: [],
+      history: [],
+      threat: false,
+      excluded: [],
+      target: undefined,
+    });
     if (!this.view.enabled) return;
     if (!root) {
       void this.stop();
@@ -96,10 +204,26 @@ class Kibitzer {
     }
     this.run(root);
   }
+  /** Starts again on the same position, e.g. with another search mode. */
+  private restart() {
+    this.drop();
+    this.set({ lines: [], history: [] });
+    if (this.view.enabled && this.root) this.run(this.root);
+  }
   private run(root: { documentId: string; nodeId: number }) {
     const engineId = this.view.engine.engineId;
     const request = this.gate.begin(root.documentId, root.nodeId);
-    this.set({ status: `Analysing node ${root.nodeId}`, error: "" });
+    this.started = Date.now();
+    const mode = {
+      threat: this.view.threat,
+      exclude: this.view.excluded.map((e) => e.uci),
+    };
+    this.set({
+      status: mode.threat
+        ? `Analysing the threat at node ${root.nodeId}`
+        : `Analysing node ${root.nodeId}`,
+      error: "",
+    });
     const onEvent = (event: EngineEventDto) => {
       if (event.engineId !== engineId || !this.gate.accept(event.requestId))
         return;
@@ -116,11 +240,13 @@ class Kibitzer {
             score: p.score ?? previous?.score,
             pv: p.pv ?? previous?.pv,
             rawPv: p.rawPv ?? previous?.rawPv,
+            time: p.time ?? previous?.time,
             diagnostics:
               p.pv != null
                 ? p.diagnostics
                 : (previous?.diagnostics ?? p.diagnostics),
           });
+          if (p.multipv === 1) this.record(this.pending.get(1)!);
           this.dirty = true;
         }
       } else if (p.kind === "error") {
@@ -133,8 +259,25 @@ class Kibitzer {
         this.set({ status: `Search complete: ${p.best}` });
       else this.set({ status: p.message });
     };
-    void this.api
-      .startAnalysis(engineId, root.documentId, root.nodeId, request, onEvent)
+    const { documentId, nodeId } = root;
+    const started =
+      mode.threat || mode.exclude.length
+        ? this.api.startAnalysis(
+            engineId,
+            documentId,
+            nodeId,
+            request,
+            onEvent,
+            mode,
+          )
+        : this.api.startAnalysis(
+            engineId,
+            documentId,
+            nodeId,
+            request,
+            onEvent,
+          );
+    void started
       .then((off) => {
         if (typeof off !== "function") return;
         if (this.gate.accept(request)) this.off = off;
@@ -143,12 +286,86 @@ class Kibitzer {
       .catch((e) => {
         if (!this.gate.accept(request)) return;
         this.gate.invalidate();
+        // Every move left out: the list starts again, as in the reference app.
+        if (mode.exclude.length && /every legal move/i.test(explain(e))) {
+          this.set({ excluded: [], target: undefined });
+          this.run(root);
+          return;
+        }
+        // A refused threat (the side to move is in check) keeps the engine.
+        if (mode.threat) {
+          this.set({ error: explain(e), threat: false });
+          this.run(root);
+          return;
+        }
         this.set({
           error: explain(e),
           enabled: false,
           status: "Engine unavailable",
         });
       });
+  }
+  /** Analyse Threat (X): the other side to move, or back to the position. */
+  toggleThreat() {
+    if (!this.root) return false;
+    this.set({ threat: !this.view.threat, excluded: [], target: undefined });
+    this.restart();
+    return true;
+  }
+  /**
+   * Next Best (Y), Search Better (Shift+Y) and Search Clearly Better (Alt+Y):
+   * leaves the current best move out and searches again. A move already left
+   * out empties the list, as in the reference app.
+   */
+  leaveOutBest(kind: "next" | "better" | "clearly") {
+    const best = this.pending.get(1) ?? this.view.lines[0];
+    const uci = best?.rawPv?.[0];
+    if (!this.root || !best || !uci) {
+      this.set({ error: "There is no best move to leave out yet" });
+      return false;
+    }
+    if (this.view.excluded.some((e) => e.uci === uci)) {
+      this.set({ excluded: [], target: undefined });
+    } else {
+      const margin = kind === "clearly" ? CLEARLY_BETTER_MARGIN : 0;
+      this.set({
+        excluded: [
+          ...this.view.excluded,
+          {
+            uci,
+            san: best.pv?.[0] ?? uci,
+            score: best.score,
+            rootTurn: best.rootTurn,
+          },
+        ],
+        target:
+          kind === "next"
+            ? this.view.target
+            : best.score
+              ? {
+                  cp: scoreCp(best.score) + margin,
+                  clearly: kind === "clearly",
+                }
+              : undefined,
+      });
+    }
+    this.restart();
+    return true;
+  }
+  /** Lock Engine (Ctrl+Alt+L): stay on the position, or follow the board again. */
+  toggleLock(label: string) {
+    if (this.view.locked) {
+      this.set({ locked: undefined });
+      if (
+        this.board?.documentId !== this.root?.documentId ||
+        this.board?.nodeId !== this.root?.nodeId
+      )
+        this.follow(this.board?.documentId, this.board?.nodeId);
+      return true;
+    }
+    if (!this.root) return false;
+    this.set({ locked: { ...this.root, label } });
+    return true;
   }
   start() {
     if (this.view.enabled) return;
@@ -334,6 +551,15 @@ export function useKibitzers(
     },
     [api],
   );
+  /** The move leading to the board position, e.g. "12...Nf6". */
+  function lockLabel() {
+    const node = nodeId ?? 0;
+    const san = state.document?.game?.nodes[node]?.san;
+    const fields = state.position?.fen.split(" ") ?? [];
+    const full = Number(fields[5]) || 1;
+    if (!node || !san) return "the start position";
+    return fields[1] === "b" ? `${full}.${san}` : `${full - 1}...${san}`;
+  }
   const current = views.find((v) => v.key === active) ?? views.at(-1);
   return {
     kibitzers: views,
@@ -352,5 +578,10 @@ export function useKibitzers(
     stop: (key?: string) => find(key)?.stop(),
     stopAll: () => Promise.all(list.current.map((k) => k.stop())),
     lines: (delta: 1 | -1, key?: string) => find(key)?.lines(delta),
+    toggleThreat: (key?: string) => find(key)?.toggleThreat() ?? false,
+    leaveOutBest: (kind: "next" | "better" | "clearly", key?: string) =>
+      find(key)?.leaveOutBest(kind) ?? false,
+    toggleLock: (key?: string) => find(key)?.toggleLock(lockLabel()) ?? false,
+    toggleHistory: (key?: string) => find(key)?.toggleHistory(),
   };
 }

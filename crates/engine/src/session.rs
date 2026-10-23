@@ -17,6 +17,8 @@ const QUEUE_LIMIT: usize = 256;
 const EVENT_LIMIT: usize = 128;
 const STOP_TIMEOUT: Duration = Duration::from_secs(2);
 const QUIT_TIMEOUT: Duration = Duration::from_secs(1);
+/// Moves a `searchmoves` list may hold (no position has more legal moves).
+const MAX_SEARCH_MOVES: usize = 256;
 #[derive(Clone, Debug)]
 pub struct EngineSpec {
     pub executable: PathBuf,
@@ -28,6 +30,9 @@ pub struct AnalysisRequest {
     pub start_fen: String,
     pub history: Vec<String>,
     pub root_turn: String,
+    /// UCI `searchmoves`: the moves the search is limited to, or all when
+    /// empty. Each must be legal in the analysed position.
+    pub search_moves: Vec<String>,
 }
 #[derive(Debug)]
 pub struct EngineEvent {
@@ -572,6 +577,16 @@ impl EngineSession {
                 "Root turn disagrees with validated position".into(),
             ));
         }
+        if request.search_moves.len() > MAX_SEARCH_MOVES {
+            return Err(EngineError::Position("Too many search moves".into()));
+        }
+        for uci in &request.search_moves {
+            if uci == "0000" || chess_core::model::apply_uci(pos.clone(), uci).is_err() {
+                return Err(EngineError::Position(format!(
+                    "Search move {uci} is not legal in the position"
+                )));
+            }
+        }
         Ok(command)
     }
     pub fn analyse(&mut self, request: AnalysisRequest) -> Result<(), EngineError> {
@@ -609,8 +624,13 @@ impl EngineSession {
         }
         self.ready(self.handshake_timeout)?;
         self.send(&position)?;
+        let go = if request.search_moves.is_empty() {
+            "go infinite".to_string()
+        } else {
+            format!("go infinite searchmoves {}", request.search_moves.join(" "))
+        };
         self.active = Some(request);
-        self.send("go infinite")?;
+        self.send(&go)?;
         Ok(())
     }
     pub fn stop(&mut self) -> Result<(), EngineError> {

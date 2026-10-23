@@ -229,6 +229,7 @@ fn chess960_positions_switch_uci_chess960_and_need_the_option() {
     let fen = "rk5r/pppppppp/8/8/8/8/PPPPPPPP/RK5R w KQkq - 0 1";
     let request = |id: &str, start_fen: &str, history: Vec<String>, turn: &str| AnalysisRequest {
         request_id: id.into(),
+        search_moves: Vec::new(),
         start_fen: start_fen.into(),
         history,
         root_turn: turn.into(),
@@ -256,4 +257,25 @@ fn chess960_positions_switch_uci_chess960_and_need_the_option() {
         .unwrap_err();
     assert!(err.to_string().contains("Chess960"), "{err}");
     plain.shutdown().unwrap();
+}
+#[test]
+fn search_moves_limit_the_search_and_must_be_legal() {
+    let mut s = support::mock_session("legal");
+    let mut request = support::request("only", "e2e4");
+    request.search_moves = vec!["g8f6".into(), "b8c6".into()];
+    s.analyse(request).unwrap();
+    let events = support::events_until_current_info(&mut s, "only");
+    let first = events
+        .iter()
+        .find_map(|e| match &e.payload {
+            engine::EnginePayload::Info(i) if e.request_id == "only" => i.pv.clone(),
+            _ => None,
+        })
+        .unwrap();
+    // The mock's best line is its first move in UCI order among those allowed.
+    assert_eq!(first[0], "b8c6");
+    let mut illegal = support::request("bad", "e2e4");
+    illegal.search_moves = vec!["e2e4".into()];
+    assert!(s.analyse(illegal).is_err());
+    s.shutdown().unwrap();
 }

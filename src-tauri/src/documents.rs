@@ -150,7 +150,10 @@ pub struct AnalysisItem {
 }
 
 /// Adds `items` to `game`; nothing changes unless all of them apply.
-fn add_analysis(game: &mut chess_core::Game, items: Vec<AnalysisItem>) -> Result<(), AppError> {
+pub(crate) fn add_analysis(
+    game: &mut chess_core::Game,
+    items: Vec<AnalysisItem>,
+) -> Result<(), AppError> {
     if items.len() > 2_000 {
         return Err(AppError::new(
             "limitExceeded",
@@ -622,14 +625,15 @@ impl Registry {
                 ));
             }
             if !allow_incomplete
-                && d.game
-                    .nodes
-                    .iter()
-                    .any(|n| n.critical.is_some() || n.training.is_some())
+                && (!d.game.profile.is_empty()
+                    || d.game
+                        .nodes
+                        .iter()
+                        .any(|n| n.critical.is_some() || n.training.is_some()))
             {
                 return Err(AppError::new(
                     "incompleteAnnotations",
-                    "PGN cannot hold critical position marks or training questions; acknowledge their omission before exporting",
+                    "PGN cannot hold critical position marks, training questions or evaluation profiles; acknowledge their omission before exporting",
                 ));
             }
             (d.game.clone(), d.revision, d.source_paths.clone())

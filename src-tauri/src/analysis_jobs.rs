@@ -545,22 +545,43 @@ impl Registry {
 
     /// Loads a job's game, checking it can be replaced without loss.
     fn job_game(&self, job: &Job) -> Result<Result<chess_core::Game, String>, AppError> {
-        let ordinal = decimal(&job.ordinal)?;
-        let reader = self.game_reader(&job.database_id)?;
+        Ok(self
+            .replaceable_game(&job.database_id, decimal(&job.ordinal)?)?
+            .map(|(game, _)| game))
+    }
+
+    /// Whether entry `ordinal` of a database is open in a tab.
+    pub(crate) fn open_in_tab(&self, database_id: &str, ordinal: u64) -> Result<bool, AppError> {
+        let documents: Vec<_> = self.lock()?.documents.values().cloned().collect();
+        Ok(documents.iter().any(|d| {
+            d.lock()
+                .is_ok_and(|d| d.origin.as_ref() == Some(&(database_id.to_string(), ordinal)))
+        }))
+    }
+
+    /// Loads a game of a database opened for editing, with its entry, when it
+    /// can be replaced without loss; otherwise why not.
+    pub(crate) fn replaceable_game(
+        &self,
+        database_id: &str,
+        ordinal: u64,
+    ) -> Result<Result<(chess_core::Game, cbh_reader::EntrySummary), String>, AppError> {
+        let reader = self.game_reader(database_id)?;
         let mut reader = reader
             .lock()
             .map_err(|_| AppError::new("state", "Database unavailable"))?;
         let mut loaded = reader.load(ordinal);
         if matches!(loaded, Err(cbh_reader::CbhError::SourceChanged)) {
             drop(reader);
-            self.lock()?.game_readers.remove(&job.database_id);
-            let fresh = self.game_reader(&job.database_id)?;
+            self.lock()?.game_readers.remove(database_id);
+            let fresh = self.game_reader(database_id)?;
             loaded = fresh
                 .lock()
                 .map_err(|_| AppError::new("state", "Database unavailable"))?
                 .load(ordinal);
         }
         let loaded = loaded?;
+        let summary = loaded.summary.clone();
         let Some(game) = loaded.game else {
             return Ok(Err("The entry has no game".into()));
         };
@@ -583,7 +604,39 @@ impl Registry {
         if game.is_chess960() {
             return Ok(Err("Chess960 games cannot be saved to 2CBH yet".into()));
         }
-        Ok(Ok(game))
+        Ok(Ok((game, summary)))
+    }
+
+    /// Replaces entry `ordinal` with `game` if it still holds `original`.
+    pub(crate) fn replace_if_unchanged(
+        &self,
+        database_id: &str,
+        ordinal: u64,
+        original: &chess_core::Game,
+        game: &chess_core::Game,
+    ) -> Result<(), AppError> {
+        let _save = self
+            .save_lock
+            .lock()
+            .map_err(|_| AppError::new("state", "Save service unavailable"))?;
+        match self.replaceable_game(database_id, ordinal)? {
+            Ok((now, _)) if fingerprint(&now)? == fingerprint(original)? => {}
+            _ => {
+                return Err(AppError::new(
+                    "staleGame",
+                    "The game changed during the analysis; nothing was written",
+                ));
+            }
+        }
+        let (writer, path) = self.writer_of(database_id)?;
+        let tree = self.tree_before_change(database_id, Some(ordinal));
+        writer
+            .lock()
+            .map_err(|_| AppError::new("state", "Database writer unavailable"))?
+            .replace(ordinal, game)?;
+        self.refresh_after_write(database_id, &path)?;
+        self.tree_after_change(database_id, tree, Some(ordinal));
+        Ok(())
     }
 
     fn run_job(
@@ -594,12 +647,7 @@ impl Registry {
         stop: &AtomicBool,
     ) -> Result<Outcome, AppError> {
         let ordinal = decimal(&job.ordinal)?;
-        let documents: Vec<_> = self.lock()?.documents.values().cloned().collect();
-        let open = documents.iter().any(|d| {
-            d.lock()
-                .is_ok_and(|d| d.origin.as_ref() == Some(&(job.database_id.clone(), ordinal)))
-        });
-        if open {
+        if self.open_in_tab(&job.database_id, ordinal)? {
             return Ok(Outcome::Skipped("The game is open in a tab".into()));
         }
         let mut game = match self.job_game(job)? {
@@ -670,27 +718,7 @@ impl Registry {
         let count = lines.len();
         add_lines(&mut game, node, &lines)?;
         // The entry must still be the game analysed.
-        let _save = self
-            .save_lock
-            .lock()
-            .map_err(|_| AppError::new("state", "Save service unavailable"))?;
-        match self.job_game(job)? {
-            Ok(now) if fingerprint(&now)? == fingerprint(&original)? => {}
-            _ => {
-                return Err(AppError::new(
-                    "staleGame",
-                    "The game changed during the analysis; nothing was written",
-                ));
-            }
-        }
-        let (writer, path) = self.writer_of(&job.database_id)?;
-        let tree = self.tree_before_change(&job.database_id, Some(ordinal));
-        writer
-            .lock()
-            .map_err(|_| AppError::new("state", "Database writer unavailable"))?
-            .replace(ordinal, &game)?;
-        self.refresh_after_write(&job.database_id, &path)?;
-        self.tree_after_change(&job.database_id, tree, Some(ordinal));
+        self.replace_if_unchanged(&job.database_id, ordinal, &original, &game)?;
         Ok(Outcome::Done(format!(
             "{count} {} added",
             if count == 1 { "line" } else { "lines" }

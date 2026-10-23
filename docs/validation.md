@@ -1221,6 +1221,93 @@ build, locked native release build and embedded-frontend native acceptance build
 The existing bundle-size advisory remains. The unmerged PR records cross-platform
 CI. The tracked-source distribution audit passes for all 661 tracked paths.
 
+## Engine search commands (2026-10-22)
+
+* **Engine crate.** A test sends `go infinite searchmoves …` to the mock
+  engine, which then limits its lines to those moves. A search move that is
+  illegal in the position is refused before anything is sent.
+* **App tests.** Analyse threat's null move gives the other side the move and
+  drops the en passant square; a side in check is refused. Next Best leaves
+  18 of the 20 opening moves after two are excluded, ignores an unreadable
+  move, and refuses to exclude every move.
+* **Frontend tests:**
+  * Y, Shift+Y and X restart the kibitzer with the right search mode.
+  * Search Better reports whether the new best line beats the move left out.
+  * A move on the board clears the moves left out.
+  * Lock Engine keeps the engine on its position; releasing the lock follows
+    the board.
+* **Real engine.** Stockfish 17 with `position startpos moves e2e4` and
+  `go depth 14 searchmoves g8f6 b8c6` chose b8c6, one of the allowed moves.
+  A threat position (a null move with White to move again, the queen on h5
+  and the bishop on c4) gave Qxf7 mate as its best move.
+
+## Evaluation profile and instant analysis (2026-10-22)
+
+* **Format.** Read-only and warm, with a probe through the reader's `load`:
+  * the classic and 2CBH families of the test database decode the same 177
+    profiles for entries 1–24,783, digest for digest. Every profile sits at
+    the game's start, and every 2CBA sub-block is exactly 2 + 4n bytes long;
+  * 121 profiles have one entry per main-line ply plus the start. 48 are
+    shorter and 8 longer;
+  * mates are positive in 110 of the mate entries of 1–0 games, and negative
+    in 80 of the mate entries of 0–1 games, so the scores are from White's
+    side;
+  * classic entries 11,000,001–11,100,000 hold 210 profiles, all decoded and
+    none reported as unsupported, read in 20.5 s.
+* **Tests.** Reader tests cover both layouts, the count limit, a wrong length
+  and an absent profile. The 2CBH writer round-trips a profile. App tests run
+  instant analysis on the mock engine: every ply is filled, a second run comes
+  from the cache, and a cancelled run evaluates nothing. Frontend tests cover
+  the critical-move rule, the instant analysis parameters, progress, Stop,
+  jumping to a critical move, and the profile above the notation.
+* **Real engine.** Release build, Stockfish 17, level 3 (105 ms per
+  position), the classic test database read-only:
+
+  | Game | Positions | Fresh | From the cache | Centipawn Analysis at 0 s |
+  |---|---|---|---|---|
+  | entry 144 | 92 | 11.1 s | 0.20 s | 19.7 s |
+  | entry 731 | 58 | 6.9 s | 0.22 s | 8.3 s |
+  | entry 11,000,000 | 74 | 8.5 s | 0.21 s | 13.6 s |
+
+  That is about 0.12 s per position against the 105 ms asked. The repeat
+  costs the engine's start only. Centipawn Analysis asks 200 ms per position,
+  more than the cache holds, so it evaluates afresh.
+
+## Centipawn Analysis of a database list (2026-10-22)
+
+* **Unit tests:**
+  * the performance formula: 75 % against 2400 and 2600 gives 2691; 100 %
+    and 0 % give ±800; unrated opponents and unknown results are left out;
+  * the statistics' map (names with commas made spaces, each player's first
+    rating), the weighted average, the row and game orders, and the CSV's
+    header and row layout.
+* **App tests** use a scratch 2CBH and the mock engine, which loses 34 cp
+  each move:
+  * two games are analysed and replaced, and a short game is skipped;
+  * each player's values are 34, and Points and Perform agree with the hand
+    calculation (2591);
+  * the replaced entry holds the summary text and an evaluation profile;
+  * a run stopped at once writes nothing;
+  * a PGN collection is refused, since only a 2CBH opened for editing can be
+    written.
+* **Frontend test:** the dialog sends the selection and parameters, shows the
+  players, and saves the CSV to the chosen path under the default name.
+* **Real engine:** 20 classic test-database games copied to a scratch 2CBH
+  (deleted after), Stockfish 17 at Seconds 0, release build. 19 games were
+  replaced in 274 s and one, with no moves after its opening, was skipped.
+  The CSV had 37 players.
+
+## Engine analysis history (2026-10-22)
+
+* The protocol test reads UCI `time` in milliseconds and refuses a malformed
+  value.
+* A frontend test sends four lines for one position (e4 at depths 10 and 12,
+  then d4 at 14 and 15). History shows two rows, latest first: d4 chosen at
+  2.5 s with depth 15 and +0.28, then e4 at 0.1 s with depth 12 and +0.25.
+  Selecting another move empties it.
+* Stockfish 17 sends `time` in its info lines (for example `info depth 14 …
+  time 74 pv …`), so real rows carry the engine's own times.
+
 ## Database views, properties and safe recovery (2026-10-22)
 
 Fresh REA/Ghidra analysis completed on the requested x64 CBase18 executable,

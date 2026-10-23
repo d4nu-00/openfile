@@ -10,6 +10,7 @@ fn pv_conversion_uses_exact_root_and_stops_at_first_illegal_move() {
             bound: None,
         }),
         pv: Some(vec!["e7e5".into(), "a1a8".into(), "g1f3".into()]),
+        time: Some(1234),
     };
     let dto = render_info(
         info,
@@ -152,5 +153,66 @@ fn engine_lines_paste_as_one_undoable_edit() {
             "2".into(),
         )
         .is_err()
+    );
+}
+#[test]
+fn threat_mode_analyses_after_a_null_move_and_refuses_in_check() {
+    use openfile::engine_commands::SearchMode;
+    let after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+    let threat = SearchMode {
+        threat: true,
+        exclude: vec![],
+    };
+    let (start, history, fen, turn, search) = threat
+        .apply(
+            chess_core::Game::initial().start_fen,
+            vec!["e2e4".into()],
+            after_e4.into(),
+            "black".into(),
+        )
+        .unwrap();
+    // White moves again; the en passant square goes with the null move.
+    assert_eq!(turn, "white");
+    assert!(fen.starts_with("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -"));
+    assert_eq!(start, fen);
+    assert!(history.is_empty() && search.is_empty());
+    // Black in check (1.e4 f5 2.Qh5+): no threat to analyse.
+    let check = "rnbqkbnr/ppppp1pp/8/5p1Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq - 1 2";
+    assert!(
+        threat
+            .apply(check.into(), vec![], check.into(), "black".into())
+            .is_err()
+    );
+}
+#[test]
+fn excluded_moves_leave_the_other_legal_moves_to_search() {
+    use openfile::engine_commands::SearchMode;
+    let start = chess_core::Game::initial().start_fen;
+    let next_best = SearchMode {
+        threat: false,
+        exclude: vec!["e2e4".into(), "d2d4".into(), "not-a-move".into()],
+    };
+    let (.., search) = next_best
+        .apply(start.clone(), vec![], start.clone(), "white".into())
+        .unwrap();
+    assert_eq!(search.len(), 18);
+    assert!(!search.contains(&"e2e4".to_string()));
+    assert!(search.contains(&"g1f3".to_string()));
+    let everything = SearchMode {
+        threat: false,
+        exclude: {
+            use shakmaty::Position;
+            chess_core::model::parse_position(&start)
+                .unwrap()
+                .legal_moves()
+                .iter()
+                .map(|m| shakmaty::uci::UciMove::from_standard(*m).to_string())
+                .collect()
+        },
+    };
+    assert!(
+        everything
+            .apply(start.clone(), vec![], start, "white".into())
+            .is_err()
     );
 }

@@ -261,3 +261,52 @@ fn training_entries_no_longer_stop_2cba_parsing() {
     let parsed = parse_new(&group(0, &[odd])).unwrap();
     assert_eq!(parsed.stopped_at, Some((0, 0x09)));
 }
+
+/// Packed evaluations: +0.35 (pass 1), none, White mates in 2 (depth 20).
+const PROFILE: [u32; 3] = [0x0001_0023, 0xff00_0000, 0x0114_0002];
+
+#[test]
+fn evaluation_profiles_read_from_both_layouts() {
+    let mut classic = 3u16.to_be_bytes().to_vec();
+    for v in PROFILE {
+        classic.extend(v.to_be_bytes());
+    }
+    let parsed = parse_classic(&classic_record(5, &[(-1, 0x26, &classic)]), 5).unwrap();
+    assert_eq!(parsed.entries[0].kind, Kind::EvalProfile(PROFILE.to_vec()));
+    let mut entry = 0x26u16.to_le_bytes().to_vec();
+    entry.push(1);
+    entry.extend(14u32.to_le_bytes());
+    entry.extend(3u16.to_le_bytes());
+    for v in PROFILE {
+        entry.extend(v.to_le_bytes());
+    }
+    let parsed = parse_new(&group(-1, &[entry.clone()])).unwrap();
+    assert_eq!(parsed.entries[0].kind, Kind::EvalProfile(PROFILE.to_vec()));
+    // The profile goes to the game, which then counts as fully decoded.
+    let mut g = game();
+    let (status, notes) = apply(&mut g, parsed, Order::Line);
+    assert_eq!(g.profile, PROFILE);
+    assert_eq!(status, DataStatus::Available, "{notes:?}");
+    // A length that disagrees with the count is corrupt.
+    entry[3..7].copy_from_slice(&15u32.to_le_bytes());
+    entry.push(0);
+    assert!(parse_new(&group(-1, &[entry])).is_err());
+    let mut long = 2002u16.to_be_bytes().to_vec();
+    long.extend(vec![0; 4 * 2002]);
+    assert!(parse_classic(&classic_record(5, &[(-1, 0x26, &long)]), 5).is_err());
+    // No profile: the presence byte is 0.
+    let mut absent = 0x26u16.to_le_bytes().to_vec();
+    absent.push(0);
+    assert!(parse_new(&group(-1, &[absent])).unwrap().entries.is_empty());
+}
+
+#[test]
+fn evaluation_profiles_write_back_unchanged() {
+    let mut g = game();
+    g.profile = PROFILE.to_vec();
+    let (payload, omitted) = cbh_reader::v2::encode::encode_annotations(&g);
+    assert!(omitted.notes.is_empty());
+    let mut back = game();
+    apply(&mut back, parse_new(&payload).unwrap(), Order::Line);
+    assert_eq!(back.profile, PROFILE);
+}

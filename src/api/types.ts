@@ -113,6 +113,71 @@ export interface GameView {
   tags: Record<string, string>;
   startFen: string;
   nodes: GameNode[];
+  /** The evaluation profile stored with the game (docs/evaluation-profile.md). */
+  profile?: ProfilePoint[];
+}
+/** One evaluation of a profile, from White's side. */
+export interface ProfilePoint {
+  /** Plies from the start; 0 is the start position. */
+  ply: number;
+  cp?: number;
+  /** Moves to mate, positive when White mates. */
+  mate?: number;
+  /** Instant analysis's pass, or a stored depth. */
+  depth: number;
+}
+/** Centipawn Analysis of the selected games of a list (docs/centipawn-analysis.md). */
+export interface CentipawnPlayerGame {
+  opponent: string;
+  opponentElo: number;
+  halfPoints?: number | null;
+  value: number;
+  /** × 100 */
+  weight: number;
+}
+export interface CentipawnPlayerRow {
+  name: string;
+  elo: number;
+  perform?: number | null;
+  points: number;
+  games: CentipawnPlayerGame[];
+  weightedAverage?: number | null;
+}
+export interface CentipawnListReport {
+  cancelled: boolean;
+  error?: string | null;
+  games: number;
+  analysed: number;
+  replaced: number;
+  skippedCount: number;
+  skipped: { ordinal: string; reason: string }[];
+  millisPerMove: number;
+  players: CentipawnPlayerRow[];
+  csv: string;
+}
+export interface CentipawnListProgress {
+  game: number;
+  games: number;
+  done: number;
+  total: number;
+  label: string;
+}
+/** Instant Analysis's state while it runs and at the end. */
+export interface InstantProgress {
+  revision: string;
+  pass: number;
+  millisPerPosition: number;
+  done: number;
+  total: number;
+  profile: ProfilePoint[];
+  finished: boolean;
+  cancelled: boolean;
+}
+export interface InstantParams {
+  engine: string;
+  options: Record<string, string>;
+  level: number;
+  endless: boolean;
 }
 export interface OpenDatabaseResponse {
   requestId: string;
@@ -301,7 +366,17 @@ export interface AnalysisInfoDto {
   rootTurn: Color;
   pv?: string[];
   rawPv?: string[];
+  /** Milliseconds the engine has searched (UCI `time`). */
+  time?: number;
   diagnostics: string[];
+}
+/**
+ * How a kibitzer searches: Analyse Threat (the other side to move) and the
+ * moves Next Best / Search Better leave out (UCI).
+ */
+export interface SearchMode {
+  threat: boolean;
+  exclude: string[];
 }
 export interface EngineEventDto {
   engineId: string;
@@ -1110,7 +1185,22 @@ export interface AppSettings {
   defaultEngine?: string;
   /** The folder of Syzygy tablebase files. */
   tablebaseDir?: string;
+  /** Instant Analysis: on/off, 1–6 (× 35 ms per position), Endless. */
+  instantAnalysis?: InstantSettings;
+  /** The Evaluation Profile pane, and the profile above the notation. */
+  evalProfilePane?: boolean;
+  evalProfileNotation?: boolean;
 }
+export interface InstantSettings {
+  enabled: boolean;
+  level: number;
+  endless: boolean;
+}
+export const defaultInstant: InstantSettings = {
+  enabled: false,
+  level: 3,
+  endless: false,
+};
 export const defaultSettings: AppSettings = { maxGameTabs: 8, engines: [] };
 export interface ReferenceResponse {
   requestId: string;
