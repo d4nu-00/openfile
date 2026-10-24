@@ -4,6 +4,7 @@ import { Database, LayoutGrid, Search, X } from "lucide-react";
 import { backend, type WorkbenchApi } from "./api/client";
 import {
   annotationsIncomplete,
+  defaultInstant,
   defaultSettings,
   emptyFilter,
   type AppSettings,
@@ -46,9 +47,16 @@ import {
   type WorkbenchState,
 } from "./state/workbench";
 import { OptionsDialog } from "./components/OptionsDialog";
+import { DatabasePropertiesDialog } from "./components/DatabasePropertiesDialog";
+import { RecoveryDialog } from "./components/RecoveryDialog";
 import { useEditing } from "./state/editing";
 import { formatScore } from "./state/analysis";
 import { useKibitzers } from "./state/kibitzers";
+import { mainLine, useInstantAnalysis } from "./state/evalProfile";
+import { EvalProfile } from "./components/EvalProfile";
+import { CentipawnListDialog } from "./components/CentipawnListDialog";
+import { MedalDialog, MoveTimeDialog } from "./components/MoveExtrasDialogs";
+import { boardMarks } from "./state/moveExtras";
 import { EngineManagement } from "./components/EngineManagement";
 import { TablebasePane } from "./components/TablebasePane";
 import { BlunderCheckDialog } from "./components/BlunderCheckDialog";
@@ -95,6 +103,7 @@ import {
   GenerateRepertoireDialog,
   RepertoireReportDialog,
 } from "./components/RepertoireDialogs";
+import { PlayingStyleDialog } from "./components/PlayingStyleDialog";
 import { DossierDialog } from "./components/DossierDialog";
 import { TournamentReportDialog } from "./components/TournamentReportDialog";
 import { ErrorReportDialog } from "./components/ErrorReportDialog";
@@ -183,7 +192,10 @@ export function App({
   useEffect(() => {
     void api
       .getSettings()
-      .then(setSettings)
+      .then((s) => {
+        setSettings(s);
+        setStartView(s.databaseView ?? "symbols");
+      })
       .catch(() => {});
   }, [api]);
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -198,12 +210,24 @@ export function App({
   /** Tactical Analysis: open, its progress while running, its error. */
   /** The move whose training question is being edited, and any error. */
   const [training, setTraining] = useState<{ node: number; error?: string }>();
+  /** Set Medal or Move Time for a move. */
+  const [extraDialog, setExtraDialog] = useState<{
+    kind: "medal" | "moveTime";
+    node: number;
+  }>();
   const [replay, setReplay] = useState<{
     source: ReplaySource;
     databaseId?: string;
   }>();
   /** The document Centipawn Analysis runs on. */
   const [centipawn, setCentipawn] = useState<string>();
+  /** Centipawn Analysis of the chosen list rows. */
+  const [centipawnList, setCentipawnList] = useState<{
+    databaseId: string;
+    name: string;
+    ranges: { start: string; end: string }[];
+    selected: number;
+  }>();
   const [gameReview, setGameReview] = useState<{
     documentId: string;
     line: string;
@@ -299,6 +323,15 @@ export function App({
     loading?: boolean;
     error?: string;
   }>();
+  const [playingStyle, setPlayingStyle] = useState<{
+    databaseId: string;
+    databaseName: string;
+    player: { id: number; name?: string };
+  }>();
+  useEffect(() => {
+    if (playingStyle && playingStyle.databaseId !== state.database?.databaseId)
+      setPlayingStyle(undefined);
+  }, [state.database?.databaseId, playingStyle]);
   /** The player dossier shown. */
   const [dossier, setDossier] = useState<{
     databaseId: string;
@@ -322,6 +355,22 @@ export function App({
   const [startView, setStartView] = useState<StartView>("symbols");
   const [startSymbol, setStartSymbol] = useState<DatabaseSymbol>();
   const [startRefresh, setStartRefresh] = useState(0);
+  const [propertySymbol, setPropertySymbol] = useState<DatabaseSymbol>();
+  const [recovery, setRecovery] = useState<{ source?: string }>();
+  const viewSaves = useRef(Promise.resolve());
+  const changeStartView = (view: StartView) => {
+    setStartView(view);
+    viewSaves.current = viewSaves.current
+      .then(() => api.setDatabaseView(view))
+      .catch((err: unknown) => {
+        w.setDiagnostics([
+          {
+            code: "settings",
+            message: (err as { message?: string })?.message ?? String(err),
+          },
+        ]);
+      });
+  };
   const [flipped, setFlipped] = useState(false);
   const [ordinal, setOrdinal] = useState("1");
   const [square, setSquare] = useState<string>();
@@ -378,6 +427,107 @@ export function App({
     return undefined;
   }
   const inGame = view === "game";
+  // Instant Analysis follows the game tab shown, not the preview.
+  const instant = useInstantAnalysis(
+    api,
+    settings,
+    inGame ? state.document?.documentId : undefined,
+    inGame ? game : undefined,
+  );
+  const lineIds = useMemo(() => mainLine(game), [game]);
+  /** The evaluation profile shown: instant analysis's, else the game's own. */
+  function profileView(compact: boolean) {
+    if (!game) return null;
+    const ran = instant.state;
+    const points = ran?.progress?.profile.length
+      ? ran.progress.profile
+      : (game.profile ?? []);
+    const current = lineIds.indexOf(selected);
+    const p = ran?.progress;
+    const status = ran ? (
+      <span className="eval-profile-status" role="status">
+        {ran.error ??
+          (p
+            ? `Instant analysis: pass ${p.pass}, ${p.done}/${p.total} positions at ${p.millisPerPosition} ms`
+            : "Instant analysis starting")}
+        {ran.running ? (
+          <button type="button" onClick={() => instant.stop()}>
+            Stop
+          </button>
+        ) : (
+          !ran.error &&
+          !p?.finished && (
+            <button type="button" onClick={() => instant.restart()}>
+              Restart
+            </button>
+          )
+        )}
+      </span>
+    ) : game.profile?.length ? (
+      <span className="eval-profile-status">Profile stored with the game</span>
+    ) : undefined;
+    return (
+      <EvalProfile
+        points={points}
+        plies={lineIds.length - 1}
+        current={current >= 0 ? current : undefined}
+        san={(ply) => game.nodes[lineIds[ply]]?.san ?? ""}
+        whiteFirst={game.startFen.split(" ")[1] !== "b"}
+        compact={compact}
+        onSelect={(ply) => {
+          const id = lineIds[ply];
+          if (id !== undefined) void w.selectNode(id);
+        }}
+        status={
+          <>
+            {status}
+            {!compact && settings.instantAnalysis?.enabled && (
+              <span className="instant-options">
+                <label>
+                  Time{" "}
+                  <select
+                    aria-label="Instant analysis time"
+                    value={settings.instantAnalysis.level}
+                    onChange={(ev) =>
+                      void saveSettings({
+                        ...settings,
+                        instantAnalysis: {
+                          ...settings.instantAnalysis!,
+                          level: Number(ev.target.value),
+                        },
+                      })
+                    }
+                  >
+                    {[1, 2, 3, 4, 5, 6].map((n) => (
+                      <option key={n} value={n}>
+                        {n * 35} ms
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={settings.instantAnalysis.endless}
+                    onChange={(ev) =>
+                      void saveSettings({
+                        ...settings,
+                        instantAnalysis: {
+                          ...settings.instantAnalysis!,
+                          endless: ev.target.checked,
+                        },
+                      })
+                    }
+                  />{" "}
+                  Endless
+                </label>
+              </span>
+            )}
+          </>
+        }
+      />
+    );
+  }
   const bookPrepared =
     bookPrep && bookPrep.databaseId === state.database?.databaseId
       ? bookPrep
@@ -461,14 +611,15 @@ export function App({
     };
   }, [api]);
 
-  function clickSquare(to: string) {
+  function clickSquare(to: string, from = square) {
     if (e.busy || !game) return;
     const moves =
       state.position?.legalUci.filter(
-        (m) => m.slice(0, 2) === square && m.slice(2, 4) === to,
+        (m) => m.slice(0, 2) === from && m.slice(2, 4) === to,
       ) ?? [];
     if (moves.length > 1) {
       setPromotion(moves);
+      setSquare(undefined);
       return;
     }
     if (moves.length === 1) {
@@ -511,6 +662,16 @@ export function App({
   }
   /** The best line of the active kibitzer, for the position shown. */
   function bestLine() {
+    // Threat lines start after a null move, and a locked engine's lines
+    // belong to its own position: neither pastes at the current move.
+    const locked = k.current?.locked;
+    if (
+      k.current?.threat ||
+      (locked &&
+        (locked.documentId !== state.document?.documentId ||
+          locked.nodeId !== state.position?.nodeId))
+    )
+      return undefined;
     const lines = k.current?.lines ?? [];
     const line = lines.find((l) => l.multipv === 1) ?? lines[0];
     return line?.rawPv?.length && game ? line : undefined;
@@ -1952,14 +2113,33 @@ export function App({
       enabled: startShown && !!startSymbol?.favorite,
     },
     "view-symbols": {
-      run: () => setStartView("symbols"),
+      run: () => changeStartView("symbols"),
       pressed: startView === "symbols",
       enabled: startShown,
     },
     "view-details": {
-      run: () => setStartView("details"),
+      run: () => changeStartView("details"),
       pressed: startView === "details",
       enabled: startShown,
+    },
+    "view-tile": {
+      run: () => changeStartView("tile"),
+      pressed: startView === "tile",
+      enabled: startShown,
+    },
+    "view-small-symbols": {
+      run: () => changeStartView("smallSymbols"),
+      pressed: startView === "smallSymbols",
+      enabled: startShown,
+    },
+    "database-properties": {
+      run: () => setPropertySymbol(startSymbol),
+      enabled: startShown && !!startSymbol,
+    },
+    "recover-database": {
+      run: () =>
+        setRecovery({ source: startShown ? startSymbol?.path : undefined }),
+      enabled: !recovery,
     },
     statistics: {
       run: () => {
@@ -1994,6 +2174,21 @@ export function App({
         showList("players");
       },
       enabled: !!state.database,
+    },
+    "style-report": {
+      run: () => {
+        if (!state.database || statsPlayer === undefined) return;
+        const name =
+          listTab === "players" && chosenName.players
+            ? chosenName.players.name
+            : gamePlayers.find((p) => p.id === statsPlayer)?.name;
+        setPlayingStyle({
+          databaseId: state.database.databaseId,
+          databaseName: state.database.name ?? "Database",
+          player: { id: statsPlayer, name },
+        });
+      },
+      enabled: !!state.database && statsPlayer !== undefined,
     },
     "player-dossier": {
       run: () => {
@@ -2148,6 +2343,23 @@ export function App({
       run: () => void createJobs(),
       enabled: !!state.database?.writable && w.rowCount > 0,
     },
+    "centipawn-list": {
+      run: () => {
+        const db = state.database;
+        const ranges = chosenRanges();
+        if (!db?.writable || !ranges.length) return;
+        setCentipawnList({
+          databaseId: db.databaseId,
+          name: db.name ?? "Database",
+          ranges,
+          selected: ranges.reduce(
+            (n, r) => n + Number(r.end) - Number(r.start),
+            0,
+          ),
+        });
+      },
+      enabled: !!state.database?.writable && w.rowCount > 0,
+    },
     "training-annotation": {
       run: () => selected !== 0 && setTraining({ node: selected }),
       enabled: !!state.document?.documentId && selected !== 0,
@@ -2217,6 +2429,114 @@ export function App({
     "decrease-lines": {
       run: () => k.lines(-1),
       enabled: !!k.current && !k.current.busy && k.current.multipv > 1,
+    },
+    "toggle-ev-profile": {
+      run: () =>
+        saveSettings({
+          ...settings,
+          evalProfilePane: !settings.evalProfilePane,
+        }),
+      enabled: !!game,
+      pressed: !!settings.evalProfilePane,
+    },
+    "nota-eval-profile": {
+      run: () =>
+        saveSettings({
+          ...settings,
+          evalProfileNotation: !settings.evalProfileNotation,
+        }),
+      enabled: !!game,
+      pressed: !!settings.evalProfileNotation,
+    },
+    "instant-analysis": {
+      run: () => {
+        const now = settings.instantAnalysis ?? defaultInstant;
+        return saveSettings({
+          ...settings,
+          instantAnalysis: { ...now, enabled: !now.enabled },
+          // The curve is where its results show.
+          evalProfilePane: !now.enabled || settings.evalProfilePane,
+        });
+      },
+      pressed: !!settings.instantAnalysis?.enabled,
+    },
+    "set-medal": {
+      run: () => setExtraDialog({ kind: "medal", node: selected }),
+      enabled: !!state.document?.documentId && !e.busy,
+    },
+    "move-time": {
+      run: () => setExtraDialog({ kind: "moveTime", node: selected }),
+      enabled: !!state.document?.documentId && !e.busy && selected !== 0,
+    },
+    "insert-diagram": {
+      run: () =>
+        e.edit({
+          kind: "setExtra",
+          node: selected,
+          extra: {
+            kind: "diagram",
+            on: !game?.nodes[selected]?.extras?.diagram,
+          },
+        }),
+      enabled: !!state.document?.documentId && !e.busy,
+      pressed: !!game?.nodes[selected]?.extras?.diagram,
+    },
+    "pawn-structure": {
+      run: () =>
+        e.edit({
+          kind: "setExtra",
+          node: selected,
+          extra: {
+            kind: "pawnStructure",
+            on: !game?.nodes[selected]?.extras?.pawnStructure,
+          },
+        }),
+      enabled: !!state.document?.documentId && !e.busy && selected !== 0,
+      pressed: !!game?.nodes[selected]?.extras?.pawnStructure,
+    },
+    "piece-path": {
+      run: () =>
+        e.edit({
+          kind: "setExtra",
+          node: selected,
+          extra: {
+            kind: "piecePath",
+            on: !game?.nodes[selected]?.extras?.piecePath,
+          },
+        }),
+      enabled: !!state.document?.documentId && !e.busy && selected !== 0,
+      pressed: !!game?.nodes[selected]?.extras?.piecePath,
+    },
+    "analyse-threat": {
+      run: () => k.toggleThreat(),
+      enabled: !!k.current?.enabled && !k.current.busy,
+      pressed: !!k.current?.threat,
+    },
+    "next-best": {
+      run: () => k.leaveOutBest("next"),
+      enabled: !!k.current?.enabled && !!k.current.lines.length,
+    },
+    "search-better": {
+      run: () => k.leaveOutBest("better"),
+      enabled: !!k.current?.enabled && !!k.current.lines.length,
+    },
+    "search-clearly-better": {
+      run: () => k.leaveOutBest("clearly"),
+      enabled: !!k.current?.enabled && !!k.current.lines.length,
+    },
+    "lock-engine": {
+      run: () => k.toggleLock(),
+      enabled: !!k.current?.enabled && !!state.document,
+      pressed: !!k.current?.locked,
+    },
+    "goto-lock": {
+      run: () => {
+        const locked = k.current?.locked;
+        if (locked) void w.selectNode(locked.nodeId);
+      },
+      enabled:
+        !!k.current?.locked &&
+        k.current.locked.documentId === state.document?.documentId,
     },
     "paste-engine-variation": {
       run: () => pasteEngine(true),
@@ -2438,8 +2758,15 @@ export function App({
   useEffect(() => {
     if (!startupCommand) return;
     setStartupCommand(undefined);
+    // "a,b" runs a, then b with the bindings as they are after a.
+    const [first, ...rest] = startupCommand.split(",");
     void (async () => {
-      await bindings[startupCommand]?.run();
+      await bindings[first]?.run();
+      if (rest.length) {
+        await new Promise((r) => setTimeout(r, 2000));
+        setStartupCommand(rest.join(","));
+        return;
+      }
       // Let the result render before the picture is taken.
       await new Promise((r) => setTimeout(r, 500));
       await api.startupShown().catch(() => {});
@@ -2452,6 +2779,7 @@ export function App({
       palette ||
       !!symbolMenu ||
       !!maskOpen ||
+      !!playingStyle ||
       !!replay ||
       gameDataOpen ||
       setupOpen ||
@@ -2516,18 +2844,21 @@ export function App({
   );
 
   const notation = game ? (
-    <NotationTree
-      nodes={game.nodes}
-      selection={selected}
-      onSelect={(id) => void w.selectNode(id)}
-      startFen={game.startFen}
-      folded={folded}
-      onUnfold={(id) => setFold(id, false)}
-      onTraining={(id) => {
-        void w.selectNode(id);
-        setTraining({ node: id });
-      }}
-    />
+    <>
+      {settings.evalProfileNotation && profileView(true)}
+      <NotationTree
+        nodes={game.nodes}
+        selection={selected}
+        onSelect={(id) => void w.selectNode(id)}
+        startFen={game.startFen}
+        folded={folded}
+        onUnfold={(id) => setFold(id, false)}
+        onTraining={(id) => {
+          void w.selectNode(id);
+          setTraining({ node: id });
+        }}
+      />
+    </>
   ) : (
     <div className="empty-state">
       Select a game to replay its moves and variations.
@@ -2646,7 +2977,8 @@ export function App({
               api={api}
               showFolders={showFolders}
               view={startView}
-              onView={setStartView}
+              onView={changeStartView}
+              onProperties={setPropertySymbol}
               onSelect={setStartSymbol}
               refresh={startRefresh}
               onOpen={(path) =>
@@ -2870,7 +3202,7 @@ export function App({
                   hasGame={!!game}
                   navigate={navigate}
                   compact
-                  node={game?.nodes[selected]}
+                  node={boardMarks(game, selected, state.position?.fen)}
                 />
                 <div className="preview-notation">{notation}</div>
                 <Diagnostics items={w.diagnostics} />
@@ -2906,9 +3238,14 @@ export function App({
                       flipped={flipped}
                       hasGame={!!game}
                       navigate={navigate}
-                      node={game?.nodes[selected]}
+                      node={boardMarks(game, selected, state.position?.fen)}
                       selectedSquare={square}
-                      onSquare={clickSquare}
+                      onSquare={promotion.length ? undefined : clickSquare}
+                      onMove={
+                        promotion.length
+                          ? undefined
+                          : (from, to) => clickSquare(to, from)
+                      }
                       onMark={drawMark}
                       promotion={promotion}
                       onPromote={(uci) => {
@@ -2974,7 +3311,7 @@ export function App({
                     )}
                     {paletteOpen && (
                       <AnnotationPalette
-                        node={game?.nodes[selected]}
+                        node={boardMarks(game, selected, state.position?.fen)}
                         disabled={busy}
                         edit={e.edit}
                         onClose={() => setPaletteOpen(false)}
@@ -3022,6 +3359,7 @@ export function App({
               <Group orientation="horizontal" className="split">
                 <Panel id="kibitzer" minSize="20">
                   <section className="pane analysis-pane" aria-label="Engine">
+                    {settings.evalProfilePane && profileView(false)}
                     <EnginePanel k={k} state={state} />
                   </section>
                 </Panel>
@@ -3074,6 +3412,28 @@ export function App({
         />
       )}
       <UnsavedDialog question={e.question} answer={e.answer} />
+      {recovery && (
+        <RecoveryDialog
+          api={api}
+          initialSource={recovery.source}
+          onClose={() => setRecovery(undefined)}
+          onOpen={async (path) => {
+            await w.openDatabase(path);
+            setStartOpen(false);
+            setStartRefresh((n) => n + 1);
+          }}
+        />
+      )}
+      {propertySymbol && (
+        <DatabasePropertiesDialog
+          symbol={propertySymbol}
+          onClose={() => setPropertySymbol(undefined)}
+          save={async (properties) => {
+            await api.setDatabaseProperties(propertySymbol.path, properties);
+            setStartRefresh((n) => n + 1);
+          }}
+        />
+      )}
       {gameDataOpen && game && (
         <GameDataDialog
           tags={game.tags}
@@ -3222,6 +3582,50 @@ export function App({
           api={api}
           source={replay.source}
           onClose={() => setReplay(undefined)}
+        />
+      )}
+      {extraDialog?.kind === "medal" && (
+        <MedalDialog
+          bits={game?.nodes[extraDialog.node]?.extras?.medal ?? 0}
+          onClose={() => setExtraDialog(undefined)}
+          onApply={(bits) => {
+            const node = extraDialog.node;
+            setExtraDialog(undefined);
+            void e.edit({
+              kind: "setExtra",
+              node,
+              extra: { kind: "medal", bits },
+            });
+          }}
+        />
+      )}
+      {extraDialog?.kind === "moveTime" && (
+        <MoveTimeDialog
+          time={game?.nodes[extraDialog.node]?.extras?.moveTime}
+          onClose={() => setExtraDialog(undefined)}
+          onApply={(time) => {
+            const node = extraDialog.node;
+            setExtraDialog(undefined);
+            void e.edit({
+              kind: "setExtra",
+              node,
+              extra: { kind: "moveTime", time },
+            });
+          }}
+        />
+      )}
+      {centipawnList && (
+        <CentipawnListDialog
+          api={api}
+          databaseId={centipawnList.databaseId}
+          databaseName={centipawnList.name}
+          ranges={centipawnList.ranges}
+          selected={centipawnList.selected}
+          engines={settings.engines}
+          defaultEngine={settings.defaultEngine}
+          onChooseFile={api.pickEngine}
+          onDone={() => void w.refreshList()}
+          onClose={() => setCentipawnList(undefined)}
         />
       )}
       {centipawn && (
@@ -3443,6 +3847,19 @@ export function App({
           }}
         />
       )}
+      {playingStyle && (
+        <PlayingStyleDialog
+          key={`${playingStyle.databaseId}-${playingStyle.player.id}`}
+          api={api}
+          {...playingStyle}
+          onClose={() => setPlayingStyle(undefined)}
+          onLoadGame={(ordinal, node, jobId) => {
+            setPlayingStyle(undefined);
+            setListTab("games");
+            void e.openEntry(ordinal, node, jobId);
+          }}
+        />
+      )}
       {dossier && (
         <DossierDialog
           name={dossier.name}
@@ -3649,18 +4066,19 @@ export function App({
         <SearchMask
           initialTab={maskOpen === "annotations" ? "annotations" : undefined}
           initial={state.search?.filter}
+          resultCount={state.search?.hits}
           initialPosition={state.search?.position}
           boardFen={state.position?.fen}
-          onSearchPosition={(query) => {
+          onSearchPosition={(query, scope) => {
             setMaskOpen(false);
             setView("database");
-            void w.positionSearch(query);
+            void w.positionSearch(query, scope);
           }}
           onClose={() => setMaskOpen(false)}
-          onSearch={(filter) => {
+          onSearch={(filter, scope) => {
             setMaskOpen(false);
             setView("database");
-            void w.search(filter);
+            void w.search(filter, undefined, scope);
           }}
         />
       )}

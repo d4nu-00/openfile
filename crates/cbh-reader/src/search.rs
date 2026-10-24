@@ -1,7 +1,7 @@
 //! Game-data search over a whole database (the reference app's search mask, game data
 //! tab). See docs/search.md. Name fields are resolved to id sets first; the
 //! entry index is then scanned in chunks without decoding any game.
-pub use crate::material::{CountRange, MaterialQuery, PieceCounts, Tally, mating_pieces};
+pub use crate::ending::{CountRange, EndingQuery, PieceCounts, Tally, mating_pieces};
 use crate::{CbhError, Database, DatabaseFormat, EntryKind, header::RawEntry};
 use std::{collections::HashSet, sync::atomic::AtomicBool};
 
@@ -70,9 +70,9 @@ pub struct GameFilter {
     pub check: bool,
     /// The main line's final position has equal pieces (see docs/search.md).
     pub final_material: FinalMaterial,
-    /// The Material tab: piece counts in the final position and the pieces
+    /// The Ending tab: piece counts in the final position and the pieces
     /// involved in a mate (see docs/search.md).
-    pub material: MaterialQuery,
+    pub ending: EndingQuery,
     /// Case-insensitive text in any text annotation, in any language.
     pub full_text: String,
     /// Games whose annotations do not hold `full_text`.
@@ -82,6 +82,7 @@ pub struct GameFilter {
     pub medals: u16,
     /// The search mask's Annotations tab (dialog 343).
     pub annotations: AnnotationQuery,
+    pub material: Option<crate::material::MaterialQuery>,
 }
 
 /// Final-position material criterion of the game data tab (the workbench's own
@@ -208,8 +209,8 @@ impl AnnotationQuery {
                 || other(&[0x84, 0x85]))
             && (!self.training || any(&|k| matches!(k, Kind::Training(_))) || other(&[0x09]))
             && (!self.multimedia || other(&[0x10, 0x11, 0x12]))
-            && (!self.pawn_structure || other(&[0x14]))
-            && (!self.piece_path || other(&[0x15]))
+            && (!self.pawn_structure || any(&|k| matches!(k, Kind::PawnStructure(_))))
+            && (!self.piece_path || any(&|k| matches!(k, Kind::PiecePath(_))))
             && (!self.critical_opening || critical(1))
             && (!self.critical_middlegame || critical(2))
             && (!self.critical_endgame || critical(3))
@@ -262,6 +263,7 @@ pub fn ending(game: &chess_core::Game) -> Result<Ending, CbhError> {
 #[serde(rename_all = "camelCase")]
 pub struct SearchResult {
     pub ordinals: Vec<u64>,
+    pub nodes: Option<Vec<u32>>,
     /// Entries examined; equals the entry count unless stopped early.
     pub scanned: u64,
     /// Stopped at the hit limit.
@@ -666,8 +668,8 @@ impl GameFilter {
     fn reads_games(&self) -> bool {
         self.wants_ending()
             || self.final_material.equal
-            || self.material.final_active()
-            || self.material.mate_by_enabled
+            || self.ending.final_active()
+            || self.ending.mate_by_enabled
             || !self.full_text.trim().is_empty()
             || !self.annotations.is_empty()
     }
@@ -696,8 +698,8 @@ impl GameFilter {
         let game = if self.annotations.variations
             || self.wants_ending()
             || self.final_material.equal
-            || self.material.final_active()
-            || self.material.mate_by_enabled
+            || self.ending.final_active()
+            || self.ending.mate_by_enabled
         {
             match db.moves_of(r)? {
                 Some(game) => Some(game),
@@ -727,15 +729,15 @@ impl GameFilter {
                     return Ok(false);
                 }
             }
-            if self.material.final_active() {
+            if self.ending.final_active() {
                 use shakmaty::Position;
-                if !self.material.matches_final(final_position(game)?.board()) {
+                if !self.ending.matches_final(final_position(game)?.board()) {
                     return Ok(false);
                 }
             }
-            if self.material.mate_by_enabled {
+            if self.ending.mate_by_enabled {
                 match mating_pieces(&final_position(game)?) {
-                    Some(tally) if self.material.mate_by.matches(&tally) => {}
+                    Some(tally) if self.ending.mate_by.matches(&tally) => {}
                     _ => return Ok(false),
                 }
             }
@@ -841,7 +843,22 @@ impl Database {
         cancel: &AtomicBool,
         mut progress: impl FnMut(u64),
     ) -> Result<SearchResult, CbhError> {
+        self.search_selected(filter, None, max_hits, cancel, |done, _| progress(done))
+    }
+
+    /// Searches only the sorted unique entries in `selection`, or every entry with None.
+    pub fn search_selected(
+        &mut self,
+        filter: &GameFilter,
+        selection: Option<&[u64]>,
+        max_hits: usize,
+        cancel: &AtomicBool,
+        progress: impl FnMut(u64, u64),
+    ) -> Result<SearchResult, CbhError> {
         self.verify()?;
+        if let Some(material) = &filter.material {
+            material.validate()?;
+        }
         let tournaments = if filter.tournament.trim().is_empty() {
             None
         } else {
@@ -884,28 +901,50 @@ impl Database {
         };
         // Header fields are compared first; games are read only for what
         // passes them.
-        let step = if filter.reads_games() { 256 } else { 8192 };
-        let found = crate::scan::parallel(
+        let step = if filter.reads_games() || filter.material.is_some() {
+            64
+        } else {
+            8192
+        };
+        let found = crate::scan::parallel_selected(
             self,
+            selection,
             crate::scan::default_workers(),
             step,
             max_hits,
             cancel,
-            |done, _| progress(done),
+            progress,
             |_| Ok(()),
             |db, _, start, n, out| {
                 for raw in db.raw_chunk(start, n)? {
-                    if filter.matches(&compiled, &raw)
-                        && (!filter.reads_games() || filter.matches_game(db, &raw)?)
-                    {
-                        out.push((raw.ordinal, ()));
+                    if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                        break;
                     }
+                    if !filter.matches(&compiled, &raw)
+                        || (filter.reads_games() && !filter.matches_game(db, &raw)?)
+                    {
+                        continue;
+                    }
+                    let node = if let Some(material) = &filter.material {
+                        let Some(game) = db.moves_of(&raw)? else {
+                            continue;
+                        };
+                        let Some(node) = material.find_in(&game, cancel)? else {
+                            continue;
+                        };
+                        node
+                    } else {
+                        0
+                    };
+                    out.push((raw.ordinal, node));
                 }
                 Ok(())
             },
         )?;
+        let (ordinals, nodes): (Vec<_>, Vec<_>) = found.hits.into_iter().unzip();
         Ok(SearchResult {
-            ordinals: found.hits.into_iter().map(|h| h.0).collect(),
+            ordinals,
+            nodes: filter.material.as_ref().map(|_| nodes),
             scanned: found.scanned,
             truncated: found.truncated,
             cancelled: found.cancelled,

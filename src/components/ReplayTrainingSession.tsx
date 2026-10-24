@@ -245,10 +245,10 @@ export function ReplayTrainingSession({
       );
     }
   };
-  const clickSquare = (to: string) => {
+  const clickSquare = (to: string, from = selected) => {
     if (!question || done || question.training.kind !== "moveInput") return;
     const matches = question.legalUci.filter(
-      (uci) => uci.slice(0, 2) === selected && uci.slice(2, 4) === to,
+      (uci) => uci.slice(0, 2) === from && uci.slice(2, 4) === to,
     );
     if (matches.length > 1) setPromotions(matches);
     else if (matches.length === 1) answer(matches[0]);
@@ -366,6 +366,11 @@ export function ReplayTrainingSession({
                   legalUci={question.legalUci}
                   selectedSquare={selected}
                   onSquare={clickSquare}
+                  onMove={
+                    done || question.training.kind !== "moveInput"
+                      ? undefined
+                      : (from, to) => clickSquare(to, from)
+                  }
                   compact
                   marks={
                     helpLevel > 0

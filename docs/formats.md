@@ -24,6 +24,14 @@ that executable. No the reference app code or resources were copied.
 
 ## 2CBH records
 
+The recovery reader uses these established boundaries without requiring a
+healthy declared count or stream used-length header. It examines complete
+physical 192-byte records only; signature/version/stride damage is refused.
+Referenced raw blocks and whole 2LID slots are retained after validation,
+with offsets/name ids remapped. Missing required content skips the whole
+game. Text recovery and unknown move encodings remain unsupported and are
+itemised. See [recovery contracts and limits](maintenance.md#recover-readable-games).
+
 Record 0 is the file header. Its LE16 at byte 10 is the record stride (192).
 Its LE64 at byte 16 is the record count, header included (`0x1401ceab0`,
 `0x1401cd6a0`). The reader accepts only stride 192.
@@ -290,7 +298,9 @@ The type ids come from the annotation factory `0x1401a2ae0`:
 | `0x84`, `0x85` | Squares and arrows shown before the move | No |
 | `0x18` | Critical position: one byte, 1 opening (the repertoire's "blue" move), 2 middlegame, 3 endgame | Yes, read and written (see [repertoire](repertoire.md)) |
 | `0x09` | Training question: kind, seconds, score, question, wrong-answer text, two hints and graded answers | Yes, read and written (see [training](training.md)) |
-| `0x07` time, `0x13` game quotation, `0x14` pawn structure, `0x15` piece path, `0x22` medal, `0x23` variation colour, `0x26` evaluation profile, others | Various | No, counted in a diagnostic |
+| `0x26` | Evaluation profile at the game's start: one packed evaluation per main-line ply | Yes, read and written (see [evaluation profile](evaluation-profile.md)) |
+| `0x06` diagram, `0x07` move time, `0x14` pawn structure, `0x15` piece path, `0x21` stored evaluation, `0x22` move medal | See [annotations](annotations.md) | Yes, read and written |
+| `0x13` game quotation, `0x16`/`0x17` (`MClassAnno`/`EClassAnno`), `0x23` variation colour, `0x24` time control, others | Various | No, counted in a diagnostic |
 
 **Positions.** Position −1 is the start of the game. Position *k* is the
 (k+1)-th move, but the two files count moves in different orders:

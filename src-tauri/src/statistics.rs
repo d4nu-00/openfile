@@ -115,6 +115,7 @@ impl Registry {
                 ordinals,
                 nodes: None,
                 fen: None,
+                truncated: kept.games.truncated,
             }),
         );
         Ok(response)

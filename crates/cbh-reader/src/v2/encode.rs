@@ -443,6 +443,60 @@ pub fn encode_annotations(game: &Game) -> (Vec<u8>, Omitted) {
             training(t, &mut entries, &mut omitted);
             count += 1;
         }
+        if position == -1 && !game.profile.is_empty() {
+            if game.profile.len() > crate::annotations::PROFILE_ENTRIES {
+                omitted.notes.push(format!(
+                    "An evaluation profile of {} entries exceeds 2,001",
+                    game.profile.len()
+                ));
+            } else {
+                // Presence byte, then the sub-block: LE32 length, LE16 count
+                // and the packed evaluations (`0x140c4ec00`).
+                entries.extend(crate::annotations::EVAL_PROFILE.to_le_bytes());
+                entries.push(1);
+                entries.extend(((2 + 4 * game.profile.len()) as u32).to_le_bytes());
+                entries.extend((game.profile.len() as u16).to_le_bytes());
+                for value in &game.profile {
+                    entries.extend(value.to_le_bytes());
+                }
+                count += 1;
+            }
+        }
+        if let Some(x) = &node.extras {
+            use crate::annotations::{
+                DIAGRAM, EVALUATION, MEDAL, MOVE_TIME, PAWN_STRUCTURE, PIECE_PATH,
+            };
+            if x.diagram {
+                entries.extend(DIAGRAM.to_le_bytes());
+                count += 1;
+            }
+            if x.medal != 0 {
+                entries.extend(MEDAL.to_le_bytes());
+                entries.extend(x.medal.to_le_bytes());
+                count += 1;
+            }
+            if let Some(time) = x.move_time {
+                entries.extend(MOVE_TIME.to_le_bytes());
+                entries.extend(time.to_le_bytes());
+                count += 1;
+            }
+            if let Some(v) = x.pawn_structure {
+                entries.extend(PAWN_STRUCTURE.to_le_bytes());
+                entries.push(v);
+                count += 1;
+            }
+            if !x.piece_path.is_empty() {
+                entries.extend(PIECE_PATH.to_le_bytes());
+                entries.extend((x.piece_path.len() as u32).to_le_bytes());
+                entries.extend(&x.piece_path);
+                count += 1;
+            }
+            if let Some(store) = x.evaluation {
+                entries.extend(EVALUATION.to_le_bytes());
+                entries.extend(store);
+                count += 1;
+            }
+        }
         match node.critical {
             Some(kind @ 1..=3) => {
                 entries.extend(CRITICAL.to_le_bytes());

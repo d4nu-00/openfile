@@ -18,6 +18,14 @@ The workbench writes only the newer **2CBH family**:
 
 Classic CBH databases stay read-only. Converting them is a separate feature.
 
+Recovery now offers a separate [verified copy](maintenance.md#recover-readable-games)
+for partially readable 2CBH families. It initializes the supported writer
+layout, then retains validated original raw index records, move/annotation
+frames and referenced name slots. Only offsets, name ids and output counts
+change. This preserves opaque bytes that normal game re-encoding cannot
+represent. Recovery publishes a new directory exclusively after verification;
+it does not reuse the in-place compaction transaction or write classic files.
+
 ### Files written
 
 | File | Written | Evidence |

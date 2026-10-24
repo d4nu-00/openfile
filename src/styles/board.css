@@ -8,6 +8,9 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   user-select: none;
 }
+.board.interactive {
+  touch-action: none;
+}
 .repertoire-pane {
   display: flex;
   flex-direction: column;
@@ -138,6 +141,29 @@
   height: 26%;
   border-radius: 50%;
   background: var(--board-target);
+  pointer-events: none;
+}
+.square[data-legal="true"][data-occupied="true"]::after {
+  width: 82%;
+  height: 82%;
+  border: 5px solid var(--board-target);
+  background: transparent;
+}
+.square[data-drop-target="true"] {
+  outline: 4px solid var(--board-target);
+  outline-offset: -4px;
+}
+.square.drag-origin .piece {
+  opacity: 0.2;
+}
+.drag-piece {
+  position: absolute;
+  z-index: 4;
+  width: 11.5%;
+  height: 11.5%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.35));
 }
 .square:focus-visible {
   outline-offset: -3px;

@@ -1042,3 +1042,359 @@ ECO, newer-format limits, special encodings and standard-chess-only restrictions
   * every game round-trips through 2CBA;
   * the game also in the 2CBH sample agrees.
 
+
+
+## Material search and result combinations (2026-10-20)
+
+Implemented from latest fetched main in an isolated feature worktree. No source
+database, reference executable or extracted proprietary assets were changed.
+Reference executable controls and Ghidra addresses, uncertainties and independent
+rules are in [search](search.md#material-search-2026-10-20).
+
+Synthetic reader tests cover inclusive piece/minor/total ranges, signed balance,
+colour reversal, promotions, setup roots, move windows, duration with fixed
+orientation, mainline versus variations, invalid queries, sparse/empty selections,
+limits, node IDs and cancellation. Real synthetic 2CBH registry tests cover
+intersection/union, duplicate entry identities, entry and column order, retained
+and new nodes, empty versus absent results, error/cancel/reset/supersession/closure,
+and a deterministic overlapping booster/search cancellation race. A bounded
+synthetic union checks retention of existing entries and earliest unique new IDs
+with aligned nodes. UI regressions cover retained fields, targets, disabled
+unavailable scopes, range validation, reset, independent Position submissions,
+progress and cancellation. The development preview also implements set operations.
+
+Independent read-only review approved the core implementation after three
+reproduced regressions were fixed. A preview pagination continuation issue was
+also reproduced and fixed. Browser UI verification covered All material search,
+Within refinement, Add position matches, repeated Add and ascending entry IDs.
+
+Native macOS verification used a disposable five-game synthetic 2CBH and real
+Tauri/Rust code: All rook endings with balance 0 → [1,3,5]; Within White Capture
+→ [3]; Add pawn endings → [2,3,4]; repeated Add unchanged. All balance ≥+5
+returned [3,4], and entry 3 opened at 1.Rxh1/node 1. Native screenshots were
+inspected and are linked from [search](search.md#search-ui-evidence). They show
+OpenFile with synthetic games, not the proprietary reference application.
+
+Native large-database verification used the classic source read-only. An
+unmatched synthetic player prefix showed progress (observed 14%) and returned
+an empty result. Add with material balance ≥+144 showed Searching… 0% and Cancel;
+clicking Cancel returned Search cancelled and retained 0 of 11,151,119 entries.
+Within on that empty result completed with zero hits. No screenshot or private
+game data from that database was added to the repository.
+
+Release timing: classic database 11,151,119 index entries, year ≥2024 and one
+rook each/no queens or minors: 46,642 hits, 31.58 s first run / 31.90 s repeated
+warm run, approximately 7.3 MB peak RSS. Refinement of 3,837 White-Carlsen hits:
+499 material matches, 0.162 s excluding initial-result creation. New format,
+24,783 entries, material balance ≥+5: 11,294 matches in 0.167 s. No broad
+unfiltered full-replay timing is claimed; expensive scans retain at most 100,000
+matches, while combined results cap at 2,000,000 and retain prior entries.
+
+Final local checks: **306 Rust tests** and **188 frontend tests** pass; Cargo
+formatting, strict workspace/all-target Clippy, TypeScript, Prettier, production
+frontend build and native debug/release executable builds pass. The frontend build retains its
+existing >500 kB chunk-size advisory. Distribution audit passes for all 641
+tracked source/artifact paths. PR checks provide the cross-platform CI record.
+
+The first PR macOS CI run exposed a pre-existing review-practice drag-test race:
+the square query could resolve before the asynchronously mounted board finished
+its effects. The failure reproduced locally on attempt 4. Awaiting the initial
+render and position effects in React `act` passed 20 consecutive targeted runs;
+the drag and grading assertions remain unchanged. This is a test synchronization
+fix, with no change to board behavior.
+
+
+## Initial descriptive playing-style report (2026-10-21; superseded)
+
+Implemented from fetched `origin/main` in an isolated worktree. Original checkout,
+reference database and unrelated REA sessions/artifacts were preserved. Fresh
+REA/Ghidra analysis traced command dispatch, dynamic options, selection, theme
+math, reference normalization, internal evaluation, rendering and cancellation.
+Addresses, executable hash, directly established behavior and unresolved questions
+are recorded in [playing style](playing-style.md). OpenFile independently computes
+ten transparent move/material measures, without a UCI engine or comparison grades.
+
+Synthetic tests cover both colours; explicit alias unions; filter-before-limit
+selection beyond 100,000 matches; deleted/unknown records; empty/small samples;
+checks, captures/en passant, castling, queen movement/exchanges/promotions,
+non-pawn inventories, sustained deficits and endgames; setup/unsupported/partial/
+corrupt records; replay caps; cancellation, supersession, closure/edit invalidation,
+source mutation and supporting-node navigation. UI tests cover criteria, aliases,
+measured zero versus missing evidence, complete analysed-game lists, errors,
+late callbacks and source-bound navigation. Independent focused review identified
+two races that were reproduced and fixed: late evidence validation affecting a
+newer report, and source mutation between validation and game loading. Both have
+regressions; loading now validates before and after and closes a stale document.
+
+Native acceptance used read-only byte-identical clones of the available Mega
+Database 2025 (11,151,119 entries) in a separately identified Tauri app. Exact
+identities Carlsen, Magnus #65470 and Nakamura, Hikaru #286135 were checked against
+the name list and neighbouring entries; no aliases were added. Both reports used
+both colours, no year/rating filter, latest 500 games and a 400-ply cap. Carlsen:
+500 analysed, 252 White/248 Black, 2024.05.14–2024.10.01. Nakamura: 498 analysed,
+250 White/248 Black, 2024.06.13–2024.09.24, two unreadable records skipped. Samples
+include mixed time controls. No career-wide or long-game-only claim is made.
+
+A separate python-chess 1.10.0 calculation matched all ten metric fractions,
+colour splits and every evidence SAN/ply in both reports. Native supporting links
+opened Carlsen–Firouzja at 45...Qxg7 (ply 90, nine non-pawn points each), and
+Nakamura–Naroditsky at 8.Kxd1 (ply 15, no queens), with the expected board and
+highlighted move. Native Stop during a header scan was also checked: a WebKit
+form-default restart was reproduced, fixed with a prevented click default, and
+verified in the rebuilt app with a regression test. The stopped state persisted
+without publication; a subsequent explicit Generate returned the expected sample.
+The original screenshots were superseded by the native-dimension replacement
+below; these historical measurements do not validate the replacement.
+
+Warm-cache release selection/replay totals were 0.369 s / 0.285 s, with full-index
+scans 0.172 s / 0.131 s and replay 0.197 s / 0.154 s, respectively. Prepared
+name-list lookup took 0.005 s / 0.002 s. Whole example processes including PGN
+validation export peaked at 12.4 / 12.3 MiB resident memory. Native debug UI
+computations took 3.04 s / 2.96 s. Engine cost: zero. These measurements exclude
+initial database opening/name-index construction; cloud placeholders can stall
+filesystem reads. Selection retains one 8,192-header chunk plus at most 2,000
+candidates. No result cache is persisted. Nine original database-family file
+signatures remained unchanged, and original/clone CBH hashes agree.
+
+Final local checks: **329 Rust tests** (23 new style tests), **195 frontend tests**
+(7 new style tests), Rust formatting, strict workspace/all-target Clippy,
+TypeScript, Prettier, production frontend build and locked native release build.
+The native acceptance app also builds successfully with embedded frontend assets.
+The frontend retains its existing >500 kB bundle advisory. The tracked-source
+allowlist permits the authored style documentation/plans and screenshots, without
+raw decompilation, private games or databases. Cross-platform CI is recorded by
+the unmerged PR.
+
+
+## Native-dimension replacement (2026-10-22)
+
+The initial ten-metric report is superseded by the eight ChessBase dimensions.
+Fresh REA/Ghidra evidence covers 82 functions and 17 batches; the categorical-grade
+initialization defect was confirmed in assembly. Score and Decided Games use
+recovered formulas, result denominators, references and normalization. Tenacity
+exposes verified draw inputs, but its complete score and the other five composite
+scores remain unavailable. All categorical grades remain unavailable. The
+checklist deliberately marks native coverage partial; no displayed Windows
+ChessBase comparison or full native compatibility is claimed. Full evidence,
+formulas and dependencies are in [playing style](playing-style.md).
+
+Reader fixtures verify classic and 2LID tournament metadata, record bounds,
+legacy stream remapping, Simultaneous/Blitz/Rapid/Long precedence, unknown category
+policy and native minimum stored length before the bounded sample. Runtime tests
+cover both colours, canonical forfeits, unknown denominators, measured zero,
+missing colours, all eight dimensions, absent grades/proxy scores, Tenacity draw
+inputs, source validity and evidence. UI tests retain cancellation/supersession,
+source-bound navigation and stale-callback guards and cover game-category filters.
+A deterministic regression cancels within a 1,024-record header batch at 256 rows;
+cancellation is now checked before each metadata lookup. Independent review
+confirmed both findings fixed and no residual actionable concerns.
+
+Actual rebuilt native UI acceptance used read-only byte-identical Mega Database
+2025 clones (11,151,119 entries), exact Carlsen #65470/Nakamura #286135 identities,
+no aliases, both colours, Long only, no year/rating bounds and latest 500 eligible
+games. Carlsen: 492 analysed, 247 White/245 Black, 2016.09.12–2024.09.21, eight
+setups skipped; Score 77.1442%, Decided Games 35.5805%. Nakamura: 483 analysed,
+246 White/237 Black, 2015.10.19–2024.06.07, seventeen setups skipped; Score
+67.2984%, Decided Games 15.7021%. These normalized composites are neither game
+fractions nor player percentiles. The other six score cards remain unavailable.
+
+Independent raw CBH/CBT reads reproduced selection, eligible counts and category
+filtering; separate python-chess 1.10.0 replay matched result totals, both raw and
+normalized calculations, draw inputs and every evidence SAN/ply. Native links
+opened Carlsen–Schitco at 42.g5 (entry 11131908, ply 83), and
+Praggnanandhaa–Nakamura at 31.Rxe8+ (entry 10932339, ply 61), with the expected
+board and highlighted move. Native Stop during scanning remained stopped without
+publication. [Inspected screenshots](playing-style.md#native-ui-evidence) retain
+both real reports, inputs, missing dimensions, supporting positions and Stop.
+
+Warm-cache release totals were 0.408/0.351 s: header selection 0.189/0.159 s,
+replay 0.218/0.191 s; prepared name lookup 0.003/0.002 s. Whole validation/export
+processes peaked at 16.5/15.9 MiB RSS. An initial name-index build took 0.461 s and
+peaked at 71.3 MiB process RSS. Database opening is excluded; engine cost is zero.
+Native debug UI computations took 3.14/3.32 s.
+All nine original source signatures stayed unchanged; original/clone CBH hashes
+match. No private database, sample PGN or proprietary asset is distributed.
+
+Final local checks: **342 Rust tests**, **196 frontend tests**, Cargo formatting,
+strict workspace/all-target Clippy, TypeScript, Prettier, production frontend
+build, locked native release build and embedded-frontend native acceptance build.
+The existing bundle-size advisory remains. The unmerged PR records cross-platform
+CI. The tracked-source distribution audit passes for all 661 tracked paths.
+
+## Engine search commands (2026-10-22)
+
+* **Engine crate.** A test sends `go infinite searchmoves …` to the mock
+  engine, which then limits its lines to those moves. A search move that is
+  illegal in the position is refused before anything is sent.
+* **App tests.** Analyse threat's null move gives the other side the move and
+  drops the en passant square; a side in check is refused. Next Best leaves
+  18 of the 20 opening moves after two are excluded, ignores an unreadable
+  move, and refuses to exclude every move.
+* **Frontend tests:**
+  * Y, Shift+Y and X restart the kibitzer with the right search mode.
+  * Search Better reports whether the new best line beats the move left out.
+  * A move on the board clears the moves left out.
+  * Lock Engine keeps the engine on its position; releasing the lock follows
+    the board.
+* **Real engine.** Stockfish 17 with `position startpos moves e2e4` and
+  `go depth 14 searchmoves g8f6 b8c6` chose b8c6, one of the allowed moves.
+  A threat position (a null move with White to move again, the queen on h5
+  and the bishop on c4) gave Qxf7 mate as its best move.
+
+## Evaluation profile and instant analysis (2026-10-22)
+
+* **Format.** Read-only and warm, with a probe through the reader's `load`:
+  * the classic and 2CBH families of the test database decode the same 177
+    profiles for entries 1–24,783, digest for digest. Every profile sits at
+    the game's start, and every 2CBA sub-block is exactly 2 + 4n bytes long;
+  * 121 profiles have one entry per main-line ply plus the start. 48 are
+    shorter and 8 longer;
+  * mates are positive in 110 of the mate entries of 1–0 games, and negative
+    in 80 of the mate entries of 0–1 games, so the scores are from White's
+    side;
+  * classic entries 11,000,001–11,100,000 hold 210 profiles, all decoded and
+    none reported as unsupported, read in 20.5 s.
+* **Tests.** Reader tests cover both layouts, the count limit, a wrong length
+  and an absent profile. The 2CBH writer round-trips a profile. App tests run
+  instant analysis on the mock engine: every ply is filled, a second run comes
+  from the cache, and a cancelled run evaluates nothing. Frontend tests cover
+  the critical-move rule, the instant analysis parameters, progress, Stop,
+  jumping to a critical move, and the profile above the notation.
+* **Real engine.** Release build, Stockfish 17, level 3 (105 ms per
+  position), the classic test database read-only:
+
+  | Game | Positions | Fresh | From the cache | Centipawn Analysis at 0 s |
+  |---|---|---|---|---|
+  | entry 144 | 92 | 11.1 s | 0.20 s | 19.7 s |
+  | entry 731 | 58 | 6.9 s | 0.22 s | 8.3 s |
+  | entry 11,000,000 | 74 | 8.5 s | 0.21 s | 13.6 s |
+
+  That is about 0.12 s per position against the 105 ms asked. The repeat
+  costs the engine's start only. Centipawn Analysis asks 200 ms per position,
+  more than the cache holds, so it evaluates afresh.
+
+## Centipawn Analysis of a database list (2026-10-22)
+
+* **Unit tests:**
+  * the performance formula: 75 % against 2400 and 2600 gives 2691; 100 %
+    and 0 % give ±800; unrated opponents and unknown results are left out;
+  * the statistics' map (names with commas made spaces, each player's first
+    rating), the weighted average, the row and game orders, and the CSV's
+    header and row layout.
+* **App tests** use a scratch 2CBH and the mock engine, which loses 34 cp
+  each move:
+  * two games are analysed and replaced, and a short game is skipped;
+  * each player's values are 34, and Points and Perform agree with the hand
+    calculation (2591);
+  * the replaced entry holds the summary text and an evaluation profile;
+  * a run stopped at once writes nothing;
+  * a PGN collection is refused, since only a 2CBH opened for editing can be
+    written.
+* **Frontend test:** the dialog sends the selection and parameters, shows the
+  players, and saves the CSV to the chosen path under the default name.
+* **Real engine:** 20 classic test-database games copied to a scratch 2CBH
+  (deleted after), Stockfish 17 at Seconds 0, release build. 19 games were
+  replaced in 274 s and one, with no moves after its opening, was skipped.
+  The CSV had 37 players.
+
+## Engine analysis history (2026-10-22)
+
+* The protocol test reads UCI `time` in milliseconds and refuses a malformed
+  value.
+* A frontend test sends four lines for one position (e4 at depths 10 and 12,
+  then d4 at 14 and 15). History shows two rows, latest first: d4 chosen at
+  2.5 s with depth 15 and +0.28, then e4 at 0.1 s with depth 12 and +0.25.
+  Selecting another move empties it.
+* Stockfish 17 sends `time` in its info lines (for example `info depth 14 …
+  time 74 pv …`), so real rows carry the engine's own times.
+
+## Database views, properties and safe recovery (2026-10-22)
+
+Fresh REA/Ghidra analysis completed on the requested x64 CBase18 executable,
+SHA-256 `8d633b10ad97bd9f8fbbc33a89c279397850ca759c8375093deda4a9485e8dee`.
+76 retained request/results establish actual view run handlers, property
+dialog controls and Title/Type `.ini` storage, distinguish Usage as an access
+counter, and trace Check Integrity's in-place repair. Findings and explicit
+gaps are in [start screen](start-screen.md#fresh-reaghidra-evidence-2026-10-22)
+and [maintenance](maintenance.md#recover-readable-games). Raw decompilation
+remains outside this repository. Native view persistence storage, repair
+backup/rollback and Windows runtime behavior remain unverified. Recovery is
+an independently implemented OpenFile safe-copy operation, not a claimed port
+of a standalone native recovery command.
+
+All four layouts share selection, roving focus, Home/End/arrows and opening.
+Backend tests verify view/property persistence and bounded validation; UI
+tests cover missing files, property failure without lost inputs, group-change
+keyboard fallback and layout switching. Properties deliberately remain local
+settings, including OpenFile's freeform description and 20 own icons.
+
+Recovery tests independently damage counts, stream headers, moves,
+annotations, name references and truncated/missing companions. They verify
+complete decoded game equality, variations, special results, deletion/medals,
+opaque metadata and raw unknown annotation retention; nontrivial
+annotator/source/team ids remap without losing slot tails. Text and unknown
+entries are itemised unsupported. A 600-skip case verifies the 500-problem
+memory bound and untruncated streamed entry report. Cancellation during
+recovery and verification, stale/pending job identities, source mutation,
+new companions, overlap, existing/appearing destinations, failed writes and
+crash leftovers are covered. A Unix child imposes a real 1 KiB file-size limit
+to force an I/O write failure; cleanup and every source companion are checked.
+Another child exits during verification: nothing publishes, its isolated
+temporary directory survives, and a retry succeeds without overwriting it.
+
+Independent focused review found three issues, reproduced and fixed with
+regressions: a lowered declared count hiding physically complete records,
+Stop unavailable before first progress, and no keyboard tab stop after
+changing groups. Follow-up review confirmed the fixes and found no further
+actionable issue. Subsequent Windows CI caught another defect: general
+directory rename replaced an empty destination appearing during verification.
+Windows publication now explicitly calls `MoveFileW`, requiring an absent
+target. The original failing end-to-end regression is unchanged; a direct
+publication test also covers files, empty folders and populated folders.
+Verification's bounded name-table scan can delay Stop;
+resource limits and filesystem-durability qualifications are documented.
+
+**Actual native acceptance:** a separately identified Tauri app with isolated
+settings used only disposable/synthetic databases for writes. Exercised Tile,
+Details, Symbols, Small Symbols; retained selection and keyboard opening;
+missing-file refusal; saving/reopening local properties on a missing symbol;
+Small Symbols restoration after app restart. A deliberately damaged 80-entry
+source could not open normally. Recovery, chosen directly through native
+pickers, produced exactly 76 recovered games, three corrupt and one unsupported
+text skip. All 76 complete decoded move trees, represented annotations,
+metadata, results, deletion marks and medals matched the known original;
+native Check Integrity reported 76 games, one deleted and no problems.
+
+Native progress/Stop on a 100,000-entry fixture left no result. Existing-folder
+refusal preserved a deliberate marker file and showed an actionable error.
+Opening the recovered result created an independent read-only tab. Existing
+integrity/doubles/compaction remained usable: healthy source 80/no problems,
+doubles compared 80/zero marked (four-ply fixture), then a separate two-game
+eight-ply fixture marked game 2 and kept game 1, with clean integrity afterward.
+A separate editable copy compacted to 79/zero deleted and
+passed integrity. The large available classic database was used read only;
+native Go to entry reached the final row, 11,151,119. Original databases and
+unrelated worktrees were untouched.
+
+Twelve native screenshots were captured and visually inspected, linked from
+[start screen](start-screen.md#native-ui-evidence) and
+[maintenance](maintenance.md#native-acceptance-and-measurements-2026-10-22).
+They show only synthetic fixture data. Release recovery of 100,000 small games
+took 2.635 s including verification, 5.42 MiB CLI process peak RSS and
+61,608,868 bytes for the four output files, plus reports. Large read-only open /
+final 100 rows / last-game load took 2.83 / 10.90 / 1.13 ms and 3.61 MiB peak
+RSS. These warm-cache examples exclude native WebView memory and do not measure
+worst-case recovery allocations. Full limits and disk-growth caveats are in
+maintenance.
+
+Final local checks passed: **360 Rust tests** (including two isolated child
+helpers), **202 frontend tests / 40 files**, Cargo formatting, strict
+workspace/all-target Clippy, TypeScript, changed-source Prettier, production
+frontend build, locked native release build and embedded-frontend native
+acceptance build. The native release build completed with the existing >500 kB
+frontend advisory and a local Rust toolchain `rust-objcopy` debug-stripping
+warning (missing `libLLVM.dylib` rpath); the executable was produced. No package
+versions changed; the dependency inventory lock hash was refreshed for the
+added already-locked dependency edge. The source boundary and locked notice
+audit passed for all 686 tracked paths. Cross-platform CI evidence is maintained
+on the [unmerged delivery PR](https://github.com/d4nu-00/openfile/pull/51).

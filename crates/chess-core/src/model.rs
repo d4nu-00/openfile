@@ -10,6 +10,11 @@ pub struct Game {
     pub tags: BTreeMap<String, String>,
     pub start_fen: String,
     pub nodes: Vec<Node>,
+    /// The evaluation profile stored with the game (CBA type 0x26): one
+    /// packed evaluation per main-line ply, entry 0 the start position. Empty
+    /// for none. See docs/evaluation-profile.md.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub profile: Vec<u32>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Node {
@@ -36,6 +41,75 @@ pub struct Node {
     /// 0x09).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub training: Option<Box<crate::training::Training>>,
+    /// Medals, move time, diagram, pawn structure, piece path and stored
+    /// evaluation (docs/annotations.md).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extras: Option<Box<MoveExtras>>,
+}
+
+/// The less common move annotations of the database formats; see
+/// docs/annotations.md.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MoveExtras {
+    /// Medal bits (type 0x22), as the game's medal word; 0 for none.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub medal: u32,
+    /// Time used for the move (type 0x07): hours, minutes, seconds and a
+    /// fourth byte, high to low.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub move_time: Option<u32>,
+    /// A diagram after the move (type 0x06).
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub diagram: bool,
+    /// A pawn structure mark (type 0x14), 3 in the reference app's data.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pawn_structure: Option<u8>,
+    /// A piece path (type 0x15): colour code and square code.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub piece_path: Vec<u8>,
+    /// A stored engine evaluation (type 0x21): LE16 score, kind, depth.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evaluation: Option<[u8; 6]>,
+}
+fn is_zero(v: &u32) -> bool {
+    *v == 0
+}
+fn is_false(v: &bool) -> bool {
+    !*v
+}
+impl MoveExtras {
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+    /// The move time as h:mm:ss, the fourth byte left out.
+    pub fn move_time_text(&self) -> Option<String> {
+        self.move_time.map(|t| {
+            let [h, m, s, _] = t.to_be_bytes();
+            format!("{h}:{m:02}:{s:02}")
+        })
+    }
+    /// The stored evaluation: score, kind (0 cp, 1 mate, −1 none), depth.
+    pub fn evaluation_fields(&self) -> Option<(i16, i16, u16)> {
+        self.evaluation.map(|b| {
+            (
+                i16::from_le_bytes([b[0], b[1]]),
+                i16::from_le_bytes([b[2], b[3]]),
+                u16::from_le_bytes([b[4], b[5]]),
+            )
+        })
+    }
+}
+impl Node {
+    /// The node's extras, created when missing.
+    pub fn extras_mut(&mut self) -> &mut MoveExtras {
+        self.extras.get_or_insert_with(Default::default)
+    }
+    /// Drops the extras when nothing is left in them.
+    pub fn tidy_extras(&mut self) {
+        if self.extras.as_ref().is_some_and(|e| e.is_empty()) {
+            self.extras = None;
+        }
+    }
 }
 /// Mark colours use the PGN `[%csl]`/`[%cal]` letters: G green, Y yellow,
 /// R red, B blue, and the further the reference app letters C and O.
@@ -95,6 +169,7 @@ impl Game {
         Ok(Self {
             tags,
             start_fen,
+            profile: vec![],
             nodes: vec![Node {
                 id: 0,
                 parent: None,
@@ -107,6 +182,7 @@ impl Game {
                 arrows: vec![],
                 critical: None,
                 training: None,
+                extras: None,
             }],
         })
     }
@@ -211,6 +287,7 @@ impl Game {
             arrows: vec![],
             critical: None,
             training: None,
+            extras: None,
         });
         self.nodes[parent as usize].children.push(id);
         Ok(id)

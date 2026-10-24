@@ -3,8 +3,16 @@ import { listen } from "@tauri-apps/api/event";
 import { invoke, isTauri, Channel } from "@tauri-apps/api/core";
 import { ask, open, save } from "@tauri-apps/plugin-dialog";
 import type {
+  StyleParams,
+  StyleProgress,
+  StyleReport,
   EngineResponse,
   EngineEventDto,
+  SearchMode,
+  InstantParams,
+  InstantProgress,
+  CentipawnListProgress,
+  CentipawnListReport,
   DocumentResponse,
   PgnCollectionResponse,
   SaveResponse,
@@ -16,6 +24,7 @@ import type {
   StartupRequest,
   SaveGameResponse,
   GameFilter,
+  SearchScope,
   SearchResponse,
   BoosterProgress,
   Line,
@@ -70,6 +79,10 @@ import type {
   StatGroup,
   TablebaseAnnotation,
   StartScreenData,
+  DatabaseView,
+  DatabaseProperties,
+  RecoveryProgress,
+  RecoveryReport,
   FolderListing,
   CloudStatus,
   CloudProgress,
@@ -108,6 +121,7 @@ export const backend = {
     nodeId: number,
     requestId: string,
     onEvent: (event: EngineEventDto) => void,
+    mode?: SearchMode,
   ) => {
     const events = new Channel<EngineEventDto>();
     events.onmessage = onEvent;
@@ -117,6 +131,7 @@ export const backend = {
         documentId,
         nodeId,
         requestId,
+        mode: mode ?? null,
         events,
       });
     } catch (e) {
@@ -195,6 +210,25 @@ export const backend = {
     open({
       multiple: false,
       filters: [{ name: "Chess databases", extensions: ["cbh", "2cbh"] }],
+    }),
+  chooseRecoveryDestination: () =>
+    save({
+      title: "New recovery result folder (must not exist)",
+      defaultPath: "Recovered games",
+    }),
+  beginRecovery: () => invoke<string>("begin_recovery"),
+  cancelRecovery: (jobId: string) => invoke<void>("cancel_recovery", { jobId }),
+  recoverDatabase: (
+    jobId: string,
+    source: string,
+    destination: string,
+    onProgress: (p: RecoveryProgress) => void,
+  ) =>
+    invoke<RecoveryReport>("recover_database", {
+      jobId,
+      source,
+      destination,
+      events: channel(onProgress),
     }),
   startupRequest: () => invoke<StartupRequest | null>("startup_request"),
   startupShown: () => invoke<void>("startup_shown"),
@@ -374,12 +408,14 @@ export const backend = {
     filter: GameFilter,
     requestId: string,
     onProgress?: (p: BoosterProgress) => void,
+    scope?: SearchScope,
   ) =>
     invoke<SearchResponse>("search_games", {
       databaseId,
       filter,
       requestId,
       events: channel(onProgress),
+      scope,
     }),
   findPosition: (
     databaseId: string,
@@ -399,12 +435,14 @@ export const backend = {
     query: PositionQuery,
     requestId: string,
     onProgress?: (p: BoosterProgress) => void,
+    scope?: SearchScope,
   ) =>
     invoke<SearchResponse>("search_position", {
       databaseId,
       query,
       requestId,
       events: channel(onProgress),
+      scope,
     }),
   createSearchBooster: async (
     databaseId: string,
@@ -699,6 +737,39 @@ export const backend = {
       line,
       requestId,
     }),
+  playingStyle: async (
+    databaseId: string,
+    jobId: string,
+    params: StyleParams,
+    onProgress: (p: StyleProgress) => void,
+  ) => {
+    const events = new Channel<StyleProgress>();
+    events.onmessage = onProgress;
+    return (
+      (await invoke<StyleReport | null>("playing_style", {
+        databaseId,
+        jobId,
+        params,
+        events,
+      })) ?? undefined
+    );
+  },
+  cancelPlayingStyle: (databaseId: string, jobId: string) =>
+    invoke<void>("cancel_playing_style", { databaseId, jobId }),
+  validatePlayingStyle: (databaseId: string, jobId: string) =>
+    invoke<void>("validate_playing_style", { databaseId, jobId }),
+  loadStyleEntry: (
+    databaseId: string,
+    jobId: string,
+    ordinal: string,
+    requestId: string,
+  ) =>
+    invoke<GameResponse>("load_style_entry", {
+      databaseId,
+      jobId,
+      ordinal,
+      requestId,
+    }),
   /** A player's dossier; undefined when cancelled. */
   playerDossier: async (
     databaseId: string,
@@ -761,6 +832,10 @@ export const backend = {
   unpinDatabase: (path: string) => invoke<void>("unpin_database", { path }),
   setDatabaseKind: (path: string, kind: string) =>
     invoke<void>("set_database_kind", { path, kind }),
+  setDatabaseProperties: (path: string, properties: DatabaseProperties) =>
+    invoke<void>("set_database_properties", { path, properties }),
+  setDatabaseView: (view: DatabaseView) =>
+    invoke<void>("set_database_view", { view }),
   forgetRecent: (path: string) => invoke<void>("forget_recent", { path }),
   addFolderShortcut: (folder: string) =>
     invoke<void>("add_folder_shortcut", { folder }),
@@ -846,6 +921,46 @@ export const backend = {
   },
   cancelCentipawnAnalysis: (documentId: string) =>
     invoke<void>("cancel_centipawn_analysis", { documentId }),
+  /** Instant Analysis of the document's main line; one runs at a time. */
+  instantAnalysis: (
+    documentId: string,
+    params: InstantParams,
+    onProgress: (p: InstantProgress) => void,
+  ) => {
+    const events = new Channel<InstantProgress>();
+    events.onmessage = onProgress;
+    return invoke<InstantProgress>("instant_analysis", {
+      documentId,
+      params,
+      events,
+    });
+  },
+  cancelInstantAnalysis: () => invoke<void>("cancel_instant_analysis"),
+  /** Centipawn Analysis of the chosen rows of a 2CBH opened for editing. */
+  centipawnList: (
+    databaseId: string,
+    ranges: { start: string; end: string }[],
+    params: CentipawnParams,
+    onProgress: (p: CentipawnListProgress) => void,
+  ) => {
+    const events = new Channel<CentipawnListProgress>();
+    events.onmessage = onProgress;
+    return invoke<CentipawnListReport>("centipawn_list", {
+      databaseId,
+      ranges,
+      params,
+      events,
+    });
+  },
+  cancelCentipawnList: () => invoke<void>("cancel_centipawn_list"),
+  chooseCsv: (name: string) =>
+    save({
+      title: "Save the player statistics",
+      defaultPath: name,
+      filters: [{ name: "CSV", extensions: ["csv"] }],
+    }),
+  saveCsv: (path: string, text: string) =>
+    invoke<void>("save_csv", { path, text }),
   cancelBlunderCheck: (documentId: string) =>
     invoke<void>("cancel_blunder_check", { documentId }),
   /** Deep Analysis of one position; the tree comes back as lines. */

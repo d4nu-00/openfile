@@ -104,10 +104,10 @@ export function ReviewPractice({
     }
   }
 
-  function clickSquare(to: string) {
+  function clickSquare(to: string, from = selected) {
     if (!position || solved || revealed || skipped) return;
     const matches = position.legalUci.filter(
-      (uci) => uci.slice(0, 2) === selected && uci.slice(2, 4) === to,
+      (uci) => uci.slice(0, 2) === from && uci.slice(2, 4) === to,
     );
     if (matches.length > 1) setPromotion(matches);
     else if (matches.length === 1) tryMove(matches[0]);
@@ -141,6 +141,11 @@ export function ReviewPractice({
               legalUci={position.legalUci}
               selectedSquare={selected}
               onSquare={clickSquare}
+              onMove={
+                solved || revealed || skipped
+                  ? undefined
+                  : (from, to) => clickSquare(to, from)
+              }
               compact
             />
           )}

@@ -93,7 +93,10 @@ export function mockRows(start: number, limit: number, count = 401) {
     rows.push(page.entries[i - 1] ?? { ...summary, ordinal: String(i) });
   return rows;
 }
-export function mockApi(firstDatabase = 1) {
+export function mockApi(
+  firstDatabase = 1,
+  initialSettings: Partial<AppSettings> = {},
+) {
   // Each opened database gets its own id, as the backend's do.
   let nextDatabase = firstDatabase;
   let game = structuredClone(selected.game!);
@@ -101,6 +104,7 @@ export function mockApi(firstDatabase = 1) {
   let settings: AppSettings = {
     maxGameTabs: 8,
     engines: [],
+    ...initialSettings,
   };
   // The list shows these entries while a search is active.
   let searching = false;
@@ -192,6 +196,26 @@ export function mockApi(firstDatabase = 1) {
           const n = game.nodes[edit.node];
           n.training = edit.training ?? undefined;
           n.trainingMoves = edit.training ? edit.moves : undefined;
+          revision++;
+        } else if (edit.kind === "setExtra") {
+          const n = game.nodes[edit.node];
+          const x = n.extras ?? {
+            medal: 0,
+            diagram: false,
+            pawnStructure: false,
+          };
+          const e = edit.extra;
+          if (e.kind === "medal") x.medal = e.bits;
+          else if (e.kind === "diagram") x.diagram = e.on;
+          else if (e.kind === "pawnStructure") x.pawnStructure = e.on;
+          else if (e.kind === "piecePath")
+            x.piecePath = e.on ? n.uci?.slice(2, 4) : undefined;
+          else if (e.kind === "moveTime")
+            x.moveTime =
+              e.time === null
+                ? undefined
+                : `${e.time >>> 24}:${String((e.time >>> 16) & 255).padStart(2, "0")}:${String((e.time >>> 8) & 255).padStart(2, "0")}`;
+          n.extras = x;
           revision++;
         } else if (edit.kind === "setMarks") {
           game.nodes[edit.node].squares = edit.squares;
@@ -338,6 +362,32 @@ export function mockApi(firstDatabase = 1) {
         },
       ),
     cancelCentipawnAnalysis: vi.fn().mockResolvedValue(undefined),
+    instantAnalysis: vi.fn().mockResolvedValue({
+      revision: "0",
+      pass: 1,
+      millisPerPosition: 105,
+      done: 0,
+      total: 0,
+      profile: [],
+      finished: true,
+      cancelled: false,
+    }),
+    cancelInstantAnalysis: vi.fn().mockResolvedValue(undefined),
+    centipawnList: vi.fn().mockResolvedValue({
+      cancelled: false,
+      error: null,
+      games: 0,
+      analysed: 0,
+      replaced: 0,
+      skippedCount: 0,
+      skipped: [],
+      millisPerMove: 750,
+      players: [],
+      csv: "",
+    }),
+    cancelCentipawnList: vi.fn().mockResolvedValue(undefined),
+    chooseCsv: vi.fn().mockResolvedValue("/synthetic/stats.csv"),
+    saveCsv: vi.fn().mockResolvedValue(undefined),
     deepAnalysis: vi
       .fn()
       .mockImplementation(
@@ -599,6 +649,12 @@ export function mockApi(firstDatabase = 1) {
     pinDatabase: vi.fn().mockResolvedValue(undefined),
     unpinDatabase: vi.fn().mockResolvedValue(undefined),
     setDatabaseKind: vi.fn().mockResolvedValue(undefined),
+    setDatabaseProperties: vi.fn().mockResolvedValue(undefined),
+    setDatabaseView: vi.fn().mockResolvedValue(undefined),
+    chooseRecoveryDestination: vi.fn().mockResolvedValue("/scratch/Recovered"),
+    beginRecovery: vi.fn().mockResolvedValue("recovery-test"),
+    cancelRecovery: vi.fn().mockResolvedValue(undefined),
+    recoverDatabase: vi.fn(),
     forgetRecent: vi.fn().mockResolvedValue(undefined),
     addFolderShortcut: vi.fn().mockResolvedValue(undefined),
     removeFolderShortcut: vi.fn().mockResolvedValue(undefined),
@@ -1415,6 +1471,16 @@ export function mockApi(firstDatabase = 1) {
           };
         },
       ),
+    playingStyle: vi
+      .fn<typeof backend.playingStyle>()
+      .mockResolvedValue(undefined),
+    cancelPlayingStyle: vi.fn().mockResolvedValue(undefined),
+    validatePlayingStyle: vi.fn().mockResolvedValue(undefined),
+    loadStyleEntry: vi
+      .fn<typeof backend.loadStyleEntry>()
+      .mockImplementation((db, _job, ordinal, request): Promise<GameResponse> =>
+        api.loadEntry(db, ordinal, request),
+      ),
     cancelDossier: vi.fn().mockResolvedValue(undefined),
     closePreparation: vi.fn().mockResolvedValue(undefined),
     preparedTree: vi
@@ -1738,14 +1804,16 @@ export function renderWorkbench({
   position,
   initialView = clean ? "database" : "game",
   search,
+  settings,
 }: {
   dirty?: boolean;
   clean?: boolean;
   position?: PositionResponse;
   initialView?: "database" | "game";
   search?: ActiveSearch;
+  settings?: Partial<AppSettings>;
 } = {}) {
-  const api = mockApi(clean ? 1 : 2);
+  const api = mockApi(clean ? 1 : 2, settings);
   const user = userEvent.setup();
   const view = render(
     <App

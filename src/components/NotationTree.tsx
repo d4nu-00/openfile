@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import type { GameNode } from "../api/types";
+import type { GameNode, MoveExtras } from "../api/types";
+import { medalNames, shortTime } from "../state/moveExtras";
 
 export const nagSymbols: Record<number, string> = {
   1: "!",
@@ -274,6 +275,7 @@ export function NotationTree({
                       {t.node.nags.map(nagText).join("")}
                     </span>
                   )}
+                  {t.node.extras && <Extras x={t.node.extras} />}
                   {t.node.comments.map((c, ci) => (
                     <span key={ci} className="comment">
                       {c}
@@ -302,5 +304,32 @@ export function NotationTree({
         </div>
       )}
     </section>
+  );
+}
+
+/** A move's medals, time, evaluation and marks (docs/annotations.md). */
+function Extras({ x }: { x: MoveExtras }) {
+  const medals = medalNames(x.medal);
+  return (
+    <>
+      {x.diagram && (
+        <span className="extra diagram" title="Diagram">
+          ◫
+        </span>
+      )}
+      {x.evaluation && <span className="extra evaluation">{x.evaluation}</span>}
+      {x.moveTime && (
+        <span className="extra time" title="Time used for the move">
+          {shortTime(x.moveTime)}
+        </span>
+      )}
+      {medals.length > 0 && (
+        <span className="extra medal" title="Medals">
+          {medals.join(", ")}
+        </span>
+      )}
+      {x.pawnStructure && <span className="extra mark">Pawn structure</span>}
+      {x.piecePath && <span className="extra mark">Piece path</span>}
+    </>
   );
 }

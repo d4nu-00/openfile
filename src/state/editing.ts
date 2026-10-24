@@ -334,18 +334,18 @@ export function useEditing(
   }
   /** Opens entry `ordinal` of the active database in a tab, at `node`;
    * a game already open in a tab is shown there. */
-  async function openEntry(ordinal: string, node = 0) {
+  async function openEntry(ordinal: string, node = 0, styleJobId?: string) {
     const s = w.current.current;
     const db = s.database?.databaseId;
     const open = tabGames(s).find(
       (t) => t.origin?.databaseId === db && t.origin?.ordinal === ordinal,
     );
-    if (open) {
+    if (open && !styleJobId) {
       w.focusGame(open.id);
       if (node) await w.selectNode(node);
       return;
     }
-    await w.loadEntry(ordinal, node, openTab);
+    await w.loadEntry(ordinal, node, openTab, styleJobId);
   }
   /** Shows tab `id`. */
   function showTab(id: string) {

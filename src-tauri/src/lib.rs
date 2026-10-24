@@ -1,6 +1,7 @@
 pub mod analysis_jobs;
 pub mod blunder_check;
 pub mod centipawn;
+pub mod centipawn_list;
 pub mod clipboard;
 pub mod cloud;
 pub mod commands;
@@ -11,13 +12,16 @@ pub mod documents;
 pub mod dossier;
 pub mod engine_commands;
 pub mod error_report;
+pub mod evaluation_profile;
 pub mod export;
 pub mod library;
 pub mod lists;
 pub mod maintenance;
 pub mod names;
 pub mod openings;
+pub mod playing_style;
 pub mod prepare;
+pub mod recovery;
 pub mod registry;
 pub mod repertoire;
 pub mod repertoire_workspace;
@@ -28,6 +32,7 @@ pub mod settings;
 #[cfg(all(debug_assertions, target_os = "macos"))]
 pub mod snapshot;
 pub mod statistics;
+pub mod style_dimensions;
 pub mod tablebases;
 pub mod trees;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -133,6 +138,7 @@ pub fn run() {
             }
         })
         .manage(std::sync::Arc::new(registry::Registry::default()))
+        .manage(std::sync::Arc::new(recovery::RecoveryJobs::default()))
         .manage(std::sync::Arc::new(cloud::CloudDownloads::default()))
         .setup(|app| {
             // The app was first called Chess Workbench: move its folders once.
@@ -177,6 +183,12 @@ pub fn run() {
         .manage(repertoire_workspace::RepertoireWorkspace::default())
         .manage(replay_training::ReplayTrainingStore::default())
         .manage(std::sync::Arc::new(centipawn::CentipawnJobs::default()))
+        .manage(std::sync::Arc::new(
+            evaluation_profile::InstantJobs::default(),
+        ))
+        .manage(std::sync::Arc::new(
+            centipawn_list::CentipawnListJob::default(),
+        ))
         .manage(std::sync::Arc::new(deep_analysis::DeepJobs::default()))
         .manage(std::sync::Arc::new(tablebases::Tablebases::default()))
         .manage(ExitPolicy::default())
@@ -236,11 +248,20 @@ pub fn run() {
             commands::cancel_dossier,
             commands::tournament_report,
             commands::show_entries,
+            playing_style::playing_style,
+            playing_style::cancel_playing_style,
+            playing_style::validate_playing_style,
+            playing_style::load_style_entry,
             error_report::error_report,
             error_report::cancel_error_report,
             error_report::selection_players,
             centipawn::centipawn_analysis,
             centipawn::cancel_centipawn_analysis,
+            evaluation_profile::instant_analysis,
+            centipawn_list::centipawn_list,
+            centipawn_list::cancel_centipawn_list,
+            centipawn_list::save_csv,
+            evaluation_profile::cancel_instant_analysis,
             repertoire::frequent_players,
             repertoire::generate_repertoire,
             repertoire::repertoire_report,
@@ -304,6 +325,11 @@ pub fn run() {
             library::pin_database,
             library::unpin_database,
             library::set_database_kind,
+            library::set_database_properties,
+            library::set_database_view,
+            recovery::begin_recovery,
+            recovery::cancel_recovery,
+            recovery::recover_database,
             library::forget_recent,
             library::add_folder_shortcut,
             library::remove_folder_shortcut,

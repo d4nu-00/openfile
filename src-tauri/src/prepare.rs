@@ -392,6 +392,7 @@ impl Registry {
                 ordinals,
                 nodes: None,
                 fen,
+                truncated: false,
             }),
         );
         Ok(response)

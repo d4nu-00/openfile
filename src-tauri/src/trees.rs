@@ -554,6 +554,7 @@ impl Registry {
                         ordinals: answer.games.iter().map(|g| g.0).collect(),
                         nodes: None,
                         fen: Some(fen),
+                        truncated: false,
                     };
                     return Ok((hits, answer.truncated, source, false));
                 }
@@ -577,6 +578,7 @@ impl Registry {
                 ordinals: vec![],
                 nodes: None,
                 fen: None,
+                truncated: false,
             };
             return Ok((hits, false, ReferenceSource::NotSearched, false));
         }
@@ -592,6 +594,7 @@ impl Registry {
             ordinals,
             nodes: Some(nodes),
             fen: None,
+            truncated: false,
         };
         Ok((
             hits,

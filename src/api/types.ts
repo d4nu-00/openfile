@@ -63,7 +63,28 @@ export interface GameNode {
   training?: Training;
   /** Each move answer in SAN in that position (null when not legal). */
   trainingMoves?: (string | null)[];
+  /** Medals, move time, diagram, pawn structure, piece path, stored
+   * evaluation (docs/annotations.md). */
+  extras?: MoveExtras;
 }
+export interface MoveExtras {
+  /** Medal bits, as the game's medal word (MEDAL_NAMES). */
+  medal: number;
+  /** "h:mm:ss". */
+  moveTime?: string;
+  diagram: boolean;
+  pawnStructure: boolean;
+  /** The square whose piece's path is shown. */
+  piecePath?: string;
+  /** From White's side, "+0.35/22". */
+  evaluation?: string;
+}
+export type ExtraEdit =
+  | { kind: "medal"; bits: number }
+  | { kind: "moveTime"; time: number | null }
+  | { kind: "diagram"; on: boolean }
+  | { kind: "pawnStructure"; on: boolean }
+  | { kind: "piecePath"; on: boolean };
 /** Training annotations (docs/training.md). */
 export interface TrainingText {
   /** 0..6: en, de, fr, es, it, nl, pt. */
@@ -113,6 +134,71 @@ export interface GameView {
   tags: Record<string, string>;
   startFen: string;
   nodes: GameNode[];
+  /** The evaluation profile stored with the game (docs/evaluation-profile.md). */
+  profile?: ProfilePoint[];
+}
+/** One evaluation of a profile, from White's side. */
+export interface ProfilePoint {
+  /** Plies from the start; 0 is the start position. */
+  ply: number;
+  cp?: number;
+  /** Moves to mate, positive when White mates. */
+  mate?: number;
+  /** Instant analysis's pass, or a stored depth. */
+  depth: number;
+}
+/** Centipawn Analysis of the selected games of a list (docs/centipawn-analysis.md). */
+export interface CentipawnPlayerGame {
+  opponent: string;
+  opponentElo: number;
+  halfPoints?: number | null;
+  value: number;
+  /** × 100 */
+  weight: number;
+}
+export interface CentipawnPlayerRow {
+  name: string;
+  elo: number;
+  perform?: number | null;
+  points: number;
+  games: CentipawnPlayerGame[];
+  weightedAverage?: number | null;
+}
+export interface CentipawnListReport {
+  cancelled: boolean;
+  error?: string | null;
+  games: number;
+  analysed: number;
+  replaced: number;
+  skippedCount: number;
+  skipped: { ordinal: string; reason: string }[];
+  millisPerMove: number;
+  players: CentipawnPlayerRow[];
+  csv: string;
+}
+export interface CentipawnListProgress {
+  game: number;
+  games: number;
+  done: number;
+  total: number;
+  label: string;
+}
+/** Instant Analysis's state while it runs and at the end. */
+export interface InstantProgress {
+  revision: string;
+  pass: number;
+  millisPerPosition: number;
+  done: number;
+  total: number;
+  profile: ProfilePoint[];
+  finished: boolean;
+  cancelled: boolean;
+}
+export interface InstantParams {
+  engine: string;
+  options: Record<string, string>;
+  level: number;
+  endless: boolean;
 }
 export interface OpenDatabaseResponse {
   requestId: string;
@@ -194,6 +280,7 @@ export interface WireError {
 
 export type Edit =
   | { kind: "appendMove"; parent: NodeId; uci: string }
+  | { kind: "setExtra"; node: NodeId; extra: ExtraEdit }
   | { kind: "setComments"; node: NodeId; comments: string[] }
   | { kind: "setNags"; node: NodeId; nags: number[] }
   | { kind: "setPreComments"; node: NodeId; comments: string[] }
@@ -301,7 +388,17 @@ export interface AnalysisInfoDto {
   rootTurn: Color;
   pv?: string[];
   rawPv?: string[];
+  /** Milliseconds the engine has searched (UCI `time`). */
+  time?: number;
   diagnostics: string[];
+}
+/**
+ * How a kibitzer searches: Analyse Threat (the other side to move) and the
+ * moves Next Best / Search Better leave out (UCI).
+ */
+export interface SearchMode {
+  threat: boolean;
+  exclude: string[];
 }
 export interface EngineEventDto {
   engineId: string;
@@ -339,6 +436,30 @@ export interface PlayerQuery {
   first: string;
 }
 export type EloMode = "none" | "one" | "both" | "average";
+export type SearchScope = "all" | "within" | "add";
+export interface MaterialRange {
+  min?: number;
+  max?: number;
+}
+export interface MaterialSide {
+  queens?: MaterialRange;
+  rooks?: MaterialRange;
+  bishops?: MaterialRange;
+  knights?: MaterialRange;
+  pawns?: MaterialRange;
+  minors?: MaterialRange;
+  total?: MaterialRange;
+}
+export interface MaterialQuery {
+  white?: MaterialSide;
+  black?: MaterialSide;
+  balance?: MaterialRange;
+  ignoreColors?: boolean;
+  first?: number;
+  last?: number;
+  length?: number;
+  lines?: boolean;
+}
 export interface GameFilter {
   white: PlayerQuery;
   black: PlayerQuery;
@@ -371,8 +492,8 @@ export interface GameFilter {
   check?: boolean;
   /** The main line's final position has equal pieces; see docs/search.md. */
   finalMaterial?: FinalMaterial;
-  /** The Material tab: piece counts and mate-by pieces; see docs/search.md. */
-  material?: MaterialQuery;
+  /** The Ending tab: piece counts and mate-by pieces; see docs/search.md. */
+  ending?: EndingQuery;
   /** Text in the game's text annotations; with `fullTextNot`, games
    * without it. */
   fullText?: string;
@@ -381,6 +502,7 @@ export interface GameFilter {
   medals?: number;
   /** The Annotations tab; every criterion set must hold. */
   annotations?: AnnotationQuery;
+  material?: MaterialQuery;
 }
 /** The game data tab's final material criterion. */
 export interface FinalMaterial {
@@ -405,11 +527,12 @@ export interface PieceCounts {
   knights: CountRange;
   minors: CountRange;
   pawns: CountRange;
-  /** Every kind left at "any" (kings excepted) must be 0. */
+  /** Every piece kind left at "any" must be 0; pawns and kings keep their
+   * own ranges. */
   othersZero: boolean;
 }
-/** The Material tab (the workbench's own design; see docs/search.md). */
-export interface MaterialQuery {
+/** The Ending tab (the workbench's own design; see docs/search.md). */
+export interface EndingQuery {
   /** The pieces in the main line's final position. */
   white: PieceCounts;
   black: PieceCounts;
@@ -430,7 +553,7 @@ export const emptyPieceCounts = (): PieceCounts => ({
   pawns: {},
   othersZero: false,
 });
-export const emptyMaterial = (): MaterialQuery => ({
+export const emptyEnding = (): EndingQuery => ({
   white: emptyPieceCounts(),
   black: emptyPieceCounts(),
   eitherColour: false,
@@ -1137,13 +1260,29 @@ export interface InstalledEngine {
 }
 /** The workbench's settings, kept in its config folder. */
 export interface AppSettings {
+  databaseView?: DatabaseView;
   /** the reference app's "Maximum Board Windows": 1 to 8, 8 by default. */
   maxGameTabs: number;
   engines: InstalledEngine[];
   defaultEngine?: string;
   /** The folder of Syzygy tablebase files. */
   tablebaseDir?: string;
+  /** Instant Analysis: on/off, 1–6 (× 35 ms per position), Endless. */
+  instantAnalysis?: InstantSettings;
+  /** The Evaluation Profile pane, and the profile above the notation. */
+  evalProfilePane?: boolean;
+  evalProfileNotation?: boolean;
 }
+export interface InstantSettings {
+  enabled: boolean;
+  level: number;
+  endless: boolean;
+}
+export const defaultInstant: InstantSettings = {
+  enabled: false,
+  level: 3,
+  endless: false,
+};
 export const defaultSettings: AppSettings = { maxGameTabs: 8, engines: [] };
 export interface ReferenceResponse {
   requestId: string;
@@ -1306,6 +1445,7 @@ export interface TablebaseAnnotation {
 export interface DatabaseSymbol {
   path: string;
   name: string;
+  description?: string;
   folder: string;
   /** One of the reference app's 20 database types. */
   kind: string;
@@ -1314,6 +1454,32 @@ export interface DatabaseSymbol {
   format?: "classic" | "new";
   entries?: number;
   problem?: string;
+}
+export type DatabaseView = "tile" | "details" | "symbols" | "smallSymbols";
+export interface DatabaseProperties {
+  name: string;
+  kind: string;
+  description: string;
+}
+export interface RecoveryProgress {
+  jobId: string;
+  stage: string;
+  done: number;
+  total: number;
+}
+export interface RecoveryReport {
+  checked: number;
+  total: number;
+  recovered: number;
+  corrupt: number;
+  unsupported: number;
+  warnings: number;
+  cancelled: boolean;
+  bytes: number;
+  problems: { ordinal: number; code: string; message: string }[];
+  problemsTruncated: boolean;
+  path: string | null;
+  reportPath: string | null;
 }
 export interface FolderShortcut {
   path: string;
@@ -1456,4 +1622,87 @@ export interface RepertoireReport {
   topics: RepertoireTopic[];
   positionsTruncated: boolean;
   cancelled: boolean;
+}
+
+/** Recovered native STYLE_REPORT dimensions with explicit missing dependencies. */
+export interface StyleParams {
+  gameTypes: number;
+  playerIds: number[];
+  white?: boolean | null;
+  yearFrom?: number | null;
+  yearTo?: number | null;
+  minOpponentElo?: number | null;
+  sampleLimit: number;
+}
+export interface StyleProgress {
+  stage: string;
+  done: string;
+  total: string;
+}
+export interface StyleEvidence {
+  ordinal: string;
+  node: number;
+  ply: number;
+  san: string;
+}
+export interface NativeStyleInput {
+  label: string;
+  numerator: number | null;
+  denominator: number | null;
+  value: number | null;
+  reference: number | null;
+}
+export interface NativeStyleDimension {
+  id: string;
+  label: string;
+  description: string;
+  rawScore: number | null;
+  normalized: number | null;
+  normalization: [number, number];
+  grade: string | null;
+  gradeReason: string;
+  status: "available" | "partial" | "insufficient" | "unavailable";
+  unavailableReason: string | null;
+  inputs: NativeStyleInput[];
+  evidence: StyleEvidence[];
+}
+export interface StyleGame {
+  storedMoves?: number;
+  ordinal: string;
+  white: boolean;
+  opponent?: string | null;
+  date?: string | null;
+  result?: string | null;
+  plies: number;
+  cut?: boolean;
+}
+export interface StyleReport {
+  jobId: string;
+  players: { id: number; name?: string | null }[];
+  criteria: StyleParams;
+  database: string;
+  databaseEntries: string;
+  eligible: number;
+  selected: number;
+  analysed: number;
+  whiteGames: number;
+  blackGames: number;
+  deleted: number;
+  filtered: number;
+  skipped: number;
+  cutGames: number;
+  unknownDate?: number;
+  unknownOpponentElo?: number;
+  unknownResult?: number;
+  skippedSetup?: number;
+  skippedUnreadable?: number;
+  skippedUnsupported?: number;
+  skippedPartial?: number;
+  firstDate?: string | null;
+  lastDate?: string | null;
+  tooShort: number;
+  unknownCategory: number;
+  dimensions: NativeStyleDimension[];
+  games: StyleGame[];
+  elapsedMs: number;
 }

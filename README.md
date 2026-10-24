@@ -35,7 +35,7 @@ artwork or games ship with it.
 | Browse | Analyse | Prepare |
 | :--- | :--- | :--- |
 | Open `.cbh` and `.2cbh` databases, even 11 million games | Any UCI engine, MultiPV, several kibitzers | Prepare against White or Black |
-| Sort, filter and search by game data, position, annotations, medals | Blunder check, deep analysis, analysis jobs | Player statistics and dossier |
+| Sort, filter and search by game data, position, annotations, medals | Blunder check, deep analysis, analysis jobs | Player statistics, dossier and playing style |
 | Opening tree, reference search, crosstables | Syzygy tablebases in analysis and notation | Personal White/Black repertoire workspace, opening, tournament and error reports |
 | Edit games and write `.2cbh`; PGN in and out | Comments, symbols, arrows, variation tools | A familiar ribbon, shortcuts and themes |
 
@@ -86,7 +86,7 @@ turns them into a database.
   layout presets.
 - **Search.** The search mask's game data tab covers players, colours, wins
   only, tournament, annotator, Elo, year, ECO, length, result, final position,
-  equal final material and full text. Its Material tab finds piece counts in the final position and mates by a chosen combination of pieces; its Annotations and Medals tabs find texts, symbols, colours,
+  equal final material and full text. Its Material tab finds piece ranges in a move window; its Ending tab finds piece counts in the final position and mates by a chosen combination of pieces; its Annotations and Medals tabs find texts, symbols, colours,
   training, critical positions and medals. **Find Position** and pattern
   searches find every game that reaches a board, faster with a search booster.
 - **Opening tree and reference search.** The Book pane shows games, score,
@@ -100,8 +100,8 @@ turns them into a database.
   White/Black** show a player's results, opponents and repertoire. Round-robin
   and Swiss crosstables show tiebreaks, performance and FIDE category.
 - **Reports.** Opening reports, tournament reports with round-by-round
-  standings, and an error report that estimates a player's strength from their
-  mistakes.
+  standings, an error report that estimates a player's strength from their
+  mistakes, and a partial reconstruction of the native playing-style dimensions, with recovered Score/Decided Games calculations and supporting positions.
 - **Edit and write.** Enter moves and variations, promote, fold and reorder
   lines, add comments, symbols, arrows and coloured squares, edit game data and
   set up positions, with up to 100 undo steps. Save, replace, delete and mark
@@ -270,7 +270,7 @@ outside iCloud Drive.
 |---|---|
 | Replay moves | Left/Right, Home and End |
 | Jump to a move | Click it in the notation |
-| Add a move | Click a piece, then its destination |
+| Add a move | Click a piece, then its destination, or drag it there with mouse or touch |
 | Draw arrows and squares | Right-click a square or right-drag an arrow (or Alt with the left button); green, Shift for red, Ctrl for yellow |
 | Edit game data | F2 |
 | Add symbols | Annotation palette, Ctrl+Alt+S |
@@ -319,7 +319,7 @@ and reported as unsupported.
 | Lists and search | [Game list](docs/game-list.md) · [Search](docs/search.md) · [Position search](docs/position-search.md) |
 | Openings | [Opening tree](docs/opening-tree.md) · [Repertoire workspace](docs/repertoire-workspace.md) · [Openings](docs/openings.md) |
 | Games and engines | [Game window](docs/game-window.md) · [Replay training](docs/replay-training.md) · [Engines](docs/engines.md) · [Analysis](docs/analysis.md) · [Game review](docs/game-review.md) |
-| Players and reports | [Player statistics](docs/player-statistics.md) · [Dossier](docs/player-dossier.md) · [Preparation](docs/preparation.md) · [Tournament report](docs/tournament-report.md) · [Error report](docs/error-report.md) |
+| Players and reports | [Player statistics](docs/player-statistics.md) · [Dossier](docs/player-dossier.md) · [Preparation](docs/preparation.md) · [Tournament report](docs/tournament-report.md) · [Error report](docs/error-report.md) · [Playing style](docs/playing-style.md) |
 | Design | [Design](docs/design.md) · [UI shell](docs/ui-shell.md) · [Validation](docs/validation.md) |
 
 ## Verify

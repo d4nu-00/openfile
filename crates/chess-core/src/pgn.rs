@@ -107,10 +107,23 @@ impl Visitor for Importer<'_> {
             ControlFlow::Continue(()) => {
                 let raw = std::mem::take(&mut s.partial_comment);
                 let (text, squares, arrows) = split_marks(&raw);
-                let only_marks = (!squares.is_empty() || !arrows.is_empty()) && text.is_empty();
+                let (text, time, eval) = split_engine(&text);
+                let only_marks =
+                    (!squares.is_empty() || !arrows.is_empty() || time.is_some() || eval.is_some())
+                        && text.is_empty();
                 let node = &mut s.game.game_mut().nodes[s.current as usize];
                 node.squares.extend(squares);
                 node.arrows.extend(arrows);
+                // A move's time and evaluation; text before a variation's
+                // first move stays text.
+                if !s.variation_start && node.parent.is_some() {
+                    if let Some(t) = time {
+                        node.extras_mut().move_time = Some(t);
+                    }
+                    if let Some(e) = eval {
+                        node.extras_mut().evaluation = Some(e);
+                    }
+                }
                 if !only_marks {
                     if s.variation_start {
                         s.pending_pre.push(text);
@@ -228,6 +241,72 @@ fn split_marks(raw: &str) -> (String, Vec<SquareMark>, Vec<ArrowMark>) {
     text.push_str(rest);
     (text.trim().to_string(), squares, arrows)
 }
+/// Removes `[%emt h:mm:ss]` and `[%eval …]` commands from a comment and
+/// returns the remaining text with the move time (as the database formats
+/// pack it) and the evaluation store (LE16 score, kind, depth; White's view).
+/// Malformed commands stay as text.
+fn split_engine(raw: &str) -> (String, Option<u32>, Option<[u8; 6]>) {
+    let (mut time, mut eval) = (None, None);
+    let mut text = String::new();
+    let mut rest = raw;
+    while let Some(start) = rest.find("[%e") {
+        let Some(len) = rest[start..].find(']') else {
+            break;
+        };
+        let command = &rest[start + 1..start + len];
+        let parsed = if let Some(v) = command.strip_prefix("%emt ") {
+            parse_emt(v.trim()).map(|t| time = Some(t))
+        } else if let Some(v) = command.strip_prefix("%eval ") {
+            parse_eval(v.trim()).map(|e| eval = Some(e))
+        } else {
+            None
+        };
+        text.push_str(&rest[..start]);
+        if parsed.is_none() {
+            text.push_str(&rest[start..start + len + 1]);
+        }
+        rest = &rest[start + len + 1..];
+    }
+    text.push_str(rest);
+    (text.trim().to_string(), time, eval)
+}
+/// "h:mm:ss", "m:ss" or "s", seconds possibly with a fraction (dropped).
+fn parse_emt(v: &str) -> Option<u32> {
+    let parts: Vec<&str> = v.split(':').collect();
+    if parts.is_empty() || parts.len() > 3 {
+        return None;
+    }
+    let whole = |s: &str| s.split('.').next()?.parse::<u32>().ok();
+    let mut fields = [0u32; 3];
+    let offset = 3 - parts.len();
+    for (i, p) in parts.iter().enumerate() {
+        fields[offset + i] = whole(p)?;
+    }
+    let [h, m, s] = fields;
+    (h < 256 && m < 60 && s < 60).then_some((h << 24) | (m << 16) | (s << 8))
+}
+/// "0.35", "-1.20,22", "#3", "#-2,30".
+fn parse_eval(v: &str) -> Option<[u8; 6]> {
+    let (value, depth) = match v.split_once(',') {
+        Some((a, d)) => (a.trim(), d.trim().parse::<u16>().ok()?),
+        None => (v, 0),
+    };
+    let (kind, score): (i16, i16) = match value.strip_prefix('#') {
+        Some(m) => (1, m.parse().ok()?),
+        None => {
+            let pawns: f64 = value.parse().ok()?;
+            if !pawns.is_finite() || pawns.abs() > 300.0 {
+                return None;
+            }
+            (0, (pawns * 100.0).round() as i16)
+        }
+    };
+    let mut store = [0u8; 6];
+    store[..2].copy_from_slice(&score.to_le_bytes());
+    store[2..4].copy_from_slice(&kind.to_le_bytes());
+    store[4..].copy_from_slice(&depth.to_le_bytes());
+    Some(store)
+}
 fn mark_square(s: &str) -> Option<String> {
     let b = s.as_bytes();
     (b.len() == 2 && (b'a'..=b'h').contains(&b[0]) && (b'1'..=b'8').contains(&b[1]))
@@ -282,6 +361,25 @@ fn marks(out: &mut String, node: &Node) {
             .map(|m| format!("{}{}{}", m.color, m.from, m.to))
             .collect();
         parts.push(format!("[%cal {}]", items.join(",")));
+    }
+    if let Some(x) = &node.extras {
+        if let Some(t) = x.move_time_text() {
+            parts.push(format!("[%emt {t}]"));
+        }
+        if let Some((score, kind, depth)) = x.evaluation_fields() {
+            let value = match kind {
+                0 => Some(format!("{:.2}", f64::from(score) / 100.0)),
+                1 => Some(format!("#{score}")),
+                _ => None,
+            };
+            if let Some(v) = value {
+                parts.push(if depth > 0 {
+                    format!("[%eval {v},{depth}]")
+                } else {
+                    format!("[%eval {v}]")
+                });
+            }
+        }
     }
     if !parts.is_empty() {
         out.push_str(&format!(" {{{}}}", parts.join(" ")));

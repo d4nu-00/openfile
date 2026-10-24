@@ -12,6 +12,7 @@ pub fn mock_session(mode: &str) -> EngineSession {
 pub fn request(id: &str, uci: &str) -> AnalysisRequest {
     AnalysisRequest {
         request_id: id.into(),
+        search_moves: Vec::new(),
         start_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".into(),
         history: vec![uci.into()],
         root_turn: "black".into(),

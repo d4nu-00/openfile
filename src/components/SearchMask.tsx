@@ -2,17 +2,19 @@ import { useState } from "react";
 import {
   emptyAnnotations,
   emptyFilter,
-  emptyMaterial,
+  emptyEnding,
   MEDAL_NAMES,
   type AnnotationQuery,
   type CountRange,
   type EloMode,
+  type EndingQuery,
   type FinalMaterial,
   type GameFilter,
-  type MaterialQuery,
   type PieceCounts,
   type PositionQuery,
+  type SearchScope,
 } from "../api/types";
+import { MaterialMask, materialError } from "./MaterialMask";
 import { PositionMask } from "./PositionMask";
 import { SYMBOL_GROUPS } from "../state/symbols";
 
@@ -49,7 +51,7 @@ const parseRange = (v: string): CountRange =>
       ? { min: Number(v.slice(0, -1)) }
       : { min: Number(v), max: Number(v) };
 
-/** The piece kinds of a Material tab row; bishops and knights are shown
+/** The piece kinds of an Ending tab row; bishops and knights are shown
  * either apart or pooled as minor pieces. */
 const KINDS: [keyof PieceCounts, string, string, number][] = [
   ["queens", "Q", "queens", 3],
@@ -106,7 +108,7 @@ const RESULTS: [string, string][] = [
 /**
  * The reference app's search mask. The game data tab has players, tournament,
  * annotator, Elo, year, ECO, moves, result, final position, final material
- * and text; the material tab picks piece counts and the pieces that mate; the
+ * and text; the ending tab picks final piece counts and the pieces that mate; the
  * position tab finds a pattern or a whole position. Searching filters the
  * game list.
  */
@@ -115,6 +117,7 @@ export function SearchMask({
   initialTab,
   initialPosition,
   boardFen,
+  resultCount,
   onSearch,
   onSearchPosition,
   onClose,
@@ -126,13 +129,15 @@ export function SearchMask({
   initialPosition?: PositionQuery;
   /** The current board, offered on the position tab. */
   boardFen?: string;
-  onSearch: (filter: GameFilter) => void;
-  onSearchPosition: (query: PositionQuery) => void;
+  resultCount?: string;
+  onSearch: (filter: GameFilter, scope: SearchScope) => void;
+  onSearchPosition: (query: PositionQuery, scope: SearchScope) => void;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<
-    "game" | "annotations" | "material" | "position" | "medals"
+    "game" | "annotations" | "ending" | "position" | "material" | "medals"
   >(initialTab ?? (initialPosition ? "position" : "game"));
+  const [scope, setScope] = useState<SearchScope>("all");
   const [position, setPosition] = useState<{
     query?: PositionQuery;
     valid: boolean;
@@ -150,9 +155,9 @@ export function SearchMask({
   };
   const setMaterial = (patch: Partial<FinalMaterial>) =>
     set({ finalMaterial: { ...material, ...patch } });
-  const mat = f.material ?? emptyMaterial();
-  const setMat = (patch: Partial<MaterialQuery>) =>
-    set({ material: { ...mat, ...patch } });
+  const mat = f.ending ?? emptyEnding();
+  const setMat = (patch: Partial<EndingQuery>) =>
+    set({ ending: { ...mat, ...patch } });
   // Bishops and knights apart when the filter says so.
   const [pooled, setPooled] = useState(
     ![mat.white, mat.black, mat.mateBy].some(
@@ -247,10 +252,11 @@ export function SearchMask({
         className={`modal search-mask${tab === "position" ? " wide" : ""}`}
         onSubmit={(e) => {
           e.preventDefault();
+          if (tab !== "position" && materialError(f.material)) return;
           if (tab === "position") {
             if (position.query && position.valid)
-              onSearchPosition(position.query);
-          } else onSearch(f);
+              onSearchPosition(position.query, scope);
+          } else onSearch(f, scope);
         }}
         onKeyDown={(e) => e.key === "Escape" && onClose()}
       >
@@ -260,8 +266,9 @@ export function SearchMask({
             [
               ["game", "Game data"],
               ["annotations", "Annotations"],
-              ["material", "Material"],
+              ["ending", "Ending"],
               ["position", "Position"],
+              ["material", "Material"],
               ["medals", "Medals"],
             ] as const
           ).map(([id, label]) => (
@@ -282,6 +289,12 @@ export function SearchMask({
             initial={positionKey ? undefined : initialPosition}
             boardFen={boardFen}
             onChange={(query, valid) => setPosition({ query, valid })}
+          />
+        )}
+        {tab === "material" && (
+          <MaterialMask
+            value={f.material}
+            onChange={(material) => set({ material })}
           />
         )}
         {tab === "annotations" && (
@@ -343,19 +356,19 @@ export function SearchMask({
             </p>
           </div>
         )}
-        {tab === "material" && (
-          <div className="mask-material">
-            <fieldset className="mask-material-block">
+        {tab === "ending" && (
+          <div className="mask-ending">
+            <fieldset className="mask-ending-block">
               <legend>Final position</legend>
               <div
-                className="mask-material-grid"
+                className="mask-ending-grid"
                 style={{
                   gridTemplateColumns: `auto repeat(${kinds.length}, 1fr)`,
                 }}
               >
                 <span />
                 {kinds.map(([k, head]) => (
-                  <span key={k} className="mask-material-head">
+                  <span key={k} className="mask-ending-head">
                     {head}
                   </span>
                 ))}
@@ -409,7 +422,7 @@ export function SearchMask({
                 </label>
               </div>
             </fieldset>
-            <fieldset className="mask-material-block">
+            <fieldset className="mask-ending-block">
               <legend>Mate by</legend>
               <label className="mask-check">
                 <input
@@ -420,14 +433,14 @@ export function SearchMask({
                 Final position is mate by
               </label>
               <div
-                className="mask-material-grid"
+                className="mask-ending-grid"
                 style={{
                   gridTemplateColumns: `repeat(${kinds.length + 1}, 1fr)`,
                 }}
               >
-                <span className="mask-material-head">K</span>
+                <span className="mask-ending-head">K</span>
                 {kinds.map(([k, head]) => (
-                  <span key={k} className="mask-material-head">
+                  <span key={k} className="mask-ending-head">
                     {head}
                   </span>
                 ))}
@@ -680,11 +693,40 @@ export function SearchMask({
             </label>
           </>
         )}
+        <fieldset className="mask-scope">
+          <legend>Search target</legend>
+          {(
+            [
+              ["all", "All games"],
+              ["within", "Within results"],
+              ["add", "Add to results"],
+            ] as const
+          ).map(([id, label]) => (
+            <label key={id} className="mask-check">
+              <input
+                type="radio"
+                name="search-scope"
+                checked={scope === id}
+                disabled={id !== "all" && resultCount === undefined}
+                onChange={() => setScope(id)}
+              />
+              {label}
+            </label>
+          ))}
+          <p className="hint">
+            {resultCount === undefined
+              ? "Search all games to create results first."
+              : `${resultCount} current results. Within keeps matching entries; Add keeps existing entries and adds new matches without duplicates.`}
+          </p>
+        </fieldset>
         <div className="mask-buttons">
           <button
             type="submit"
             autoFocus
-            disabled={tab === "position" && !position.valid}
+            disabled={
+              (tab !== "position" && !!materialError(f.material)) ||
+              (tab === "position" && !position.valid)
+            }
           >
             Search
           </button>
@@ -693,6 +735,7 @@ export function SearchMask({
             onClick={() => {
               setF(emptyFilter());
               setPooled(true);
+              setScope("all");
               setPositionKey((k) => k + 1);
             }}
           >

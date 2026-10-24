@@ -1,7 +1,7 @@
 use cbh_reader::{
     Database, ReadLimits,
     search::{
-        CountRange, EloMode, FinalMaterial, GameFilter, MaterialQuery, PieceCounts, PlayerQuery,
+        CountRange, EloMode, EndingQuery, FinalMaterial, GameFilter, PieceCounts, PlayerQuery,
     },
     v2::write::Writer,
 };
@@ -458,7 +458,7 @@ fn final_material_compares_the_last_position_of_the_main_line() {
 }
 
 #[test]
-fn material_tab_counts_pieces_of_the_last_position() {
+fn ending_tab_counts_pieces_of_the_last_position() {
     let d = tempfile::tempdir().unwrap();
     let path = d.path().join("Material.2cbh");
     let games = parse_pgn(MATERIAL.as_bytes(), &GameLimits::default()).unwrap();
@@ -470,8 +470,8 @@ fn material_tab_counts_pieces_of_the_last_position() {
         min: Some(n),
         max: Some(n),
     };
-    let f = |m: MaterialQuery| GameFilter {
-        material: m,
+    let f = |m: EndingQuery| GameFilter {
+        ending: m,
         ..Default::default()
     };
     // Pawns are not pieces, so they are set to 0 explicitly.
@@ -488,16 +488,16 @@ fn material_tab_counts_pieces_of_the_last_position() {
         ..Default::default()
     };
     // Off by default: every game.
-    assert_eq!(hits(&mut db, f(MaterialQuery::default())), [1, 2, 3]);
+    assert_eq!(hits(&mut db, f(EndingQuery::default())), [1, 2, 3]);
     // White knight, Black bishop, nothing else: the first game only.
-    let q = MaterialQuery {
+    let q = EndingQuery {
         white: knight,
         black: bishop,
         ..Default::default()
     };
     assert_eq!(hits(&mut db, f(q)), [1]);
     // Two white knights.
-    let two = MaterialQuery {
+    let two = EndingQuery {
         white: PieceCounts {
             knights: exactly(2),
             ..Default::default()
@@ -506,13 +506,13 @@ fn material_tab_counts_pieces_of_the_last_position() {
     };
     assert_eq!(hits(&mut db, f(two)), [2]);
     // The sides swapped only with either colour.
-    let swapped = MaterialQuery {
+    let swapped = EndingQuery {
         white: bishop,
         black: knight,
         ..Default::default()
     };
     assert!(hits(&mut db, f(swapped)).is_empty());
-    let either = MaterialQuery {
+    let either = EndingQuery {
         either_colour: true,
         ..swapped
     };
@@ -520,7 +520,7 @@ fn material_tab_counts_pieces_of_the_last_position() {
     // Combined with a header field.
     let with_result = GameFilter {
         results: vec!["0-1".into()],
-        ..f(MaterialQuery {
+        ..f(EndingQuery {
             white: PieceCounts {
                 pawns: exactly(1),
                 ..Default::default()
@@ -531,7 +531,7 @@ fn material_tab_counts_pieces_of_the_last_position() {
     assert_eq!(hits(&mut db, with_result), [3]);
     // The criterion arrives from the frontend as camelCase JSON.
     let json: GameFilter = serde_json::from_str(
-        r#"{"material":{"white":{"knights":{"min":1},"othersZero":true},"eitherColour":true}}"#,
+        r#"{"ending":{"white":{"knights":{"min":1},"othersZero":true},"eitherColour":true}}"#,
     )
     .unwrap();
     // Pawns are not pieces: the knight with a spare pawn matches too.
@@ -578,7 +578,7 @@ fn mate_by_matches_the_pieces_involved_in_the_mate() {
         max: Some(n),
     };
     let by = |mate_by: PieceCounts| GameFilter {
-        material: MaterialQuery {
+        ending: EndingQuery {
             mate_by_enabled: true,
             mate_by,
             ..Default::default()
@@ -609,7 +609,7 @@ fn mate_by_matches_the_pieces_involved_in_the_mate() {
     assert_eq!(hits(&mut db, by(knight_only)), [2]);
     // Switched off, the pieces are ignored.
     let off = GameFilter {
-        material: MaterialQuery {
+        ending: EndingQuery {
             mate_by: rook,
             ..Default::default()
         },
@@ -618,17 +618,17 @@ fn mate_by_matches_the_pieces_involved_in_the_mate() {
     assert_eq!(hits(&mut db, off), [1, 2, 3]);
     // Together with final material and another field.
     let mut both = by(queen_knight);
-    both.material.white = PieceCounts {
+    both.ending.white = PieceCounts {
         queens: exactly(1),
         ..Default::default()
     };
     both.results = vec!["1-0".into()];
     assert_eq!(hits(&mut db, both.clone()), [2]);
-    both.material.white.queens = exactly(2);
+    both.ending.white.queens = exactly(2);
     assert!(hits(&mut db, both).is_empty());
     // The criterion arrives from the frontend as camelCase JSON.
     let json: GameFilter = serde_json::from_str(
-        r#"{"material":{"mateByEnabled":true,"mateBy":{"rooks":{"min":1,"max":1},"othersZero":true}}}"#,
+        r#"{"ending":{"mateByEnabled":true,"mateBy":{"rooks":{"min":1,"max":1},"othersZero":true}}}"#,
     )
     .unwrap();
     assert_eq!(hits(&mut db, json), [1]);

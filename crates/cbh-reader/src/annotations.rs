@@ -32,6 +32,16 @@ pub const TEXT_BEFORE: u16 = 0x82;
 pub const CRITICAL: u16 = 0x18;
 /// A training question: a presence flag, the item's kind and the item.
 pub const TRAINING: u16 = 0x09;
+/// An evaluation profile: one packed evaluation per index.
+pub const EVAL_PROFILE: u16 = 0x26;
+pub const DIAGRAM: u16 = 0x06;
+pub const MOVE_TIME: u16 = 0x07;
+pub const PAWN_STRUCTURE: u16 = 0x14;
+pub const PIECE_PATH: u16 = 0x15;
+pub const EVALUATION: u16 = 0x21;
+pub const MEDAL: u16 = 0x22;
+/// Entries an evaluation profile holds at most (`EvaluationArr`, 2,001).
+pub const PROFILE_ENTRIES: usize = 2001;
 
 /// Classic language byte for each 2CBA language index. Index 7 (byte 0) is
 /// "no language"; indices 0, 1 and 2 (English, German, French) are confirmed
@@ -62,6 +72,22 @@ pub enum Kind {
     Critical(u8),
     /// A training question (type 0x09), see docs/training.md.
     Training(Box<chess_core::training::Training>),
+    /// An evaluation profile (type 0x26): packed evaluations by index, see
+    /// docs/evaluation-profile.md.
+    EvalProfile(Vec<u32>),
+    /// A diagram after the move (type 0x06, no data).
+    Diagram,
+    /// A move medal (type 0x22): the medal bits, as the game's medal word.
+    Medal(u32),
+    /// The time used for the move (type 0x07).
+    MoveTime(u32),
+    /// A pawn structure mark (type 0x14).
+    PawnStructure(u8),
+    /// A piece path (type 0x15): its bytes.
+    PiecePath(Vec<u8>),
+    /// A stored engine evaluation (type 0x21): the 6-byte store, LE16 score,
+    /// kind and depth.
+    Evaluation([u8; 6]),
     /// A recognised type this reader does not represent.
     Other(u16),
 }
@@ -204,6 +230,19 @@ pub fn parse_classic(bytes: &[u8], ordinal: u64) -> Result<Parsed, CbhError> {
             ARROWS => triples(data).ok_or_else(|| CbhError::Decode("Uneven arrow list".into()))?,
             SYMBOLS => return Err(CbhError::Decode("Long CBA symbol record".into())),
             0x18 if !data.is_empty() => Kind::Critical(data[0]),
+            EVAL_PROFILE => classic_profile(data)?,
+            DIAGRAM => Kind::Diagram,
+            MEDAL | MOVE_TIME if data.len() >= 4 => {
+                let v = u32::from_be_bytes(data[..4].try_into().unwrap());
+                if ty == MEDAL {
+                    Kind::Medal(v)
+                } else {
+                    Kind::MoveTime(v)
+                }
+            }
+            PAWN_STRUCTURE if !data.is_empty() => Kind::PawnStructure(data[0]),
+            PIECE_PATH => Kind::PiecePath(data.to_vec()),
+            EVALUATION if data.len() >= 6 => Kind::Evaluation(data[..6].try_into().unwrap()),
             TRAINING => match classic_training(data)? {
                 Some(t) => Kind::Training(Box::new(t)),
                 None => Kind::Other(TRAINING),
@@ -296,20 +335,20 @@ pub fn parse_new(payload: &[u8]) -> Result<Parsed, CbhError> {
                 }
                 ARROWS => triples(c.string()?)
                     .ok_or_else(|| CbhError::Decode("Uneven arrow list".into()))?,
-                // Pre-move squares/arrows, piece path, audio, picture, video.
-                0x84 | 0x85 | 0x15 | 0x10 | 0x11 | 0x12 => {
+                PIECE_PATH => Kind::PiecePath(c.string()?.to_vec()),
+                // Pre-move squares/arrows, audio, picture, video.
+                0x84 | 0x85 | 0x10 | 0x11 | 0x12 => {
                     c.string()?;
                     Kind::Other(ty)
                 }
-                0x06 => Kind::Other(ty),
-                0x01 | 0x07 | 0x08 | 0x16 | 0x17 | 0x22 | 0x23 | 0x25 => {
+                DIAGRAM => Kind::Diagram,
+                MEDAL => Kind::Medal(c.u32()?),
+                MOVE_TIME => Kind::MoveTime(c.u32()?),
+                0x01 | 0x08 | 0x16 | 0x17 | 0x23 | 0x25 => {
                     c.u32()?;
                     Kind::Other(ty)
                 }
-                0x14 => {
-                    c.u8()?;
-                    Kind::Other(ty)
-                }
+                PAWN_STRUCTURE => Kind::PawnStructure(c.u8()?),
                 0x18 => Kind::Critical(c.u8()?),
                 // Two presence bytes (`0x140190a10`, `0x140b93fa0`), the kind
                 // as LE32, then the item; an item of an unknown kind cannot be
@@ -333,10 +372,7 @@ pub fn parse_new(payload: &[u8]) -> Result<Parsed, CbhError> {
                     c.take(4)?;
                     Kind::Other(ty)
                 }
-                0x21 => {
-                    c.take(6)?;
-                    Kind::Other(ty)
-                }
+                EVALUATION => Kind::Evaluation(c.take(6)?.try_into().unwrap()),
                 0x0a => {
                     c.string()?;
                     c.u32()?;
@@ -358,12 +394,12 @@ pub fn parse_new(payload: &[u8]) -> Result<Parsed, CbhError> {
                 }
                 // Evaluation profile: presence byte, then a length-prefixed
                 // sub-block (`0x140f04eb0`).
-                0x26 => {
-                    if c.u8()? != 0 {
-                        let length = c.u32()? as usize;
-                        c.take(length)?;
+                EVAL_PROFILE => {
+                    if c.u8()? == 0 {
+                        continue;
                     }
-                    Kind::Other(ty)
+                    let length = c.u32()? as usize;
+                    new_profile(c.take(length)?)?
                 }
                 // Training, game quotation, correspondence and unknown types
                 // nest further structures whose size is not recovered.
@@ -376,6 +412,44 @@ pub fn parse_new(payload: &[u8]) -> Result<Parsed, CbhError> {
         }
     }
     Ok(parsed)
+}
+
+/// A classic profile (`0x140c4dfe0`): BE16 count, then BE32 evaluations.
+fn classic_profile(data: &[u8]) -> Result<Kind, CbhError> {
+    let count = data
+        .get(..2)
+        .map(|b| u16::from_be_bytes([b[0], b[1]]) as usize)
+        .ok_or_else(|| CbhError::Decode("Short evaluation profile".into()))?;
+    if count > PROFILE_ENTRIES || data.len() != 2 + 4 * count {
+        return Err(CbhError::Decode("Evaluation profile length".into()));
+    }
+    Ok(Kind::EvalProfile(
+        data[2..2 + 4 * count]
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|b| u32::from_be_bytes(*b))
+            .collect(),
+    ))
+}
+/// A 2CBA profile sub-block (`0x140c4e9b0`): LE16 count, then LE32
+/// evaluations.
+fn new_profile(block: &[u8]) -> Result<Kind, CbhError> {
+    let count = block
+        .get(..2)
+        .map(|b| u16::from_le_bytes([b[0], b[1]]) as usize)
+        .ok_or_else(|| CbhError::Decode("Short evaluation profile".into()))?;
+    if count > PROFILE_ENTRIES || block.len() != 2 + 4 * count {
+        return Err(CbhError::Decode("Evaluation profile length".into()));
+    }
+    Ok(Kind::EvalProfile(
+        block[2..2 + 4 * count]
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|b| u32::from_le_bytes(*b))
+            .collect(),
+    ))
 }
 
 /// A classic CBA training record's data (`0x140b92060`): an LE16 presence
@@ -620,6 +694,11 @@ pub fn apply(game: &mut Game, parsed: Parsed, order: Order) -> (DataStatus, Vec<
     let (mut omitted_text, mut bad_marks, mut out_of_range) = (0, 0, 0);
     let mut other: BTreeMap<u16, usize> = BTreeMap::new();
     for entry in parsed.entries {
+        // A profile belongs to the game's start and its main line.
+        if let (-1, Kind::EvalProfile(values)) = (entry.position, &entry.kind) {
+            game.profile = values.clone();
+            continue;
+        }
         let node = match entry.position {
             -1 => 0,
             k if k >= 0 && (k as usize) < positions.len() => positions[k as usize] as usize,
@@ -671,6 +750,13 @@ pub fn apply(game: &mut Game, parsed: Parsed, order: Order) -> (DataStatus, Vec<
                 }
             }
             Kind::Other(ty) => *other.entry(ty).or_default() += 1,
+            Kind::EvalProfile(_) => *other.entry(EVAL_PROFILE).or_default() += 1,
+            Kind::Diagram => node.extras_mut().diagram = true,
+            Kind::Medal(bits) => node.extras_mut().medal |= bits,
+            Kind::MoveTime(time) => node.extras_mut().move_time = Some(time),
+            Kind::PawnStructure(v) => node.extras_mut().pawn_structure = Some(v),
+            Kind::PiecePath(bytes) => node.extras_mut().piece_path = bytes,
+            Kind::Evaluation(store) => node.extras_mut().evaluation = Some(store),
             Kind::Critical(kind @ 1..=3) => node.critical = Some(kind),
             Kind::Training(t) => node.training = Some(t),
             Kind::Critical(_) => *other.entry(CRITICAL).or_default() += 1,

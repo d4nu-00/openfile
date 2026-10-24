@@ -15,6 +15,7 @@ import type {
   WorkspaceSide,
   Line,
   ReplayProgressMap,
+  SearchScope,
 } from "../api/types";
 import { demoFens, demoLegal, demoNodes } from "./demoGame";
 
@@ -252,6 +253,21 @@ export function demoApi(): WorkbenchApi {
   let hits: number[] | undefined;
   let order: number[] | undefined;
   const all = () => Array.from({ length: demoCount }, (_, i) => i + 1);
+  const combineHits = (matches: number[], scope: SearchScope = "all") => {
+    if (scope !== "all" && hits === undefined)
+      throw new Error("No current results");
+    const old = new Set(hits ?? []);
+    const scanned = scope === "within" ? old.size : demoCount;
+    hits =
+      scope === "within"
+        ? matches.filter((n) => old.has(n))
+        : scope === "add"
+          ? [...old, ...matches]
+          : matches;
+    hits = [...new Set(hits)].sort((a, b) => a - b);
+    return String(scanned);
+  };
+
   const list = () => {
     const base = hits ?? all();
     if (!order) return base;
@@ -331,7 +347,14 @@ export function demoApi(): WorkbenchApi {
     },
     nodes,
   });
-  let settings: AppSettings = { maxGameTabs: 8, engines: [] };
+  let settings: AppSettings = {
+    maxGameTabs: 8,
+    // A stand-in default engine, so Instant Analysis runs in the preview.
+    engines: [
+      { id: "demo", name: "Demo engine", path: "/demo/engine", options: {} },
+    ],
+    defaultEngine: "demo",
+  };
   const replayProgress: ReplayProgressMap = {};
   const repertoireEntries: RepertoirePosition[] = [];
   const demoSnapshot = (line: Line, side: WorkspaceSide) => {
@@ -469,6 +492,72 @@ export function demoApi(): WorkbenchApi {
       };
     },
     cancelCentipawnAnalysis: async () => {},
+    instantAnalysis: async (_doc, params, onProgress) => {
+      // Browser preview: a made-up curve for the sample game's main line.
+      const total = demoNodes.length;
+      const profile = Array.from({ length: total }, (_, ply) => ({
+        ply,
+        cp: Math.round(40 * Math.sin(ply / 3) + ply * 12),
+        depth: 1,
+      }));
+      const done = {
+        revision: String(revision),
+        pass: 1,
+        millisPerPosition: params.level * 35,
+        done: total,
+        total,
+        profile,
+        finished: true,
+        cancelled: false,
+      };
+      onProgress(done);
+      return done;
+    },
+    cancelInstantAnalysis: async () => {},
+    centipawnList: async (_db, _ranges, params, onProgress) => {
+      // Browser preview: two made-up players.
+      onProgress({ game: 1, games: 1, done: 1, total: 1, label: "Demo" });
+      const players = [
+        {
+          name: "Player  A",
+          elo: 2500,
+          perform: 2591,
+          points: 1.5,
+          games: [
+            {
+              opponent: "Player  B",
+              opponentElo: 2400,
+              halfPoints: 2,
+              value: 21,
+              weight: 6400,
+            },
+            {
+              opponent: "Player  B",
+              opponentElo: 2400,
+              halfPoints: 1,
+              value: 30,
+              weight: 5200,
+            },
+          ],
+          weightedAverage: 25.03,
+        },
+      ];
+      return {
+        cancelled: false,
+        error: null,
+        games: 2,
+        analysed: 2,
+        replaced: 2,
+        skippedCount: 0,
+        skipped: [],
+        millisPerMove: params.seconds ? params.seconds * 750 : 200,
+        players,
+        csv: "Player Name,Elo,Perform,Points\n",
+      };
+    },
+    cancelCentipawnList: async () => {},
+    chooseCsv: async () => null,
+    saveCsv: async () => {},
     deepAnalysis: async (_doc, params) => ({
       cancelled: false,
       iterations: 0,
@@ -555,12 +644,16 @@ export function demoApi(): WorkbenchApi {
     confirmCloudDownload: async () => false,
     downloadCloudFiles: async () => {},
     cancelCloudDownload: async () => {},
-    searchGames: async (_db, _filter, requestId) => {
-      hits = all().filter((n) => n % 12 === 1);
+    searchGames: async (_db, _filter, requestId, onProgress, scope) => {
+      const scanned = combineHits(
+        all().filter((n) => n % 12 === 1),
+        scope,
+      );
+      onProgress?.({ done: scanned, total: scanned });
       return {
         requestId,
-        hits: String(hits.length),
-        scanned: "2400",
+        hits: String(hits!.length),
+        scanned,
         truncated: false,
         cancelled: false,
       };
@@ -577,12 +670,16 @@ export function demoApi(): WorkbenchApi {
         indexed: false,
       };
     },
-    searchPosition: async (_db, query, requestId) => {
-      hits = all().filter((n) => n % 7 === 1);
+    searchPosition: async (_db, query, requestId, onProgress, scope) => {
+      const scanned = combineHits(
+        all().filter((n) => n % 7 === 1),
+        scope,
+      );
+      onProgress?.({ done: scanned, total: scanned });
       return {
         requestId,
-        hits: String(hits.length),
-        scanned: "2400",
+        hits: String(hits!.length),
+        scanned,
         truncated: false,
         cancelled: false,
         indexed: false && query.exact,
@@ -929,6 +1026,16 @@ export function demoApi(): WorkbenchApi {
         annotatedCount: 0,
       };
     },
+    playingStyle: async () => {
+      throw new Error(
+        "Open a local database in the desktop app to compute a style report.",
+      );
+    },
+    cancelPlayingStyle: async () => {},
+    validatePlayingStyle: async () => {},
+    loadStyleEntry: async () => {
+      throw new Error("Generate a report from a local database first.");
+    },
     cancelDossier: async () => {},
     tournamentReport: async (db, tournamentId) => {
       const table = await api.crosstable!(db, tournamentId, "swiss");
@@ -1009,8 +1116,8 @@ export function demoApi(): WorkbenchApi {
       hits = ordinals.map(Number);
       return {
         requestId,
-        hits: String(hits.length),
-        scanned: String(hits.length),
+        hits: String(hits!.length),
+        scanned: String(hits!.length),
         truncated: false,
         cancelled: false,
         indexed: false,
@@ -1046,8 +1153,8 @@ export function demoApi(): WorkbenchApi {
       });
       return {
         requestId,
-        hits: String(hits.length),
-        scanned: String(hits.length),
+        hits: String(hits!.length),
+        scanned: String(hits!.length),
         truncated: false,
         cancelled: false,
         indexed: false,
@@ -1061,8 +1168,8 @@ export function demoApi(): WorkbenchApi {
       });
       return {
         requestId,
-        hits: String(hits.length),
-        scanned: String(hits.length),
+        hits: String(hits!.length),
+        scanned: String(hits!.length),
         truncated: false,
         cancelled: false,
         indexed: false,
@@ -1197,8 +1304,16 @@ export function demoApi(): WorkbenchApi {
     clearSearch: async () => {
       hits = undefined;
     },
-    readSearchPage: async (db, start, limit, requestId) =>
-      api.readPage!(db, start, limit, requestId),
+    readSearchPage: async (_db, start, limit, requestId) => ({
+      requestId,
+      entries: (hits ?? [])
+        .slice(Number(start) - 1, Number(start) - 1 + limit)
+        .map(demoEntry),
+      next:
+        Number(start) - 1 + limit < (hits?.length ?? 0)
+          ? String(Number(start) + limit)
+          : undefined,
+    }),
     openDatabase: async (_path, requestId) => ({
       requestId,
       databaseId: "demo",

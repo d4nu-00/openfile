@@ -151,6 +151,127 @@ shows tablebase results in the notation was not traced.
   removes it, and it adds nothing if the game changed meanwhile. The
   symbols and texts are the workbench's own.
 
+## Engine search commands: threat, lock, next best
+
+Status: implemented on branch `engine-pane-commands` (2026-10-22). The
+direction was agreed in conversation.
+
+### What the reference app does
+
+Evidence is from the reference binary (x64), through an REA session.
+
+| Command | Id (kc) | Class, run slot | Key |
+|---|---|---|---|
+| Lock Engine | `LOCKENGINE` (107) | `LockEngineCmd`, `0x1409c7800` | Ctrl+Alt+L |
+| Goto Lock Position | `GOTOLOCK` (108) | `GotoLockCmd`, `0x1409c6be0` | Ctrl+L |
+| Next Best | `NEXTBEST` (109) | `NextBestCmd`, `0x1409c7e50` | Y |
+| Search Better | `SEARCHBETTER` (110) | `SearchBetter0Cmd`, `0x1409c8c50` | Shift+Y |
+| Search Clearly Better | `SEARCHCLEARLYBETTER` (111) | `SearchBetter1Cmd`, `0x1409c8d00` | Alt+Y |
+| Analyse threat | `ANALYSETHREAT` (135) | `AnalyseThreatCmd`, `0x1409c41d0` | X |
+
+The command ids follow from the command registration (`0x1409b9640`), which
+stores each class's kc after creating it.
+
+* **The game window.** The object at the game frame's offset `0xe60`, which
+  earlier notes left untraced, is a `GameWin` (vtable `0x141253370`). Its
+  slots 0x5d8, 0x5e8, 0x5f8 and 0x608 are Lock, Goto Lock, Next Best and
+  Search Better (`0x1409e4c60`, `0x1409e2490`, `0x1409e5580`, `0x1409e7570`).
+  Each finds the active engine and calls the engine window's own function.
+* **Lock Engine** (`0x140309770` → `0x14031fe80`) flips a lock flag on the
+  engine (offset 0x5e3). When the lock is released and the board shows
+  another position, it posts an event that brings the engine back to the board
+  (`AppEvent` 0x18). **Goto Lock Position** (`0x140308f90`) shows the locked
+  position, and only while the flag is set (`0x140309040`).
+* **Next Best** (`0x140309080`) takes the engine's best line and adds it to
+  a list of excluded lines (`0x140998280`, 0x50-byte `EvaluatedVariation`
+  entries). The list is emptied when:
+  * the position has changed;
+  * the best move is already in it;
+  * it holds as many moves as the position has legal moves.
+
+  The engine then restarts (`0x140accf70`).
+* **Search Better** (`0x140309490`) does the same and also needs the best
+  line's score. It restarts the engine with a value (`0x140acc1c0`): 0 for
+  Search Better, and a setting of the engine window (offset 0x24 of the object
+  at 0x4f0) for Search Clearly Better.
+* **The UCI command** (`0x140af7a10`). When the search has a move list (mode
+  2), `go` gets ` searchmoves` and the moves. With the value above, it also
+  gets ` minscore` and the score, but only for engines that announce that
+  extension. Standard UCI has no such command.
+* **Analyse threat** (`0x1409ecbb0` → `0x140acd030` → `0x140ac9e60`) flips a
+  threat flag on the engine (offset 0x5e1). Switching it on is refused in some
+  positions. One check is a virtual of the position (slot 0x218), probably
+  "in check". It then tries a null move on the engine's position, and when that
+  fails it sends a copy of the position with the other side to move. Switching
+  it off goes back to the game's position.
+* "Display old moves (Next Best)" (message 3205) is an option that shows the
+  excluded moves.
+
+**Not traced:**
+* the size of Search Clearly Better's margin (the setting at offset 0x24);
+* every condition that refuses a threat;
+* whether the threat flag survives a move on the board;
+* how the excluded moves are displayed.
+
+### Workbench
+
+The commands act on the kibitzer used last. Each pane also has **Threat**,
+**Next best** and **Lock** buttons. The commands are in the Analysis ribbon's
+"Engine search" group, with the reference app's keys.
+
+* **Analyse threat** (X) analyses the position after a null move: the same
+  pieces with the other side to move, and no en passant square. The scores
+  and lines are for that side. The game's earlier moves are not sent, so the
+  engine sees no repetitions before it. A side in check has no threat to
+  analyse; the pane says so and goes on analysing the position. Pressing X
+  again, or a move on the board, ends it. The latter is the workbench's
+  choice, since the reference app's rule was not traced.
+* **Next Best** (Y) leaves the current best move out and starts again with
+  UCI `searchmoves` set to every other legal move. The pane lists the moves
+  left out with the score each had. As in the reference app, the list is
+  emptied when:
+  * the board shows another position;
+  * the best move is already in it;
+  * every legal move would be left out.
+* **Search Better** (Shift+Y) and **Search Clearly Better** (Alt+Y) also
+  leave the best move out. They then say whether the new best line scores
+  more than the move left out: by any amount for Search Better, and by
+  0.50 pawns (the workbench's choice) for Search Clearly Better. UCI
+  engines have no `minscore`, so the engine searches as for Next Best and the
+  pane compares the scores.
+* **Lock Engine** (Ctrl+Alt+L) keeps the kibitzer on its position while the
+  board moves. The pane shows the move it is locked on. Releasing the lock
+  follows the board again. **Goto Lock Position** (Ctrl+L) selects the locked
+  position when its game is shown.
+* **Paste Engine Variation** and **Paste Engine Move** are off while a
+  threat is analysed, or while the engine is locked on another position. Their
+  lines would not fit the current move.
+
+Tests: an engine test sends `searchmoves` to the mock engine and refuses an
+illegal one. App tests cover the null move, a refused threat in check, and
+the moves left to search. Frontend tests cover Next Best, Search Better's
+verdict, the threat toggle and the lock.
+
+## Engine analysis history
+
+Status: implemented on branch `engine-history` (2026-10-22). This is an
+OpenFile feature; the reference app's "Display old moves (Next Best)" (3205)
+only shows the moves Next Best left out.
+
+* **History** in a kibitzer pane switches between the current lines and the
+  engine's history for the position. The history keeps one row per choice:
+  each time the best line's first move changes, a row starts. It holds the
+  search time when the engine chose that move, and the latest depth, score
+  and line while it stayed best. The latest choice comes first.
+* The time is the engine's UCI `time`, now read from its `info` lines; an
+  engine that sends none gets the time since the analysis started.
+* A new position, a threat, Next Best or a restart starts a new history. At
+  most 200 choices are kept, the oldest dropped first.
+
+Tests: the protocol test reads `time`; a frontend test sends four lines with
+two choices and checks the rows, their order and the reset on a new
+position.
+
 ## Tactical Analysis (Blunder Check)
 
 ### What the reference app does

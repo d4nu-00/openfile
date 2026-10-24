@@ -132,6 +132,26 @@ imports are bounded to 20 MiB/2,000 games/100,000 aggregate nodes by default.
 Missing companions, corrupt records and unsupported records are reported
 separately; an unsupported game is not silently flattened into a partial game.
 
+Centipawn Analysis of a database list writes the reference app's per-player
+CSV columns; its game weights come from the workbench's move weights rather
+than the reference app's engine complexity, and Weighted Av is printed
+unscaled (see [centipawn analysis](centipawn-analysis.md)).
+
+Move medals, move times, diagrams, pawn structures, piece paths and stored
+evaluations (annotation types 0x22, 0x07, 0x06, 0x14, 0x15, 0x21) are read
+from both families, shown, and written back to 2CBH. Move times and
+evaluations travel through PGN as `[%emt]` and `[%eval]`; the others have
+no PGN form. The move time's fourth byte (23 of 8,040 in a sample) is kept
+but not shown. Types 0x16, 0x17 and 0x24, common in recent games with move
+times, are still reported as unsupported (see [annotations](annotations.md)).
+
+Evaluation profiles (annotation type 0x26) are read from both families and
+written back to 2CBH unchanged. Scores and mates are shown. About 0.2 % of
+recent test-database games carry one. Kind 32 (5 entries in 177 profiles) is
+kept but not shown (see [evaluation profile](evaluation-profile.md)). Instant Analysis
+uses the reference app's time per position; its own profile is shown but not
+stored in the game.
+
 Local UCI engine analysis covers standard chess and Chess960. A Chess960
 position is sent with `UCI_Chess960` set to true, and only to engines that
 offer that option. Other variant rules cannot be enabled. Deep Analysis
@@ -206,3 +226,15 @@ cannot store, are left out and counted, as when a single game is saved. PGN
 cannot express forfeits or "0-0". Loaded games keep such results in a
 `CBResult` tag, which the writer stores again and PGN exports carry. macOS native operation is verified locally;
 Windows/Linux native validation remains outstanding. See [validation](validation.md).
+
+
+## Material and result combinations (2026-10-20)
+
+Both classic and new-format databases support material replay queries and
+All/Within/Add search targets. Material uses independently implemented count
+ranges and signed Q9/R5/B3/N3/P1 balance, including promotions, setup roots and
+optional variations. ChessBase's signed per-piece Difference mode, pawn
+structure/bishop-quality options and example catalogue are not implemented.
+Reference evidence, uncertain native rules, hit limits and the separate
+Position-tab behavior are recorded in [search](search.md#material-search-2026-10-20).
+No source database or native reference index is written by these searches.

@@ -18,8 +18,10 @@ Evidence is from the reference binary (x64).
 * **Fix Sort Order** (`FIXSORTORDER`, "Arrange games in database according to
   current sort mode", message 50876) writes that order into the database.
   So does Sort Database (`SORTDBEXPL`, "Sort database chronological by
-  tournaments"). Both rewrite the files. The workbench does not port either
-  yet, because sources stay read-only.
+  tournaments"). Both rewrite the files. Neither is implemented yet. OpenFile
+  supports selected 2CBH writes, but physical sorting needs its own safe
+  transaction, entry remapping and cache invalidation. Current list sorting
+  remains a read-only view.
 * The physical sort `0x140b14790` is an external merge sort. It uses "temp."
   run files beside the database, merges five runs at a time, and checks the
   free disk space first. Its progress messages are "Generate sort order"

@@ -50,7 +50,10 @@ const documents = new Set([
   "centipawn-analysis.md",
   "training.md",
   "game-review.md",
+  "playing-style.md",
   "replay-training.md",
+  "evaluation-profile.md",
+  "annotations.md",
 ]);
 export function allowedSourcePath(candidate) {
   if (
@@ -104,6 +107,12 @@ export function allowedSourcePath(candidate) {
     return true;
   if (
     [
+      "docs/superpowers/plans/2026-10-20-material-result-search.md",
+      "docs/superpowers/plans/2026-10-22-database-maintenance.md",
+      "docs/superpowers/plans/2026-10-22-final-material-search-and-pgn-export.md",
+      "docs/superpowers/plans/2026-10-22-material-tab-and-mating-pieces.md",
+      "docs/superpowers/plans/2026-10-20-playing-style.md",
+      "docs/superpowers/specs/2026-10-20-playing-style-design.md",
       "docs/superpowers/plans/2026-10-18-filtered-opening-tree.md",
       "docs/superpowers/plans/2026-10-18-quick-search-expressions.md",
       "docs/superpowers/plans/2026-10-19-repertoire-workspace.md",
@@ -121,6 +130,10 @@ export function allowedSourcePath(candidate) {
       "docs/media/replay-training-question.jpg",
       "docs/media/replay-training-solved.jpg",
       "docs/media/replay-training-summary.jpg",
+      "docs/media/board-drag-flipped.jpg",
+      "docs/media/board-capture-promotion.jpg",
+      "docs/media/board-setup-drag.jpg",
+      "docs/media/board-training-drag.jpg",
     ].includes(candidate)
   )
     return true;

@@ -103,10 +103,153 @@ in the table above.
 * Time Controls All/Slow/Rapid/Blitz (1315–1319): the game type is not read
   from the records.
 
-## Material tab (2026-10-22)
+## Material search (2026-10-20)
 
-The **Material** tab is the workbench's own design; the reference app's Material
-tab was not traced. It combines with every other field and is tested in the same
+Open **Filter Games → Material**, enable **Use material criteria**, then choose
+an endgame preset or enter count ranges. Material is combined with game-data,
+annotation and medal criteria using AND. The Position tab continues to submit
+its separate position-only query; its boards and other tab criteria do not
+combine. Refine results to apply a second kind of search to the same games.
+
+| Criterion | OpenFile rule |
+|---|---|
+| White / Black Q, R, B, N, P | Inclusive count ranges; a blank bound is unrestricted |
+| Minor pieces | Bishops + knights on that side |
+| Total men | Q + R + B + N + P; excludes the king |
+| Endgame presets | Pawn: no Q/R/B/N; Rook/Queen/Bishop/Knight: that piece on each side, no other non-pawn kind; Minor-piece: at least one minor on each side, no Q/R. Pawns unrestricted, including zero. All ranges remain editable |
+| Material balance | White minus Black; Q=9, R=5, B=N=3, P=1; inclusive signed bounds in pawn units |
+| Ignore material colours | Try the entire criterion as given and with colours swapped, including the balance sign |
+| First / Last move | Inclusive full-move window, counting from the game root as move 1, including a set-up root; root ply 0 through ply `2 × Last − 1` |
+| Consecutive positions | At least Length matching consecutive plies (default 1), with a fixed colour orientation throughout the run |
+| Include material variations | Off: main line. On: depth-first traversal including variations; sibling branches never contribute to the same run |
+
+Every position in a run must satisfy every material field. The first matching
+run supplies the node where the game opens. The starting position counts;
+material search does not mean only the final material. Promotions are replayed
+normally; there is no pruning based on original queen/rook/minor counts.
+Count bounds are integers 0–16, balance bounds −144–144, and move/length fields
+1–65,535. Reversed ranges are rejected visibly rather than silently repaired.
+An empty enabled material criterion matches every readable game.
+
+### Reference executable evidence and uncertainties
+
+Investigated the supplied ChessBase 18.1 x64 executable, SHA-256
+`8d633b10ad97bd9f8fbbc33a89c279397850ca759c8375093deda4a9485e8dee`,
+read-only, through PE resource inspection and REA 6.1 / Ghidra 12.1.4. This is
+static executable evidence, **not a claim of having run ChessBase on this Mac**.
+No executable code, decompiler output or proprietary assets are included in
+the product. The following are observed controls and data-flow facts:
+
+- Material is dialog **328**, `CMaterialDialog`, vtable `0x1411e3c68`;
+  data exchange `0x1407e13c0`, initialization `0x1407e4030`.
+- Five paired piece-count rows exist for each colour. Minor-piece range
+  controls are **1022/1024** (White) and **1056/1058** (Black); total range
+  controls **1026/1028** and **1060/1062**.
+- **Ignore colours 1070**, **Difference 1071**, **Total 1086**,
+  **Length 1082**, **Last 1915**, **Any pieces 1084**, **No pieces 1083**,
+  **Enter Position 1114**, **Examples 1089**. The outer search mask's
+  Include lines is **1285** (dialog 310).
+- Difference handler **`0x1407e5010`** changes piece-count spinner limits to
+  signed ranges (piece rows ±2, pawns ±8, minors ±12, total ±15) and calls
+  `0x1407e62b0`. This establishes a count-difference mode, **not** a
+  Q=9/R=5 weighted balance rule.
+- Material commit **`0x1407e25d0`** stores the Difference flag at criterion
+  offset `0xf8`, copies signed short ranges, stores Length and Last at
+  `0x86` / `0x88`, and raises some upper bounds when below lower bounds.
+  The exact native replay/duration, total-mode and colour-swap predicates
+  were not completely traced. OpenFile's explicit rules above are independent
+  choices; its weighted balance and endgame presets are not asserted to be
+  ChessBase's Difference mode or Examples list.
+- Native pawn-structure, bishop-quality/colour, tablebase and structural
+  checkboxes are outside these two checklist items and are not exposed.
+  Count-difference mode, entering a board as material and native example
+  catalogue are also not implemented; use per-side ranges and weighted balance.
+
+### Execution, limits and measurements
+
+The indexed game-data filter runs first; only surviving games are decoded
+for material. Up to eight workers use their own read-only handles. Material
+queries retain the first **100,000** hits in entry order, show progress and
+can be cancelled between games and during material replay. No material booster
+is built or used. On a large database, narrow game-data criteria or refine an
+existing result to reduce replay work.
+
+Release measurements on the development Mac, using the existing read-only
+reference databases; no games or database companions were copied into the
+repository. The selective scan time excludes creation of its initial result.
+
+| Search | Entries examined | Hits | Time |
+|---|---:|---:|---:|
+| Classic database; year ≥2024; exactly one rook per side, no queens or minors | 11,151,119 index entries | 46,642 | 31.90 s |
+| Same rook material within the 3,837 White-Carlsen results | 3,837 | 499 | 0.162 s |
+| New-format database; material balance ≥+5 | 24,783 | 11,294 | 0.167 s |
+
+The first measurement replayed only entries passing its year filter; it did
+not replay all 11.15 million games. The classic measurement is the repeated warm run (31.58 s first run;
+31.90 s repeated); measured peak resident memory was approximately 7.3 MB for
+that process. These are measured release runs, not an
+estimate for an unrestricted material query. See validation.md for verification
+and screenshot details.
+
+## Search all, refine, or add (2026-10-20)
+
+The full search mask has an explicit **Search target** shared by game-data,
+material and position searches:
+
+| Target | Rule |
+|---|---|
+| All games | Search the database and replace the result when complete |
+| Within results | Search a snapshot of the current result; keep only matching entry identities |
+| Add to results | Search all games; union matches with the captured result |
+
+Within/Add require a current result. An existing **empty** result is valid:
+Within scans zero entries and stays empty; Add may find new games. No result
+is different from an empty result; unavailable choices are disabled in the
+mask and rejected by the backend. The quick filter and direct Find Position
+continue to default to All games. Reset all clears criteria and resets the
+target to All; Reset Filter removes the current result.
+
+- Identity is the database entry number, not PGN equality or a row number.
+  The same entry appears once after combining; separate stored copies of the
+  same game remain separate entries.
+- Combined results are canonicalized in ascending entry order. The active
+  column sort still controls display and paging. Within does not restrict
+  itself to the currently loaded page.
+- Refining by game data retains previous hit positions. A new material or
+  position refinement supplies its new matching nodes. Add keeps an existing
+  entry's previous node and supplies nodes for newly added entries; ordinary
+  header hits open at the root. Deferred preparation hit positions survive too.
+- The operation captures the current result and uses its own reader. Within
+  scans only the sorted unique captured entries, batching adjacent ones;
+  progress uses that selected count, including zero. The list remains usable.
+- Publication is atomic. Cancellation, error, reset, replacement by a newer
+  search, an intervening result replacement or database closure leaves no
+  partially installed result. Search and booster cancellation-token cleanup
+  is guarded by job identity, so an older job cannot erase a newer token.
+- Header scans keep at most 2,000,000 matches; material and position scans
+  100,000. Add retains existing entries, then the earliest unique new entries
+  that fit the **2,000,000 combined-entry cap**. The scan cap includes matches
+  already present, so a capped Add can omit later new matches; it reports
+  truncation. Incomplete-result warnings remain through subsequent combinations.
+
+**Reference investigation.** Dialog 310's data exchange `0x1406eef80` and
+commit `0x1406ef1d0` expose per-tab activation flags and Include lines; they do
+not expose All/Within/Add radio buttons. `OpenSearchMaskCmd`'s observed hook
+`0x1408b7b10` delegates to the database-list interface. Following the mask's
+constructor `0x1406ee770` led to entry `0x1406ded10`, which commits accepted
+criteria and schedules `0x1406e2c30`; that function stops the prior worker
+and launches `0x1406e3380`. The worker constructs a unique ordered integer set
+from candidate entries. This supports native job replacement and entry-set
+processing, but does **not** establish the exact UI choice, union/intersection
+rules, tie-node policy, ordering or truncation behavior. Those questions were
+investigated in REA/Ghidra and remain uncertain. OpenFile therefore uses the
+explicit independent set rules above; no native parity is claimed for them.
+
+## Ending tab (2026-10-22)
+
+The **Ending** tab is the workbench's own design, separate from the Material
+tab above it in the mask (which follows the reference app's dialog 328 and
+tests positions anywhere in a move window). It combines with every other field and is tested in the same
 pass as Mate, Stalem., Check and Final material: the moves are decoded once,
 only for games that passed the other fields, and a game that cannot be decoded
 never matches.
@@ -292,3 +435,30 @@ cursor. Now:
 
 On the 2CBH test database a full Find Position went from 2.73 s to 0.65 s on one
 worker, and to 0.17 s on eight.
+
+
+## Search UI evidence
+
+The native macOS debug app was exercised against a disposable five-game
+synthetic 2CBH, using the real Tauri commands and Rust readers:
+
+1. All: rook endings, balance 0 → entries **1, 3, 5**.
+2. Within: White name Capture, retained material criteria → entry **3**.
+3. Add: reset criteria, pawn endings → entries **2, 3, 4**, retaining entry 3.
+   Repeating Add kept the same three unique entries in ascending entry order.
+4. All: custom material balance ≥+5 → entries **3, 4**. Opening entry 3
+   selected **1.Rxh1** (node 1), with the captured rook removed from the board.
+5. In the read-only classic database, a synthetic unmatched player prefix
+   created an empty result. An Add material-balance ≥+144 job displayed progress
+   and Cancel; cancellation retained the empty result and reported Search
+   cancelled. Within on that empty result then completed with zero hits.
+
+Screenshots were captured from the native app, inspected, and contain only
+synthetic games. The browser preview was also exercised separately; its
+illustrative union stayed at 514 IDs after repeated Add. It is not a benchmark
+or substitute for the native checks above.
+
+![Native material criteria](media/material-search.png)
+![Native refinement of current results](media/search-within-results.png)
+![Native union in entry order](media/search-added-results.png)
+![Native material hit opens at the capture](media/material-hit-position.png)
