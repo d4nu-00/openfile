@@ -143,12 +143,12 @@ pub fn classify(n: u8, lines: &BTreeMap<u32, Line>, played: &str, legal: usize) 
 }
 
 /// Whether the search can stop before its time is up: a mate shorter than
-/// `n` is proven by its score, and a mate in `n` is settled once the best
-/// line has been searched to a depth of `3n + 6` and the second line to the
-/// same depth (a position with one legal move has none): a second mate in `n`
-/// can show a few plies later than the first. Anything else waits for the time
-/// cap: the engine often shows a longer mate, or none, before it finds the
-/// shortest one.
+/// `n` is proven by its score, and in a position with a single legal move a
+/// mate in `n` needs no second line once it is searched to a depth of
+/// `3n + 6`. Anything else waits for the time cap, because no depth settles
+/// that a second mate in `n` does not exist (it can show many plies after the
+/// first), and the engine often shows a longer mate, or none, before it finds
+/// the shortest one.
 pub fn settled(n: u8, lines: &BTreeMap<u32, Line>, legal: usize) -> bool {
     let Some(best) = lines.get(&1) else {
         return false;
@@ -156,11 +156,7 @@ pub fn settled(n: u8, lines: &BTreeMap<u32, Line>, legal: usize) -> bool {
     match mate_moves(best) {
         Some(m) if m < i32::from(n) => true,
         Some(m) if m == i32::from(n) => {
-            best.depth.is_some_and(|d| d >= 3 * u32::from(n) + 6)
-                && (legal == 1
-                    || lines
-                        .get(&2)
-                        .is_some_and(|second| second.depth >= best.depth))
+            legal == 1 && best.depth.is_some_and(|d| d >= 3 * u32::from(n) + 6)
         }
         _ => false,
     }
@@ -446,27 +442,21 @@ mod tests {
     }
 
     #[test]
-    fn a_mate_in_n_waits_for_the_second_line_to_catch_up() {
-        // The second line can show its own mate in n late: in a position with
-        // two mates in three it first did so at depth 12.
-        let best = deep(15, MATE_3, "a");
-        assert!(!settled(3, &lines(std::slice::from_ref(&best)), 20));
-        assert!(!settled(3, &lines(&[best.clone(), deep(14, CP, "b")]), 20));
-        assert!(settled(3, &lines(&[best.clone(), deep(15, CP, "b")]), 20));
-        // Too shallow, even with both lines.
-        assert!(!settled(
-            3,
-            &lines(&[deep(14, MATE_3, "a"), deep(14, CP, "b")]),
-            20
-        ));
-        assert!(!settled(
-            3,
-            &lines(&[deep(10, MATE_3, "a"), deep(10, CP, "b")]),
-            20
-        ));
-        // A position with one legal move has no second line.
-        assert!(settled(3, &lines(&[best]), 1));
-        // Deeper mates are searched deeper: 3n + 6.
+    fn a_mate_in_n_waits_for_the_time_cap_because_a_second_mate_can_show_late() {
+        // In a rook ending the best line was a mate in five at depth 24 and
+        // the second line only showed its own mate in five at depth 27, so no
+        // depth settles uniqueness: the time cap decides.
+        let both = lines(&[deep(40, MATE_3, "a"), deep(40, CP, "b")]);
+        assert!(!settled(3, &both, 20));
+        assert!(!settled(3, &lines(&[deep(40, MATE_3, "a")]), 20));
+    }
+
+    #[test]
+    fn a_position_with_one_legal_move_needs_no_second_line() {
+        // Uniqueness is certain there; the mate in n itself is searched to
+        // 3n + 6 first.
+        assert!(!settled(3, &lines(&[deep(14, MATE_3, "a")]), 1));
+        assert!(settled(3, &lines(&[deep(15, MATE_3, "a")]), 1));
         let mate5 = Score::Mate {
             moves: 5,
             bound: None,

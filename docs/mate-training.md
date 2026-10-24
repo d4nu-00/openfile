@@ -97,14 +97,13 @@ is legal) ends the chain before it and is counted as "unstorable".
   `MultiPV` 2 and the engine's own defaults for Threads and Hash (the options
   saved with the engine in Engine Management, and tablebases, are not used,
   because a tablebase win is not scored as a mate). Each position is
-  searched until the best line is a mate shorter than `n` (proven by its
-  score), or `mate n` at a depth of at least `3n + 6` with the second line
-  searched as deep (a second mate in `n` can show a few plies after the
-  first), or until **Time per check** ends; a plain score or a longer mate
-  waits for the time, because the engine often shows those before it finds the
-  shortest mate. The step is valid when the best line is a mate in exactly `n`, the second
-  line is not a mate in `n` or fewer, and the best line's first move is the
-  game's. A position with a single legal move has no second line, which is
+  searched for the whole **Time per check**, unless the best line is a mate
+  shorter than `n` (proven by its score), which ends the search at once; no
+  depth settles that a second mate in `n` does not exist (it can show many
+  plies after the first), and a plain score or a longer mate often shows
+  before the engine finds the shortest mate. The step is valid when the best
+  line is a mate in exactly `n`, the second line is not a mate in `n` or
+  fewer, and the best line's first move is the game's. A position with a single legal move has no second line, which is
   unique. A search that ends with no score is a timeout, never valid.
 
 A uniqueness check with an engine can only see what the engine finds in its
