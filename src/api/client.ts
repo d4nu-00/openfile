@@ -45,6 +45,9 @@ import type {
   AppSettings,
   TablebaseResponse,
   BlunderParams,
+  MateBuildOptions,
+  MateTrainingProgress,
+  MateTrainingResponse,
   BlunderReport,
   DeepParams,
   DeepProgress,
@@ -648,6 +651,40 @@ export const backend = {
   },
   cancelExport: (databaseId: string) =>
     invoke<void>("cancel_export", { databaseId }),
+  chooseMateTrainingFolder: () =>
+    open({
+      directory: true,
+      title: "Choose the folder for the mate training databases",
+    }),
+  /**
+   * Build Mate Training from the games in `ranges` of the list. `engineId`
+   * may be empty when the depths stop at 2. Stop keeps what was found;
+   * Cancel writes nothing.
+   */
+  buildMateTraining: (
+    databaseId: string,
+    ranges: { start: string; end: string }[],
+    options: MateBuildOptions,
+    engineId: string,
+    millis: number,
+    folder: string,
+    name: string,
+    onProgress: (p: MateTrainingProgress) => void,
+  ) =>
+    invoke<MateTrainingResponse>("build_mate_training", {
+      databaseId,
+      ranges,
+      options,
+      engineId,
+      millis,
+      folder,
+      name,
+      events: channel(onProgress),
+    }),
+  stopMateTraining: (databaseId: string) =>
+    invoke<void>("stop_mate_training", { databaseId }),
+  cancelMateTraining: (databaseId: string) =>
+    invoke<void>("cancel_mate_training", { databaseId }),
   /** Delete: marks the rows' games deleted, or undeletes them all. */
   deleteRows: (databaseId: string, ranges: { start: string; end: string }[]) =>
     invoke<string>("delete_rows", { databaseId, ranges }),

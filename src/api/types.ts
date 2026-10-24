@@ -1706,3 +1706,41 @@ export interface StyleReport {
   games: StyleGame[];
   elapsedMs: number;
 }
+/** The options of Build Mate Training. */
+export interface MateBuildOptions {
+  minDepth: number;
+  maxDepth: number;
+  /** Puzzles per combination and depth, and chains per combination. */
+  per: number;
+  /** Only these combinations, e.g. "Q+N"; every combination when null. */
+  combinations: string[] | null;
+  poolMinors: boolean;
+}
+/** Puzzles of a combination at each depth (index 0 is mate in 1). */
+export interface MateCombinationCount {
+  combination: string;
+  depths: number[];
+  chains: number;
+}
+export interface MateTrainingProgress {
+  scanned: string;
+  total: string;
+  puzzles: number[];
+  chains: number;
+  combinations: MateCombinationCount[];
+}
+export interface MateTrainingResponse {
+  /** The databases written: the mate in `depth`, or the chains. */
+  databases: { path: string; depth?: number | null; games: number }[];
+  combinations: MateCombinationCount[];
+  puzzles: number[];
+  chains: number;
+  rejections: { kind: string; count: string }[];
+  scanned: string;
+  total: string;
+  filteredOut: string;
+  stopped: boolean;
+  cancelled: boolean;
+  /** Every quota was met before the games ran out. */
+  complete: boolean;
+}

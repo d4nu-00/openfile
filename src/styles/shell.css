@@ -3296,3 +3296,31 @@ kbd {
   overflow: visible;
   text-overflow: clip;
 }
+
+/* Build Mate Training */
+.modal.mate-training {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(88vh, 900px);
+  overflow-y: auto;
+}
+.modal.mate-training .mask-row {
+  flex-wrap: wrap;
+}
+.modal.mate-training .path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.modal.mate-training input[type="number"] {
+  width: 72px;
+}
+.mate-rejections,
+.mate-databases {
+  margin: 0;
+  padding-left: 18px;
+}

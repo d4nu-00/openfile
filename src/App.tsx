@@ -27,6 +27,8 @@ import type {
   NameKind,
   NameRow,
   ConvertEstimate,
+  MateTrainingProgress,
+  MateTrainingResponse,
   DoubleOptions,
   SelectionNames,
   DatabaseSymbol,
@@ -81,6 +83,10 @@ import { PasteDialog } from "./components/PasteDialog";
 import { AnnotationPalette } from "./components/AnnotationPalette";
 import { SymbolMenu } from "./components/SymbolMenu";
 import { ConvertDialog, type ConvertScope } from "./components/ConvertDialog";
+import {
+  MateTrainingDialog,
+  type MateTrainingRequest,
+} from "./components/MateTrainingDialog";
 import { DoublesDialog, JobDialog } from "./components/MaintenanceDialogs";
 import { SelectionDataDialog } from "./components/SelectionDataDialog";
 import type { SymbolSlot } from "./state/symbols";
@@ -1059,6 +1065,16 @@ export function App({
     running?: string;
     error?: string;
   }>();
+  /** Build Mate Training: its dialog, while open. */
+  const [mateTraining, setMateTraining] = useState<{
+    databaseId: string;
+    games: number;
+    selected: number;
+    selection: { start: string; end: string }[];
+    running?: MateTrainingProgress;
+    result?: MateTrainingResponse;
+    error?: string;
+  }>();
   const explain = (err: unknown) =>
     (err as { message?: string })?.message ?? String(err);
   /** The selection, or the chosen row when nothing is selected. */
@@ -1154,6 +1170,42 @@ export function App({
       );
     } catch (err) {
       setConverting(
+        (s) => s && { ...s, running: undefined, error: explain(err) },
+      );
+    }
+  }
+  /** Build Mate Training: the games in the list, or the selected rows. */
+  async function runMateTraining(request: MateTrainingRequest) {
+    const m = mateTraining;
+    if (!m || m.running) return;
+    setMateTraining({
+      ...m,
+      running: {
+        scanned: "0",
+        total: "0",
+        puzzles: [0, 0, 0, 0, 0],
+        chains: 0,
+        combinations: [],
+      },
+      result: undefined,
+      error: undefined,
+    });
+    try {
+      const result = await api.buildMateTraining(
+        m.databaseId,
+        request.source === "selection"
+          ? m.selection
+          : [{ start: "1", end: String(m.games + 1) }],
+        request.options,
+        request.engineId,
+        request.millis,
+        request.folder,
+        request.name,
+        (p) => setMateTraining((s) => s && { ...s, running: p }),
+      );
+      setMateTraining((s) => s && { ...s, running: undefined, result });
+    } catch (err) {
+      setMateTraining(
         (s) => s && { ...s, running: undefined, error: explain(err) },
       );
     }
@@ -1969,6 +2021,22 @@ export function App({
     "remove-deleted-games": {
       run: () => runCompact(),
       enabled: !!state.database?.writable && !job,
+    },
+    "build-mate-training": {
+      run: () => {
+        const db = state.database;
+        if (!db) return;
+        setMateTraining(
+          (m) =>
+            m ?? {
+              databaseId: db.databaseId,
+              games: w.rowCount,
+              selected: selectedCount(selection),
+              selection: rowRanges(selection),
+            },
+        );
+      },
+      enabled: !!state.database && w.rowCount > 0 && !mateTraining?.running,
     },
     "convert-to-2cbh": {
       run: () => startConvert(),
@@ -3534,6 +3602,30 @@ export function App({
             void api.cancelConvert(converting.databaseId).catch(() => {})
           }
           onClose={() => setConverting(undefined)}
+        />
+      )}
+      {mateTraining && (
+        <MateTrainingDialog
+          games={mateTraining.games}
+          selected={mateTraining.selected}
+          engines={settings.engines}
+          defaultEngine={settings.defaultEngine}
+          running={mateTraining.running}
+          result={mateTraining.result}
+          error={mateTraining.error}
+          onChooseFolder={api.chooseMateTrainingFolder}
+          onBuild={(request) => void runMateTraining(request)}
+          onStop={() =>
+            void api.stopMateTraining(mateTraining.databaseId).catch(() => {})
+          }
+          onCancel={() =>
+            void api.cancelMateTraining(mateTraining.databaseId).catch(() => {})
+          }
+          onOpen={(path) => {
+            setMateTraining(undefined);
+            void w.openDatabase(path);
+          }}
+          onClose={() => setMateTraining(undefined)}
         />
       )}
       {blunder && (

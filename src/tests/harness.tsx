@@ -1007,6 +1007,58 @@ export function mockApi(
         };
       }),
     cancelConvert: vi.fn().mockResolvedValue(undefined),
+    chooseMateTrainingFolder: vi.fn().mockResolvedValue("/synthetic/out"),
+    buildMateTraining: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          _ranges,
+          options: { minDepth: number; maxDepth: number },
+          _engine: string,
+          _millis: number,
+          folder: string,
+          name: string,
+          onProgress,
+        ) => {
+          const depths = (n: number) => [n, 0, 0, 0, 0];
+          onProgress({
+            scanned: "200",
+            total: "400",
+            puzzles: depths(3),
+            chains: 0,
+            combinations: [],
+          });
+          return {
+            databases: [
+              {
+                path: `${folder}/${name} - Mate in ${options.minDepth}.2cbh`,
+                depth: options.minDepth,
+                games: 5,
+              },
+              { path: `${folder}/${name} - Mate chains.2cbh`, games: 3 },
+            ],
+            combinations: [
+              { combination: "Q+N", depths: depths(3), chains: 1 },
+              { combination: "R+K", depths: depths(2), chains: 0 },
+            ],
+            puzzles: depths(5),
+            chains: 1,
+            rejections: [
+              { kind: "notMate", count: "12" },
+              { kind: "otherMove", count: "4" },
+            ],
+            scanned: "400",
+            total: "400",
+            filteredOut: "0",
+            stopped: false,
+            cancelled: false,
+            complete: false,
+          };
+        },
+      ),
+    stopMateTraining: vi.fn().mockResolvedValue(undefined),
+    cancelMateTraining: vi.fn().mockResolvedValue(undefined),
     checkIntegrity: vi
       .fn()
       .mockImplementation(async (_db: string, onProgress) => {

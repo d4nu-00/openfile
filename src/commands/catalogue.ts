@@ -60,6 +60,7 @@ import {
   Square,
   Star,
   Swords,
+  Target,
   TableProperties,
   Trash2,
   Undo2,
@@ -1222,6 +1223,13 @@ const list: CommandMeta[] = [
     views: db,
   },
   {
+    id: "build-mate-training",
+    label: "Build Mate Training",
+    tip: "Make mate-in-1 to mate-in-5 training databases from the games in the list",
+    icon: Target,
+    views: db,
+  },
+  {
     id: "delete-training",
     label: "Delete Training Commentary",
     tip: "Delete all training commentary",
@@ -1442,6 +1450,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
           items: [
             S("toggle-game-list"),
             S("replay-training-selection"),
+            S("build-mate-training"),
             S("toggle-players"),
             S("toggle-tournaments"),
             S("games-of-player"),

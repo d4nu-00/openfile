@@ -16,7 +16,17 @@ import type {
   Line,
   ReplayProgressMap,
   SearchScope,
+  MateBuildOptions,
+  MateTrainingProgress,
 } from "../api/types";
+
+/** Stop and Cancel of the demo's Build Mate Training. */
+const mate = { stop: false, cancel: false };
+const d2 = (done: number, total: number, per: number, i: number) =>
+  Math.min(
+    per,
+    Math.floor((done / Math.max(total, 1)) * per * 0.4 * (1 + (i % 2))),
+  );
 import { demoFens, demoLegal, demoNodes } from "./demoGame";
 
 const famous: [
@@ -767,6 +777,103 @@ export function demoApi(): WorkbenchApi {
       path: null,
     }),
     cancelConvert: async () => {},
+    chooseMateTrainingFolder: async () => "/demo/Mate training",
+    // A plausible run: games are scanned in steps, then the databases are
+    // "written"; Stop keeps what was found and Cancel drops it.
+    buildMateTraining: async (
+      _db: string,
+      ranges: { start: string; end: string }[],
+      options: MateBuildOptions,
+      _engine: string,
+      _millis: number,
+      folder: string,
+      name: string,
+      onProgress: (p: MateTrainingProgress) => void,
+    ) => {
+      mate.stop = mate.cancel = false;
+      const total = ranges.reduce(
+        (n, r) => n + Number(r.end) - Number(r.start),
+        0,
+      );
+      const combos = (
+        options.combinations ?? ["Q", "R", "Q+B", "N", "R+K"]
+      ).slice(0, 8);
+      const depths = [1, 2, 3, 4, 5].filter(
+        (d) => d >= options.minDepth && d <= options.maxDepth,
+      );
+      const found = (done: number) =>
+        combos.map((combination, i) => ({
+          combination,
+          depths: [1, 2, 3, 4, 5].map((d) =>
+            depths.includes(d)
+              ? Math.min(
+                  options.per,
+                  Math.floor(
+                    (done / Math.max(total, 1)) *
+                      options.per *
+                      (1 + ((i + d) % 3)),
+                  ),
+                )
+              : 0,
+          ),
+          chains: d2(done, total, options.per, i),
+        }));
+      const sum = (rows: ReturnType<typeof found>) => ({
+        puzzles: [0, 1, 2, 3, 4].map((d) =>
+          rows.reduce((n, c) => n + c.depths[d], 0),
+        ),
+        chains: rows.reduce((n, c) => n + c.chains, 0),
+      });
+      let done = 0;
+      for (let step = 1; step <= 5 && !mate.stop && !mate.cancel; step++) {
+        await new Promise((r) => setTimeout(r, 400));
+        done = Math.round((total * step) / 5);
+        const rows = found(done);
+        onProgress({
+          scanned: String(done),
+          total: String(total),
+          combinations: rows,
+          ...sum(rows),
+        });
+      }
+      const rows = found(done);
+      const totals = sum(rows);
+      return {
+        databases: mate.cancel
+          ? []
+          : [
+              ...depths.map((d) => ({
+                path: `${folder}/${name} - Mate in ${d}.2cbh`,
+                depth: d,
+                games: totals.puzzles[d - 1],
+              })),
+              {
+                path: `${folder}/${name} - Mate chains.2cbh`,
+                depth: null,
+                games: totals.chains * 2,
+              },
+            ],
+        combinations: rows,
+        ...totals,
+        rejections: [
+          { kind: "notMate", count: String(Math.round(done / 3)) },
+          { kind: "notUnique", count: String(Math.round(done / 9)) },
+          { kind: "otherMove", count: String(Math.round(done / 40)) },
+        ],
+        scanned: String(done),
+        total: String(total),
+        filteredOut: "0",
+        stopped: mate.stop,
+        cancelled: mate.cancel,
+        complete: false,
+      };
+    },
+    stopMateTraining: async () => {
+      mate.stop = true;
+    },
+    cancelMateTraining: async () => {
+      mate.cancel = true;
+    },
     checkIntegrity: async () => ({
       checked: 2400,
       games: 2398,
