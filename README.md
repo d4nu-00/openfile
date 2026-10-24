@@ -125,7 +125,9 @@ turns them into a database.
   follow the same chess position across move orders and databases.
 - **Replay Training Sessions.** Practise saved questions from a game or selected
   game-list rows on a hidden-answer board. Use authored hints and feedback,
-  retry questions, and keep progress in the app data folder.
+  retry questions, and keep progress in the app data folder. **Build Mate
+  Training** makes mate-in-1 to mate-in-5 training databases from the games in
+  a list (see [mate training](docs/mate-training.md)).
 
 </details>
 
@@ -318,7 +320,7 @@ and reported as unsupported.
 | Databases and files | [Formats](docs/formats.md) · [Writing](docs/writing.md) · [Conversion](docs/conversion.md) · [Maintenance](docs/maintenance.md) |
 | Lists and search | [Game list](docs/game-list.md) · [Search](docs/search.md) · [Position search](docs/position-search.md) |
 | Openings | [Opening tree](docs/opening-tree.md) · [Repertoire workspace](docs/repertoire-workspace.md) · [Openings](docs/openings.md) |
-| Games and engines | [Game window](docs/game-window.md) · [Replay training](docs/replay-training.md) · [Engines](docs/engines.md) · [Analysis](docs/analysis.md) · [Game review](docs/game-review.md) |
+| Games and engines | [Game window](docs/game-window.md) · [Replay training](docs/replay-training.md) · [Mate training](docs/mate-training.md) · [Engines](docs/engines.md) · [Analysis](docs/analysis.md) · [Game review](docs/game-review.md) |
 | Players and reports | [Player statistics](docs/player-statistics.md) · [Dossier](docs/player-dossier.md) · [Preparation](docs/preparation.md) · [Tournament report](docs/tournament-report.md) · [Error report](docs/error-report.md) · [Playing style](docs/playing-style.md) |
 | Design | [Design](docs/design.md) · [UI shell](docs/ui-shell.md) · [Validation](docs/validation.md) |
 

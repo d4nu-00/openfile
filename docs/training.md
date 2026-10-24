@@ -147,6 +147,9 @@ before.
 * **Delete Training Commentary** removes every training annotation of the
   game, as one edit.
 * Asking the questions while replaying is covered by [Replay Training Sessions](replay-training.md).
+* Questions can also be made in bulk: [Build Mate Training](mate-training.md)
+  writes mate-in-1 to mate-in-5 puzzles from the games in a list, each with
+  its questions.
 
 ### Measurements
 

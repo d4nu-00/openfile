@@ -52,6 +52,7 @@ const documents = new Set([
   "game-review.md",
   "playing-style.md",
   "replay-training.md",
+  "mate-training.md",
   "evaluation-profile.md",
   "annotations.md",
 ]);

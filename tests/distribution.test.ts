@@ -37,6 +37,7 @@ describe("source distribution boundary", () => {
       "docs/superpowers/specs/2026-10-20-playing-style-design.md",
       "docs/game-review.md",
       "docs/replay-training.md",
+      "docs/mate-training.md",
       "docs/media/replay-training-question.jpg",
       "docs/media/replay-training-solved.jpg",
       "docs/media/replay-training-summary.jpg",
