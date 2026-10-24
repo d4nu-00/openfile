@@ -54,5 +54,6 @@ export const rejectionLabels: Record<string, string> = {
   chess960: "Chess960 game",
   unreadable: "unreadable game",
   underpromotion: "mate by underpromotion",
+  unstorable: "position the database cannot store (en passant)",
   duplicate: "position already collected",
 };

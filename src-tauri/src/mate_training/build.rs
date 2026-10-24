@@ -154,7 +154,8 @@ pub struct Collected {
     /// Steps already verified valid: depth, position and the game's move.
     valid: HashSet<(u8, String, String)>,
     /// Games and steps not used, by reason: the `StepCheck` kinds, and
-    /// `notMateGame`, `chess960`, `unreadable`, `underpromotion`, `duplicate`.
+    /// `notMateGame`, `chess960`, `unreadable`, `underpromotion`, `unstorable`
+    /// and `duplicate`.
     pub rejections: BTreeMap<String, u64>,
     /// Games looked at.
     pub scanned: u64,
@@ -331,9 +332,13 @@ impl Collected {
                 }
                 self.valid.insert(id);
             }
-            let Ok(puzzle) = puzzle_game(game, step, &name, ordinal) else {
-                self.reject("underpromotion");
-                break;
+            let puzzle = match puzzle_game(game, step, &name, ordinal) {
+                Ok(puzzle) => puzzle,
+                // A puzzle the databases cannot hold ends the chain.
+                Err(e) => {
+                    self.reject(&e.code);
+                    break;
+                }
             };
             if step >= self.options.min_depth && self.depth_has_room(&name, step) {
                 if self.seen.insert((step, key(&pos))) {
@@ -437,7 +442,10 @@ pub fn puzzle_game(
         // The squares of an answer cannot say which piece a pawn becomes, and
         // the replay reads them as a queen.
         if uci.len() == 5 && !uci.ends_with('q') {
-            return Err(bad("A mate by underpromotion cannot be a question"));
+            return Err(AppError::new(
+                "underpromotion",
+                "A mate by underpromotion cannot be a question",
+            ));
         }
         let left = usize::from(step) - k;
         let question = match (k, left) {
@@ -469,6 +477,10 @@ pub fn puzzle_game(
     puzzle.nodes[ucis[0].0 as usize].pre_comments = vec![format!(
         "Mate in {step} · {combination} · from game {ordinal}"
     )];
+    // The databases refuse some start positions, such as one with an
+    // en-passant capture available.
+    cbh_reader::v2::encode::encode_moves(&puzzle)
+        .map_err(|e| AppError::new("unstorable", e.to_string()))?;
     Ok(puzzle)
 }
 

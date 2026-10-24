@@ -111,10 +111,12 @@ fn mate_moves(line: &Line) -> Option<i32> {
     }
 }
 
-/// The step check for the engine's lines (by multipv number); `played` is the
-/// game's move in UCI. A missing second line (a position with a single legal
-/// move) leaves the first one unique.
-pub fn classify(n: u8, lines: &BTreeMap<u32, Line>, played: &str) -> StepCheck {
+/// The step check for the engine's lines (by multipv number) in a position
+/// with `legal` legal moves; `played` is the game's move in UCI. Only a
+/// position with a single legal move can do without a second line: with
+/// others, a mate in `n` whose second line never arrived is not known to be
+/// unique, so it is a timeout.
+pub fn classify(n: u8, lines: &BTreeMap<u32, Line>, played: &str, legal: usize) -> StepCheck {
     let Some(best) = lines.get(&1) else {
         return StepCheck::Timeout;
     };
@@ -127,17 +129,40 @@ pub fn classify(n: u8, lines: &BTreeMap<u32, Line>, played: &str) -> StepCheck {
     if moves > i32::from(n) {
         return StepCheck::Longer;
     }
-    if lines
-        .get(&2)
-        .and_then(mate_moves)
-        .is_some_and(|second| second <= i32::from(n))
-    {
-        return StepCheck::NotUnique;
+    match lines.get(&2) {
+        Some(second) if mate_moves(second).is_some_and(|m| m <= i32::from(n)) => {
+            return StepCheck::NotUnique;
+        }
+        None if legal > 1 => return StepCheck::Timeout,
+        _ => {}
     }
     if best.first != played {
         return StepCheck::OtherMove;
     }
     StepCheck::Valid
+}
+
+/// Whether the search can stop before its time is up: a mate shorter than
+/// `n` is proven by its score, and a mate in `n` is settled once the best
+/// line has been searched to a depth of `2n + 4` and the second line to the
+/// same depth (a position with one legal move has none). Anything else waits
+/// for the time cap: the engine often shows a longer mate, or none, before it
+/// finds the shortest one.
+pub fn settled(n: u8, lines: &BTreeMap<u32, Line>, legal: usize) -> bool {
+    let Some(best) = lines.get(&1) else {
+        return false;
+    };
+    match mate_moves(best) {
+        Some(m) if m < i32::from(n) => true,
+        Some(m) if m == i32::from(n) => {
+            best.depth.is_some_and(|d| d >= 2 * u32::from(n) + 4)
+                && (legal == 1
+                    || lines
+                        .get(&2)
+                        .is_some_and(|second| second.depth >= best.depth))
+        }
+        _ => false,
+    }
 }
 
 /// Mates in 1 to 5, checked with a UCI engine (`MultiPV` 2).
@@ -191,7 +216,6 @@ impl MateVerifier for EngineVerifier {
                 .into(),
             })
             .map_err(err)?;
-        let deep_enough = 2 * u32::from(n) + 4;
         let deadline = Instant::now() + Duration::from_millis(self.millis);
         let mut lines: BTreeMap<u32, Line> = BTreeMap::new();
         let take = |info: engine::AnalysisInfo, lines: &mut BTreeMap<u32, Line>| {
@@ -213,26 +237,7 @@ impl MateVerifier for EngineVerifier {
                 );
             }
         };
-        // Done when line 1 is the mate in `n`, searched deep enough, and
-        // line 2 has caught up with it, or there is no line 2.
-        let settled = |lines: &BTreeMap<u32, Line>| {
-            let Some(best) = lines.get(&1) else {
-                return false;
-            };
-            match mate_moves(best) {
-                // A shorter mate is proven by its score.
-                Some(moves) if moves < i32::from(n) => true,
-                Some(moves) if moves == i32::from(n) => {
-                    best.depth.is_some_and(|d| d >= deep_enough)
-                        && (legal == 1
-                            || lines
-                                .get(&2)
-                                .is_some_and(|second| second.depth >= best.depth))
-                }
-                _ => false,
-            }
-        };
-        while Instant::now() < deadline && !settled(&lines) {
+        while Instant::now() < deadline && !settled(n, &lines, legal) {
             let wait = deadline
                 .saturating_duration_since(Instant::now())
                 .min(Duration::from_millis(50));
@@ -258,7 +263,7 @@ impl MateVerifier for EngineVerifier {
             }
         }
         let played = UciMove::from_standard(*played).to_string();
-        Ok(classify(n, &lines, &played))
+        Ok(classify(n, &lines, &played, legal))
     }
 }
 
@@ -329,36 +334,36 @@ mod tests {
     #[test]
     fn a_mate_in_n_with_the_game_move_and_a_worse_second_line_is_valid() {
         let l = lines(&[mate(3, 14, "e1e8"), cp(300, "a1a2")]);
-        assert_eq!(classify(3, &l, "e1e8"), StepCheck::Valid);
+        assert_eq!(classify(3, &l, "e1e8", 20), StepCheck::Valid);
         let longer = lines(&[mate(3, 14, "e1e8"), mate(4, 14, "a1a2")]);
-        assert_eq!(classify(3, &longer, "e1e8"), StepCheck::Valid);
+        assert_eq!(classify(3, &longer, "e1e8", 20), StepCheck::Valid);
     }
 
     #[test]
     fn no_line_is_a_timeout_and_a_plain_score_is_not_a_mate() {
-        assert_eq!(classify(3, &lines(&[]), "e1e8"), StepCheck::Timeout);
+        assert_eq!(classify(3, &lines(&[]), "e1e8", 20), StepCheck::Timeout);
         assert_eq!(
-            classify(3, &lines(&[cp(900, "e1e8")]), "e1e8"),
+            classify(3, &lines(&[cp(900, "e1e8")]), "e1e8", 20),
             StepCheck::NotMate
         );
         // Being mated is not a mate for the side to move.
         assert_eq!(
-            classify(3, &lines(&[mate(-3, 14, "e1e8")]), "e1e8"),
+            classify(3, &lines(&[mate(-3, 14, "e1e8")]), "e1e8", 20),
             StepCheck::NotMate
         );
         // A second line without the first is no result either.
         let only_second: BTreeMap<u32, Line> = [(2, mate(3, 14, "e1e8"))].into();
-        assert_eq!(classify(3, &only_second, "e1e8"), StepCheck::Timeout);
+        assert_eq!(classify(3, &only_second, "e1e8", 20), StepCheck::Timeout);
     }
 
     #[test]
     fn a_shorter_or_longer_mate_is_not_a_mate_in_n() {
         assert_eq!(
-            classify(4, &lines(&[mate(2, 14, "e1e8")]), "e1e8"),
+            classify(4, &lines(&[mate(2, 14, "e1e8")]), "e1e8", 20),
             StepCheck::Shorter(2)
         );
         assert_eq!(
-            classify(3, &lines(&[mate(5, 14, "e1e8")]), "e1e8"),
+            classify(3, &lines(&[mate(5, 14, "e1e8")]), "e1e8", 20),
             StepCheck::Longer
         );
     }
@@ -366,21 +371,92 @@ mod tests {
     #[test]
     fn a_second_mate_in_n_makes_the_step_not_unique() {
         let l = lines(&[mate(3, 14, "e1e8"), mate(3, 14, "d1d8")]);
-        assert_eq!(classify(3, &l, "e1e8"), StepCheck::NotUnique);
+        assert_eq!(classify(3, &l, "e1e8", 20), StepCheck::NotUnique);
         // Uniqueness is judged before the game's move.
-        assert_eq!(classify(3, &l, "a1a2"), StepCheck::NotUnique);
+        assert_eq!(classify(3, &l, "a1a2", 20), StepCheck::NotUnique);
     }
 
     #[test]
     fn another_first_move_is_not_the_game_move() {
         let l = lines(&[mate(3, 14, "d1d8"), cp(100, "e1e8")]);
-        assert_eq!(classify(3, &l, "e1e8"), StepCheck::OtherMove);
+        assert_eq!(classify(3, &l, "e1e8", 20), StepCheck::OtherMove);
     }
 
     #[test]
-    fn a_missing_second_line_leaves_the_mate_unique() {
-        // A position with a single legal move has no second line.
+    fn a_missing_second_line_leaves_the_mate_unique_only_with_one_legal_move() {
         let l = lines(&[mate(3, 14, "e1e8")]);
-        assert_eq!(classify(3, &l, "e1e8"), StepCheck::Valid);
+        assert_eq!(classify(3, &l, "e1e8", 1), StepCheck::Valid);
+        // With other moves to play, uniqueness was not looked at.
+        assert_eq!(classify(3, &l, "e1e8", 20), StepCheck::Timeout);
+        // A plain score or another length needs no second line.
+        assert_eq!(
+            classify(3, &lines(&[cp(10, "e1e8")]), "e1e8", 20),
+            StepCheck::NotMate
+        );
+        assert_eq!(
+            classify(3, &lines(&[mate(2, 14, "e1e8")]), "e1e8", 20),
+            StepCheck::Shorter(2)
+        );
+    }
+
+    fn deep(depth: u32, score: Score, first: &str) -> Line {
+        Line {
+            depth: Some(depth),
+            score,
+            first: first.into(),
+        }
+    }
+    const MATE_3: Score = Score::Mate {
+        moves: 3,
+        bound: None,
+    };
+    const CP: Score = Score::Cp {
+        value: 40,
+        bound: None,
+    };
+
+    #[test]
+    fn a_plain_score_or_a_longer_mate_waits_for_the_time_cap() {
+        // The engine often shows no mate, or a longer one, before it finds
+        // the shortest, however deep it has searched.
+        assert!(!settled(3, &lines(&[deep(30, CP, "a")]), 20));
+        let longer = Score::Mate {
+            moves: 5,
+            bound: None,
+        };
+        assert!(!settled(3, &lines(&[deep(30, longer, "a")]), 20));
+        // Nothing yet, or a line without a depth, is not settled either.
+        assert!(!settled(3, &lines(&[]), 20));
+        let unknown = Line {
+            depth: None,
+            score: MATE_3,
+            first: "a".into(),
+        };
+        assert!(!settled(3, &lines(&[unknown]), 20));
+    }
+
+    #[test]
+    fn a_shorter_mate_is_settled_at_any_depth() {
+        let two = Score::Mate {
+            moves: 2,
+            bound: None,
+        };
+        assert!(settled(3, &lines(&[deep(2, two, "a")]), 20));
+    }
+
+    #[test]
+    fn a_mate_in_n_waits_for_the_second_line_to_catch_up() {
+        let best = deep(10, MATE_3, "a");
+        assert!(!settled(3, &lines(std::slice::from_ref(&best)), 20));
+        assert!(!settled(3, &lines(&[best.clone(), deep(9, CP, "b")]), 20));
+        assert!(settled(3, &lines(&[best.clone(), deep(10, CP, "b")]), 20));
+        // Too shallow, even with both lines.
+        assert!(!settled(
+            3,
+            &lines(&[deep(9, MATE_3, "a"), deep(9, CP, "b")]),
+            20
+        ));
+        // A position with one legal move has no second line.
+        assert!(settled(3, &lines(&[best]), 1));
     }
 }

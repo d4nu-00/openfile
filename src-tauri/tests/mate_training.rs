@@ -794,6 +794,24 @@ fn a_mate_by_underpromotion_cannot_be_a_question() {
 }
 
 #[test]
+fn a_step_position_with_a_legal_en_passant_capture_cannot_be_stored() {
+    // After 1.d4 Black may take en passant; the database cannot hold a
+    // set-up with an en-passant square, so there is no puzzle to write.
+    let source = game(
+        "0-1",
+        Some("6k1/8/8/8/4p3/r7/3P2PP/7K w - - 0 1"),
+        "1. d4 Ra1#",
+    );
+    assert!(puzzle_game(&source, 1, "R", 5).is_err());
+    let mut c = collected(1, 1, 10);
+    let step = "6k1/8/8/8/3Pp3/r7/6PP/7K b - d3";
+    let mut v = Script::default().valid(&[(step, 1)]);
+    c.add_game(1, &source, &mut v).unwrap();
+    assert!(c.puzzles(1).is_empty());
+    assert_eq!(c.rejections.get("unstorable"), Some(&1));
+}
+
+#[test]
 fn built_puzzles_survive_a_round_trip_with_their_questions() {
     let g = puzzle_game(&scholars_mate(), 3, "Q+B", 9).unwrap();
     let back = read_back(std::slice::from_ref(&g)).remove(0);

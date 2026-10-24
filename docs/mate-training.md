@@ -83,7 +83,9 @@ A training answer stores only the move's squares (see [training](training.md)),
 which the replay reads as a queen when a pawn promotes. A mate by promotion to
 a queen round-trips; a puzzle in which a mating-side move is an
 **underpromotion** cannot be asked, so the game stops its chain there and the
-step is counted as "mate by underpromotion".
+step is counted as "mate by underpromotion". Likewise a step position the
+databases cannot store as a start position (one in which an en-passant capture
+is legal) ends the chain before it and is counted as "unstorable".
 
 ## How steps are verified
 
@@ -110,7 +112,8 @@ the time makes the check stricter. Mates in 1 and 2 do not have this limit.
 A game that is not used, and why, is counted by kind: not a forced mate, a
 shorter or a longer mate, more than one mating move, a mate with another
 move, no engine score in time, a game that does not end in mate, Chess960,
-an unreadable game, a mate by underpromotion, and a position already collected.
+an unreadable game, a mate by underpromotion, a position the databases cannot store (a legal en-passant
+capture), and a position already collected.
 
 ## Workflow
 
@@ -130,8 +133,9 @@ an unreadable game, a mate by underpromotion, and a position already collected.
 
 `cargo run --release --example build_mate_training -- --path <db> --filter
 '<GameFilter JSON>' --engine <exe> --millis 800 --min 1 --max 5 --per 20
-[--combinations "Q+N,R+K"] [--pool-minors] --out <folder> --name <name>`
-runs the search, the same builder and writer, prints progress lines and a table of
+[--combinations "Q+N,R+K"] [--pool-minors] [--minutes 40] --out <folder> --name <name>`
+(`--minutes` stops the build after that long and keeps what was found, as
+Stop does) runs the search, the same builder and writer, prints progress lines and a table of
 the counts by combination and depth.
 
 The real-engine tests run with `OPENFILE_TEST_STOCKFISH=/path/to/stockfish

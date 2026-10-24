@@ -3,8 +3,9 @@
 //! source is only read.
 //!   build_mate_training --path <db> --filter '<GameFilter JSON>' --engine <exe>
 //!     --millis 800 --min 1 --max 5 --per 20 [--combinations "Q+N,R+K"]
-//!     [--pool-minors] --out <folder> --name <name>
-//! `--engine` is needed only for depths above 2.
+//!     [--pool-minors] [--minutes 40] --out <folder> --name <name>
+//! `--engine` is needed only for depths above 2. `--minutes` stops the
+//! build after that long, as Stop does in the app, and writes what was found.
 use cbh_reader::{Database, ReadLimits, search::GameFilter};
 use engine::EngineSpec;
 use openfile::mate_training::{
@@ -20,13 +21,13 @@ use std::{
 
 const USAGE: &str = "build_mate_training --path <db> --filter '<JSON>' [--engine <exe>] \
     [--millis 800] [--min 1] [--max 5] [--per 20] [--combinations \"Q+N,R+K\"] \
-    [--pool-minors] --out <folder> --name <name>";
+    [--pool-minors] [--minutes 40] --out <folder> --name <name>";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
     let (mut path, mut filter, mut engine, mut out, mut name) = (None, None, None, None, None);
     let (mut millis, mut min, mut max, mut per) = (800u64, 1u8, 5u8, 20u32);
-    let (mut combinations, mut pool_minors) = (None, false);
+    let (mut combinations, mut pool_minors, mut minutes) = (None, false, None::<u64>);
     while let Some(flag) = args.next() {
         let mut value = || args.next().ok_or(USAGE);
         match flag.as_str() {
@@ -46,6 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 )
             }
             "--pool-minors" => pool_minors = true,
+            "--minutes" => minutes = Some(value()?.parse()?),
             "--out" => out = Some(PathBuf::from(value()?)),
             "--name" => name = Some(value()?),
             _ => return Err(USAGE.into()),
@@ -89,13 +91,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let build = Instant::now();
     let mut last = Instant::now();
+    let control = Control::default();
     let (collected, outcome) = collect(
         &mut db,
         &found.ordinals,
         &options,
         &mut verifier,
-        &Control::default(),
+        &control,
         |done, total, found| {
+            if minutes.is_some_and(|m| build.elapsed() >= Duration::from_secs(60 * m)) {
+                control
+                    .stop
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+            }
             if last.elapsed() >= Duration::from_secs(10) {
                 last = Instant::now();
                 let puzzles: Vec<usize> = (1..=5).map(|d| found.puzzles(d).len()).collect();
@@ -134,7 +142,13 @@ fn print_report(r: &MateTrainingResponse, min: u8, max: u8, ran: Duration) {
         ran.as_secs_f64(),
         r.scanned,
         r.total,
-        if r.complete { " (every quota met)" } else { "" }
+        if r.complete {
+            " (every quota met)"
+        } else if r.stopped {
+            " (stopped: time limit)"
+        } else {
+            ""
+        }
     );
     print!("{:<14}", "combination");
     for d in min..=max {
