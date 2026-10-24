@@ -209,6 +209,12 @@ impl Collected {
         *self.rejections.entry(kind.into()).or_default() += 1;
     }
 
+    /// A source entry that is not a readable game.
+    pub fn skip_unreadable(&mut self) {
+        self.scanned += 1;
+        self.reject("unreadable");
+    }
+
     pub fn count(&self, combination: &str, depth: u8) -> u32 {
         self.counts
             .get(&(combination.to_string(), depth))

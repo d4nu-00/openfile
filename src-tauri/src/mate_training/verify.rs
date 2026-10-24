@@ -265,14 +265,22 @@ impl MateVerifier for EngineVerifier {
 /// The solver for mates in 1 and 2, the engine for the rest.
 pub struct CombinedVerifier {
     solver: SolverVerifier,
-    engine: EngineVerifier,
+    engine: Option<EngineVerifier>,
 }
 
 impl CombinedVerifier {
     pub fn new(engine: EngineVerifier) -> Self {
         Self {
             solver: SolverVerifier,
-            engine,
+            engine: Some(engine),
+        }
+    }
+
+    /// Mates in 1 and 2 only; a deeper step is an error.
+    pub fn solver_only() -> Self {
+        Self {
+            solver: SolverVerifier,
+            engine: None,
         }
     }
 }
@@ -280,9 +288,14 @@ impl CombinedVerifier {
 impl MateVerifier for CombinedVerifier {
     fn check(&mut self, pos: &Chess, n: u8, played: &Move) -> Result<StepCheck, AppError> {
         if n <= 2 {
-            self.solver.check(pos, n, played)
-        } else {
-            self.engine.check(pos, n, played)
+            return self.solver.check(pos, n, played);
+        }
+        match &mut self.engine {
+            Some(engine) => engine.check(pos, n, played),
+            None => Err(AppError::new(
+                "engine",
+                "Mates in 3 to 5 are checked with an engine",
+            )),
         }
     }
 }

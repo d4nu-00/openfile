@@ -1174,6 +1174,73 @@ pub async fn export_rows_pgn(
     .await
 }
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn build_mate_training(
+    state: tauri::State<'_, Arc<Registry>>,
+    settings: tauri::State<'_, crate::settings::Settings>,
+    database_id: String,
+    ranges: Vec<crate::clipboard::RowRange>,
+    options: crate::mate_training::build::BuildOptions,
+    engine_id: String,
+    millis: u64,
+    folder: PathBuf,
+    name: String,
+    events: tauri::ipc::Channel<crate::mate_training::run::MateTrainingProgress>,
+) -> Result<crate::mate_training::run::MateTrainingResponse, AppError> {
+    let s = state.inner().clone();
+    // Mates in 1 and 2 are solved exactly and need no engine.
+    let engine = if engine_id.is_empty() {
+        None
+    } else {
+        Some(
+            settings
+                .load()
+                .engines
+                .into_iter()
+                .find(|e| e.id == engine_id)
+                .map(|e| e.path)
+                .ok_or_else(|| AppError::new("engine", "That engine is not installed"))?,
+        )
+    };
+    blocking(move || {
+        let mut last = None::<std::time::Instant>;
+        s.build_mate_training(
+            crate::mate_training::run::MateTrainingParams {
+                database_id,
+                ranges,
+                options,
+                engine,
+                millis,
+                folder,
+                name,
+            },
+            |done, total, found| {
+                if last.is_none_or(|t| t.elapsed().as_millis() >= 250) || done == total {
+                    last = Some(std::time::Instant::now());
+                    let _ = events.send(crate::mate_training::run::MateTrainingProgress::of(
+                        done, total, found,
+                    ));
+                }
+            },
+        )
+    })
+    .await
+}
+#[tauri::command]
+pub fn stop_mate_training(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.stop_mate_training(database_id)
+}
+#[tauri::command]
+pub fn cancel_mate_training(
+    state: tauri::State<'_, Arc<Registry>>,
+    database_id: String,
+) -> Result<(), AppError> {
+    state.cancel_mate_training(database_id)
+}
+#[tauri::command]
 pub async fn convert_estimate(
     state: tauri::State<'_, Arc<Registry>>,
     database_id: String,

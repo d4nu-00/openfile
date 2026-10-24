@@ -72,6 +72,8 @@ pub(crate) struct State {
     /// Running conversions to 2CBH, by source database.
     pub(crate) maintenance_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     pub(crate) convert_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    /// Running Build Mate Training jobs, by source database.
+    pub(crate) mate_training: HashMap<String, Arc<crate::mate_training::run::Control>>,
     /// Games per year of each database, for the opening report, with the
     /// entry count they were counted at.
     pub(crate) year_counts: HashMap<String, (u64, Arc<std::collections::BTreeMap<u16, u64>>)>,
@@ -374,6 +376,9 @@ impl Registry {
             job.cancel();
         }
         state.preparations.remove(&id);
+        if let Some(job) = state.mate_training.remove(&id) {
+            job.cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
         if let Some((_, cancel)) = state.filtered_tree_cancels.remove(&id) {
             cancel.store(true, std::sync::atomic::Ordering::Relaxed);
         }

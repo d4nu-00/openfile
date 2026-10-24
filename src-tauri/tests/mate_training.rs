@@ -5,13 +5,16 @@ use chess_core::{
 };
 use engine::EngineSpec;
 use openfile::{
+    clipboard::RowRange,
     commands::AppError,
     mate_training::{
         build::{
             BuildOptions, Collected, combination, normalise_combination, ordered, puzzle_game,
         },
+        run::MateTrainingParams,
         verify::{CombinedVerifier, EngineVerifier, MateVerifier, SolverVerifier, StepCheck},
     },
+    registry::Registry,
 };
 use shakmaty::{Chess, EnPassantMode, Move, fen::Epd, uci::UciMove};
 use std::collections::HashMap;
@@ -800,4 +803,240 @@ fn built_puzzles_survive_a_round_trip_with_their_questions() {
         assert_eq!(back.nodes[n].training, g.nodes[n].training, "question {n}");
     }
     assert_eq!(comment(&back), comment(&g));
+}
+
+// ---- the command ----
+
+fn rows(start: u64, end: u64) -> Vec<RowRange> {
+    vec![
+        serde_json::from_value(serde_json::json!({
+            "start": start.to_string(),
+            "end": end.to_string()
+        }))
+        .unwrap(),
+    ]
+}
+
+fn rook_in_two() -> Game {
+    game(
+        "1-0",
+        Some("8/8/8/8/7R/4K3/8/6k1 w - - 0 1"),
+        "1. Kf3 Kf1 2. Rh1#",
+    )
+}
+
+/// Entries 1 to 7: a mate in 2 (R+K), two back-rank mates (R), a game that is
+/// not a mate, a smothered mate (N), the first game again, and a third
+/// back-rank mate (R).
+fn source(dir: &std::path::Path) -> std::path::PathBuf {
+    let path = dir.join("Source.2cbh");
+    let mut w = Writer::create(&path).unwrap();
+    w.append_all(&[
+        rook_in_two(),
+        back_rank('a'),
+        back_rank('b'),
+        game("*", None, "1. e4 e5"),
+        smothered(),
+        rook_in_two(),
+        back_rank('c'),
+    ])
+    .unwrap();
+    path
+}
+
+fn params(r: &Registry, dir: &std::path::Path, max: u8) -> MateTrainingParams {
+    let db = r
+        .open_database(source(dir), "o".into())
+        .unwrap()
+        .database_id;
+    MateTrainingParams {
+        database_id: db,
+        ranges: rows(1, 8),
+        options: options(1, max, 10),
+        engine: None,
+        millis: 1000,
+        folder: dir.join("out"),
+        name: "Train".into(),
+    }
+}
+
+fn out(dir: &std::path::Path) -> std::path::PathBuf {
+    let out = dir.join("out");
+    std::fs::create_dir_all(&out).unwrap();
+    out
+}
+
+fn files(dir: &std::path::Path) -> Vec<String> {
+    let mut names: Vec<String> = std::fs::read_dir(dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    names
+}
+
+fn games_of(path: &str) -> Vec<Game> {
+    let mut db = Database::open(std::path::Path::new(path), ReadLimits::default()).unwrap();
+    let n = db.info().entry_count;
+    (1..=n).map(|i| db.load(i).unwrap().game.unwrap()).collect()
+}
+
+#[test]
+fn builds_one_database_per_depth_and_one_of_chains() {
+    let d = tempfile::tempdir().unwrap();
+    let r = Registry::default();
+    let p = params(&r, d.path(), 2);
+    out(d.path());
+    let mut seen = vec![];
+    let done = r
+        .build_mate_training(p, |scanned, total, c| {
+            seen.push((scanned, total, c.puzzles(1).len()))
+        })
+        .unwrap();
+    assert!(!done.stopped && !done.cancelled);
+    assert_eq!((done.scanned.as_str(), done.total.as_str()), ("7", "7"));
+    assert_eq!(seen.last().map(|s| (s.0, s.1)), Some((7, 7)));
+    assert_eq!(
+        files(&d.path().join("out"))
+            .into_iter()
+            .filter(|f| f.ends_with(".2cbh"))
+            .collect::<Vec<_>>(),
+        [
+            "Train - Mate chains.2cbh",
+            "Train - Mate in 1.2cbh",
+            "Train - Mate in 2.2cbh"
+        ]
+    );
+    let one = &done.databases[0];
+    assert_eq!((one.depth, one.games), (Some(1), 5));
+    // R+K first, then R, then N; the second of each follows: R+K, R, N, R, R.
+    // (The repeated game is a duplicate.)
+    let starts: Vec<String> = games_of(&one.path).iter().map(start).collect();
+    assert_eq!(starts, ["8/8/8/8/7R/5K2/8/5k2 w - -", RA8, NF7, RB8, RC8]);
+    let two = &done.databases[1];
+    assert_eq!((two.depth, two.games), (Some(2), 1));
+    let chains = &done.databases[2];
+    assert_eq!((chains.depth, chains.games), (None, 2));
+    // Every game carries its questions: 1 in the mate in 1, 2 in the mate in 2.
+    let questions = |g: &Game| g.nodes.iter().filter(|n| n.training.is_some()).count();
+    assert!(games_of(&one.path).iter().all(|g| questions(g) == 1));
+    assert_eq!(questions(&games_of(&two.path)[0]), 2);
+    assert_eq!(done.puzzles, [5, 1, 0, 0, 0]);
+    assert_eq!(done.chains, 1);
+    assert_eq!(
+        done.rejections
+            .iter()
+            .find(|r| r.kind == "notMateGame")
+            .map(|r| r.count.as_str()),
+        Some("1")
+    );
+    let combos: Vec<_> = done
+        .combinations
+        .iter()
+        .map(|c| (c.combination.as_str(), c.depths[0]))
+        .collect();
+    assert_eq!(combos, [("R+K", 1), ("R", 3), ("N", 1)]);
+}
+
+#[test]
+fn the_quota_is_met_per_combination_and_the_scan_ends_when_all_are_full() {
+    let d = tempfile::tempdir().unwrap();
+    let r = Registry::default();
+    let mut p = params(&r, d.path(), 1);
+    out(d.path());
+    p.options.per = 1;
+    p.options.combinations = Some(vec!["r".into(), "n".into()]);
+    let done = r.build_mate_training(p, |_, _, _| {}).unwrap();
+    assert!(done.complete);
+    // Games 2 (R) and 5 (N) fill the quotas; the scan ends there.
+    assert_eq!(done.scanned, "5");
+    assert_eq!(done.puzzles, [2, 0, 0, 0, 0]);
+}
+
+#[test]
+fn an_existing_target_is_never_overwritten() {
+    let d = tempfile::tempdir().unwrap();
+    let r = Registry::default();
+    let p = params(&r, d.path(), 2);
+    let out = out(d.path());
+    drop(Writer::create(&out.join("Train - Mate in 2.2cbh")).unwrap());
+    let before = files(&out);
+    let e = r.build_mate_training(p, |_, _, _| {}).unwrap_err();
+    assert_eq!(e.code, "exists");
+    assert_eq!(files(&out), before);
+}
+
+#[test]
+fn stop_keeps_what_was_found() {
+    let d = tempfile::tempdir().unwrap();
+    let r = Registry::default();
+    let p = params(&r, d.path(), 2);
+    let out = out(d.path());
+    let id = p.database_id.clone();
+    let done = r
+        .build_mate_training(p, |scanned, _, _| {
+            if scanned == 1 {
+                r.stop_mate_training(id.clone()).unwrap();
+            }
+        })
+        .unwrap();
+    assert!(done.stopped && !done.cancelled);
+    assert_eq!(done.scanned, "1");
+    // The first game gives a mate in 1, a mate in 2 and a chain.
+    assert_eq!(done.puzzles, [1, 1, 0, 0, 0]);
+    assert!(files(&out).contains(&"Train - Mate in 1.2cbh".to_string()));
+    assert_eq!(done.databases.len(), 3);
+}
+
+#[test]
+fn cancel_writes_nothing() {
+    let d = tempfile::tempdir().unwrap();
+    let r = Registry::default();
+    let p = params(&r, d.path(), 2);
+    let out = out(d.path());
+    let id = p.database_id.clone();
+    let done = r
+        .build_mate_training(p, |scanned, _, _| {
+            if scanned == 1 {
+                r.cancel_mate_training(id.clone()).unwrap();
+            }
+        })
+        .unwrap();
+    assert!(done.cancelled && !done.stopped);
+    assert!(done.databases.is_empty());
+    assert!(files(&out).is_empty());
+}
+
+#[test]
+fn depths_beyond_two_need_an_engine() {
+    let d = tempfile::tempdir().unwrap();
+    let r = Registry::default();
+    let p = params(&r, d.path(), 3);
+    let out = out(d.path());
+    let e = r.build_mate_training(p, |_, _, _| {}).unwrap_err();
+    assert_eq!(e.code, "engine");
+    assert!(files(&out).is_empty());
+}
+
+#[test]
+fn a_name_that_is_a_path_or_empty_is_refused() {
+    for name in ["", "../x", "a/b", "a\\b", "  ", ".."] {
+        let d = tempfile::tempdir().unwrap();
+        let r = Registry::default();
+        let mut p = params(&r, d.path(), 1);
+        out(d.path());
+        p.name = name.into();
+        let e = r.build_mate_training(p, |_, _, _| {}).unwrap_err();
+        assert_eq!(e.code, "invalidPath", "{name:?}");
+    }
+}
+
+#[test]
+fn a_missing_folder_is_refused_and_nothing_is_created() {
+    let d = tempfile::tempdir().unwrap();
+    let r = Registry::default();
+    let p = params(&r, d.path(), 1);
+    let e = r.build_mate_training(p, |_, _, _| {}).unwrap_err();
+    assert_eq!(e.code, "invalidPath");
+    assert!(!d.path().join("out").exists());
 }
