@@ -293,6 +293,7 @@ name = "cbh-reader"
 version = "0.1.0"
 dependencies = [
  "chess-core",
+ "libc",
  "same-file",
  "serde",
  "serde_json",

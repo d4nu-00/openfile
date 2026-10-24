@@ -6,4 +6,7 @@ pub mod encode;
 pub mod moves;
 pub mod names;
 pub mod record;
+pub mod recover;
+mod recover_names;
+mod recover_publish;
 pub mod write;

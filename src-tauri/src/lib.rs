@@ -20,6 +20,7 @@ pub mod names;
 pub mod openings;
 pub mod playing_style;
 pub mod prepare;
+pub mod recovery;
 pub mod registry;
 pub mod repertoire;
 pub mod repertoire_workspace;
@@ -136,6 +137,7 @@ pub fn run() {
             }
         })
         .manage(std::sync::Arc::new(registry::Registry::default()))
+        .manage(std::sync::Arc::new(recovery::RecoveryJobs::default()))
         .manage(std::sync::Arc::new(cloud::CloudDownloads::default()))
         .setup(|app| {
             // The app was first called Chess Workbench: move its folders once.
@@ -320,6 +322,11 @@ pub fn run() {
             library::pin_database,
             library::unpin_database,
             library::set_database_kind,
+            library::set_database_properties,
+            library::set_database_view,
+            recovery::begin_recovery,
+            recovery::cancel_recovery,
+            recovery::recover_database,
             library::forget_recent,
             library::add_folder_shortcut,
             library::remove_folder_shortcut,

@@ -3,6 +3,108 @@ import { describe, expect, it } from "vitest";
 import { renderWorkbench } from "./harness";
 
 describe("database start screen", () => {
+  it("keeps a keyboard entry point after switching to a group without the selection", async () => {
+    const ui = renderWorkbench({ clean: true, initialView: "database" });
+    const screen = await ui.findByLabelText("Databases start screen");
+    await ui.user.click(
+      await within(screen).findByRole("option", { name: /test database/ }),
+    );
+    await ui.user.click(
+      within(screen).getByRole("button", { name: /Recent Databases/ }),
+    );
+    const item = await within(within(screen).getByRole("listbox")).findByRole(
+      "option",
+      { name: /Openings/ },
+    );
+    expect(item).toHaveAttribute("tabindex", "0");
+    await ui.user.click(
+      within(screen).getByRole("button", { name: "Details" }),
+    );
+    const table = within(screen).getByRole("table");
+    expect(
+      within(table).getByRole("row", { name: /Openings/ }),
+    ).toHaveAttribute("tabindex", "0");
+  });
+  it("keeps selection and keyboard opening across all four persisted views", async () => {
+    const ui = renderWorkbench({ clean: true, initialView: "database" });
+    const screen = await ui.findByLabelText("Databases start screen");
+    await ui.user.click(
+      await within(screen).findByRole("option", { name: /test database/ }),
+    );
+    for (const label of ["Tile", "Details", "Small Symbols", "Symbols"]) {
+      await ui.user.click(within(screen).getByRole("button", { name: label }));
+      const list = within(screen).getByRole(
+        label === "Details" ? "table" : "listbox",
+      );
+      const chosen = within(list).getByRole(
+        label === "Details" ? "row" : "option",
+        { selected: true },
+      );
+      expect(chosen).toHaveTextContent("test database");
+      chosen.focus();
+      await ui.user.keyboard("{End}");
+      const gone = within(list).getByRole(
+        label === "Details" ? "row" : "option",
+        { selected: true },
+      );
+      expect(gone).toHaveTextContent("Gone");
+      await ui.user.keyboard("{Enter}");
+      expect(ui.api.openDatabase).not.toHaveBeenCalled();
+      await ui.user.keyboard("{Home}");
+    }
+    expect(ui.api.setDatabaseView).toHaveBeenLastCalledWith("symbols");
+    await ui.user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(ui.queryByLabelText("Databases start screen")).toBeNull(),
+    );
+  });
+
+  it("edits local properties, keeps the dialog on failure and permits missing symbols", async () => {
+    const ui = renderWorkbench({ clean: true, initialView: "database" });
+    const screen = await ui.findByLabelText("Databases start screen");
+    await ui.user.click(
+      await within(screen).findByRole("option", { name: /Gone/ }),
+    );
+    await ui.user.click(
+      within(screen).getByRole("button", { name: "Properties" }),
+    );
+    const dialog = ui.getByRole("dialog", { name: "Database properties" });
+    expect(dialog).toHaveTextContent(/OpenFile settings/);
+    const name = within(dialog).getByLabelText("Name");
+    await ui.user.clear(name);
+    await ui.user.type(name, "Recovered collection");
+    await ui.user.selectOptions(
+      within(dialog).getByLabelText("Icon / type"),
+      "work",
+    );
+    await ui.user.type(
+      within(dialog).getByLabelText("Description"),
+      "My study notes",
+    );
+    ui.api.setDatabaseProperties.mockRejectedValueOnce(
+      new Error("Settings are read only"),
+    );
+    await ui.user.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Settings are read only",
+    );
+    expect(name).toHaveValue("Recovered collection");
+    await ui.user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(
+        ui.queryByRole("dialog", { name: "Database properties" }),
+      ).toBeNull(),
+    );
+    expect(ui.api.setDatabaseProperties).toHaveBeenLastCalledWith(
+      "/dbs/Gone.2cbh",
+      {
+        name: "Recovered collection",
+        kind: "work",
+        description: "My study notes",
+      },
+    );
+  });
+
   it("shows My Databases with no database open and opens a symbol", async () => {
     const ui = renderWorkbench({ clean: true, initialView: "database" });
     const screen = await ui.findByLabelText("Databases start screen");

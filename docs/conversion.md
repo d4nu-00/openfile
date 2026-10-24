@@ -4,6 +4,13 @@ Status: implemented on branch `convert-2cbh` (2026-10-14). The direction was
 agreed in conversation: classic databases stay read-only, so converting them
 is the way to edit their games.
 
+For a damaged **2CBH** source, use [Recover readable games](maintenance.md#recover-readable-games).
+Recovery can start before normal opening succeeds and preserves validated raw
+annotation frames and metadata instead of re-encoding them through conversion.
+Conversion retains its existing explicit omission policy; recovery never uses
+conversion as an implicit fallback for damaged or unsupported content. Classic
+recovery is not implemented.
+
 ## What the reference app does
 
 Evidence is from the reference binary (x64), analysed statically through an REA
