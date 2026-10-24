@@ -1200,6 +1200,7 @@ export interface InstalledEngine {
 }
 /** The workbench's settings, kept in its config folder. */
 export interface AppSettings {
+  databaseView?: DatabaseView;
   /** the reference app's "Maximum Board Windows": 1 to 8, 8 by default. */
   maxGameTabs: number;
   engines: InstalledEngine[];
@@ -1375,6 +1376,7 @@ export interface TablebaseAnnotation {
 export interface DatabaseSymbol {
   path: string;
   name: string;
+  description?: string;
   folder: string;
   /** One of the reference app's 20 database types. */
   kind: string;
@@ -1383,6 +1385,32 @@ export interface DatabaseSymbol {
   format?: "classic" | "new";
   entries?: number;
   problem?: string;
+}
+export type DatabaseView = "tile" | "details" | "symbols" | "smallSymbols";
+export interface DatabaseProperties {
+  name: string;
+  kind: string;
+  description: string;
+}
+export interface RecoveryProgress {
+  jobId: string;
+  stage: string;
+  done: number;
+  total: number;
+}
+export interface RecoveryReport {
+  checked: number;
+  total: number;
+  recovered: number;
+  corrupt: number;
+  unsupported: number;
+  warnings: number;
+  cancelled: boolean;
+  bytes: number;
+  problems: { ordinal: number; code: string; message: string }[];
+  problemsTruncated: boolean;
+  path: string | null;
+  reportPath: string | null;
 }
 export interface FolderShortcut {
   path: string;

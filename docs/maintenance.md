@@ -1,9 +1,9 @@
-# Database maintenance: Check Integrity, Find Double Games, Remove Deleted Games
+# Database maintenance and safe recovery
 
-Status: implemented on branch `maintenance` (2026-10-14). The direction was
-agreed in conversation. These commands rewrite the user's own 2CBH files,
-so they write to temporary files and swap them in. They never touch classic
-files.
+Status: integrity, doubles and compaction implemented; safe recovery added
+2026-10-22. Integrity is read only. Doubles and compaction require a 2CBH
+opened for editing. Recovery writes only a separate new result directory.
+Classic families are never written.
 
 Evidence is from the reference binary (x64), analysed statically through an REA
 session (`analysis/maintenance/` in the research workspace).
@@ -22,8 +22,10 @@ session (`analysis/maintenance/` in the research workspace).
   * if no, "No changes will be made" (2039).
 * **The checks.** Each database type has its own check: `0x140158990` for
   classic CBH (type 1) and `0x140155fa0` for 2CBH (type `0x1c`).
-  * The 2CBH check (`0x140155940`) runs "Check database core" (2690,
-    `0x140166840`), then the name lists (`0x14016b0b0`).
+  * Fresh tracing establishes `0x140155fa0` → `0x140162750` for the
+    2CBH core check, followed by the name lists (`0x14016b0b0`). Earlier
+    notes identified another core routine at `0x140155940`; that is not
+    the fresh traced call chain.
   * Then it checks the keys, "Check keys" (2692), when `.cko` and `.cpo`
     files exist.
   * It ends with "N errors" (2041) and a log line "Integritycheck <version>
@@ -224,7 +226,186 @@ opened for editing, after a confirmation.
     finds the right entry. A game whose entry was removed no longer has
     one.
 
-## Measurements
+## Recover readable games
+
+### Reference evidence and compatibility boundary
+
+Fresh REA/Ghidra analysis used the same x64 executable and SHA-256 recorded
+in [start screen](start-screen.md#fresh-reaghidra-evidence-2026-10-22).
+Raw requests/responses remain in the separate research workspace under
+`analysis/database-maintenance-20261022/`. String/class inventory did not
+establish a standalone safe-copy recovery command. The traced repair is
+**Check Integrity in place**; OpenFile's recovery command is explicitly its
+own operation, with no invented native command identifier.
+
+Direct observations from actual handlers:
+
+* Dispatch `0x140159220` asks whether to correct errors (2037), then asks
+  about a backup (2038), or states no changes (2039). It selects classic
+  `0x140158990` or new-family `0x140155fa0` by family type.
+* `0x140162750` validates index entries through `0x140162470` and stream
+  prologs through `0x14015f010`, rebuilds name controls `0x1401576a0`,
+  and checks records `0x140156370`. The index check compares declared and
+  physical record counts; extra physical entries can update the count in
+  repair mode. Stream repair can adjust used length; versions above `0x500`
+  are refused.
+* `0x140156370` walks entry ordinals, reports header read failures, and
+  calls `0x140157f60` to validate each game. It checks abort/progress every
+  100 entries. Repair may mark an irrecoverable entry deleted through virtual
+  slot `+0x150`; recoverable adjustments reach `0x14016eb70`, load the
+  entry, change it through `0x1401ae740(..., 0)` and write `0x14013ca20`.
+* `0x140157f60` checks frame prolog, positive length and physical bounds,
+  refuses game blocks over `0x2000000` (32 MiB), and attempts game loading.
+  Frame read/write `0x1401af990` / `0x1401afc80` corroborate the existing
+  [block contract](formats.md): marker, length/padding, checksum, type and
+  trailer. Control rebuild deletes and recreates `.2lcd`/`.2lgd`.
+
+The native backup implementation, atomic rollback and crash behavior were
+**not established**. The executable was statically analysed, not run on
+Windows. OpenFile's separate-directory publication and smaller resource
+limits below are deliberate safety choices, not claimed native behavior.
+
+### Product workflow and retention
+
+Maintenance → **Recover readable games** is available without opening a
+database. Choose a `.2cbh` source and a **new folder name that does not
+exist**. Recovery creates `Recovered.2cbh`, its three required companions,
+`recovery.jsonl` and `recovery-summary.json` together inside that folder.
+The dialog shows recovery/verification progress, Stop, counts, reasons and
+the report path. Only an explicit **Open recovered database** opens the new
+copy, read only. Failure retains the source/destination choices for retry.
+
+The source does not need to pass the normal opener. Its signature/version
+and 192-byte index stride must still be established. All complete physical
+records are examined, including records beyond a damaged smaller declared
+count; these receive a warning. An incomplete last index record is reported
+corrupt. There is no byte-by-byte search for guessed boundaries or
+unreferenced stream blocks.
+
+* Each retained game must have a readable, checksummed, correctly typed
+  move frame that decodes within the reader's supported encodings and limits.
+  Supported variations, setup positions, special results, deletion marks,
+  ratings, dates, rounds, medals and opaque record fields are retained.
+* Annotation frames must validate and parse. The entire original raw frame
+  is copied, including content OpenFile cannot display; a warning identifies
+  that content. No annotations are re-encoded or silently stripped. An absent
+  annotation reference means no annotations; a required missing/damaged
+  companion causes the entire game to be skipped.
+* Referenced player, tournament, annotator, source and team slots must pass
+  the established 2LID layout and bounded field checks. Whole original slots,
+  including opaque tails, are copied; only ids and stream offsets are
+  remapped. Unreferenced names are omitted. Missing/invalid referenced names
+  cause a corrupt-entry skip rather than invented metadata.
+* Text entries, unsupported move encodings/flags and per-entry resource
+  limits are explicitly counted **unsupported**. Malformed/truncated data
+  are **corrupt**. This delivery has no optional omission policy: marked
+  deleted games are retained. Classic CBH recovery is explicitly refused.
+
+The streamed JSON-lines report has one outcome per scanned entry with old
+entry number, new entry number for recovered games and a reason for skips
+or retained-content warnings. The summary also records family-level warnings
+such as a damaged header. The dialog/summary retain the first 500 problems
+and a truncation flag; the full entry report is not truncated.
+
+### Publication, cancellation and bounds
+
+All source handles are read only. Work takes place in a unique hidden
+`.openfile-recovery-*` directory beside the destination, initialized through
+the supported writer. Files and the report are synced, then the normal
+opener and full integrity checker verify the output. Source file identities,
+sizes, modification times and companion inventory are checked again before
+publication. Concurrent edits are refused; this is not a filesystem snapshot
+or a guarantee against a malicious writer preserving all file metadata.
+
+An exclusive atomic directory rename publishes the whole result: macOS
+`renamex_np(RENAME_EXCL)`, Linux `renameat2(RENAME_NOREPLACE)`, or Windows
+[`MoveFileW`](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefilew),
+whose documented target must be absent. General Rust directory rename is not
+used on Windows: CI demonstrated that it could replace an empty destination
+created during verification. Existing files,
+directories and symlinks are never replaced. Source/destination overlap is
+refused after resolving the parent directory. A destination appearing during
+verification also wins the race and is preserved.
+
+Stop and ordinary errors remove this job's temporary directory and publish
+nothing. A killed process can leave its hidden temporary directory; a retry
+uses a new one and never overwrites those leftovers. A crash after the commit
+rename can leave a complete verified result. Power-loss durability depends
+on the filesystem; a parent-directory sync failure after publication is
+reported as a warning. Existing databases, open games, selections and caches
+remain bound to their original source; recovered entry remapping is recorded
+in the report and opens as an independent database. No source indexes are
+copied or invalidated.
+
+| Resource | Bound |
+|---|---|
+| Physical candidate entries | 2,000,000; larger sources refused |
+| Decoded payload / raw frame | 4 MiB / 8 MiB per block, including padding in frame limit |
+| Output streams | 32 GiB each for moves and annotations; exceeding it aborts the job |
+| Retained distinct names | 250,000 total; further affected entries reported unsupported |
+| Copy buffer | 64 KiB; no whole-family or shared-frame cache |
+| In-memory problems | 500; full outcomes streamed to disk |
+| Destination disk | At least 256 MiB initially; stop below 128 MiB at progress checkpoints |
+
+Disk checks occur every 100 candidates and during verification. They are not
+a reserved quota; write errors abort and clean up. Shared source blocks are
+copied for each retained game, so output can exceed source size. Reports and
+name slots require additional space beyond the two stream caps. Stop is
+checked between entries and before publication; a filesystem call, bounded
+block decode, or verification's bounded name-table scan can delay it.
+
+### Native acceptance and measurements (2026-10-22)
+
+A separately identified native Tauri build used only disposable synthetic
+families for writes. An 80-game original included comments, variations,
+coloured squares/arrows, metadata, special results and one deletion mark.
+Its damaged copy had a bad entry count, independent move/annotation/name
+damage at entries 3/7/11 and a text entry at 80. Native recovery produced
+76 games, three corrupt skips and one unsupported text. All 76 decoded
+games plus results/deletion/medals matched the known original; the output
+passed native Check Integrity (76 games, one deleted, no problems).
+
+Native progress and Stop were exercised on 100,000 entries: no result was
+published after Stop. A subsequently created destination with a marker file
+was refused and preserved. Existing Check Integrity passed on the original;
+Find Double Games compared 80 and marked zero (these four-ply fixtures fall
+below its minimum comparison length). A separate two-game, eight-ply duplicate
+fixture then marked game 2 and kept game 1; integrity reported two games, one
+deleted and no problems. Compaction on another disposable copy removed one deleted
+game, retained 79 and passed integrity afterwards. Large native read-only
+browsing reached entry 11,151,119 of the available classic database.
+
+Warm-cache release examples on the development Mac, including verification:
+
+| Operation | Time | Whole-process peak RSS | Four-file output |
+|---|---:|---:|---:|
+| Damaged synthetic 80 → 76 games | 0.130 s (0.43 s process wall) | 3.33 MiB | 373,234 bytes |
+| Synthetic 100,000 → 100,000 games | 2.635 s | 5.42 MiB | 61,608,868 bytes |
+| Read-only 11,151,119-entry classic: open, final 100 rows, last game | 2.83 / 10.90 / 1.13 ms | 3.61 MiB | no writes; 10,894 bytes read |
+
+These are small-game recovery fixtures, not a maximum-memory or worst-case
+disk benchmark. Large database recovery is capped at 2 M entries; only
+browsing was measured on the 11 M source. The CLI process RSS excludes the
+native WebView. Item reports require extra disk space.
+
+All native screenshots were captured and visually inspected:
+[result](media/database-recovery-result.png),
+[output integrity](media/database-recovery-integrity.png),
+[progress](media/database-recovery-progress.png),
+[stopped](media/database-recovery-stopped.png),
+[destination conflict](media/database-recovery-collision.png), and
+[compaction](media/database-compaction.png), and
+[positive duplicate marking](media/database-doubles.png).
+
+## Follow-on §2 work
+
+Physical Sort Database and Fix Sort Order remain separate from existing
+list-view sorting and require transactional entry remapping for open games,
+sort/search indexes and opening trees. Setting ECO is already implemented;
+final-material/rating/team/round bulk updates and previewable name cleanup
+remain unfinished. No niche P3 features are included here.
+
+## Earlier maintenance measurements
 
 Release build on the development Mac, through
 `cbh-reader/examples/maintain.rs`, warm cache.

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import {
   BookMarked,
   BookOpen,
@@ -54,7 +54,7 @@ export const KINDS: Record<string, [string, LucideIcon]> = {
 };
 
 export type StartGroup = "favorites" | "recent" | { folder: string };
-export type StartView = "symbols" | "details";
+export type StartView = import("../api/types").DatabaseView;
 
 const sameGroup = (a: StartGroup, b: StartGroup) =>
   typeof a === "string" || typeof b === "string"
@@ -73,6 +73,7 @@ export function StartScreen({
   onView,
   onOpen,
   onSelect,
+  onProperties,
   refresh,
 }: {
   api: WorkbenchApi;
@@ -82,6 +83,7 @@ export function StartScreen({
   onOpen: (path: string) => void;
   /** The chosen symbol, for commands that act on it. */
   onSelect: (symbol: DatabaseSymbol | undefined) => void;
+  onProperties: (symbol: DatabaseSymbol) => void;
   /** Changes when the lists may have changed. */
   refresh: number;
 }) {
@@ -95,6 +97,8 @@ export function StartScreen({
   const [chosen, setChosen] = useState<string>();
   const [error, setError] = useState<string>();
   const [reload, setReload] = useState(0);
+  const items = useRef(new Map<string, HTMLElement>());
+  const focusPath = useRef<string | undefined>(undefined);
   const again = () => setReload((n) => n + 1);
 
   useEffect(() => {
@@ -144,8 +148,49 @@ export function StartScreen({
   const selected = symbols.find((s) => s.path === chosen);
   useEffect(
     () => onSelect(selected),
-    [selected?.path, selected?.favorite, selected?.kind],
+    [
+      selected?.path,
+      selected?.favorite,
+      selected?.kind,
+      selected?.name,
+      selected?.description,
+    ],
   );
+  useEffect(() => {
+    const path =
+      focusPath.current ??
+      (document.activeElement === document.body ? chosen : undefined);
+    if (path) items.current.get(path)?.focus();
+    focusPath.current = undefined;
+  }, [view]);
+  const keyboard = (e: KeyboardEvent<HTMLElement>, s: DatabaseSymbol) => {
+    const i = symbols.findIndex((x) => x.path === s.path);
+    let next = i;
+    if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = symbols.length - 1;
+    else if (["ArrowRight", "ArrowDown"].includes(e.key))
+      next = Math.min(symbols.length - 1, i + 1);
+    else if (["ArrowLeft", "ArrowUp"].includes(e.key))
+      next = Math.max(0, i - 1);
+    else if (e.key === "Enter" && !e.altKey) {
+      e.preventDefault();
+      if (s.exists) onOpen(s.path);
+      return;
+    } else return;
+    e.preventDefault();
+    setChosen(symbols[next].path);
+    items.current.get(symbols[next].path)?.focus();
+  };
+  const switchView = (next: StartView) => {
+    if (
+      document.activeElement &&
+      [...items.current.values()].includes(
+        document.activeElement as HTMLElement,
+      )
+    )
+      focusPath.current = chosen;
+    onView(next);
+  };
 
   const act = (p: Promise<unknown>) =>
     void p
@@ -256,23 +301,29 @@ export function StartScreen({
         <header className="start-head">
           <strong>{title}</strong>
           <div className="segmented" role="group" aria-label="View">
-            <button
-              type="button"
-              aria-pressed={view === "symbols"}
-              onClick={() => onView("symbols")}
-            >
-              Symbols
-            </button>
-            <button
-              type="button"
-              aria-pressed={view === "details"}
-              onClick={() => onView("details")}
-            >
-              Details
-            </button>
+            {(
+              [
+                ["tile", "Tile"],
+                ["details", "Details"],
+                ["symbols", "Symbols"],
+                ["smallSymbols", "Small Symbols"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={view === id}
+                onClick={() => switchView(id)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
           {selected && (
             <div className="start-actions">
+              <button type="button" onClick={() => onProperties(selected)}>
+                Properties
+              </button>
               <button
                 type="button"
                 onClick={() => onOpen(selected.path)}
@@ -332,9 +383,9 @@ export function StartScreen({
         )}
         {!symbols.length ? (
           <div className="empty-state">{empty}</div>
-        ) : view === "symbols" ? (
+        ) : view !== "details" ? (
           <div
-            className="start-symbols"
+            className={`start-symbols start-${view}`}
             role="listbox"
             aria-label={`${title} symbols`}
           >
@@ -344,13 +395,21 @@ export function StartScreen({
                 type="button"
                 role="option"
                 aria-selected={chosen === s.path}
-                title={s.path}
+                ref={(el) => {
+                  if (el) items.current.set(s.path, el);
+                  else items.current.delete(s.path);
+                }}
+                tabIndex={
+                  chosen === s.path || (!selected && s === symbols[0]) ? 0 : -1
+                }
+                title={[s.description, s.path, s.problem]
+                  .filter(Boolean)
+                  .join("\n")}
                 className={`db-symbol${s.exists ? "" : " missing"}`}
                 onClick={() => setChosen(s.path)}
+                onFocus={() => setChosen(s.path)}
                 onDoubleClick={() => s.exists && onOpen(s.path)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && s.exists) onOpen(s.path);
-                }}
+                onKeyDown={(e) => keyboard(e, s)}
               >
                 {icon(s)}
                 <span className="db-name">{s.name}</span>
@@ -358,6 +417,11 @@ export function StartScreen({
                   {size(s)}
                   {s.format ? ` · ${s.format === "new" ? "2CBH" : "CBH"}` : ""}
                 </span>
+                {view === "tile" && (
+                  <span className="db-description">
+                    {s.description || s.folder}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -373,6 +437,7 @@ export function StartScreen({
                 <th>Format</th>
                 <th>Type</th>
                 <th>Folder</th>
+                <th>Description</th>
               </tr>
             </thead>
             <tbody>
@@ -380,8 +445,19 @@ export function StartScreen({
                 <tr
                   key={s.path}
                   aria-selected={chosen === s.path}
+                  ref={(el) => {
+                    if (el) items.current.set(s.path, el);
+                    else items.current.delete(s.path);
+                  }}
+                  tabIndex={
+                    chosen === s.path || (!selected && s === symbols[0])
+                      ? 0
+                      : -1
+                  }
                   className={s.exists ? undefined : "missing"}
                   onClick={() => setChosen(s.path)}
+                  onFocus={() => setChosen(s.path)}
+                  onKeyDown={(e) => keyboard(e, s)}
                   onDoubleClick={() => s.exists && onOpen(s.path)}
                 >
                   <td>
@@ -394,6 +470,7 @@ export function StartScreen({
                   <td>{s.format === "new" ? "2CBH" : s.format ? "CBH" : ""}</td>
                   <td>{KINDS[s.kind]?.[0] ?? s.kind}</td>
                   <td title={s.folder}>{s.folder}</td>
+                  <td>{s.description}</td>
                 </tr>
               ))}
             </tbody>

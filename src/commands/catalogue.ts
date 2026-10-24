@@ -175,6 +175,20 @@ const list: CommandMeta[] = [
     views: db,
   },
   {
+    id: "view-tile",
+    label: "Tile",
+    tip: "View database symbols as tiles",
+    icon: LayoutGrid,
+    views: db,
+  },
+  {
+    id: "view-small-symbols",
+    label: "Small Symbols",
+    tip: "Databases as small symbols",
+    icon: List,
+    views: db,
+  },
+  {
     id: "view-details",
     label: "Details",
     tip: "List Database Details",
@@ -350,6 +364,7 @@ const list: CommandMeta[] = [
     label: "Properties",
     tip: "Show database properties",
     icon: Info,
+    keys: "Alt+Enter",
     views: db,
   },
   {
@@ -363,6 +378,13 @@ const list: CommandMeta[] = [
     id: "check-integrity",
     label: "Check Integrity",
     tip: "Check the technical integrity of all database files.",
+    icon: Wrench,
+    views: db,
+  },
+  {
+    id: "recover-database",
+    label: "Recover readable games",
+    tip: "Recover readable games from a damaged 2CBH into a new verified copy (OpenFile)",
     icon: Wrench,
     views: db,
   },
@@ -1348,7 +1370,15 @@ const viewTab: RibbonTab = {
   label: "View",
   groups: [
     { label: "Layout", items: [L("layout-standard")] },
-    { label: "Databases", items: [S("view-symbols"), S("view-details")] },
+    {
+      label: "Databases",
+      items: [
+        S("view-tile"),
+        S("view-details"),
+        S("view-symbols"),
+        S("view-small-symbols"),
+      ],
+    },
     {
       label: "Theme",
       items: [
@@ -1468,6 +1498,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             L("backup-database"),
             S("database-properties"),
             S("convert-to-2cbh"),
+            S("recover-database"),
           ],
         },
         {

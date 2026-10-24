@@ -2210,6 +2210,109 @@ kbd {
   height: 14px;
   vertical-align: -2px;
 }
+.start-tile {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.start-tile .db-symbol {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  text-align: left;
+  align-content: start;
+  gap: 4px 12px;
+}
+.start-tile .db-symbol svg {
+  grid-row: 1 / 4;
+}
+.db-description {
+  font-size: 12px;
+  opacity: 0.8;
+  overflow-wrap: anywhere;
+}
+.start-smallSymbols {
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 2px;
+}
+.start-smallSymbols .db-symbol {
+  flex-direction: row;
+  text-align: left;
+  padding: 6px 8px;
+  gap: 8px;
+}
+.start-smallSymbols .db-symbol svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.start-smallSymbols .db-symbol .hint {
+  display: none;
+}
+.db-symbol:focus-visible,
+.start-details tr:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.database-properties.modal {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: min(540px, calc(100vw - 32px));
+  gap: 12px;
+}
+.database-properties label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.database-properties textarea {
+  resize: vertical;
+  min-height: 80px;
+  font: inherit;
+}
+.database-properties .database-kind-preview {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+}
+.database-kind-preview svg {
+  width: 36px;
+  height: 36px;
+  color: var(--accent);
+  grid-row: 1 / 3;
+}
+.modal.recovery-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: min(700px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  gap: 10px;
+}
+.recovery-dialog h2,
+.recovery-dialog p {
+  margin: 0;
+}
+.recovery-dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+}
+.recovery-dialog .path {
+  font-weight: 400;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.recovery-dialog progress {
+  width: 100%;
+}
+.recovery-problems {
+  max-height: 180px;
+  overflow: auto;
+  font-size: 12px;
+}
+.recovery-problems ul {
+  padding-left: 20px;
+}
 @media (max-width: 760px) {
   .start-nav {
     width: 160px;
