@@ -190,6 +190,24 @@ fn stockfish_finds_another_first_move_and_a_different_length() {
 
 #[test]
 #[ignore = "needs OPENFILE_TEST_STOCKFISH"]
+fn stockfish_finds_the_second_mate_in_three_that_shows_late() {
+    // 1.Ne7+ was played, but 1.Rh8+ mates in three too. Stockfish shows the
+    // second line's mate only from depth 12, so a search that stops at the
+    // first depth where the best line is a mate in three calls it unique.
+    let mut v = EngineVerifier::spawn(stockfish(), 800).unwrap();
+    assert_eq!(
+        check(
+            &mut v,
+            "6k1/5p2/4pPnR/1p1pPNK1/1p1P2P1/1Pr5/P1r5/7R w - - 0 42",
+            3,
+            "f5e7"
+        ),
+        StepCheck::NotUnique
+    );
+}
+
+#[test]
+#[ignore = "needs OPENFILE_TEST_STOCKFISH"]
 fn stockfish_treats_a_position_without_mate_as_not_a_mate() {
     let mut v = EngineVerifier::spawn(stockfish(), 500).unwrap();
     assert_eq!(

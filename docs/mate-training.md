@@ -97,9 +97,12 @@ is legal) ends the chain before it and is counted as "unstorable".
   `MultiPV` 2 and the engine's own defaults for Threads and Hash (the options
   saved with the engine in Engine Management, and tablebases, are not used,
   because a tablebase win is not scored as a mate). Each position is
-  searched until the best line is `mate n` at a depth of at least `2n + 4`
-  with the second line searched as deep, or until **Time per check** ends.
-  The step is valid when the best line is a mate in exactly `n`, the second
+  searched until the best line is a mate shorter than `n` (proven by its
+  score), or `mate n` at a depth of at least `3n + 6` with the second line
+  searched as deep (a second mate in `n` can show a few plies after the
+  first), or until **Time per check** ends; a plain score or a longer mate
+  waits for the time, because the engine often shows those before it finds the
+  shortest mate. The step is valid when the best line is a mate in exactly `n`, the second
   line is not a mate in `n` or fewer, and the best line's first move is the
   game's. A position with a single legal move has no second line, which is
   unique. A search that ends with no score is a timeout, never valid.
@@ -107,7 +110,9 @@ is legal) ends the chain before it and is counted as "unstorable".
 A uniqueness check with an engine can only see what the engine finds in its
 time: a second mating move that the engine has not reached is missed, so a
 puzzle can be accepted that has a second, longer-to-find mate in `n`. Raising
-the time makes the check stricter. Mates in 1 and 2 do not have this limit.
+the time makes the check stricter. The engine keeps its hash between
+positions, so what it finds within the time can differ a little from one run
+to the next. Mates in 1 and 2 do not have this limit.
 
 A game that is not used, and why, is counted by kind: not a forced mate, a
 shorter or a longer mate, more than one mating move, a mate with another

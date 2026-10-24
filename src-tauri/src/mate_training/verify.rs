@@ -144,10 +144,11 @@ pub fn classify(n: u8, lines: &BTreeMap<u32, Line>, played: &str, legal: usize) 
 
 /// Whether the search can stop before its time is up: a mate shorter than
 /// `n` is proven by its score, and a mate in `n` is settled once the best
-/// line has been searched to a depth of `2n + 4` and the second line to the
-/// same depth (a position with one legal move has none). Anything else waits
-/// for the time cap: the engine often shows a longer mate, or none, before it
-/// finds the shortest one.
+/// line has been searched to a depth of `3n + 6` and the second line to the
+/// same depth (a position with one legal move has none): a second mate in `n`
+/// can show a few plies later than the first. Anything else waits for the time
+/// cap: the engine often shows a longer mate, or none, before it finds the
+/// shortest one.
 pub fn settled(n: u8, lines: &BTreeMap<u32, Line>, legal: usize) -> bool {
     let Some(best) = lines.get(&1) else {
         return false;
@@ -155,7 +156,7 @@ pub fn settled(n: u8, lines: &BTreeMap<u32, Line>, legal: usize) -> bool {
     match mate_moves(best) {
         Some(m) if m < i32::from(n) => true,
         Some(m) if m == i32::from(n) => {
-            best.depth.is_some_and(|d| d >= 2 * u32::from(n) + 4)
+            best.depth.is_some_and(|d| d >= 3 * u32::from(n) + 6)
                 && (legal == 1
                     || lines
                         .get(&2)
@@ -446,17 +447,31 @@ mod tests {
 
     #[test]
     fn a_mate_in_n_waits_for_the_second_line_to_catch_up() {
-        let best = deep(10, MATE_3, "a");
+        // The second line can show its own mate in n late: in a position with
+        // two mates in three it first did so at depth 12.
+        let best = deep(15, MATE_3, "a");
         assert!(!settled(3, &lines(std::slice::from_ref(&best)), 20));
-        assert!(!settled(3, &lines(&[best.clone(), deep(9, CP, "b")]), 20));
-        assert!(settled(3, &lines(&[best.clone(), deep(10, CP, "b")]), 20));
+        assert!(!settled(3, &lines(&[best.clone(), deep(14, CP, "b")]), 20));
+        assert!(settled(3, &lines(&[best.clone(), deep(15, CP, "b")]), 20));
         // Too shallow, even with both lines.
         assert!(!settled(
             3,
-            &lines(&[deep(9, MATE_3, "a"), deep(9, CP, "b")]),
+            &lines(&[deep(14, MATE_3, "a"), deep(14, CP, "b")]),
+            20
+        ));
+        assert!(!settled(
+            3,
+            &lines(&[deep(10, MATE_3, "a"), deep(10, CP, "b")]),
             20
         ));
         // A position with one legal move has no second line.
         assert!(settled(3, &lines(&[best]), 1));
+        // Deeper mates are searched deeper: 3n + 6.
+        let mate5 = Score::Mate {
+            moves: 5,
+            bound: None,
+        };
+        assert!(!settled(5, &lines(&[deep(20, mate5.clone(), "a")]), 1));
+        assert!(settled(5, &lines(&[deep(21, mate5, "a")]), 1));
     }
 }
