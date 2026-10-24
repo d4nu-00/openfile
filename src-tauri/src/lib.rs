@@ -17,6 +17,7 @@ pub mod export;
 pub mod library;
 pub mod lists;
 pub mod maintenance;
+pub mod mate_training;
 pub mod names;
 pub mod openings;
 pub mod playing_style;
