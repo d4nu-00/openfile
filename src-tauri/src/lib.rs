@@ -17,6 +17,7 @@ pub mod library;
 pub mod lists;
 pub mod maintenance;
 pub mod names;
+pub mod novelty;
 pub mod openings;
 pub mod playing_style;
 pub mod prepare;
@@ -188,6 +189,7 @@ pub fn run() {
         .manage(std::sync::Arc::new(
             centipawn_list::CentipawnListJob::default(),
         ))
+        .manage(std::sync::Arc::new(novelty::NoveltyJob::default()))
         .manage(std::sync::Arc::new(deep_analysis::DeepJobs::default()))
         .manage(std::sync::Arc::new(tablebases::Tablebases::default()))
         .manage(ExitPolicy::default())
@@ -260,6 +262,8 @@ pub fn run() {
             centipawn_list::centipawn_list,
             centipawn_list::cancel_centipawn_list,
             centipawn_list::save_csv,
+            novelty::find_novelty,
+            novelty::cancel_find_novelty,
             evaluation_profile::cancel_instant_analysis,
             repertoire::frequent_players,
             repertoire::generate_repertoire,

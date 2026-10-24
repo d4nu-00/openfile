@@ -386,6 +386,16 @@ export function mockApi(
       csv: "",
     }),
     cancelCentipawnList: vi.fn().mockResolvedValue(undefined),
+    findNovelty: vi.fn().mockResolvedValue({
+      novelty: null,
+      knownPly: 0,
+      total: 0,
+      games: [],
+      queries: 0,
+      notSearched: false,
+      cancelled: false,
+    }),
+    cancelFindNovelty: vi.fn().mockResolvedValue(undefined),
     chooseCsv: vi.fn().mockResolvedValue("/synthetic/stats.csv"),
     saveCsv: vi.fn().mockResolvedValue(undefined),
     deepAnalysis: vi

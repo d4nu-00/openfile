@@ -137,6 +137,11 @@ CSV columns; its game weights come from the workbench's move weights rather
 than the reference app's engine complexity, and Weighted Av is printed
 unscaled (see [centipawn analysis](centipawn-analysis.md)).
 
+Find Novelty searches the open database, not a separate reference
+database, and walks the line forward to its first new move, where the
+reference app walks back to the deepest known position (see
+[novelty](novelty.md)).
+
 Move medals, move times, diagrams, pawn structures, piece paths and stored
 evaluations (annotation types 0x22, 0x07, 0x06, 0x14, 0x15, 0x21) are read
 from both families, shown, and written back to 2CBH. Move times and

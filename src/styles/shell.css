@@ -1406,6 +1406,29 @@ kbd {
 .extra.evaluation {
   font-variant-numeric: tabular-nums;
 }
+.modal.novelty {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 8px;
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(80vh, 760px);
+  overflow-y: auto;
+  cursor: default;
+}
+.modal.novelty .table-scroll {
+  max-height: 360px;
+  overflow: auto;
+}
+.modal.novelty table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.modal.novelty th,
+.modal.novelty td {
+  padding: 2px 6px;
+  text-align: left;
+}
 .modal.move-extra {
   flex-direction: column;
   flex-wrap: nowrap;

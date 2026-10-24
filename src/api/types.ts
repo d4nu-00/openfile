@@ -183,6 +183,18 @@ export interface CentipawnListProgress {
   total: number;
   label: string;
 }
+/** Find Novelty (docs/novelty.md). */
+export interface NoveltyReport {
+  /** The novelty: the move reaching `ply` (node `node`). */
+  novelty?: { ply: number; node: NodeId } | null;
+  /** The deepest ply other games reach. */
+  knownPly: number;
+  total: number;
+  games: EntrySummary[];
+  queries: number;
+  notSearched: boolean;
+  cancelled: boolean;
+}
 /** Instant Analysis's state while it runs and at the end. */
 export interface InstantProgress {
   revision: string;

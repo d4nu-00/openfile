@@ -10,6 +10,7 @@ import {
   type AppSettings,
   type BlunderParams,
   type CentipawnReport,
+  type NoveltyReport,
   type Classification,
   type GameView,
   type RepertoireGrade,
@@ -56,6 +57,8 @@ import { mainLine, useInstantAnalysis } from "./state/evalProfile";
 import { EvalProfile } from "./components/EvalProfile";
 import { CentipawnListDialog } from "./components/CentipawnListDialog";
 import { MedalDialog, MoveTimeDialog } from "./components/MoveExtrasDialogs";
+import { NoveltyDialog } from "./components/NoveltyDialog";
+import { plyName } from "./components/EvalProfile";
 import { boardMarks } from "./state/moveExtras";
 import { EngineManagement } from "./components/EngineManagement";
 import { TablebasePane } from "./components/TablebasePane";
@@ -210,6 +213,13 @@ export function App({
   /** Tactical Analysis: open, its progress while running, its error. */
   /** The move whose training question is being edited, and any error. */
   const [training, setTraining] = useState<{ node: number; error?: string }>();
+  /** Find Novelty: running, then its answer. */
+  const [novelty, setNovelty] = useState<{
+    documentId: string;
+    running: boolean;
+    report?: NoveltyReport;
+    error?: string;
+  }>();
   /** Set Medal or Move Time for a move. */
   const [extraDialog, setExtraDialog] = useState<{
     kind: "medal" | "moveTime";
@@ -2421,6 +2431,24 @@ export function App({
       },
       pressed: !!settings.instantAnalysis?.enabled,
     },
+    "find-novelty": {
+      run: async () => {
+        const doc = state.document?.documentId;
+        const db = state.database?.databaseId;
+        if (!doc || !db) return;
+        setNovelty({ documentId: doc, running: true });
+        try {
+          const report = await api.findNovelty(doc, db);
+          setNovelty({ documentId: doc, running: false, report });
+          if (report.novelty && w.current.current.document?.documentId === doc)
+            void w.selectNode(report.novelty.node);
+        } catch (err) {
+          setNovelty({ documentId: doc, running: false, error: explain(err) });
+        }
+      },
+      enabled:
+        !!state.document?.documentId && !!state.database && !novelty?.running,
+    },
     "set-medal": {
       run: () => setExtraDialog({ kind: "medal", node: selected }),
       enabled: !!state.document?.documentId && !e.busy,
@@ -3529,6 +3557,27 @@ export function App({
           api={api}
           source={replay.source}
           onClose={() => setReplay(undefined)}
+        />
+      )}
+      {novelty && (
+        <NoveltyDialog
+          report={novelty.report}
+          running={novelty.running}
+          error={novelty.error}
+          databaseName={state.database?.name ?? "the database"}
+          moveName={(ply) =>
+            plyName(
+              ply,
+              game?.nodes[lineIds[ply]]?.san ?? "",
+              game?.startFen.split(" ")[1] !== "b",
+            )
+          }
+          onSelectNovelty={() => {
+            const node = novelty.report?.novelty?.node;
+            if (node !== undefined) void w.selectNode(node);
+          }}
+          onStop={() => void api.cancelFindNovelty()}
+          onClose={() => setNovelty(undefined)}
         />
       )}
       {extraDialog?.kind === "medal" && (
