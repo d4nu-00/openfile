@@ -1,7 +1,10 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { afterEach } from "vitest";
 afterEach(cleanup);
+// findBy*/waitFor give up after 1s by default, which slow Windows CI runners
+// overrun mid-flow; testTimeout in vite.config.ts still bounds each test.
+configure({ asyncUtilTimeout: 5000 });
 // jsdom lacks ResizeObserver, which the resizable panes observe.
 globalThis.ResizeObserver ??= class {
   observe() {}
