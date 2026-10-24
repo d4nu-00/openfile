@@ -1,6 +1,50 @@
 use openfile::{registry::Registry, settings::Settings};
 
 #[test]
+fn properties_and_view_persist_without_writing_database_files() {
+    use openfile::settings::{DatabaseProperties, DatabaseView};
+    let d = tempfile::tempdir().unwrap();
+    let s = Settings::default();
+    s.set_dir(&d.path().join("config"));
+    let p = d.path().join("Missing.2cbh");
+    s.record_opened(&p).unwrap();
+    let props = DatabaseProperties {
+        path: p.clone(),
+        name: "Study".into(),
+        kind: "work".into(),
+        description: "Personal study notes".into(),
+    };
+    s.set_database_properties(props.clone()).unwrap();
+    s.set_database_view(DatabaseView::SmallSymbols).unwrap();
+    s.unpin_database(&p).unwrap();
+    let reloaded = Settings::default();
+    reloaded.set_dir(&d.path().join("config"));
+    let screen = reloaded.start_screen();
+    assert_eq!(screen.recent[0].name, "Study");
+    assert_eq!(screen.recent[0].description, "Personal study notes");
+    assert_eq!(screen.recent[0].kind, "work");
+    assert!(!screen.recent[0].exists);
+    assert_eq!(reloaded.load().database_view, DatabaseView::SmallSymbols);
+    assert!(!p.exists());
+    assert_eq!(std::fs::read_dir(d.path()).unwrap().count(), 1);
+    assert!(
+        s.set_database_properties(DatabaseProperties {
+            name: "x".repeat(129),
+            ..props.clone()
+        })
+        .is_err()
+    );
+    assert!(
+        s.set_database_properties(DatabaseProperties {
+            kind: "invalid".into(),
+            ..props
+        })
+        .is_err()
+    );
+    assert_eq!(reloaded.start_screen().recent[0].name, "Study");
+}
+
+#[test]
 fn opening_records_recent_and_my_databases_and_folders_list_databases() {
     let d = tempfile::tempdir().unwrap();
     let s = Settings::default();

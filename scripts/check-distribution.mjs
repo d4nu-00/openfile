@@ -109,6 +109,7 @@ export function allowedSourcePath(candidate) {
   if (
     [
       "docs/superpowers/plans/2026-10-20-material-result-search.md",
+      "docs/superpowers/plans/2026-10-22-database-maintenance.md",
       "docs/superpowers/plans/2026-10-20-playing-style.md",
       "docs/superpowers/specs/2026-10-20-playing-style-design.md",
       "docs/superpowers/plans/2026-10-18-filtered-opening-tree.md",

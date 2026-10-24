@@ -10,5 +10,6 @@ serde.workspace = true
 thiserror.workspace = true
 same-file = "1"
 tempfile.workspace = true
-[dev-dependencies]
 serde_json.workspace = true
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

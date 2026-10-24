@@ -79,6 +79,10 @@ import type {
   StatGroup,
   TablebaseAnnotation,
   StartScreenData,
+  DatabaseView,
+  DatabaseProperties,
+  RecoveryProgress,
+  RecoveryReport,
   FolderListing,
   CloudStatus,
   CloudProgress,
@@ -201,6 +205,25 @@ export const backend = {
     open({
       multiple: false,
       filters: [{ name: "Chess databases", extensions: ["cbh", "2cbh"] }],
+    }),
+  chooseRecoveryDestination: () =>
+    save({
+      title: "New recovery result folder (must not exist)",
+      defaultPath: "Recovered games",
+    }),
+  beginRecovery: () => invoke<string>("begin_recovery"),
+  cancelRecovery: (jobId: string) => invoke<void>("cancel_recovery", { jobId }),
+  recoverDatabase: (
+    jobId: string,
+    source: string,
+    destination: string,
+    onProgress: (p: RecoveryProgress) => void,
+  ) =>
+    invoke<RecoveryReport>("recover_database", {
+      jobId,
+      source,
+      destination,
+      events: channel(onProgress),
     }),
   startupRequest: () => invoke<StartupRequest | null>("startup_request"),
   startupShown: () => invoke<void>("startup_shown"),
@@ -781,6 +804,10 @@ export const backend = {
   unpinDatabase: (path: string) => invoke<void>("unpin_database", { path }),
   setDatabaseKind: (path: string, kind: string) =>
     invoke<void>("set_database_kind", { path, kind }),
+  setDatabaseProperties: (path: string, properties: DatabaseProperties) =>
+    invoke<void>("set_database_properties", { path, properties }),
+  setDatabaseView: (view: DatabaseView) =>
+    invoke<void>("set_database_view", { view }),
   forgetRecent: (path: string) => invoke<void>("forget_recent", { path }),
   addFolderShortcut: (folder: string) =>
     invoke<void>("add_folder_shortcut", { folder }),

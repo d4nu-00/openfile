@@ -24,6 +24,14 @@ that executable. No the reference app code or resources were copied.
 
 ## 2CBH records
 
+The recovery reader uses these established boundaries without requiring a
+healthy declared count or stream used-length header. It examines complete
+physical 192-byte records only; signature/version/stride damage is refused.
+Referenced raw blocks and whole 2LID slots are retained after validation,
+with offsets/name ids remapped. Missing required content skips the whole
+game. Text recovery and unknown move encodings remain unsupported and are
+itemised. See [recovery contracts and limits](maintenance.md#recover-readable-games).
+
 Record 0 is the file header. Its LE16 at byte 10 is the record stride (192).
 Its LE64 at byte 16 is the record count, header included (`0x1401ceab0`,
 `0x1401cd6a0`). The reader accepts only stride 192.

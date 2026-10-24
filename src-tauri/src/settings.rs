@@ -58,6 +58,26 @@ fn unspecific() -> String {
     "unspecific".into()
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DatabaseView {
+    Tile,
+    Details,
+    #[default]
+    Symbols,
+    SmallSymbols,
+}
+
+/// Local display properties, never serialized into a database companion.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DatabaseProperties {
+    pub path: PathBuf,
+    pub name: String,
+    pub kind: String,
+    pub description: String,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AppSettings {
@@ -78,6 +98,9 @@ pub struct AppSettings {
     /// Folders shown beside My Databases.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub folder_shortcuts: Vec<PathBuf>,
+    pub database_view: DatabaseView,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub database_properties: Vec<DatabaseProperties>,
     /// Instant Analysis (the reference app's `V_INSTANT`, `V_IDEPTH`,
     /// `V_ENDLESS`).
     pub instant_analysis: InstantSettings,
@@ -115,6 +138,8 @@ impl Default for AppSettings {
             recent_databases: vec![],
             favorites: vec![],
             folder_shortcuts: vec![],
+            database_view: DatabaseView::default(),
+            database_properties: vec![],
             instant_analysis: InstantSettings::default(),
             eval_profile_pane: false,
             eval_profile_notation: false,
@@ -205,6 +230,21 @@ impl AppSettings {
         {
             return invalid("Unknown database type");
         }
+        if self.database_properties.len() > MAX_FAVORITES
+            || !paths_ok(self.database_properties.iter().map(|p| &p.path))
+            || self.database_properties.iter().any(|p| {
+                p.name.trim().is_empty()
+                    || p.name.len() > MAX_NAME
+                    || p.name.chars().any(char::is_control)
+                    || p.description.len() > 2048
+                    || p.description.contains('\0')
+                    || !DATABASE_KINDS.contains(&p.kind.as_str())
+            })
+        {
+            return invalid(
+                "Properties need a name of at most 128 bytes, a known type and a description of at most 2048 bytes (up to 200 databases)",
+            );
+        }
         Ok(())
     }
 }
@@ -267,6 +307,9 @@ impl Settings {
         let dir = path.parent().ok_or_else(|| io("No settings folder"))?;
         std::fs::create_dir_all(dir).map_err(io)?;
         let text = serde_json::to_vec_pretty(settings).map_err(io)?;
+        if text.len() as u64 > MAX_BYTES {
+            return Err(AppError::new("limitExceeded", "The settings file is full"));
+        }
         let mut temp = tempfile::NamedTempFile::new_in(dir).map_err(io)?;
         temp.write_all(&text).map_err(io)?;
         temp.as_file().sync_all().map_err(io)?;
@@ -291,6 +334,8 @@ pub fn set_settings(
     settings.recent_databases = kept.recent_databases;
     settings.favorites = kept.favorites;
     settings.folder_shortcuts = kept.folder_shortcuts;
+    settings.database_properties = kept.database_properties;
+    settings.database_view = kept.database_view;
     settings.check()?;
     // A tablebase folder is opened before it is kept.
     tablebases.set_dir(settings.tablebase_dir.as_deref())?;
