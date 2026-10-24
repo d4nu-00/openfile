@@ -251,7 +251,11 @@ fn commentary_is_deleted_by_kind() {
     let mut text = game(pgn);
     let nf3 = find(&text, &["e4", "e5", "Nf3"]);
     assert_eq!(text.delete_commentary(Commentary::Text, nf3).unwrap(), nf3);
-    assert_eq!(moves(&text), "1. e4 $1 1... e5 (1... c5) 2. Nf3 *");
+    // The move time and evaluation are not text: they stay.
+    assert_eq!(
+        moves(&text),
+        "1. e4 $1 1... e5 (1... c5) 2. Nf3 {[%emt 0:00:02] [%eval 0.30]} *"
+    );
 
     let mut evals = game(pgn);
     evals
@@ -283,4 +287,55 @@ fn null_moves_are_entered_outside_check() {
             .append_uci(qh5, "0000", &GameLimits::default())
             .is_err()
     );
+}
+
+#[test]
+fn move_extras_are_set_cleared_and_kept_in_pgn() {
+    use chess_core::edit::ExtraEdit;
+    let mut g = game("[Result \"*\"]\n\n1. e4 e5 2. Nf3 *\n");
+    let nf3 = find(&g, &["e4", "e5", "Nf3"]);
+    g.set_extra(nf3, ExtraEdit::Medal { bits: 8 }).unwrap();
+    g.set_extra(nf3, ExtraEdit::PiecePath { on: true }).unwrap();
+    g.set_extra(
+        nf3,
+        ExtraEdit::MoveTime {
+            time: Some(0x0001_0500),
+        },
+    )
+    .unwrap();
+    let x = g.nodes[nf3 as usize].extras.as_ref().unwrap();
+    // f3 is square code 5 × 8 + 2 + 1.
+    assert_eq!(x.piece_path, vec![3, 43]);
+    assert_eq!(x.move_time_text().as_deref(), Some("0:01:05"));
+    // The start has no move: no piece path or time there.
+    assert!(g.set_extra(0, ExtraEdit::PiecePath { on: true }).is_err());
+    assert!(
+        g.set_extra(
+            nf3,
+            ExtraEdit::MoveTime {
+                time: Some(0x0000_4000)
+            }
+        )
+        .is_err()
+    );
+    g.set_extra(nf3, ExtraEdit::Medal { bits: 0 }).unwrap();
+    g.set_extra(nf3, ExtraEdit::PiecePath { on: false })
+        .unwrap();
+    g.set_extra(nf3, ExtraEdit::MoveTime { time: None })
+        .unwrap();
+    assert!(g.nodes[nf3 as usize].extras.is_none());
+    // PGN keeps move times and evaluations.
+    let pgn = "[Result \"*\"]\n\n1. e4 {[%emt 0:00:44] [%eval -1.25,18] Good} e5 {[%eval #-3]} *\n";
+    let read = game(pgn);
+    let e4 = &read.nodes[find(&read, &["e4"]) as usize];
+    assert_eq!(e4.comments, ["Good"]);
+    let x = e4.extras.as_ref().unwrap();
+    assert_eq!(x.move_time_text().as_deref(), Some("0:00:44"));
+    assert_eq!(x.evaluation_fields(), Some((-125, 0, 18)));
+    let written = chess_core::write_pgn(&read).unwrap();
+    assert!(
+        written.contains("[%emt 0:00:44] [%eval -1.25,18]"),
+        "{written}"
+    );
+    assert!(written.contains("[%eval #-3]"), "{written}");
 }

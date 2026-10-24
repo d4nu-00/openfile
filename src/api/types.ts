@@ -63,7 +63,28 @@ export interface GameNode {
   training?: Training;
   /** Each move answer in SAN in that position (null when not legal). */
   trainingMoves?: (string | null)[];
+  /** Medals, move time, diagram, pawn structure, piece path, stored
+   * evaluation (docs/annotations.md). */
+  extras?: MoveExtras;
 }
+export interface MoveExtras {
+  /** Medal bits, as the game's medal word (MEDAL_NAMES). */
+  medal: number;
+  /** "h:mm:ss". */
+  moveTime?: string;
+  diagram: boolean;
+  pawnStructure: boolean;
+  /** The square whose piece's path is shown. */
+  piecePath?: string;
+  /** From White's side, "+0.35/22". */
+  evaluation?: string;
+}
+export type ExtraEdit =
+  | { kind: "medal"; bits: number }
+  | { kind: "moveTime"; time: number | null }
+  | { kind: "diagram"; on: boolean }
+  | { kind: "pawnStructure"; on: boolean }
+  | { kind: "piecePath"; on: boolean };
 /** Training annotations (docs/training.md). */
 export interface TrainingText {
   /** 0..6: en, de, fr, es, it, nl, pt. */
@@ -259,6 +280,7 @@ export interface WireError {
 
 export type Edit =
   | { kind: "appendMove"; parent: NodeId; uci: string }
+  | { kind: "setExtra"; node: NodeId; extra: ExtraEdit }
   | { kind: "setComments"; node: NodeId; comments: string[] }
   | { kind: "setNags"; node: NodeId; nags: number[] }
   | { kind: "setPreComments"; node: NodeId; comments: string[] }

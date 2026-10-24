@@ -257,6 +257,7 @@ impl Game {
                         arrows: vec![],
                         critical: None,
                         training: None,
+                        extras: None,
                     },
                 );
                 n.id = map[o as usize];
@@ -345,6 +346,7 @@ impl Game {
                     n.nags.clear();
                     n.squares.clear();
                     n.arrows.clear();
+                    n.extras = None;
                 }
                 self.profile.clear();
                 let map = self.retain(&main);
@@ -373,6 +375,11 @@ impl Game {
                         .map(|c| strip_engine_commands(c))
                         .filter(|c| !c.is_empty() && !is_score(c))
                         .collect();
+                    if let Some(x) = n.extras.as_mut() {
+                        x.move_time = None;
+                        x.evaluation = None;
+                    }
+                    n.tidy_extras();
                 }
                 Ok(keep)
             }
@@ -519,6 +526,89 @@ impl Game {
             ));
         }
         self.tags = next;
+        Ok(())
+    }
+}
+
+/// Sets or clears one of a move's less common annotations
+/// (docs/annotations.md).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum ExtraEdit {
+    /// The medal bits; 0 removes the medal.
+    Medal {
+        bits: u32,
+    },
+    /// The time used for the move, packed; None removes it.
+    MoveTime {
+        time: Option<u32>,
+    },
+    Diagram {
+        on: bool,
+    },
+    PawnStructure {
+        on: bool,
+    },
+    /// The path of the piece the move put on its square.
+    PiecePath {
+        on: bool,
+    },
+}
+
+/// The pawn structure value and the piece path's colour code (yellow) in the
+/// reference app's data.
+pub const PAWN_STRUCTURE_MARK: u8 = 3;
+pub const PIECE_PATH_COLOR: u8 = 3;
+
+impl Game {
+    /// Applies `edit` to `node`. Move times, pawn structures and piece paths
+    /// need a move; medals and diagrams may sit at the game's start.
+    pub fn set_extra(&mut self, node: NodeId, edit: ExtraEdit) -> Result<(), CoreError> {
+        let n = self
+            .nodes
+            .get_mut(node as usize)
+            .ok_or(CoreError::InvalidNode)?;
+        let needs_move = matches!(
+            edit,
+            ExtraEdit::MoveTime { time: Some(_) }
+                | ExtraEdit::PawnStructure { on: true }
+                | ExtraEdit::PiecePath { on: true }
+        );
+        if needs_move && n.uci.is_none() {
+            return Err(CoreError::InvalidNode);
+        }
+        match edit {
+            ExtraEdit::Medal { bits } => n.extras_mut().medal = bits,
+            ExtraEdit::MoveTime { time } => {
+                if let Some(t) = time {
+                    let [_, m, s, _] = t.to_be_bytes();
+                    if m >= 60 || s >= 60 {
+                        return Err(CoreError::InvalidNode);
+                    }
+                }
+                n.extras_mut().move_time = time;
+            }
+            ExtraEdit::Diagram { on } => n.extras_mut().diagram = on,
+            ExtraEdit::PawnStructure { on } => {
+                n.extras_mut().pawn_structure = on.then_some(PAWN_STRUCTURE_MARK)
+            }
+            ExtraEdit::PiecePath { on } => {
+                let square = n
+                    .uci
+                    .as_deref()
+                    .and_then(|u| {
+                        let b = u.as_bytes();
+                        (b.len() >= 4).then(|| (b[2] - b'a') * 8 + (b[3] - b'1') + 1)
+                    })
+                    .filter(|&c| (1..=64).contains(&c));
+                n.extras_mut().piece_path = match (on, square) {
+                    (true, Some(sq)) => vec![PIECE_PATH_COLOR, sq],
+                    (true, None) => return Err(CoreError::InvalidNode),
+                    (false, _) => vec![],
+                };
+            }
+        }
+        n.tidy_extras();
         Ok(())
     }
 }

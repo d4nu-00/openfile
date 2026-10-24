@@ -137,6 +137,14 @@ CSV columns; its game weights come from the workbench's move weights rather
 than the reference app's engine complexity, and Weighted Av is printed
 unscaled (see [centipawn analysis](centipawn-analysis.md)).
 
+Move medals, move times, diagrams, pawn structures, piece paths and stored
+evaluations (annotation types 0x22, 0x07, 0x06, 0x14, 0x15, 0x21) are read
+from both families, shown, and written back to 2CBH. Move times and
+evaluations travel through PGN as `[%emt]` and `[%eval]`; the others have
+no PGN form. The move time's fourth byte (23 of 8,040 in a sample) is kept
+but not shown. Types 0x16, 0x17 and 0x24, common in recent games with move
+times, are still reported as unsupported (see [annotations](annotations.md)).
+
 Evaluation profiles (annotation type 0x26) are read from both families and
 written back to 2CBH unchanged. Scores and mates are shown. About 0.2 % of
 recent test-database games carry one. Kind 32 (5 entries in 177 profiles) is

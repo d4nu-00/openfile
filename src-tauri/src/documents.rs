@@ -100,6 +100,10 @@ pub enum Edit {
     },
     /// Sets or removes the training question on a move; `moves` gives the
     /// answers' moves in SAN or UCI (see `Game::set_training`).
+    SetExtra {
+        node: u32,
+        extra: chess_core::edit::ExtraEdit,
+    },
     SetTraining {
         node: u32,
         training: Option<Box<chess_core::training::Training>>,
@@ -504,6 +508,7 @@ impl Registry {
             Edit::DeleteCommentary { commentary, node } => {
                 selected = Some(d.game.delete_commentary(commentary, node)?)
             }
+            Edit::SetExtra { node, extra } => d.game.set_extra(node, extra)?,
             Edit::SetTraining {
                 node,
                 training,
@@ -626,14 +631,20 @@ impl Registry {
             }
             if !allow_incomplete
                 && (!d.game.profile.is_empty()
-                    || d.game
-                        .nodes
-                        .iter()
-                        .any(|n| n.critical.is_some() || n.training.is_some()))
+                    || d.game.nodes.iter().any(|n| {
+                        n.critical.is_some()
+                            || n.training.is_some()
+                            || n.extras.as_ref().is_some_and(|x| {
+                                x.medal != 0
+                                    || x.diagram
+                                    || x.pawn_structure.is_some()
+                                    || !x.piece_path.is_empty()
+                            })
+                    }))
             {
                 return Err(AppError::new(
                     "incompleteAnnotations",
-                    "PGN cannot hold critical position marks, training questions or evaluation profiles; acknowledge their omission before exporting",
+                    "PGN cannot hold critical position marks, training questions, evaluation profiles, medals, diagrams, pawn structures or piece paths; acknowledge their omission before exporting",
                 ));
             }
             (d.game.clone(), d.revision, d.source_paths.clone())

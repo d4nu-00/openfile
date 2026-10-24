@@ -55,6 +55,8 @@ import { useKibitzers } from "./state/kibitzers";
 import { mainLine, useInstantAnalysis } from "./state/evalProfile";
 import { EvalProfile } from "./components/EvalProfile";
 import { CentipawnListDialog } from "./components/CentipawnListDialog";
+import { MedalDialog, MoveTimeDialog } from "./components/MoveExtrasDialogs";
+import { boardMarks } from "./state/moveExtras";
 import { EngineManagement } from "./components/EngineManagement";
 import { TablebasePane } from "./components/TablebasePane";
 import { BlunderCheckDialog } from "./components/BlunderCheckDialog";
@@ -208,6 +210,11 @@ export function App({
   /** Tactical Analysis: open, its progress while running, its error. */
   /** The move whose training question is being edited, and any error. */
   const [training, setTraining] = useState<{ node: number; error?: string }>();
+  /** Set Medal or Move Time for a move. */
+  const [extraDialog, setExtraDialog] = useState<{
+    kind: "medal" | "moveTime";
+    node: number;
+  }>();
   const [replay, setReplay] = useState<{
     source: ReplaySource;
     databaseId?: string;
@@ -2414,6 +2421,53 @@ export function App({
       },
       pressed: !!settings.instantAnalysis?.enabled,
     },
+    "set-medal": {
+      run: () => setExtraDialog({ kind: "medal", node: selected }),
+      enabled: !!state.document?.documentId && !e.busy,
+    },
+    "move-time": {
+      run: () => setExtraDialog({ kind: "moveTime", node: selected }),
+      enabled: !!state.document?.documentId && !e.busy && selected !== 0,
+    },
+    "insert-diagram": {
+      run: () =>
+        e.edit({
+          kind: "setExtra",
+          node: selected,
+          extra: {
+            kind: "diagram",
+            on: !game?.nodes[selected]?.extras?.diagram,
+          },
+        }),
+      enabled: !!state.document?.documentId && !e.busy,
+      pressed: !!game?.nodes[selected]?.extras?.diagram,
+    },
+    "pawn-structure": {
+      run: () =>
+        e.edit({
+          kind: "setExtra",
+          node: selected,
+          extra: {
+            kind: "pawnStructure",
+            on: !game?.nodes[selected]?.extras?.pawnStructure,
+          },
+        }),
+      enabled: !!state.document?.documentId && !e.busy && selected !== 0,
+      pressed: !!game?.nodes[selected]?.extras?.pawnStructure,
+    },
+    "piece-path": {
+      run: () =>
+        e.edit({
+          kind: "setExtra",
+          node: selected,
+          extra: {
+            kind: "piecePath",
+            on: !game?.nodes[selected]?.extras?.piecePath,
+          },
+        }),
+      enabled: !!state.document?.documentId && !e.busy && selected !== 0,
+      pressed: !!game?.nodes[selected]?.extras?.piecePath,
+    },
     "analyse-threat": {
       run: () => k.toggleThreat(),
       enabled: !!k.current?.enabled && !k.current.busy,
@@ -3095,7 +3149,7 @@ export function App({
                   hasGame={!!game}
                   navigate={navigate}
                   compact
-                  node={game?.nodes[selected]}
+                  node={boardMarks(game, selected, state.position?.fen)}
                 />
                 <div className="preview-notation">{notation}</div>
                 <Diagnostics items={w.diagnostics} />
@@ -3131,7 +3185,7 @@ export function App({
                       flipped={flipped}
                       hasGame={!!game}
                       navigate={navigate}
-                      node={game?.nodes[selected]}
+                      node={boardMarks(game, selected, state.position?.fen)}
                       selectedSquare={square}
                       onSquare={promotion.length ? undefined : clickSquare}
                       onMove={
@@ -3204,7 +3258,7 @@ export function App({
                     )}
                     {paletteOpen && (
                       <AnnotationPalette
-                        node={game?.nodes[selected]}
+                        node={boardMarks(game, selected, state.position?.fen)}
                         disabled={busy}
                         edit={e.edit}
                         onClose={() => setPaletteOpen(false)}
@@ -3475,6 +3529,36 @@ export function App({
           api={api}
           source={replay.source}
           onClose={() => setReplay(undefined)}
+        />
+      )}
+      {extraDialog?.kind === "medal" && (
+        <MedalDialog
+          bits={game?.nodes[extraDialog.node]?.extras?.medal ?? 0}
+          onClose={() => setExtraDialog(undefined)}
+          onApply={(bits) => {
+            const node = extraDialog.node;
+            setExtraDialog(undefined);
+            void e.edit({
+              kind: "setExtra",
+              node,
+              extra: { kind: "medal", bits },
+            });
+          }}
+        />
+      )}
+      {extraDialog?.kind === "moveTime" && (
+        <MoveTimeDialog
+          time={game?.nodes[extraDialog.node]?.extras?.moveTime}
+          onClose={() => setExtraDialog(undefined)}
+          onApply={(time) => {
+            const node = extraDialog.node;
+            setExtraDialog(undefined);
+            void e.edit({
+              kind: "setExtra",
+              node,
+              extra: { kind: "moveTime", time },
+            });
+          }}
         />
       )}
       {centipawnList && (

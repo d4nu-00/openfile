@@ -1392,6 +1392,33 @@ kbd {
   min-width: 1.5em;
   text-align: center;
 }
+.extra {
+  margin-left: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.extra.medal,
+.extra.mark {
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--pane-header-bg);
+}
+.extra.evaluation {
+  font-variant-numeric: tabular-nums;
+}
+.modal.move-extra {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 8px;
+  width: min(460px, calc(100vw - 32px));
+  cursor: default;
+}
+.medal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 12px;
+}
 .eval-profile {
   padding: 2px 8px 4px;
   border-bottom: 1px solid var(--pane-border);

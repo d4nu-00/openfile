@@ -189,6 +189,63 @@ pub struct GameNode {
     /// that is not legal there.
     #[serde(rename = "trainingMoves", skip_serializing_if = "Vec::is_empty")]
     pub training_moves: Vec<Option<String>>,
+    /// Medals, move time, diagram, pawn structure, piece path and stored
+    /// evaluation (docs/annotations.md).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extras: Option<ExtrasDto>,
+}
+/// A move's less common annotations, ready to show.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExtrasDto {
+    /// Medal bits, as the game's medal word.
+    pub medal: u32,
+    /// "h:mm:ss".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub move_time: Option<String>,
+    pub diagram: bool,
+    pub pawn_structure: bool,
+    /// The square whose piece's path is shown.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub piece_path: Option<String>,
+    /// The stored evaluation from White's side, "+0.35/22" or "+M3/30".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evaluation: Option<String>,
+}
+impl ExtrasDto {
+    pub fn from_extras(x: &chess_core::MoveExtras) -> Self {
+        let square = |code: u8| {
+            let i = code.checked_sub(1).filter(|&i| i < 64)?;
+            Some(format!(
+                "{}{}",
+                (b'a' + i / 8) as char,
+                (b'1' + i % 8) as char
+            ))
+        };
+        Self {
+            medal: x.medal,
+            move_time: x.move_time_text(),
+            diagram: x.diagram,
+            pawn_structure: x.pawn_structure.is_some(),
+            piece_path: x.piece_path.get(1).and_then(|&c| square(c)),
+            evaluation: x.evaluation_fields().and_then(|(score, kind, depth)| {
+                let value = match kind {
+                    0 => format!(
+                        "{}{:.2}",
+                        if score >= 0 { "+" } else { "" },
+                        f64::from(score) / 100.0
+                    ),
+                    1 => format!("{}M{}", if score >= 0 { "+" } else { "-" }, score.abs()),
+                    _ => return None,
+                };
+                Some(if depth > 0 {
+                    format!("{value}/{depth}")
+                } else {
+                    value
+                })
+            }),
+        }
+    }
 }
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -217,6 +274,7 @@ impl GameView {
                 arrows: n.arrows.clone(),
                 critical: n.critical,
                 training: n.training.clone(),
+                extras: n.extras.as_deref().map(ExtrasDto::from_extras),
                 training_moves: vec![],
             })
             .collect();

@@ -462,6 +462,41 @@ pub fn encode_annotations(game: &Game) -> (Vec<u8>, Omitted) {
                 count += 1;
             }
         }
+        if let Some(x) = &node.extras {
+            use crate::annotations::{
+                DIAGRAM, EVALUATION, MEDAL, MOVE_TIME, PAWN_STRUCTURE, PIECE_PATH,
+            };
+            if x.diagram {
+                entries.extend(DIAGRAM.to_le_bytes());
+                count += 1;
+            }
+            if x.medal != 0 {
+                entries.extend(MEDAL.to_le_bytes());
+                entries.extend(x.medal.to_le_bytes());
+                count += 1;
+            }
+            if let Some(time) = x.move_time {
+                entries.extend(MOVE_TIME.to_le_bytes());
+                entries.extend(time.to_le_bytes());
+                count += 1;
+            }
+            if let Some(v) = x.pawn_structure {
+                entries.extend(PAWN_STRUCTURE.to_le_bytes());
+                entries.push(v);
+                count += 1;
+            }
+            if !x.piece_path.is_empty() {
+                entries.extend(PIECE_PATH.to_le_bytes());
+                entries.extend((x.piece_path.len() as u32).to_le_bytes());
+                entries.extend(&x.piece_path);
+                count += 1;
+            }
+            if let Some(store) = x.evaluation {
+                entries.extend(EVALUATION.to_le_bytes());
+                entries.extend(store);
+                count += 1;
+            }
+        }
         match node.critical {
             Some(kind @ 1..=3) => {
                 entries.extend(CRITICAL.to_le_bytes());
