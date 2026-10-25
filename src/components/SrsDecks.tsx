@@ -90,6 +90,16 @@ function OptionFields({
         />
         Include variations
       </label>
+      <label className="mask-check">
+        <input
+          type="checkbox"
+          checked={options.showNewFirst}
+          onChange={(e) =>
+            onChange({ ...options, showNewFirst: e.target.checked })
+          }
+        />
+        Show new lines with arrows first
+      </label>
       <label>
         New card order{" "}
         <select

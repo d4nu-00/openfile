@@ -139,8 +139,10 @@ pub struct Preview {
 #[serde(rename_all = "camelCase")]
 pub struct StudyCard {
     pub card: Card,
-    /// The card is new: it is shown as a lesson first.
+    /// The card is new and the deck shows new cards first: it is a lesson.
     pub learn: bool,
+    /// The line ends in mate by the trainee: their number of moves.
+    pub mate_in: Option<u32>,
     pub state: CardState,
     /// One entry for each move of the card.
     pub plies: Vec<PlyInfo>,
@@ -802,8 +804,10 @@ fn study_card(deck: &Deck, id: &str, index: &LineIndex, now: i64) -> Option<Stud
     let state = deck.states.get(id).cloned().unwrap_or_default();
     let mut pos = parse_position(&card.start_fen).ok()?;
     let mut plies = vec![];
+    let mut trainee_moves = 0;
     for m in &card.moves {
         let trainee = Colour::of(pos.turn()) == card.trainee;
+        trainee_moves += u32::from(trainee);
         let (legal_uci, other_moves) = if trainee {
             (
                 pos.legal_moves().iter().map(|&m| uci_of(&pos, m)).collect(),
@@ -836,7 +840,9 @@ fn study_card(deck: &Deck, id: &str, index: &LineIndex, now: i64) -> Option<Stud
         .collect();
     Some(StudyCard {
         card: card.clone(),
-        learn: state.kind == Kind::New,
+        learn: state.kind == Kind::New && deck.options.show_new_first,
+        mate_in: (pos.is_checkmate() && Colour::of(pos.turn()) != card.trainee)
+            .then_some(trainee_moves),
         state,
         plies,
         end_fen: Fen::from_position(&pos, EnPassantMode::Always).to_string(),

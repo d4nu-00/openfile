@@ -19,6 +19,7 @@ export const defaultOptions: SrsOptions = {
   newOrder: "source",
   includeVariations: true,
   trainee: "sideToMove",
+  showNewFirst: false,
 };
 
 /** Steps as typed: minutes separated by commas or spaces. */

@@ -202,7 +202,8 @@ export function demoSrs(): Partial<WorkbenchApi> {
     });
     return {
       card,
-      learn: state.kind === "new",
+      learn: state.kind === "new" && !!deck?.options?.showNewFirst,
+      mateIn: Number(puzzle.label.match(/Mate in (\d+)/)?.[1]) || undefined,
       state,
       plies: puzzle.plies.map((p) => ({
         fen: p.fen,
@@ -286,6 +287,7 @@ export function demoSrs(): Partial<WorkbenchApi> {
         newOrder: "source",
         includeVariations: true,
         trainee: "sideToMove",
+        showNewFirst: false,
       },
       cards: [],
     }),

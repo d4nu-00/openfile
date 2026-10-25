@@ -286,7 +286,13 @@ export function SrsStudy({
               <span>
                 {study.card.trainee === "white" ? "White" : "Black"} to play
               </span>
-              {lesson && <span className="srs-badge">Learn</span>}
+              {lesson ? (
+                <span className="srs-badge">Learn</span>
+              ) : (
+                study.state.kind === "new" && (
+                  <span className="srs-badge">New</span>
+                )
+              )}
               {queue?.ahead && <span>Learning ahead</span>}
             </div>
             <div className="replay-body">
@@ -348,6 +354,7 @@ export function SrsStudy({
                 ) : traineeTurn ? (
                   <h3>
                     {study.card.trainee === "white" ? "White" : "Black"} to move
+                    {study.mateIn !== undefined && ` · Mate in ${study.mateIn}`}
                   </h3>
                 ) : (
                   <h3>Opponent's move…</h3>

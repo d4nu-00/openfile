@@ -81,6 +81,7 @@ Deck options and their defaults:
 | New card order | source order (or random) |
 | Include variations | on |
 | Trainee | side to move |
+| Show new lines with arrows first | off |
 
 The steps are comma-separated minutes in the options dialog, which checks them
 (learning steps cannot be empty; relearning steps may be).
@@ -160,17 +161,25 @@ in the queue.
 
 The **random** new card order is stable: it is seeded from the deck id.
 
-### A new card is a lesson
+### New cards
 
-The first time a new card is shown (the **Learn** badge), each trainee move is
+By default a new card (the **New** badge) is tried like any other: nothing is
+shown before you play, a mistake reveals the move and makes the card Again, and
+a clean line offers Hard, Good and Easy.
+
+With the deck option **Show new lines with arrows first**, the first time a new
+card is shown it is a lesson instead (the **Learn** badge): each trainee move is
 first shown as an arrow and you play it. A wrong move only shows the arrow again;
 no mistake is counted. The card is then answered as Good automatically, which
 moves it to the second learning step: it comes back after 10 minutes with the
-default steps, and then graduates.
+default steps, and then graduates. This suits a repertoire you have not seen
+before; for puzzles, leave it off.
 
 ## Study view
 
-A modal named "Study <deck name>". The board is turned for the trainee. It shows
+A modal named "Study <deck name>". The board is turned for the trainee. The
+heading says whose move it is and, when the line ends in mate by the trainee,
+how many of their moves it takes: "White to move · Mate in 3". It shows
 the card's source label and players, the counts at the top (New, Learning, Due)
 and, after a line, the grade buttons. Moves can be clicked or dragged;
 promotions ask for the piece. **Hint** shows the arrow of the move (and caps the

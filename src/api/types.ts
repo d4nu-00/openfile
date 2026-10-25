@@ -1764,6 +1764,8 @@ export interface SrsOptions {
   newOrder: SrsNewOrder;
   includeVariations: boolean;
   trainee: SrsTrainee;
+  /** New cards are first shown with each trainee move as an arrow. */
+  showNewFirst: boolean;
 }
 export interface SrsStats {
   total: number;
@@ -1872,8 +1874,11 @@ export interface SrsPreview {
 }
 export interface SrsStudyCard {
   card: SrsCard;
-  /** A new card: each trainee move is shown as an arrow first. */
+  /** A new card of a deck that shows new cards first: each trainee move
+   * is shown as an arrow. */
   learn: boolean;
+  /** The line ends in mate by the trainee: their number of moves. */
+  mateIn?: number;
   state: SrsCardState;
   plies: SrsPly[];
   endFen: string;

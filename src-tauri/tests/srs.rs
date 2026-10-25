@@ -166,7 +166,9 @@ fn the_queue_lists_new_cards_in_source_order_with_the_first_cards_data() {
     assert_eq!((got.queue.new_due, got.queue.new_left), (3, 20));
     let next = got.next.unwrap();
     assert_eq!(next.card.id, ids[0]);
-    assert!(next.learn);
+    // New cards are tried first unless the deck shows them first.
+    assert!(!next.learn);
+    assert_eq!(next.mate_in, Some(1));
     assert_eq!(next.plies.len(), 1);
     assert_eq!(next.plies[0].fen, BACK_RANK_WHITE);
     assert!(next.plies[0].legal_uci.contains(&"a1a8".to_string()));
@@ -195,11 +197,45 @@ fn the_queue_lists_new_cards_in_source_order_with_the_first_cards_data() {
     s.suspend(id, ids[1], true).unwrap();
     let third = s.queue(id, NOW, 0).unwrap().next.unwrap();
     assert_eq!(third.plies.len(), 3);
+    assert_eq!(third.mate_in, Some(2));
     assert_eq!(third.plies[1].fen, "8/8/8/8/7R/5K2/8/6k1 b - - 1 1");
     assert!(third.plies[0].legal_uci.contains(&"e3f3".to_string()));
     // The opponent's ply needs no legal moves.
     assert!(third.plies[1].legal_uci.is_empty());
     assert!(third.plies[2].legal_uci.contains(&"h4h1".to_string()));
+}
+
+#[test]
+fn a_deck_that_shows_new_cards_first_makes_them_lessons() {
+    let dir = tempfile::tempdir().unwrap();
+    let s = store(dir.path());
+    let made = s
+        .create_from_pgn(
+            write(dir.path(), "P.pgn", &puzzles()),
+            "Mate".into(),
+            DeckOptions {
+                show_new_first: true,
+                ..DeckOptions::default()
+            },
+            NOW,
+            0,
+        )
+        .unwrap();
+    assert!(s.queue(&made.deck.id, NOW, 0).unwrap().next.unwrap().learn);
+    // A repertoire line does not end in mate.
+    let rep = s
+        .create_from_pgn(
+            write(dir.path(), "R.pgn", REPERTOIRE),
+            "Rep".into(),
+            white(),
+            NOW,
+            0,
+        )
+        .unwrap();
+    assert_eq!(
+        s.queue(&rep.deck.id, NOW, 0).unwrap().next.unwrap().mate_in,
+        None
+    );
 }
 
 #[test]
