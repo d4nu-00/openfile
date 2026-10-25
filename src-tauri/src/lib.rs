@@ -32,6 +32,7 @@ pub mod searches;
 pub mod settings;
 #[cfg(all(debug_assertions, target_os = "macos"))]
 pub mod snapshot;
+pub mod srs;
 pub mod statistics;
 pub mod style_dimensions;
 pub mod tablebases;

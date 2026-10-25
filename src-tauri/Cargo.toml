@@ -21,6 +21,7 @@ engine = {path = "../crates/engine"}
 cbh-reader = { path = "../crates/cbh-reader" }
 tempfile.workspace = true
 same-file = "1"
+sha2 = "0.10"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 # Debug builds on macOS can snapshot their own web view (`--snapshot`).
