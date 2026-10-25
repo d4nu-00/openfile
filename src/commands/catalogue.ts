@@ -1,5 +1,6 @@
 import {
   Archive,
+  CalendarClock,
   ArrowUpToLine,
   Award,
   ChartLine,
@@ -1230,6 +1231,13 @@ const list: CommandMeta[] = [
     views: db,
   },
   {
+    id: "srs-decks",
+    label: "Spaced Repetition",
+    tip: "Train PGN lines and positions with spaced repetition",
+    icon: CalendarClock,
+    views: both,
+  },
+  {
     id: "delete-training",
     label: "Delete Training Commentary",
     tip: "Delete all training commentary",
@@ -1451,6 +1459,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             S("toggle-game-list"),
             S("replay-training-selection"),
             S("build-mate-training"),
+            S("srs-decks"),
             S("toggle-players"),
             S("toggle-tournaments"),
             S("games-of-player"),
@@ -1747,6 +1756,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
           label: "Training",
           items: [
             L("replay-training-game"),
+            L("srs-decks"),
             S("training-annotation"),
             S("delete-training"),
             L("hints"),

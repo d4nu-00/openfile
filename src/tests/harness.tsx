@@ -1059,6 +1059,19 @@ export function mockApi(
       ),
     stopMateTraining: vi.fn().mockResolvedValue(undefined),
     cancelMateTraining: vi.fn().mockResolvedValue(undefined),
+    srsDecks: vi.fn().mockResolvedValue({ decks: [], unreadable: [] }),
+    srsCreateFromPgn: vi.fn().mockRejectedValue({ message: "not set up" }),
+    srsCreateFromRows: vi.fn().mockRejectedValue({ message: "not set up" }),
+    srsUpdateFromPgn: vi.fn().mockRejectedValue({ message: "not set up" }),
+    srsUpdateFromRows: vi.fn().mockRejectedValue({ message: "not set up" }),
+    srsDeck: vi.fn().mockRejectedValue({ message: "not set up" }),
+    srsSetOptions: vi.fn().mockResolvedValue(undefined),
+    srsRename: vi.fn().mockResolvedValue(undefined),
+    srsDelete: vi.fn().mockResolvedValue(undefined),
+    srsQueue: vi.fn().mockRejectedValue({ message: "not set up" }),
+    srsAnswer: vi.fn().mockRejectedValue({ message: "not set up" }),
+    srsSuspend: vi.fn().mockResolvedValue(undefined),
+    confirmDeleteDeck: vi.fn().mockResolvedValue(true),
     checkIntegrity: vi
       .fn()
       .mockImplementation(async (_db: string, onProgress) => {

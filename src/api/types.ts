@@ -1744,3 +1744,156 @@ export interface MateTrainingResponse {
   /** Every quota was met before the games ran out. */
   complete: boolean;
 }
+
+/** Spaced repetition decks (docs/spaced-repetition.md). */
+export type SrsTrainee = "sideToMove" | "white" | "black";
+export type SrsNewOrder = "source" | "random";
+export type SrsGrade = "again" | "hard" | "good" | "easy";
+export type SrsKind = "new" | "learning" | "review" | "relearning";
+export interface SrsOptions {
+  /** Minutes. */
+  learningSteps: number[];
+  /** Minutes. */
+  relearningSteps: number[];
+  /** Days. */
+  graduatingInterval: number;
+  easyInterval: number;
+  newPerDay: number;
+  reviewsPerDay: number;
+  maxInterval: number;
+  newOrder: SrsNewOrder;
+  includeVariations: boolean;
+  trainee: SrsTrainee;
+}
+export interface SrsStats {
+  total: number;
+  new: number;
+  learning: number;
+  dueToday: number;
+  suspended: number;
+  mature: number;
+  reviewsToday: number;
+  /** The share of review answers of the last 30 days that were not Again. */
+  retention: number | null;
+  /** Review cards due today, and on each of the next 6 days. */
+  forecast: number[];
+}
+export interface SrsDeckSummary {
+  id: string;
+  name: string;
+  source: string;
+  sourceKind: "pgn" | "list";
+  cards: number;
+  stats: SrsStats;
+}
+export interface SrsListing {
+  decks: SrsDeckSummary[];
+  unreadable: { file: string; reason: string }[];
+}
+export interface SrsSkipped {
+  games: number;
+  cardsOverLimit: number;
+  gamesNotRead: number;
+}
+export interface SrsCreateResponse {
+  deck: SrsDeckSummary;
+  skipped: SrsSkipped;
+}
+export interface SrsUpdateResponse {
+  deck: SrsDeckSummary;
+  skipped: SrsSkipped;
+  added: number;
+  kept: number;
+  suspended: number;
+  restored: number;
+}
+export interface SrsCardState {
+  kind: SrsKind;
+  step: number;
+  due: number;
+  interval: number;
+  ease: number;
+  reps: number;
+  lapses: number;
+}
+export interface SrsCardRow {
+  id: string;
+  sourceLabel: string;
+  white: string;
+  black: string;
+  event: string;
+  date: string;
+  plies: number;
+  suspended: boolean;
+  removed: boolean;
+  state: SrsCardState;
+}
+export interface SrsDeckDetail {
+  id: string;
+  name: string;
+  source: string;
+  sourceKind: "pgn" | "list";
+  created: number;
+  options: SrsOptions;
+  cards: SrsCardRow[];
+}
+export interface SrsCardMove {
+  uci: string;
+  san: string;
+  comment: string | null;
+}
+export interface SrsCard {
+  id: string;
+  startFen: string;
+  moves: SrsCardMove[];
+  trainee: "white" | "black";
+  white: string;
+  black: string;
+  event: string;
+  date: string;
+  sourceLabel: string;
+  order: number;
+  suspended: boolean;
+  removed: boolean;
+}
+/** One move of a card: the position before it and what the board needs. */
+export interface SrsPly {
+  fen: string;
+  /** The legal moves where the trainee moves; empty for the opponent. */
+  legalUci: string[];
+  /** Moves that other lines of the deck play from this position. */
+  otherMoves: string[];
+}
+export interface SrsPreview {
+  grade: SrsGrade;
+  dueInMs: number;
+  intervalDays: number;
+  kind: SrsKind;
+}
+export interface SrsStudyCard {
+  card: SrsCard;
+  /** A new card: each trainee move is shown as an arrow first. */
+  learn: boolean;
+  state: SrsCardState;
+  plies: SrsPly[];
+  endFen: string;
+  previews: SrsPreview[];
+}
+export interface SrsQueue {
+  cards: string[];
+  newLeft: number;
+  reviewsLeft: number;
+  learningDue: number;
+  reviewDue: number;
+  newDue: number;
+  nextLearningDue: number | null;
+  ahead: boolean;
+}
+export interface SrsQueueResponse {
+  queue: SrsQueue;
+  next: SrsStudyCard | null;
+  stats: SrsStats;
+}
+export interface SrsAnswerResponse extends SrsQueueResponse {
+  state: SrsCardState;
+}

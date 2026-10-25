@@ -100,6 +100,14 @@ import type {
   RepertoireSnapshot,
   RepertoireGrade,
   ReplayProgressMap,
+  SrsOptions,
+  SrsListing,
+  SrsCreateResponse,
+  SrsUpdateResponse,
+  SrsDeckDetail,
+  SrsQueueResponse,
+  SrsAnswerResponse,
+  SrsGrade,
 } from "./types";
 
 /** A progress channel; one that drops the messages when nobody listens. */
@@ -493,6 +501,105 @@ export const backend = {
     invoke<ReplayProgressMap>("replay_training_progress"),
   replayTrainingRecord: (key: string, progress: ReplayProgressMap[string]) =>
     invoke<void>("replay_training_record", { key, progress }),
+  /**
+   * Spaced repetition decks. `now` is milliseconds since the epoch and
+   * `utcOffset` the local offset in minutes: the scheduler takes its time
+   * from here, so a day starts at 04:00 local time.
+   */
+  srsDecks: (now: number, utcOffset: number) =>
+    invoke<SrsListing>("srs_decks", { now, utcOffset }),
+  srsCreateFromPgn: (
+    path: string,
+    name: string,
+    options: SrsOptions,
+    now: number,
+    utcOffset: number,
+  ) =>
+    invoke<SrsCreateResponse>("srs_create_from_pgn", {
+      path,
+      name,
+      options,
+      now,
+      utcOffset,
+    }),
+  srsCreateFromRows: (
+    databaseId: string,
+    ranges: { start: string; end: string }[],
+    name: string,
+    options: SrsOptions,
+    now: number,
+    utcOffset: number,
+  ) =>
+    invoke<SrsCreateResponse>("srs_create_from_rows", {
+      databaseId,
+      ranges,
+      name,
+      options,
+      now,
+      utcOffset,
+    }),
+  srsUpdateFromPgn: (
+    deckId: string,
+    path: string,
+    now: number,
+    utcOffset: number,
+  ) =>
+    invoke<SrsUpdateResponse>("srs_update_from_pgn", {
+      deckId,
+      path,
+      now,
+      utcOffset,
+    }),
+  srsUpdateFromRows: (
+    deckId: string,
+    databaseId: string,
+    ranges: { start: string; end: string }[],
+    now: number,
+    utcOffset: number,
+  ) =>
+    invoke<SrsUpdateResponse>("srs_update_from_rows", {
+      deckId,
+      databaseId,
+      ranges,
+      now,
+      utcOffset,
+    }),
+  srsDeck: (deckId: string) => invoke<SrsDeckDetail>("srs_deck", { deckId }),
+  srsSetOptions: (deckId: string, options: SrsOptions) =>
+    invoke<void>("srs_set_options", { deckId, options }),
+  srsRename: (deckId: string, name: string) =>
+    invoke<void>("srs_rename", { deckId, name }),
+  srsDelete: (deckId: string) => invoke<void>("srs_delete", { deckId }),
+  srsQueue: (deckId: string, now: number, utcOffset: number) =>
+    invoke<SrsQueueResponse>("srs_queue", { deckId, now, utcOffset }),
+  /** Records the answer; the next queue comes back with it. */
+  srsAnswer: (
+    deckId: string,
+    cardId: string,
+    grade: SrsGrade,
+    mistakes: number,
+    hints: number,
+    millis: number,
+    now: number,
+    utcOffset: number,
+  ) =>
+    invoke<SrsAnswerResponse>("srs_answer", {
+      deckId,
+      cardId,
+      grade,
+      mistakes,
+      hints,
+      millis,
+      now,
+      utcOffset,
+    }),
+  srsSuspend: (deckId: string, cardId: string, suspended: boolean) =>
+    invoke<void>("srs_suspend", { deckId, cardId, suspended }),
+  confirmDeleteDeck: (name: string) =>
+    ask(
+      `Delete the deck “${name}” and its progress? The PGN file or database it was made from is not changed.`,
+      { title: "Delete deck", kind: "warning" },
+    ),
   filteredOpeningTree: (databaseId: string, line: Line, requestId: string) =>
     invoke<TreeResponse>("filtered_opening_tree", {
       databaseId,

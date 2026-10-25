@@ -83,6 +83,7 @@ import { PasteDialog } from "./components/PasteDialog";
 import { AnnotationPalette } from "./components/AnnotationPalette";
 import { SymbolMenu } from "./components/SymbolMenu";
 import { ConvertDialog, type ConvertScope } from "./components/ConvertDialog";
+import { SrsDecks } from "./components/SrsDecks";
 import {
   MateTrainingDialog,
   type MateTrainingRequest,
@@ -1065,6 +1066,8 @@ export function App({
     running?: string;
     error?: string;
   }>();
+  /** Spaced Repetition: its decks dialog, while open. */
+  const [srsOpen, setSrsOpen] = useState(false);
   /** Build Mate Training: its dialog, while open. */
   const [mateTraining, setMateTraining] = useState<{
     databaseId: string;
@@ -2038,6 +2041,10 @@ export function App({
       },
       enabled: !!state.database && w.rowCount > 0 && !mateTraining?.running,
     },
+    "srs-decks": {
+      run: () => setSrsOpen(true),
+      enabled: !srsOpen,
+    },
     "convert-to-2cbh": {
       run: () => startConvert(),
       enabled: !!state.database && !converting,
@@ -2849,6 +2856,7 @@ export function App({
       !!maskOpen ||
       !!playingStyle ||
       !!replay ||
+      srsOpen ||
       gameDataOpen ||
       setupOpen ||
       !!pasting ||
@@ -2857,7 +2865,7 @@ export function App({
   // "/" also opens command search when focus is not in a field.
   useEffect(() => {
     function slash(event: KeyboardEvent) {
-      if (event.key !== "/" || palette || replay) return;
+      if (event.key !== "/" || palette || replay || srsOpen) return;
       if ((event.target as HTMLElement).closest?.("input,textarea,select"))
         return;
       event.preventDefault();
@@ -2865,7 +2873,7 @@ export function App({
     }
     window.addEventListener("keydown", slash);
     return () => window.removeEventListener("keydown", slash);
-  }, [palette, replay]);
+  }, [palette, replay, srsOpen]);
 
   const databaseName = state.database ? "Database" : "Databases";
   /** Open databases in the order they were opened. */
@@ -3602,6 +3610,22 @@ export function App({
             void api.cancelConvert(converting.databaseId).catch(() => {})
           }
           onClose={() => setConverting(undefined)}
+        />
+      )}
+      {srsOpen && (
+        <SrsDecks
+          api={api}
+          database={
+            state.database
+              ? {
+                  databaseId: state.database.databaseId,
+                  games: w.rowCount,
+                  selected: selectedCount(selection),
+                  selection: rowRanges(selection),
+                }
+              : undefined
+          }
+          onClose={() => setSrsOpen(false)}
         />
       )}
       {mateTraining && (

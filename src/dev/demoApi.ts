@@ -28,6 +28,7 @@ const d2 = (done: number, total: number, per: number, i: number) =>
     Math.floor((done / Math.max(total, 1)) * per * 0.4 * (1 + (i % 2))),
   );
 import { demoFens, demoLegal, demoNodes } from "./demoGame";
+import { demoSrs } from "./demoSrs";
 
 const famous: [
   string,
@@ -386,6 +387,7 @@ export function demoApi(): WorkbenchApi {
     };
   };
   const api: Partial<WorkbenchApi> = {
+    ...demoSrs(),
     replayTrainingProgress: async () => ({ ...replayProgress }),
     replayTrainingRecord: async (key, progress) => {
       replayProgress[key] = progress;
