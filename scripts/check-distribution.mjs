@@ -53,6 +53,7 @@ const documents = new Set([
   "playing-style.md",
   "replay-training.md",
   "mate-training.md",
+  "spaced-repetition.md",
   "evaluation-profile.md",
   "annotations.md",
 ]);

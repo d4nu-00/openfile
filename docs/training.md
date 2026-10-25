@@ -150,6 +150,8 @@ before.
 * Questions can also be made in bulk: [Build Mate Training](mate-training.md)
   writes mate-in-1 to mate-in-5 puzzles from the games in a list, each with
   its questions.
+* Lines and positions can be trained day by day, with growing intervals:
+  [Spaced repetition decks](spaced-repetition.md).
 
 ### Measurements
 

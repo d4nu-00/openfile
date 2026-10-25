@@ -38,6 +38,8 @@ describe("source distribution boundary", () => {
       "docs/game-review.md",
       "docs/replay-training.md",
       "docs/mate-training.md",
+      "docs/spaced-repetition.md",
+      "docs/superpowers/plans/2026-10-25-spaced-repetition.md",
       "docs/media/replay-training-question.jpg",
       "docs/media/replay-training-solved.jpg",
       "docs/media/replay-training-summary.jpg",

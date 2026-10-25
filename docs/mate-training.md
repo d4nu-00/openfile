@@ -8,7 +8,8 @@ list into training databases of forced mates in 1 to 5 moves. The list is
 usually a search for games that end in mate. Every puzzle is verified as a
 forced mate in exactly N moves with a single mating first move, and is stored
 with training questions, so **Replay Selected Games** ([Replay Training
-Sessions](replay-training.md)) quizzes the user and keeps progress.
+Sessions](replay-training.md)) quizzes the user and keeps progress. The
+chains also make good [spaced repetition decks](spaced-repetition.md#mate-chains).
 
 ## What it builds
 
