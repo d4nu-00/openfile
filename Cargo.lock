@@ -290,7 +290,7 @@ dependencies = [
 
 [[package]]
 name = "cbh-reader"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chess-core",
  "libc",
@@ -347,7 +347,7 @@ checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 
 [[package]]
 name = "chess-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "pgn-reader",
  "serde",
@@ -755,7 +755,7 @@ checksum = "4ef6b89e5b37196644d8796de5268852ff179b44e96276cf4290264843743bb7"
 
 [[package]]
 name = "engine"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chess-core",
  "libc",
@@ -2161,7 +2161,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "openfile"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "block2",
  "cbh-reader",
