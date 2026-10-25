@@ -113,6 +113,7 @@ export function allowedSourcePath(candidate) {
       "docs/superpowers/plans/2026-10-22-final-material-search-and-pgn-export.md",
       "docs/superpowers/plans/2026-10-22-material-tab-and-mating-pieces.md",
       "docs/superpowers/plans/2026-10-24-mate-training-builder.md",
+      "docs/superpowers/plans/2026-10-25-spaced-repetition.md",
       "docs/superpowers/plans/2026-10-20-playing-style.md",
       "docs/superpowers/specs/2026-10-20-playing-style-design.md",
       "docs/superpowers/plans/2026-10-18-filtered-opening-tree.md",
