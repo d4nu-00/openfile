@@ -45,6 +45,9 @@ import type {
   AppSettings,
   TablebaseResponse,
   BlunderParams,
+  MateBuildOptions,
+  MateTrainingProgress,
+  MateTrainingResponse,
   BlunderReport,
   DeepParams,
   DeepProgress,
@@ -64,6 +67,7 @@ import type {
   NamePage,
   Crosstable,
   CrossLayout,
+  ExportResponse,
   PasteResponse,
   ConvertEstimate,
   ConvertResponse,
@@ -96,6 +100,14 @@ import type {
   RepertoireSnapshot,
   RepertoireGrade,
   ReplayProgressMap,
+  SrsOptions,
+  SrsListing,
+  SrsCreateResponse,
+  SrsUpdateResponse,
+  SrsDeckDetail,
+  SrsQueueResponse,
+  SrsAnswerResponse,
+  SrsGrade,
 } from "./types";
 
 /** A progress channel; one that drops the messages when nobody listens. */
@@ -162,6 +174,11 @@ export const backend = {
   chooseSave: () =>
     save({
       defaultPath: "game.pgn",
+      filters: [{ name: "PGN", extensions: ["pgn"] }],
+    }),
+  chooseSavePgn: (defaultName: string) =>
+    save({
+      defaultPath: defaultName,
       filters: [{ name: "PGN", extensions: ["pgn"] }],
     }),
   openPgn: (path: string, requestId: string) =>
@@ -484,6 +501,105 @@ export const backend = {
     invoke<ReplayProgressMap>("replay_training_progress"),
   replayTrainingRecord: (key: string, progress: ReplayProgressMap[string]) =>
     invoke<void>("replay_training_record", { key, progress }),
+  /**
+   * Spaced repetition decks. `now` is milliseconds since the epoch and
+   * `utcOffset` the local offset in minutes: the scheduler takes its time
+   * from here, so a day starts at 04:00 local time.
+   */
+  srsDecks: (now: number, utcOffset: number) =>
+    invoke<SrsListing>("srs_decks", { now, utcOffset }),
+  srsCreateFromPgn: (
+    path: string,
+    name: string,
+    options: SrsOptions,
+    now: number,
+    utcOffset: number,
+  ) =>
+    invoke<SrsCreateResponse>("srs_create_from_pgn", {
+      path,
+      name,
+      options,
+      now,
+      utcOffset,
+    }),
+  srsCreateFromRows: (
+    databaseId: string,
+    ranges: { start: string; end: string }[],
+    name: string,
+    options: SrsOptions,
+    now: number,
+    utcOffset: number,
+  ) =>
+    invoke<SrsCreateResponse>("srs_create_from_rows", {
+      databaseId,
+      ranges,
+      name,
+      options,
+      now,
+      utcOffset,
+    }),
+  srsUpdateFromPgn: (
+    deckId: string,
+    path: string,
+    now: number,
+    utcOffset: number,
+  ) =>
+    invoke<SrsUpdateResponse>("srs_update_from_pgn", {
+      deckId,
+      path,
+      now,
+      utcOffset,
+    }),
+  srsUpdateFromRows: (
+    deckId: string,
+    databaseId: string,
+    ranges: { start: string; end: string }[],
+    now: number,
+    utcOffset: number,
+  ) =>
+    invoke<SrsUpdateResponse>("srs_update_from_rows", {
+      deckId,
+      databaseId,
+      ranges,
+      now,
+      utcOffset,
+    }),
+  srsDeck: (deckId: string) => invoke<SrsDeckDetail>("srs_deck", { deckId }),
+  srsSetOptions: (deckId: string, options: SrsOptions) =>
+    invoke<void>("srs_set_options", { deckId, options }),
+  srsRename: (deckId: string, name: string) =>
+    invoke<void>("srs_rename", { deckId, name }),
+  srsDelete: (deckId: string) => invoke<void>("srs_delete", { deckId }),
+  srsQueue: (deckId: string, now: number, utcOffset: number) =>
+    invoke<SrsQueueResponse>("srs_queue", { deckId, now, utcOffset }),
+  /** Records the answer; the next queue comes back with it. */
+  srsAnswer: (
+    deckId: string,
+    cardId: string,
+    grade: SrsGrade,
+    mistakes: number,
+    hints: number,
+    millis: number,
+    now: number,
+    utcOffset: number,
+  ) =>
+    invoke<SrsAnswerResponse>("srs_answer", {
+      deckId,
+      cardId,
+      grade,
+      mistakes,
+      hints,
+      millis,
+      now,
+      utcOffset,
+    }),
+  srsSuspend: (deckId: string, cardId: string, suspended: boolean) =>
+    invoke<void>("srs_suspend", { deckId, cardId, suspended }),
+  confirmDeleteDeck: (name: string) =>
+    ask(
+      `Delete the deck “${name}” and its progress? The PGN file or database it was made from is not changed.`,
+      { title: "Delete deck", kind: "warning" },
+    ),
   filteredOpeningTree: (databaseId: string, line: Line, requestId: string) =>
     invoke<TreeResponse>("filtered_opening_tree", {
       databaseId,
@@ -624,6 +740,58 @@ export const backend = {
   },
   cancelPaste: (databaseId: string) =>
     invoke<void>("cancel_paste", { databaseId }),
+  /** Export PGN: writes the games in the given rows of the list to a file. */
+  exportRowsPgn: async (
+    databaseId: string,
+    ranges: { start: string; end: string }[],
+    path: string,
+    onProgress: (p: { done: string; total: string }) => void,
+  ) => {
+    const events = new Channel<{ done: string; total: string }>();
+    events.onmessage = onProgress;
+    return invoke<ExportResponse>("export_rows_pgn", {
+      databaseId,
+      ranges,
+      path,
+      events,
+    });
+  },
+  cancelExport: (databaseId: string) =>
+    invoke<void>("cancel_export", { databaseId }),
+  chooseMateTrainingFolder: () =>
+    open({
+      directory: true,
+      title: "Choose the folder for the mate training databases",
+    }),
+  /**
+   * Build Mate Training from the games in `ranges` of the list. `engineId`
+   * may be empty when the depths stop at 2. Stop keeps what was found;
+   * Cancel writes nothing.
+   */
+  buildMateTraining: (
+    databaseId: string,
+    ranges: { start: string; end: string }[],
+    options: MateBuildOptions,
+    engineId: string,
+    millis: number,
+    folder: string,
+    name: string,
+    onProgress: (p: MateTrainingProgress) => void,
+  ) =>
+    invoke<MateTrainingResponse>("build_mate_training", {
+      databaseId,
+      ranges,
+      options,
+      engineId,
+      millis,
+      folder,
+      name,
+      events: channel(onProgress),
+    }),
+  stopMateTraining: (databaseId: string) =>
+    invoke<void>("stop_mate_training", { databaseId }),
+  cancelMateTraining: (databaseId: string) =>
+    invoke<void>("cancel_mate_training", { databaseId }),
   /** Delete: marks the rows' games deleted, or undeletes them all. */
   deleteRows: (databaseId: string, ranges: { start: string; end: string }[]) =>
     invoke<string>("delete_rows", { databaseId, ranges }),
@@ -631,6 +799,11 @@ export const backend = {
     ask(
       `Append ${games} games to this database? Annotations that are not decoded, or that the .2cbh format cannot store, are left out; the games affected are counted.`,
       { title: "Paste games", kind: "warning" },
+    ),
+  confirmExportPgn: (games: string) =>
+    ask(
+      `Export ${games} games as PGN? Critical-position marks and training questions, which PGN cannot hold, are left out.`,
+      { title: "Export PGN", kind: "warning" },
     ),
   crosstable: (
     databaseId: string,

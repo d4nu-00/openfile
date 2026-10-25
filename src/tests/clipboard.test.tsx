@@ -97,6 +97,64 @@ describe("copy, paste and delete games", () => {
   });
 });
 
+describe("export PGN", () => {
+  async function selectThree(ui: ReturnType<typeof renderWorkbench>) {
+    await ui.user.click(
+      await screen.findByRole("button", { name: "Load entry 1" }),
+    );
+    await ui.user.keyboard("{Shift>}");
+    await ui.user.click(screen.getByRole("button", { name: "Load entry 3" }));
+    await ui.user.keyboard("{/Shift}");
+    expect(await screen.findByText("3 selected")).toBeVisible();
+  }
+
+  it("writes the selected rows to the chosen PGN file", async () => {
+    const ui = renderWorkbench({ initialView: "database" });
+    await selectThree(ui);
+    await ui.user.click(screen.getByRole("button", { name: "Export PGN" }));
+    expect(ui.api.confirmExportPgn).toHaveBeenCalledWith("3");
+    expect(ui.api.chooseSavePgn).toHaveBeenCalledWith("games.pgn");
+    expect(ui.api.exportRowsPgn).toHaveBeenCalledWith(
+      "db-1",
+      [{ start: "1", end: "4" }],
+      "/synthetic/games.pgn",
+      expect.any(Function),
+    );
+    expect(
+      await screen.findByText("Exported 3 games to /synthetic/games.pgn"),
+    ).toBeVisible();
+  });
+
+  it("says what was skipped or left out", async () => {
+    const ui = renderWorkbench({ initialView: "database" });
+    ui.api.exportRowsPgn.mockResolvedValueOnce({
+      written: "2",
+      skipped: "1",
+      stripped: "1",
+      cancelled: false,
+      destination: "/synthetic/games.pgn",
+    });
+    await selectThree(ui);
+    await ui.user.click(screen.getByRole("button", { name: "Export PGN" }));
+    expect(
+      await screen.findByText(
+        "Exported 2 games to /synthetic/games.pgn, 1 skipped, annotations left out of 1",
+      ),
+    ).toBeVisible();
+  });
+
+  it("does nothing when the save dialog is cancelled or the question declined", async () => {
+    const ui = renderWorkbench({ initialView: "database" });
+    await selectThree(ui);
+    ui.api.chooseSavePgn.mockResolvedValueOnce(null);
+    await ui.user.click(screen.getByRole("button", { name: "Export PGN" }));
+    expect(ui.api.chooseSavePgn).toHaveBeenCalled();
+    ui.api.confirmExportPgn.mockResolvedValueOnce(false);
+    await ui.user.click(screen.getByRole("button", { name: "Export PGN" }));
+    expect(ui.api.exportRowsPgn).not.toHaveBeenCalled();
+  });
+});
+
 describe("convert to 2CBH", () => {
   it("estimates, converts the selection and opens the new database for editing", async () => {
     const ui = renderWorkbench({ initialView: "database" });

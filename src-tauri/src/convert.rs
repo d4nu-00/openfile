@@ -21,7 +21,7 @@ const STOP_BELOW: u64 = 128 * 1024 * 1024;
 /// Selected games converted at most; a whole database has no limit.
 pub const MAX_SELECTED: usize = 2_000_000;
 /// Every family extension, including the reference app's indexes.
-const FAMILY: [&str; 6] = ["2cbh", "2cbg", "2cba", "2lid", "2lcd", "2lgd"];
+pub(crate) const FAMILY: [&str; 6] = ["2cbh", "2cbg", "2cba", "2lid", "2lcd", "2lgd"];
 
 #[derive(Clone, Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -87,7 +87,7 @@ fn family(base: &Path) -> impl Iterator<Item = PathBuf> + '_ {
     FAMILY.iter().map(|ext| base.with_extension(ext))
 }
 
-fn remove_family(base: &Path) {
+pub(crate) fn remove_family(base: &Path) {
     for path in family(base) {
         let _ = std::fs::remove_file(path);
     }
@@ -95,7 +95,7 @@ fn remove_family(base: &Path) {
 
 /// The target as a `.2cbh` path; refused when any file of its family
 /// exists, or when it names a source file.
-fn check_target(path: PathBuf, sources: &[PathBuf]) -> Result<PathBuf, AppError> {
+pub(crate) fn check_target(path: PathBuf, sources: &[PathBuf]) -> Result<PathBuf, AppError> {
     if path.file_stem().is_none_or(|s| s.is_empty()) {
         return Err(AppError::new(
             "invalidPath",
@@ -123,7 +123,7 @@ fn check_target(path: PathBuf, sources: &[PathBuf]) -> Result<PathBuf, AppError>
 }
 
 /// The temporary family the conversion writes before it is renamed.
-fn partial(target: &Path) -> PathBuf {
+pub(crate) fn partial(target: &Path) -> PathBuf {
     let stem = target.file_stem().unwrap_or_default().to_string_lossy();
     target.with_file_name(format!("{stem}.converting.2cbh"))
 }

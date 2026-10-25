@@ -3006,6 +3006,29 @@ kbd {
   }
 }
 
+/* The search mask's Ending tab */
+.search-mask .mask-ending {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.search-mask .mask-ending-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--pane-border);
+  padding: 6px 8px;
+  margin: 0;
+}
+.search-mask .mask-ending-grid {
+  display: grid;
+  gap: 4px 8px;
+  align-items: center;
+}
+.search-mask .mask-ending-head {
+  font-weight: 600;
+  text-align: center;
+}
 .material-mask fieldset {
   border: 0;
   padding: 0;
@@ -3272,4 +3295,147 @@ kbd {
   white-space: normal;
   overflow: visible;
   text-overflow: clip;
+}
+
+/* Build Mate Training */
+.modal.mate-training {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(88vh, 900px);
+  overflow-y: auto;
+}
+.modal.mate-training .mask-row {
+  flex-wrap: wrap;
+}
+.modal.mate-training .path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.modal.mate-training input[type="number"] {
+  width: 72px;
+}
+.mate-rejections,
+.mate-databases {
+  margin: 0;
+  padding-left: 18px;
+}
+
+/* Spaced Repetition */
+.modal.srs-decks {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: min(860px, calc(100vw - 32px));
+  max-height: min(88vh, 900px);
+  overflow-y: auto;
+}
+.modal.srs-options {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(88vh, 900px);
+  overflow-y: auto;
+}
+.modal.srs-options input[type="number"] {
+  width: 90px;
+}
+.srs-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.srs-table th,
+.srs-table td {
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--pane-border);
+}
+.srs-table .num,
+.srs-table th:nth-child(n + 2):nth-child(-n + 6) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.srs-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.srs-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--pane-header-bg);
+  border: 1px solid var(--pane-border);
+}
+.srs-form h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.srs-form .path {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.srs-notice,
+.srs-unreadable {
+  padding: 8px 12px;
+  background: var(--pane-header-bg);
+  border-left: 3px solid var(--accent);
+}
+.srs-notice p,
+.srs-unreadable p {
+  margin: 0 0 4px;
+}
+.srs-unreadable h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+.srs-unreadable ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.srs-counts {
+  display: flex;
+  gap: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.srs-badge {
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.srs-comments {
+  margin: 12px 0;
+  padding-left: 18px;
+}
+.srs-grades {
+  margin: 14px 0;
+}
+.srs-grade-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.srs-grade-buttons button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 78px;
+  padding: 8px 12px;
+}
+.srs-grade-buttons button.default {
+  outline: 2px solid var(--accent);
+}
+.srs-grade-buttons small {
+  color: var(--text-muted);
 }

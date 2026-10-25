@@ -67,9 +67,13 @@ pub(crate) struct State {
     /// Games copied in a database window, and running pastes.
     pub(crate) clip: Option<Arc<crate::clipboard::Clip>>,
     pub(crate) paste_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    /// Running PGN exports of a database's list.
+    pub(crate) export_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     /// Running conversions to 2CBH, by source database.
     pub(crate) maintenance_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
     pub(crate) convert_cancels: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    /// Running Build Mate Training jobs, by source database.
+    pub(crate) mate_training: HashMap<String, Arc<crate::mate_training::run::Control>>,
     /// Games per year of each database, for the opening report, with the
     /// entry count they were counted at.
     pub(crate) year_counts: HashMap<String, (u64, Arc<std::collections::BTreeMap<u16, u64>>)>,
@@ -372,6 +376,9 @@ impl Registry {
             job.cancel();
         }
         state.preparations.remove(&id);
+        if let Some(job) = state.mate_training.remove(&id) {
+            job.cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
         if let Some((_, cancel)) = state.filtered_tree_cancels.remove(&id) {
             cancel.store(true, std::sync::atomic::Ordering::Relaxed);
         }
@@ -383,6 +390,7 @@ impl Registry {
             &mut state.crosstable_cancels,
             &mut state.statistics_cancels,
             &mut state.paste_cancels,
+            &mut state.export_cancels,
             &mut state.search_cancels,
             &mut state.tree_cancels,
             &mut state.reference_cancels,

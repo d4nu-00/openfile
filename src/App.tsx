@@ -27,6 +27,8 @@ import type {
   NameKind,
   NameRow,
   ConvertEstimate,
+  MateTrainingProgress,
+  MateTrainingResponse,
   DoubleOptions,
   SelectionNames,
   DatabaseSymbol,
@@ -81,6 +83,11 @@ import { PasteDialog } from "./components/PasteDialog";
 import { AnnotationPalette } from "./components/AnnotationPalette";
 import { SymbolMenu } from "./components/SymbolMenu";
 import { ConvertDialog, type ConvertScope } from "./components/ConvertDialog";
+import { SrsDecks } from "./components/SrsDecks";
+import {
+  MateTrainingDialog,
+  type MateTrainingRequest,
+} from "./components/MateTrainingDialog";
 import { DoublesDialog, JobDialog } from "./components/MaintenanceDialogs";
 import { SelectionDataDialog } from "./components/SelectionDataDialog";
 import type { SymbolSlot } from "./state/symbols";
@@ -1011,6 +1018,7 @@ export function App({
   /** Games copied and waiting to be pasted, and a running paste. */
   const [clipGames, setClipGames] = useState(0);
   const [pastingGames, setPastingGames] = useState<string>();
+  const [exportingGames, setExportingGames] = useState<string>();
   /** A maintenance job: Check Integrity, Find Double Games or Remove
    * Deleted Games, with its progress and result. */
   const [classified, setClassified] = useState<Classification>();
@@ -1056,6 +1064,18 @@ export function App({
     target: string;
     estimate?: ConvertEstimate;
     running?: string;
+    error?: string;
+  }>();
+  /** Spaced Repetition: its decks dialog, while open. */
+  const [srsOpen, setSrsOpen] = useState(false);
+  /** Build Mate Training: its dialog, while open. */
+  const [mateTraining, setMateTraining] = useState<{
+    databaseId: string;
+    games: number;
+    selected: number;
+    selection: { start: string; end: string }[];
+    running?: MateTrainingProgress;
+    result?: MateTrainingResponse;
     error?: string;
   }>();
   const explain = (err: unknown) =>
@@ -1153,6 +1173,42 @@ export function App({
       );
     } catch (err) {
       setConverting(
+        (s) => s && { ...s, running: undefined, error: explain(err) },
+      );
+    }
+  }
+  /** Build Mate Training: the games in the list, or the selected rows. */
+  async function runMateTraining(request: MateTrainingRequest) {
+    const m = mateTraining;
+    if (!m || m.running) return;
+    setMateTraining({
+      ...m,
+      running: {
+        scanned: "0",
+        total: "0",
+        puzzles: [0, 0, 0, 0, 0],
+        chains: 0,
+        combinations: [],
+      },
+      result: undefined,
+      error: undefined,
+    });
+    try {
+      const result = await api.buildMateTraining(
+        m.databaseId,
+        request.source === "selection"
+          ? m.selection
+          : [{ start: "1", end: String(m.games + 1) }],
+        request.options,
+        request.engineId,
+        request.millis,
+        request.folder,
+        request.name,
+        (p) => setMateTraining((s) => s && { ...s, running: p }),
+      );
+      setMateTraining((s) => s && { ...s, running: undefined, result });
+    } catch (err) {
+      setMateTraining(
         (s) => s && { ...s, running: undefined, error: explain(err) },
       );
     }
@@ -1436,6 +1492,40 @@ export function App({
       w.setDiagnostics([{ code: "paste", message: explain(err) }]);
     } finally {
       setPastingGames(undefined);
+    }
+  }
+  /** Export PGN: the selection's games, or the chosen row's, to a file. */
+  async function exportGames() {
+    const db = state.database;
+    const ranges = chosenRanges();
+    if (!db || !ranges.length || exportingGames) return;
+    const games = ranges.reduce(
+      (n, r) => n + Number(r.end) - Number(r.start),
+      0,
+    );
+    if (!(await api.confirmExportPgn(String(games)))) return;
+    const path = await api.chooseSavePgn("games.pgn");
+    if (!path) return;
+    setExportingGames("starting…");
+    try {
+      const result = await api.exportRowsPgn(db.databaseId, ranges, path, (p) =>
+        setExportingGames(`${p.done} of ${p.total}`),
+      );
+      w.setStatus(
+        result.cancelled
+          ? "Export cancelled"
+          : `Exported ${result.written} games to ${result.destination}${
+              result.skipped !== "0" ? `, ${result.skipped} skipped` : ""
+            }${
+              result.stripped !== "0"
+                ? `, annotations left out of ${result.stripped}`
+                : ""
+            }`,
+      );
+    } catch (err) {
+      w.setDiagnostics([{ code: "export", message: explain(err) }]);
+    } finally {
+      setExportingGames(undefined);
     }
   }
   /** Delete: the selection's games, or the loaded game. */
@@ -1905,6 +1995,10 @@ export function App({
       run: () => pasteGames(),
       enabled: !!state.database?.writable && clipGames > 0 && !pastingGames,
     },
+    "db-export-pgn": {
+      run: () => exportGames(),
+      enabled: !!state.database && w.rowCount > 0 && !exportingGames,
+    },
     "mark-games": {
       run: () => markGames(),
       enabled: !!state.database?.writable && w.rowCount > 0,
@@ -1930,6 +2024,26 @@ export function App({
     "remove-deleted-games": {
       run: () => runCompact(),
       enabled: !!state.database?.writable && !job,
+    },
+    "build-mate-training": {
+      run: () => {
+        const db = state.database;
+        if (!db) return;
+        setMateTraining(
+          (m) =>
+            m ?? {
+              databaseId: db.databaseId,
+              games: w.rowCount,
+              selected: selectedCount(selection),
+              selection: rowRanges(selection),
+            },
+        );
+      },
+      enabled: !!state.database && w.rowCount > 0 && !mateTraining?.running,
+    },
+    "srs-decks": {
+      run: () => setSrsOpen(true),
+      enabled: !srsOpen,
     },
     "convert-to-2cbh": {
       run: () => startConvert(),
@@ -2742,6 +2856,7 @@ export function App({
       !!maskOpen ||
       !!playingStyle ||
       !!replay ||
+      srsOpen ||
       gameDataOpen ||
       setupOpen ||
       !!pasting ||
@@ -2750,7 +2865,7 @@ export function App({
   // "/" also opens command search when focus is not in a field.
   useEffect(() => {
     function slash(event: KeyboardEvent) {
-      if (event.key !== "/" || palette || replay) return;
+      if (event.key !== "/" || palette || replay || srsOpen) return;
       if ((event.target as HTMLElement).closest?.("input,textarea,select"))
         return;
       event.preventDefault();
@@ -2758,7 +2873,7 @@ export function App({
     }
     window.addEventListener("keydown", slash);
     return () => window.removeEventListener("keydown", slash);
-  }, [palette, replay]);
+  }, [palette, replay, srsOpen]);
 
   const databaseName = state.database ? "Database" : "Databases";
   /** Open databases in the order they were opened. */
@@ -3011,6 +3126,20 @@ export function App({
                         onClick={() =>
                           state.database &&
                           void api.cancelPaste(state.database.databaseId)
+                        }
+                      >
+                        Cancel
+                      </button>
+                    </span>
+                  )}
+                  {exportingGames && (
+                    <span className="sorting">
+                      Exporting: {exportingGames}
+                      <button
+                        className="link-button"
+                        onClick={() =>
+                          state.database &&
+                          void api.cancelExport(state.database.databaseId)
                         }
                       >
                         Cancel
@@ -3481,6 +3610,46 @@ export function App({
             void api.cancelConvert(converting.databaseId).catch(() => {})
           }
           onClose={() => setConverting(undefined)}
+        />
+      )}
+      {srsOpen && (
+        <SrsDecks
+          api={api}
+          database={
+            state.database
+              ? {
+                  databaseId: state.database.databaseId,
+                  games: w.rowCount,
+                  selected: selectedCount(selection),
+                  selection: rowRanges(selection),
+                }
+              : undefined
+          }
+          onClose={() => setSrsOpen(false)}
+        />
+      )}
+      {mateTraining && (
+        <MateTrainingDialog
+          games={mateTraining.games}
+          selected={mateTraining.selected}
+          engines={settings.engines}
+          defaultEngine={settings.defaultEngine}
+          running={mateTraining.running}
+          result={mateTraining.result}
+          error={mateTraining.error}
+          onChooseFolder={api.chooseMateTrainingFolder}
+          onBuild={(request) => void runMateTraining(request)}
+          onStop={() =>
+            void api.stopMateTraining(mateTraining.databaseId).catch(() => {})
+          }
+          onCancel={() =>
+            void api.cancelMateTraining(mateTraining.databaseId).catch(() => {})
+          }
+          onOpen={(path) => {
+            setMateTraining(undefined);
+            void w.openDatabase(path);
+          }}
+          onClose={() => setMateTraining(undefined)}
         />
       )}
       {blunder && (

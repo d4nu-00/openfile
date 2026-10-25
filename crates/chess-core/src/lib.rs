@@ -1,6 +1,7 @@
 pub mod eco;
 pub mod edit;
 pub mod error;
+pub mod mate;
 pub mod model;
 pub mod pgn;
 pub mod position;

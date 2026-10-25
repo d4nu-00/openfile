@@ -1,5 +1,6 @@
 import {
   Archive,
+  CalendarClock,
   ArrowUpToLine,
   Award,
   ChartLine,
@@ -24,6 +25,7 @@ import {
   Copy,
   Cpu,
   Database,
+  FileDown,
   FilePlus,
   FileText,
   Funnel as Filter,
@@ -59,6 +61,7 @@ import {
   Square,
   Star,
   Swords,
+  Target,
   TableProperties,
   Trash2,
   Undo2,
@@ -217,6 +220,13 @@ const list: CommandMeta[] = [
     tip: "Append a copy selection to this database",
     icon: ClipboardPaste,
     keys: "Ctrl+V",
+    views: db,
+  },
+  {
+    id: "db-export-pgn",
+    label: "Export PGN",
+    tip: "Write the selected games to a PGN file",
+    icon: FileDown,
     views: db,
   },
   {
@@ -1214,6 +1224,20 @@ const list: CommandMeta[] = [
     views: db,
   },
   {
+    id: "build-mate-training",
+    label: "Build Mate Training",
+    tip: "Make mate-in-1 to mate-in-5 training databases from the games in the list",
+    icon: Target,
+    views: db,
+  },
+  {
+    id: "srs-decks",
+    label: "Spaced Repetition",
+    tip: "Train PGN lines and positions with spaced repetition",
+    icon: CalendarClock,
+    views: both,
+  },
+  {
     id: "delete-training",
     label: "Delete Training Commentary",
     tip: "Delete all training commentary",
@@ -1409,6 +1433,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
             S("db-copy"),
             S("delete-game"),
             S("db-select-all"),
+            S("db-export-pgn"),
             S("mark-games"),
             S("db-edit-game-data"),
           ],
@@ -1433,6 +1458,8 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
           items: [
             S("toggle-game-list"),
             S("replay-training-selection"),
+            S("build-mate-training"),
+            S("srs-decks"),
             S("toggle-players"),
             S("toggle-tournaments"),
             S("games-of-player"),
@@ -1729,6 +1756,7 @@ export const ribbons: Record<ViewId, RibbonTab[]> = {
           label: "Training",
           items: [
             L("replay-training-game"),
+            L("srs-decks"),
             S("training-annotation"),
             S("delete-training"),
             L("hints"),

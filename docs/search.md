@@ -26,6 +26,7 @@ A filter combines any of these fields; every given field must match:
 | Moves | Inclusive range of the stored main-line move count |
 | Result | Any of 1-0, 0-1, ½-½, 0-0; forfeits count as their PGN result |
 | Mate, Stalem., Check | The main line ends in one of those set; Check means check that is not mate |
+| Final material: Equal pieces, Bishop = Knight, Count pawns | The main line's final position has equal pieces, as defined below |
 | Full Text, NOT | Case-insensitive text in any text annotation, before or after a move, in any language; with NOT, games without it |
 
 Text entries never match. Deleted games match unless the filter excludes them.
@@ -77,6 +78,19 @@ other field:
 * for the final position, its move tree is decoded and the main line's end
   is tested;
 * for text, only its annotation record is read.
+
+**Final material** is the workbench's own design; the reference app's Material
+tab was not traced. In the main line's final position, White and Black must
+have the same number of queens, the same number of rooks and the same number
+of minor pieces.
+* With Bishop = Knight on (the default), bishops and knights are one class,
+  so a bishop against a knight is equal. With it off, bishops and knights are
+  compared separately.
+* Pawns are ignored unless Count pawns is on, which also requires equal pawn
+  counts. Kings are always one each.
+* The criterion is tested in the same pass as Mate, Stalem. and Check: the
+  moves are decoded once, only for games that passed the other fields, and
+  a game that cannot be decoded never matches.
 
 Two things were not traced: whether the reference app reads the main line's end or a
 stored flag, and whether its Check includes mate. The workbench's choices are
@@ -230,6 +244,60 @@ processing, but does **not** establish the exact UI choice, union/intersection
 rules, tie-node policy, ordering or truncation behavior. Those questions were
 investigated in REA/Ghidra and remain uncertain. OpenFile therefore uses the
 explicit independent set rules above; no native parity is claimed for them.
+
+## Ending tab (2026-10-22)
+
+The **Ending** tab is the workbench's own design, separate from the Material
+tab above it in the mask (which follows the reference app's dialog 328 and
+tests positions anywhere in a move window). It combines with every other field and is tested in the same
+pass as Mate, Stalem., Check and Final material: the moves are decoded once,
+only for games that passed the other fields, and a game that cannot be decoded
+never matches.
+
+**Count ranges.** Each piece kind takes a range with an optional minimum and
+maximum; the select offers any, an exact count, `1+` and `2+`. A count matches
+when it lies within the bounds given, and no bound means any.
+
+**Piece counts.** A side's counts have a range for kings, queens, rooks,
+bishops, knights, minor pieces (bishops and knights together) and pawns. Every
+range given must match. With **No other pieces** (`othersZero`), every piece
+kind among queens, rooks, bishops and knights left at any must be 0. Pawns are
+not pieces: they keep their own range, so "R + minor, no other pieces" allows
+any pawns unless the pawn count is set too.
+Also:
+* bishops and knights are not forced to 0 when minor pieces are given, and
+  minor pieces are not forced to 0 when bishops or knights are given;
+* kings are never forced.
+
+**Final position.** White's and Black's ranges are matched against White's and
+Black's pieces at the end of the main line. With **Either colour**, the game
+also matches when the two sides' counts match the other way round; whole sides
+swap, not single kinds. The criterion is on when any range is set or
+No other pieces is on for either side. **Bishop = Knight** (the default) shows
+the Minor column and leaves bishops and knights at any; off, it shows B and N
+and leaves minor pieces at any. It applies to Mate by as well.
+
+**Mate by.** With *Final position is mate by*, the game must end in checkmate,
+and the mating side's pieces *involved in the mate* are counted by kind and
+matched against a second set of ranges (kings, queens, rooks, bishops or
+knights, minor pieces, pawns, and No other pieces). Let M be the mated side, `s`
+its king's square and A the mating side. The escape squares are the squares a
+king could step to from `s` that M's own pieces do not occupy: empty squares
+and squares holding A's pieces. A piece of A, king and pawns included, is
+involved when it gives check, or when it attacks at least one escape square.
+* The attacks are computed with M's king removed from the occupancy, so a
+  slider's attack runs on through `s` and the king cannot step back along the
+  checking line.
+* Pawns attack only their two capture squares; the king its king-move squares.
+* A piece that defends the mating piece's square thereby attacks an escape
+  square when that square holds an A piece. In Scholar's mate the bishop
+  defending the queen on f7 is involved: `Q,B`.
+* Examples: the back-rank mate `Ra8#` involves `R`; a smothered mate involves
+  `N`; queen and king against a cornered king involves `Q,K`; a rook mate where
+  the king covers g7 and a pawn covers h7 involves `R,K,P`.
+
+Not considered, later work: pins, blockers, and pieces that only defend other
+attackers from afar. A game that does not end in mate never matches Mate by.
 
 ## Annotations and Medals tabs (2026-10-16)
 

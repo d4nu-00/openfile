@@ -490,6 +490,10 @@ export interface GameFilter {
   mate?: boolean;
   stalemate?: boolean;
   check?: boolean;
+  /** The main line's final position has equal pieces; see docs/search.md. */
+  finalMaterial?: FinalMaterial;
+  /** The Ending tab: piece counts and mate-by pieces; see docs/search.md. */
+  ending?: EndingQuery;
   /** Text in the game's text annotations; with `fullTextNot`, games
    * without it. */
   fullText?: string;
@@ -500,6 +504,62 @@ export interface GameFilter {
   annotations?: AnnotationQuery;
   material?: MaterialQuery;
 }
+/** The game data tab's final material criterion. */
+export interface FinalMaterial {
+  /** Both sides have the same queens, rooks and minor pieces. */
+  equal: boolean;
+  /** Compare bishops and knights separately instead of as minor pieces. */
+  separateMinors: boolean;
+  /** Pawn counts must be equal too. */
+  countPawns: boolean;
+}
+/** Inclusive bounds on a piece count; absent means open. */
+export interface CountRange {
+  min?: number;
+  max?: number;
+}
+/** Ranges on one side's pieces; `minors` is bishops and knights together. */
+export interface PieceCounts {
+  kings: CountRange;
+  queens: CountRange;
+  rooks: CountRange;
+  bishops: CountRange;
+  knights: CountRange;
+  minors: CountRange;
+  pawns: CountRange;
+  /** Every piece kind left at "any" must be 0; pawns and kings keep their
+   * own ranges. */
+  othersZero: boolean;
+}
+/** The Ending tab (the workbench's own design; see docs/search.md). */
+export interface EndingQuery {
+  /** The pieces in the main line's final position. */
+  white: PieceCounts;
+  black: PieceCounts;
+  /** The sides may also match the other way round. */
+  eitherColour: boolean;
+  /** The game ends in mate and the mating side's pieces involved in the
+   * mate match `mateBy`. */
+  mateByEnabled: boolean;
+  mateBy: PieceCounts;
+}
+export const emptyPieceCounts = (): PieceCounts => ({
+  kings: {},
+  queens: {},
+  rooks: {},
+  bishops: {},
+  knights: {},
+  minors: {},
+  pawns: {},
+  othersZero: false,
+});
+export const emptyEnding = (): EndingQuery => ({
+  white: emptyPieceCounts(),
+  black: emptyPieceCounts(),
+  eitherColour: false,
+  mateByEnabled: false,
+  mateBy: emptyPieceCounts(),
+});
 /** The search mask's Annotations tab (dialog 343; see docs/search.md). */
 export interface AnnotationQuery {
   text1: string;
@@ -1357,6 +1417,15 @@ export interface PasteResponse {
   /** Chess960 games left out: 2CBH cannot hold them yet. */
   chess960?: string;
 }
+export interface ExportResponse {
+  written: string;
+  /** Entries that are not games, or whose moves could not be read. */
+  skipped: string;
+  /** Games written without critical-position marks or training questions. */
+  stripped: string;
+  cancelled: boolean;
+  destination: string;
+}
 /** Tablebase annotations of a game's main line (workbench). */
 export interface TablebaseAnnotation {
   revision: string;
@@ -1636,4 +1705,195 @@ export interface StyleReport {
   dimensions: NativeStyleDimension[];
   games: StyleGame[];
   elapsedMs: number;
+}
+/** The options of Build Mate Training. */
+export interface MateBuildOptions {
+  minDepth: number;
+  maxDepth: number;
+  /** Puzzles per combination and depth, and chains per combination. */
+  per: number;
+  /** Only these combinations, e.g. "Q+N"; every combination when null. */
+  combinations: string[] | null;
+  poolMinors: boolean;
+}
+/** Puzzles of a combination at each depth (index 0 is mate in 1). */
+export interface MateCombinationCount {
+  combination: string;
+  depths: number[];
+  chains: number;
+}
+export interface MateTrainingProgress {
+  scanned: string;
+  total: string;
+  puzzles: number[];
+  chains: number;
+  combinations: MateCombinationCount[];
+}
+export interface MateTrainingResponse {
+  /** The databases written: the mate in `depth`, or the chains. */
+  databases: { path: string; depth?: number | null; games: number }[];
+  combinations: MateCombinationCount[];
+  puzzles: number[];
+  chains: number;
+  rejections: { kind: string; count: string }[];
+  scanned: string;
+  total: string;
+  filteredOut: string;
+  stopped: boolean;
+  cancelled: boolean;
+  /** Every quota was met before the games ran out. */
+  complete: boolean;
+}
+
+/** Spaced repetition decks (docs/spaced-repetition.md). */
+export type SrsTrainee = "sideToMove" | "white" | "black";
+export type SrsNewOrder = "source" | "random";
+export type SrsGrade = "again" | "hard" | "good" | "easy";
+export type SrsKind = "new" | "learning" | "review" | "relearning";
+export interface SrsOptions {
+  /** Minutes. */
+  learningSteps: number[];
+  /** Minutes. */
+  relearningSteps: number[];
+  /** Days. */
+  graduatingInterval: number;
+  easyInterval: number;
+  newPerDay: number;
+  reviewsPerDay: number;
+  maxInterval: number;
+  newOrder: SrsNewOrder;
+  includeVariations: boolean;
+  trainee: SrsTrainee;
+}
+export interface SrsStats {
+  total: number;
+  new: number;
+  learning: number;
+  dueToday: number;
+  suspended: number;
+  mature: number;
+  reviewsToday: number;
+  /** The share of review answers of the last 30 days that were not Again. */
+  retention: number | null;
+  /** Review cards due today, and on each of the next 6 days. */
+  forecast: number[];
+}
+export interface SrsDeckSummary {
+  id: string;
+  name: string;
+  source: string;
+  sourceKind: "pgn" | "list";
+  cards: number;
+  stats: SrsStats;
+}
+export interface SrsListing {
+  decks: SrsDeckSummary[];
+  unreadable: { file: string; reason: string }[];
+}
+export interface SrsSkipped {
+  games: number;
+  cardsOverLimit: number;
+  gamesNotRead: number;
+}
+export interface SrsCreateResponse {
+  deck: SrsDeckSummary;
+  skipped: SrsSkipped;
+}
+export interface SrsUpdateResponse {
+  deck: SrsDeckSummary;
+  skipped: SrsSkipped;
+  added: number;
+  kept: number;
+  suspended: number;
+  restored: number;
+}
+export interface SrsCardState {
+  kind: SrsKind;
+  step: number;
+  due: number;
+  interval: number;
+  ease: number;
+  reps: number;
+  lapses: number;
+}
+export interface SrsCardRow {
+  id: string;
+  sourceLabel: string;
+  white: string;
+  black: string;
+  event: string;
+  date: string;
+  plies: number;
+  suspended: boolean;
+  removed: boolean;
+  state: SrsCardState;
+}
+export interface SrsDeckDetail {
+  id: string;
+  name: string;
+  source: string;
+  sourceKind: "pgn" | "list";
+  created: number;
+  options: SrsOptions;
+  cards: SrsCardRow[];
+}
+export interface SrsCardMove {
+  uci: string;
+  san: string;
+  comment: string | null;
+}
+export interface SrsCard {
+  id: string;
+  startFen: string;
+  moves: SrsCardMove[];
+  trainee: "white" | "black";
+  white: string;
+  black: string;
+  event: string;
+  date: string;
+  sourceLabel: string;
+  order: number;
+  suspended: boolean;
+  removed: boolean;
+}
+/** One move of a card: the position before it and what the board needs. */
+export interface SrsPly {
+  fen: string;
+  /** The legal moves where the trainee moves; empty for the opponent. */
+  legalUci: string[];
+  /** Moves that other lines of the deck play from this position. */
+  otherMoves: string[];
+}
+export interface SrsPreview {
+  grade: SrsGrade;
+  dueInMs: number;
+  intervalDays: number;
+  kind: SrsKind;
+}
+export interface SrsStudyCard {
+  card: SrsCard;
+  /** A new card: each trainee move is shown as an arrow first. */
+  learn: boolean;
+  state: SrsCardState;
+  plies: SrsPly[];
+  endFen: string;
+  previews: SrsPreview[];
+}
+export interface SrsQueue {
+  cards: string[];
+  newLeft: number;
+  reviewsLeft: number;
+  learningDue: number;
+  reviewDue: number;
+  newDue: number;
+  nextLearningDue: number | null;
+  ahead: boolean;
+}
+export interface SrsQueueResponse {
+  queue: SrsQueue;
+  next: SrsStudyCard | null;
+  stats: SrsStats;
+}
+export interface SrsAnswerResponse extends SrsQueueResponse {
+  state: SrsCardState;
 }

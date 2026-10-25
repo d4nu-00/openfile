@@ -1,6 +1,8 @@
 use cbh_reader::{
     Database, ReadLimits,
-    search::{EloMode, GameFilter, PlayerQuery},
+    search::{
+        CountRange, EloMode, EndingQuery, FinalMaterial, GameFilter, PieceCounts, PlayerQuery,
+    },
     v2::write::Writer,
 };
 use chess_core::{GameLimits, parse_pgn};
@@ -385,6 +387,251 @@ fn final_positions_and_full_text() {
         ),
         [2, 3]
     );
+}
+
+/// Final positions: bishop against knight, a piece up, a spare pawn.
+const MATERIAL: &str = r#"[White "Equal, A"]
+[Black "B"]
+[SetUp "1"]
+[FEN "8/8/4k3/3b4/8/4K3/3N4/8 w - - 0 1"]
+[Result "1-0"]
+
+1. Kd3 Kd6 1-0
+
+[White "Piece up, A"]
+[Black "B"]
+[SetUp "1"]
+[FEN "8/8/4k3/3b4/8/4K3/3NN3/8 w - - 0 1"]
+[Result "1-0"]
+
+1. Kd3 Kd6 1-0
+
+[White "Spare pawn, A"]
+[Black "B"]
+[SetUp "1"]
+[FEN "8/8/4k3/3b4/8/4K3/P2N4/8 w - - 0 1"]
+[Result "0-1"]
+
+1. Kd3 Kd6 0-1"#;
+
+#[test]
+fn final_material_compares_the_last_position_of_the_main_line() {
+    let d = tempfile::tempdir().unwrap();
+    let path = d.path().join("Material.2cbh");
+    let games = parse_pgn(MATERIAL.as_bytes(), &GameLimits::default()).unwrap();
+    let mut w = Writer::create(&path).unwrap();
+    w.append_all(&games).unwrap();
+    drop(w);
+    let mut db = Database::open(&path, ReadLimits::default()).unwrap();
+    let f = |m: FinalMaterial, results: &[&str]| GameFilter {
+        final_material: m,
+        results: results.iter().map(|r| r.to_string()).collect(),
+        ..Default::default()
+    };
+    let equal = FinalMaterial {
+        equal: true,
+        ..Default::default()
+    };
+    // Off by default: every game.
+    assert_eq!(hits(&mut db, f(FinalMaterial::default(), &[])), [1, 2, 3]);
+    // Bishop against knight, a spare pawn ignored.
+    assert_eq!(hits(&mut db, f(equal, &[])), [1, 3]);
+    // Combined with a header field.
+    assert_eq!(hits(&mut db, f(equal, &["1-0"])), [1]);
+    assert_eq!(hits(&mut db, f(equal, &["0-1"])), [3]);
+    // Bishops and knights apart: neither is equal.
+    let separate = FinalMaterial {
+        separate_minors: true,
+        ..equal
+    };
+    assert!(hits(&mut db, f(separate, &[])).is_empty());
+    // Pawns counted: the spare pawn counts.
+    let pawns = FinalMaterial {
+        count_pawns: true,
+        ..equal
+    };
+    assert_eq!(hits(&mut db, f(pawns, &[])), [1]);
+    // The criterion arrives from the frontend as camelCase JSON.
+    let json: GameFilter =
+        serde_json::from_str(r#"{"finalMaterial":{"equal":true,"countPawns":true}}"#).unwrap();
+    assert_eq!(hits(&mut db, json), [1]);
+}
+
+#[test]
+fn ending_tab_counts_pieces_of_the_last_position() {
+    let d = tempfile::tempdir().unwrap();
+    let path = d.path().join("Material.2cbh");
+    let games = parse_pgn(MATERIAL.as_bytes(), &GameLimits::default()).unwrap();
+    let mut w = Writer::create(&path).unwrap();
+    w.append_all(&games).unwrap();
+    drop(w);
+    let mut db = Database::open(&path, ReadLimits::default()).unwrap();
+    let exactly = |n: u8| CountRange {
+        min: Some(n),
+        max: Some(n),
+    };
+    let f = |m: EndingQuery| GameFilter {
+        ending: m,
+        ..Default::default()
+    };
+    // Pawns are not pieces, so they are set to 0 explicitly.
+    let knight = PieceCounts {
+        knights: exactly(1),
+        pawns: exactly(0),
+        others_zero: true,
+        ..Default::default()
+    };
+    let bishop = PieceCounts {
+        bishops: exactly(1),
+        pawns: exactly(0),
+        others_zero: true,
+        ..Default::default()
+    };
+    // Off by default: every game.
+    assert_eq!(hits(&mut db, f(EndingQuery::default())), [1, 2, 3]);
+    // White knight, Black bishop, nothing else: the first game only.
+    let q = EndingQuery {
+        white: knight,
+        black: bishop,
+        ..Default::default()
+    };
+    assert_eq!(hits(&mut db, f(q)), [1]);
+    // Two white knights.
+    let two = EndingQuery {
+        white: PieceCounts {
+            knights: exactly(2),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    assert_eq!(hits(&mut db, f(two)), [2]);
+    // The sides swapped only with either colour.
+    let swapped = EndingQuery {
+        white: bishop,
+        black: knight,
+        ..Default::default()
+    };
+    assert!(hits(&mut db, f(swapped)).is_empty());
+    let either = EndingQuery {
+        either_colour: true,
+        ..swapped
+    };
+    assert_eq!(hits(&mut db, f(either)), [1]);
+    // Combined with a header field.
+    let with_result = GameFilter {
+        results: vec!["0-1".into()],
+        ..f(EndingQuery {
+            white: PieceCounts {
+                pawns: exactly(1),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+    };
+    assert_eq!(hits(&mut db, with_result), [3]);
+    // The criterion arrives from the frontend as camelCase JSON.
+    let json: GameFilter = serde_json::from_str(
+        r#"{"ending":{"white":{"knights":{"min":1},"othersZero":true},"eitherColour":true}}"#,
+    )
+    .unwrap();
+    // Pawns are not pieces: the knight with a spare pawn matches too.
+    assert_eq!(hits(&mut db, json), [1, 2, 3]);
+}
+
+/// A back-rank rook mate, a queen and knight mate, and a game that ends
+/// without mate.
+const MATES: &str = r#"[White "Rook mate, A"]
+[Black "B"]
+[SetUp "1"]
+[FEN "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1"]
+[Result "1-0"]
+
+1. Ra8# 1-0
+
+[White "Queen and knight mate, A"]
+[Black "B"]
+[SetUp "1"]
+[FEN "7k/6pp/8/6NQ/8/8/8/6K1 w - - 0 1"]
+[Result "1-0"]
+
+1. Qxh7# 1-0
+
+[White "No mate, A"]
+[Black "B"]
+[SetUp "1"]
+[FEN "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1"]
+[Result "*"]
+
+1. Kf1 *"#;
+
+#[test]
+fn mate_by_matches_the_pieces_involved_in_the_mate() {
+    let d = tempfile::tempdir().unwrap();
+    let path = d.path().join("Mates.2cbh");
+    let games = parse_pgn(MATES.as_bytes(), &GameLimits::default()).unwrap();
+    let mut w = Writer::create(&path).unwrap();
+    w.append_all(&games).unwrap();
+    drop(w);
+    let mut db = Database::open(&path, ReadLimits::default()).unwrap();
+    let exactly = |n: u8| CountRange {
+        min: Some(n),
+        max: Some(n),
+    };
+    let by = |mate_by: PieceCounts| GameFilter {
+        ending: EndingQuery {
+            mate_by_enabled: true,
+            mate_by,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    // Any mate: the game without mate never matches.
+    assert_eq!(hits(&mut db, by(PieceCounts::default())), [1, 2]);
+    // Rook only (the king is not involved in the back-rank mate).
+    let rook = PieceCounts {
+        rooks: exactly(1),
+        others_zero: true,
+        ..Default::default()
+    };
+    assert_eq!(hits(&mut db, by(rook)), [1]);
+    // Queen and one minor piece, nothing else.
+    let queen_knight = PieceCounts {
+        queens: exactly(1),
+        minors: exactly(1),
+        others_zero: true,
+        ..Default::default()
+    };
+    assert_eq!(hits(&mut db, by(queen_knight)), [2]);
+    let knight_only = PieceCounts {
+        knights: exactly(1),
+        ..Default::default()
+    };
+    assert_eq!(hits(&mut db, by(knight_only)), [2]);
+    // Switched off, the pieces are ignored.
+    let off = GameFilter {
+        ending: EndingQuery {
+            mate_by: rook,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    assert_eq!(hits(&mut db, off), [1, 2, 3]);
+    // Together with final material and another field.
+    let mut both = by(queen_knight);
+    both.ending.white = PieceCounts {
+        queens: exactly(1),
+        ..Default::default()
+    };
+    both.results = vec!["1-0".into()];
+    assert_eq!(hits(&mut db, both.clone()), [2]);
+    both.ending.white.queens = exactly(2);
+    assert!(hits(&mut db, both).is_empty());
+    // The criterion arrives from the frontend as camelCase JSON.
+    let json: GameFilter = serde_json::from_str(
+        r#"{"ending":{"mateByEnabled":true,"mateBy":{"rooks":{"min":1,"max":1},"othersZero":true}}}"#,
+    )
+    .unwrap();
+    assert_eq!(hits(&mut db, json), [1]);
 }
 
 #[test]

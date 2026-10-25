@@ -958,6 +958,31 @@ export function mockApi(
       };
     }),
     cancelPaste: vi.fn().mockResolvedValue(undefined),
+    chooseSavePgn: vi.fn().mockResolvedValue("/synthetic/games.pgn"),
+    exportRowsPgn: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          ranges: { start: string; end: string }[],
+          path: string,
+          onProgress,
+        ) => {
+          const games = ranges.reduce(
+            (n, r) => n + Number(r.end) - Number(r.start),
+            0,
+          );
+          onProgress({ done: String(games), total: String(games) });
+          return {
+            written: String(games),
+            skipped: "0",
+            stripped: "0",
+            cancelled: false,
+            destination: path,
+          };
+        },
+      ),
+    cancelExport: vi.fn().mockResolvedValue(undefined),
     chooseConvertTarget: vi.fn().mockResolvedValue("/dbs/Converted.2cbh"),
     convertEstimate: vi.fn().mockResolvedValue({
       games: "404",
@@ -982,6 +1007,71 @@ export function mockApi(
         };
       }),
     cancelConvert: vi.fn().mockResolvedValue(undefined),
+    chooseMateTrainingFolder: vi.fn().mockResolvedValue("/synthetic/out"),
+    buildMateTraining: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _db: string,
+          _ranges,
+          options: { minDepth: number; maxDepth: number },
+          _engine: string,
+          _millis: number,
+          folder: string,
+          name: string,
+          onProgress,
+        ) => {
+          const depths = (n: number) => [n, 0, 0, 0, 0];
+          onProgress({
+            scanned: "200",
+            total: "400",
+            puzzles: depths(3),
+            chains: 0,
+            combinations: [],
+          });
+          return {
+            databases: [
+              {
+                path: `${folder}/${name} - Mate in ${options.minDepth}.2cbh`,
+                depth: options.minDepth,
+                games: 5,
+              },
+              { path: `${folder}/${name} - Mate chains.2cbh`, games: 3 },
+            ],
+            combinations: [
+              { combination: "Q+N", depths: depths(3), chains: 1 },
+              { combination: "R+K", depths: depths(2), chains: 0 },
+            ],
+            puzzles: depths(5),
+            chains: 1,
+            rejections: [
+              { kind: "notMate", count: "12" },
+              { kind: "otherMove", count: "4" },
+            ],
+            scanned: "400",
+            total: "400",
+            filteredOut: "0",
+            stopped: false,
+            cancelled: false,
+            complete: false,
+          };
+        },
+      ),
+    stopMateTraining: vi.fn().mockResolvedValue(undefined),
+    cancelMateTraining: vi.fn().mockResolvedValue(undefined),
+    srsDecks: vi.fn().mockResolvedValue({ decks: [], unreadable: [] }),
+    srsCreateFromPgn: vi.fn().mockRejectedValue({ message: "not set up" }),
+    srsCreateFromRows: vi.fn().mockRejectedValue({ message: "not set up" }),
+    srsUpdateFromPgn: vi.fn().mockRejectedValue({ message: "not set up" }),
+    srsUpdateFromRows: vi.fn().mockRejectedValue({ message: "not set up" }),
+    srsDeck: vi.fn().mockRejectedValue({ message: "not set up" }),
+    srsSetOptions: vi.fn().mockResolvedValue(undefined),
+    srsRename: vi.fn().mockResolvedValue(undefined),
+    srsDelete: vi.fn().mockResolvedValue(undefined),
+    srsQueue: vi.fn().mockRejectedValue({ message: "not set up" }),
+    srsAnswer: vi.fn().mockRejectedValue({ message: "not set up" }),
+    srsSuspend: vi.fn().mockResolvedValue(undefined),
+    confirmDeleteDeck: vi.fn().mockResolvedValue(true),
     checkIntegrity: vi
       .fn()
       .mockImplementation(async (_db: string, onProgress) => {
@@ -1052,6 +1142,7 @@ export function mockApi(
           ),
       ),
     confirmPaste: vi.fn().mockResolvedValue(true),
+    confirmExportPgn: vi.fn().mockResolvedValue(true),
     readNames: vi
       .fn()
       .mockImplementation(

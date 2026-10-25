@@ -13,9 +13,11 @@ pub mod dossier;
 pub mod engine_commands;
 pub mod error_report;
 pub mod evaluation_profile;
+pub mod export;
 pub mod library;
 pub mod lists;
 pub mod maintenance;
+pub mod mate_training;
 pub mod names;
 pub mod openings;
 pub mod playing_style;
@@ -30,6 +32,7 @@ pub mod searches;
 pub mod settings;
 #[cfg(all(debug_assertions, target_os = "macos"))]
 pub mod snapshot;
+pub mod srs;
 pub mod statistics;
 pub mod style_dimensions;
 pub mod tablebases;
@@ -159,6 +162,8 @@ pub fn run() {
                     .set_dir(dir.join("repertoire-workspace"));
                 app.state::<replay_training::ReplayTrainingStore>()
                     .set_dir(dir.join("replay-training-sessions"));
+                app.state::<std::sync::Arc<srs::store::SrsStore>>()
+                    .set_dir(dir.join("srs"));
             }
             if let Ok(dir) = app.path().app_config_dir() {
                 app.state::<settings::Settings>().set_dir(&dir);
@@ -181,6 +186,7 @@ pub fn run() {
         .manage(std::sync::Arc::new(repertoire::RepertoireJobs::default()))
         .manage(repertoire_workspace::RepertoireWorkspace::default())
         .manage(replay_training::ReplayTrainingStore::default())
+        .manage(std::sync::Arc::new(srs::store::SrsStore::default()))
         .manage(std::sync::Arc::new(centipawn::CentipawnJobs::default()))
         .manage(std::sync::Arc::new(
             evaluation_profile::InstantJobs::default(),
@@ -270,10 +276,27 @@ pub fn run() {
             repertoire_workspace::repertoire_grade,
             replay_training::replay_training_progress,
             replay_training::replay_training_record,
+            srs::commands::srs_decks,
+            srs::commands::srs_create_from_pgn,
+            srs::commands::srs_create_from_rows,
+            srs::commands::srs_update_from_pgn,
+            srs::commands::srs_update_from_rows,
+            srs::commands::srs_deck,
+            srs::commands::srs_set_options,
+            srs::commands::srs_rename,
+            srs::commands::srs_delete,
+            srs::commands::srs_queue,
+            srs::commands::srs_answer,
+            srs::commands::srs_suspend,
             commands::copy_rows,
             commands::clip_size,
             commands::paste_games,
             commands::cancel_paste,
+            commands::export_rows_pgn,
+            commands::cancel_export,
+            commands::build_mate_training,
+            commands::stop_mate_training,
+            commands::cancel_mate_training,
             commands::convert_estimate,
             commands::convert_database,
             commands::cancel_convert,

@@ -85,8 +85,8 @@ turns them into a database.
   to search every command. Several games open in tabs, plus board windows and
   layout presets.
 - **Search.** The search mask's game data tab covers players, colours, wins
-  only, tournament, annotator, Elo, year, ECO, length, result, final position
-  and full text. Its Annotations and Medals tabs find texts, symbols, colours,
+  only, tournament, annotator, Elo, year, ECO, length, result, final position,
+  equal final material and full text. Its Material tab finds piece ranges in a move window; its Ending tab finds piece counts in the final position and mates by a chosen combination of pieces; its Annotations and Medals tabs find texts, symbols, colours,
   training, critical positions and medals. **Find Position** and pattern
   searches find every game that reaches a board, faster with a search booster.
 - **Opening tree and reference search.** The Book pane shows games, score,
@@ -113,7 +113,8 @@ turns them into a database.
   analysis and analysis jobs run unattended. Guided game review lets you
   retry critical positions and track which ones need practice. Syzygy
   tablebases answer endgames.
-- **PGN in and out.** Import PGN collections, and export or copy games as PGN.
+- **PGN in and out.** Import PGN collections, and export or copy games as PGN;
+  **Export PGN** writes the selected games of a list to a file.
 - **Private and safe.** A database is only written when you open it for
   editing. The app keeps its indexes (search booster, opening tree, sort
   orders, name lists) in its own data folder, never beside your files.
@@ -124,7 +125,11 @@ turns them into a database.
   follow the same chess position across move orders and databases.
 - **Replay Training Sessions.** Practise saved questions from a game or selected
   game-list rows on a hidden-answer board. Use authored hints and feedback,
-  retry questions, and keep progress in the app data folder.
+  retry questions, and keep progress in the app data folder. **Build Mate
+  Training** makes mate-in-1 to mate-in-5 training databases from the games in
+  a list (see [mate training](docs/mate-training.md)). **Spaced Repetition**
+  turns a PGN file or a list into decks of lines you study day by day, with
+  mistakes coming back soon (see [spaced repetition](docs/spaced-repetition.md)).
 
 </details>
 
@@ -317,7 +322,7 @@ and reported as unsupported.
 | Databases and files | [Formats](docs/formats.md) · [Writing](docs/writing.md) · [Conversion](docs/conversion.md) · [Maintenance](docs/maintenance.md) |
 | Lists and search | [Game list](docs/game-list.md) · [Search](docs/search.md) · [Position search](docs/position-search.md) |
 | Openings | [Opening tree](docs/opening-tree.md) · [Repertoire workspace](docs/repertoire-workspace.md) · [Openings](docs/openings.md) |
-| Games and engines | [Game window](docs/game-window.md) · [Replay training](docs/replay-training.md) · [Engines](docs/engines.md) · [Analysis](docs/analysis.md) · [Game review](docs/game-review.md) |
+| Games and engines | [Game window](docs/game-window.md) · [Replay training](docs/replay-training.md) · [Mate training](docs/mate-training.md) · [Spaced repetition](docs/spaced-repetition.md) · [Engines](docs/engines.md) · [Analysis](docs/analysis.md) · [Game review](docs/game-review.md) |
 | Players and reports | [Player statistics](docs/player-statistics.md) · [Dossier](docs/player-dossier.md) · [Preparation](docs/preparation.md) · [Tournament report](docs/tournament-report.md) · [Error report](docs/error-report.md) · [Playing style](docs/playing-style.md) |
 | Design | [Design](docs/design.md) · [UI shell](docs/ui-shell.md) · [Validation](docs/validation.md) |
 

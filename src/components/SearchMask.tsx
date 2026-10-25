@@ -2,10 +2,15 @@ import { useState } from "react";
 import {
   emptyAnnotations,
   emptyFilter,
+  emptyEnding,
   MEDAL_NAMES,
   type AnnotationQuery,
+  type CountRange,
   type EloMode,
+  type EndingQuery,
+  type FinalMaterial,
   type GameFilter,
+  type PieceCounts,
   type PositionQuery,
   type SearchScope,
 } from "../api/types";
@@ -32,6 +37,67 @@ const ANNOTATION_CHECKS: [keyof AnnotationQuery, string][] = [
 const num = (v: string) => (v.trim() === "" ? undefined : Number(v));
 const text = (v?: number) => (v === undefined ? "" : String(v));
 
+/** A count range as its select value: "any", "2" or "2+". */
+const rangeValue = (r: CountRange) =>
+  r.min !== undefined && r.min === r.max
+    ? String(r.min)
+    : r.min !== undefined && r.max === undefined
+      ? `${r.min}+`
+      : "any";
+const parseRange = (v: string): CountRange =>
+  v === "any"
+    ? {}
+    : v.endsWith("+")
+      ? { min: Number(v.slice(0, -1)) }
+      : { min: Number(v), max: Number(v) };
+
+/** The piece kinds of an Ending tab row; bishops and knights are shown
+ * either apart or pooled as minor pieces. */
+const KINDS: [keyof PieceCounts, string, string, number][] = [
+  ["queens", "Q", "queens", 3],
+  ["rooks", "R", "rooks", 3],
+  ["bishops", "B", "bishops", 3],
+  ["knights", "N", "knights", 3],
+  ["minors", "Minor", "minor pieces", 3],
+  ["pawns", "P", "pawns", 8],
+];
+
+/** A select of piece counts: any, 0..max, 1+ and 2+ (the last two only when
+ * `plus`). */
+function CountSelect({
+  label,
+  value,
+  max,
+  plus = true,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: CountRange;
+  max: number;
+  plus?: boolean;
+  disabled?: boolean;
+  onChange: (r: CountRange) => void;
+}) {
+  const options = [
+    "any",
+    ...Array.from({ length: max + 1 }, (_, n) => String(n)),
+    ...(plus ? ["1+", "2+"] : []),
+  ];
+  return (
+    <select
+      aria-label={label}
+      disabled={disabled}
+      value={rangeValue(value)}
+      onChange={(e) => onChange(parseRange(e.target.value))}
+    >
+      {options.map((o) => (
+        <option key={o}>{o}</option>
+      ))}
+    </select>
+  );
+}
+
 const RESULTS: [string, string][] = [
   ["1-0", "1-0"],
   ["0-1", "0-1"],
@@ -41,7 +107,8 @@ const RESULTS: [string, string][] = [
 
 /**
  * The reference app's search mask. The game data tab has players, tournament,
- * annotator, Elo, year, ECO, moves, result, final position and text; the
+ * annotator, Elo, year, ECO, moves, result, final position, final material
+ * and text; the ending tab picks final piece counts and the pieces that mate; the
  * position tab finds a pattern or a whole position. Searching filters the
  * game list.
  */
@@ -68,7 +135,7 @@ export function SearchMask({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<
-    "game" | "annotations" | "position" | "material" | "medals"
+    "game" | "annotations" | "ending" | "position" | "material" | "medals"
   >(initialTab ?? (initialPosition ? "position" : "game"));
   const [scope, setScope] = useState<SearchScope>("all");
   const [position, setPosition] = useState<{
@@ -81,6 +148,44 @@ export function SearchMask({
   const anno = f.annotations ?? emptyAnnotations();
   const setAnno = (patch: Partial<AnnotationQuery>) =>
     set({ annotations: { ...anno, ...patch } });
+  const material: FinalMaterial = f.finalMaterial ?? {
+    equal: false,
+    separateMinors: false,
+    countPawns: false,
+  };
+  const setMaterial = (patch: Partial<FinalMaterial>) =>
+    set({ finalMaterial: { ...material, ...patch } });
+  const mat = f.ending ?? emptyEnding();
+  const setMat = (patch: Partial<EndingQuery>) =>
+    set({ ending: { ...mat, ...patch } });
+  // Bishops and knights apart when the filter says so.
+  const [pooled, setPooled] = useState(
+    ![mat.white, mat.black, mat.mateBy].some(
+      (c) => rangeValue(c.bishops) !== "any" || rangeValue(c.knights) !== "any",
+    ),
+  );
+  const poolMinors = (on: boolean) => {
+    setPooled(on);
+    // Only the shown kinds count.
+    const fix = (c: PieceCounts): PieceCounts =>
+      on ? { ...c, bishops: {}, knights: {} } : { ...c, minors: {} };
+    setMat({
+      white: fix(mat.white),
+      black: fix(mat.black),
+      mateBy: fix(mat.mateBy),
+    });
+  };
+  const kinds = KINDS.filter(([k]) =>
+    pooled ? k !== "bishops" && k !== "knights" : k !== "minors",
+  );
+  const matSet =
+    mat.mateByEnabled ||
+    [mat.white, mat.black].some(
+      (c) =>
+        c.othersZero ||
+        KINDS.some(([k]) => rangeValue(c[k] as CountRange) !== "any") ||
+        rangeValue(c.kings) !== "any",
+    );
   const medals = f.medals ?? 0;
   const player = (side: "white" | "black", label: string) => (
     <div className="mask-row">
@@ -161,6 +266,7 @@ export function SearchMask({
             [
               ["game", "Game data"],
               ["annotations", "Annotations"],
+              ["ending", "Ending"],
               ["position", "Position"],
               ["material", "Material"],
               ["medals", "Medals"],
@@ -248,6 +354,140 @@ export function SearchMask({
               Every criterion set must hold. Annotations are read from each game
               that matches the other tabs, so this search is slower.
             </p>
+          </div>
+        )}
+        {tab === "ending" && (
+          <div className="mask-ending">
+            <fieldset className="mask-ending-block">
+              <legend>Final position</legend>
+              <div
+                className="mask-ending-grid"
+                style={{
+                  gridTemplateColumns: `auto repeat(${kinds.length}, 1fr)`,
+                }}
+              >
+                <span />
+                {kinds.map(([k, head]) => (
+                  <span key={k} className="mask-ending-head">
+                    {head}
+                  </span>
+                ))}
+                {(["white", "black"] as const).map((side) => {
+                  const name = side === "white" ? "White" : "Black";
+                  return [
+                    <span key={side}>{name}</span>,
+                    ...kinds.map(([k, , noun, max]) => (
+                      <CountSelect
+                        key={`${side}-${k}`}
+                        label={`${name} ${noun}`}
+                        value={mat[side][k] as CountRange}
+                        max={max}
+                        onChange={(r) =>
+                          setMat({ [side]: { ...mat[side], [k]: r } })
+                        }
+                      />
+                    )),
+                  ];
+                })}
+              </div>
+              <div className="mask-checks">
+                <label className="mask-check">
+                  <input
+                    type="checkbox"
+                    checked={mat.eitherColour}
+                    onChange={(e) => setMat({ eitherColour: e.target.checked })}
+                  />
+                  Either colour
+                </label>
+                <label className="mask-check">
+                  <input
+                    type="checkbox"
+                    checked={pooled}
+                    onChange={(e) => poolMinors(e.target.checked)}
+                  />
+                  Bishop = Knight
+                </label>
+                <label className="mask-check">
+                  <input
+                    type="checkbox"
+                    checked={mat.white.othersZero && mat.black.othersZero}
+                    onChange={(e) =>
+                      setMat({
+                        white: { ...mat.white, othersZero: e.target.checked },
+                        black: { ...mat.black, othersZero: e.target.checked },
+                      })
+                    }
+                  />
+                  No other pieces
+                </label>
+              </div>
+            </fieldset>
+            <fieldset className="mask-ending-block">
+              <legend>Mate by</legend>
+              <label className="mask-check">
+                <input
+                  type="checkbox"
+                  checked={mat.mateByEnabled}
+                  onChange={(e) => setMat({ mateByEnabled: e.target.checked })}
+                />
+                Final position is mate by
+              </label>
+              <div
+                className="mask-ending-grid"
+                style={{
+                  gridTemplateColumns: `repeat(${kinds.length + 1}, 1fr)`,
+                }}
+              >
+                <span className="mask-ending-head">K</span>
+                {kinds.map(([k, head]) => (
+                  <span key={k} className="mask-ending-head">
+                    {head}
+                  </span>
+                ))}
+                <CountSelect
+                  label="Mating king"
+                  value={mat.mateBy.kings}
+                  max={1}
+                  plus={false}
+                  disabled={!mat.mateByEnabled}
+                  onChange={(r) =>
+                    setMat({ mateBy: { ...mat.mateBy, kings: r } })
+                  }
+                />
+                {kinds.map(([k, , noun, max]) => (
+                  <CountSelect
+                    key={k}
+                    label={`Mating ${noun}`}
+                    value={mat.mateBy[k] as CountRange}
+                    max={max}
+                    disabled={!mat.mateByEnabled}
+                    onChange={(r) =>
+                      setMat({ mateBy: { ...mat.mateBy, [k]: r } })
+                    }
+                  />
+                ))}
+              </div>
+              <label className="mask-check">
+                <input
+                  type="checkbox"
+                  aria-label="Mate by: no other pieces"
+                  disabled={!mat.mateByEnabled}
+                  checked={mat.mateBy.othersZero}
+                  onChange={(e) =>
+                    setMat({
+                      mateBy: { ...mat.mateBy, othersZero: e.target.checked },
+                    })
+                  }
+                />
+                No other pieces
+              </label>
+            </fieldset>
+            {matSet && (
+              <p className="hint">
+                Final positions are read from each game that matches the other
+                tabs, so this search is slower.
+              </p>
+            )}
           </div>
         )}
         {tab === "medals" && (
@@ -366,7 +606,7 @@ export function SearchMask({
               ))}
             </fieldset>
             <fieldset className="mask-row">
-              <legend className="mask-label">Final position</legend>
+              <legend>Final position</legend>
               {(
                 [
                   ["mate", "Mate"],
@@ -384,6 +624,39 @@ export function SearchMask({
                 </label>
               ))}
             </fieldset>
+            <fieldset className="mask-row">
+              <legend className="mask-label">Final material</legend>
+              <label className="mask-check">
+                <input
+                  type="checkbox"
+                  checked={material.equal}
+                  onChange={(e) => setMaterial({ equal: e.target.checked })}
+                />
+                Equal pieces
+              </label>
+              <label className="mask-check">
+                <input
+                  type="checkbox"
+                  disabled={!material.equal}
+                  checked={!material.separateMinors}
+                  onChange={(e) =>
+                    setMaterial({ separateMinors: !e.target.checked })
+                  }
+                />
+                Bishop = Knight
+              </label>
+              <label className="mask-check">
+                <input
+                  type="checkbox"
+                  disabled={!material.equal}
+                  checked={material.countPawns}
+                  onChange={(e) =>
+                    setMaterial({ countPawns: e.target.checked })
+                  }
+                />
+                Count pawns
+              </label>
+            </fieldset>
             <div className="mask-row">
               <span className="mask-label">Full Text</span>
               <input
@@ -400,7 +673,11 @@ export function SearchMask({
                 NOT
               </label>
             </div>
-            {(f.mate || f.stalemate || f.check || f.fullText?.trim()) && (
+            {(f.mate ||
+              f.stalemate ||
+              f.check ||
+              material.equal ||
+              f.fullText?.trim()) && (
               <p className="hint">
                 Final positions and text are read from each game that matches
                 the other fields, so this search is slower.
@@ -457,6 +734,7 @@ export function SearchMask({
             type="button"
             onClick={() => {
               setF(emptyFilter());
+              setPooled(true);
               setScope("all");
               setPositionKey((k) => k + 1);
             }}

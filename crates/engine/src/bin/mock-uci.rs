@@ -4,7 +4,8 @@
 //! position: it offers `MultiPV`, and line *k*
 //! is the *k*-th legal move in UCI order, scored 30 − 20 (*k* − 1)
 //! centipawns, followed by the first legal reply. A `searchmoves` list limits
-//! the lines to its moves.
+//! the lines to its moves. Mode `silent` offers `MultiPV` but never answers a
+//! search before it is stopped.
 use shakmaty::{CastlingMode, Chess, Position, fen::Fen, uci::UciMove};
 use std::{
     io::{self, BufRead, Write},
@@ -74,7 +75,7 @@ fn main() {
                 if mode == "chess960" {
                     emit("option name UCI_Chess960 type check default false");
                 }
-                if mode == "legal" {
+                if mode == "legal" || mode == "silent" {
                     emit("option name MultiPV type spin default 1 min 1 max 500");
                 }
                 if mode == "syzygy" {
@@ -95,6 +96,9 @@ fn main() {
                     std::process::exit(7);
                 }
                 searching = true;
+                if mode == "silent" {
+                    continue;
+                }
                 if mode == "stderr-saturation" {
                     io::stderr().write_all(&vec![b'x'; 200_000]).unwrap();
                     io::stderr().flush().unwrap();
