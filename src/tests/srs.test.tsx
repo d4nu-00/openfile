@@ -240,6 +240,9 @@ describe("the Decks dialog", () => {
       ["Random"],
     );
     await ui.user.click(
+      within(dialog).getByLabelText("Show new lines with arrows first"),
+    );
+    await ui.user.click(
       within(dialog).getByRole("button", { name: "Create deck" }),
     );
     await waitFor(() =>
@@ -251,6 +254,7 @@ describe("the Decks dialog", () => {
           trainee: "white",
           includeVariations: false,
           newOrder: "random",
+          showNewFirst: true,
         },
         expect.any(Number),
         expect.any(Number),
@@ -498,6 +502,29 @@ describe("Study", () => {
     expect(await within(session).findByText("Symmetry")).toBeVisible();
     expect(within(session).getByText("Line complete")).toBeVisible();
     for (const name of ["Again", "Hard", "Good", "Easy"])
+      expect(
+        within(session).getByRole("button", { name: new RegExp(`^${name}`) }),
+      ).toBeEnabled();
+  });
+
+  it("tries a new card without showing its moves, and says how many moves mate", async () => {
+    const { ui, session } = await openStudy(
+      study({ state: newState, mateIn: 1 }),
+    );
+    expect(
+      within(session).getByText("New", { selector: ".srs-badge" }),
+    ).toBeVisible();
+    expect(within(session).queryByText("Learn")).toBeNull();
+    await opponentPlayed(session);
+    expect(
+      within(session).getByRole("heading", {
+        name: "Black to move · Mate in 1",
+      }),
+    ).toBeVisible();
+    expect(within(session).queryByText("e7–e5")).toBeNull();
+    await play(ui, session, "e7", "e5");
+    expect(await within(session).findByText("Line complete")).toBeVisible();
+    for (const name of ["Hard", "Good", "Easy"])
       expect(
         within(session).getByRole("button", { name: new RegExp(`^${name}`) }),
       ).toBeEnabled();

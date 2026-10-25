@@ -73,6 +73,9 @@ pub struct DeckOptions {
     pub new_order: NewOrder,
     pub include_variations: bool,
     pub trainee: TraineeChoice,
+    /// New cards are first shown with each trainee move as an arrow; off,
+    /// a new card is tried like any other.
+    pub show_new_first: bool,
 }
 
 impl Default for DeckOptions {
@@ -88,6 +91,7 @@ impl Default for DeckOptions {
             new_order: NewOrder::Source,
             include_variations: true,
             trainee: TraineeChoice::SideToMove,
+            show_new_first: false,
         }
     }
 }
